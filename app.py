@@ -1,50 +1,71 @@
 import streamlit as st
+import firebase_admin
+from firebase_admin import credentials, firestore
+import json
 import datetime
 import random
-try:
-    from gtts import gTTS
-    audio_ready = True
-except:
-    audio_ready = False
 
-# --- 1. CONFIGURAÇÃO ---
-st.set_page_config(page_title="GeralJá | Profissionais", page_icon="⚡", layout="centered")
+# --- 1. CONFIGURAÇÃO E CONEXÃO FIREBASE ---
+st.set_page_config(page_title="GeralJá | Oficial", page_icon="⚡", layout="centered")
 
-# --- 2. MOTOR DE ESTADO (ESTENDIDO) ---
+# Inicializa Firebase via Secrets (Cofre Seguro)
+if not firebase_admin._apps:
+    try:
+        # Lê o JSON que você colou nos Secrets do Streamlit
+        firebase_info = json.loads(st.secrets["FIREBASE_JSON"])
+        cred = credentials.Certificate(firebase_info)
+        firebase_admin.initialize_app(cred)
+    except Exception as e:
+        st.error(f"Erro ao conectar no Firebase: {e}")
+
+db = firestore.client()
+
+# --- 2. MOTOR DE ESTADO (SESSION STATE) ---
 if 'etapa' not in st.session_state: st.session_state.etapa = 'busca'
-if 'posts' not in st.session_state: st.session_state.posts = []
-if 'lucro' not in st.session_state: st.session_state.lucro = 0.0
-if 'vendas' not in st.session_state: st.session_state.vendas = 0
-if 'codigo_verificacao' not in st.session_state: st.session_state.codigo_verificacao = None
 if 'profissional_logado' not in st.session_state: st.session_state.profissional_logado = False
 
 CHAVE_PIX = "09be938c-ee95-469f-b221-a3beea63964b"
 
-# --- 3. CSS PROFISSIONAL ---
+# --- 3. CSS CUSTOMIZADO (DESIGN ELEGANTE) ---
 st.markdown("""
     <style>
-    .stApp { background-color: #FFFFFF !important; }
-    .logo-box { text-align: center; padding: 10px 0; }
-    .azul { color: #0047AB; font-size: 40px; font-weight: 900; }
-    .laranja { color: #FF8C00; font-size: 40px; font-weight: 900; }
+    .stApp { background-color: #FFFFFF; }
+    .logo-box { text-align: center; padding-bottom: 20px; }
+    .azul { color: #0047AB; font-size: 42px; font-weight: 900; }
+    .laranja { color: #FF8C00; font-size: 42px; font-weight: 900; }
+    
+    /* Botões de Navegação Superior */
     div.stButton > button {
+        background-color: #f0f2f6;
+        color: #333;
+        border-radius: 10px;
+        border: none;
+        width: 100%;
+        font-weight: bold;
+    }
+    
+    /* Botão de Ação Laranja */
+    .btn-acao div.stButton > button {
         background-color: #FF8C00 !important;
         color: white !important;
-        border-radius: 25px !important;
-        font-weight: bold !important;
-        width: 100%;
+        height: 50px;
+        font-size: 18px;
     }
-    .status-verificado { color: #28a745; font-weight: bold; border: 1px solid #28a745; padding: 5px; border-radius: 10px; text-align: center; }
+    
+    .card-post {
+        background: #f9f9f9; padding: 15px; border-radius: 12px;
+        margin-bottom: 10px; border-left: 5px solid #0047AB;
+        box-shadow: 2px 2px 5px rgba(0,0,0,0.05);
+    }
     header, footer { visibility: hidden; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 4. MENU DE NAVEGAÇÃO REFORÇADO (4 BOTÕES) ---
+# --- 4. MENU SUPERIOR FIXO ---
 st.markdown('<div class="logo-box"><span class="azul">GERAL</span><span class="laranja">JÁ</span></div>', unsafe_allow_html=True)
 c1, c2, c3, c4 = st.columns(4)
-
 with c1: 
-    if st.button("🏠 Busca"): st.session_state.etapa = 'busca'; st.rerun()
+    if st.button("🔍 Busca"): st.session_state.etapa = 'busca'; st.rerun()
 with c2: 
     if st.button("👥 Social"): st.session_state.etapa = 'social'; st.rerun()
 with c3: 
@@ -54,84 +75,97 @@ with c4:
 
 st.divider()
 
-# --- 5. LÓGICA DE TELAS ---
+# --- 5. LÓGICA DAS TELAS ---
 
-# TELA: CADASTRO DE PROFISSIONAL
+# TELA: CADASTRO DE PROFISSIONAL (SALVANDO NO FIREBASE)
 if st.session_state.etapa == 'cadastro':
     st.markdown("### 👷 Cadastro de Prestador")
     
     if not st.session_state.profissional_logado:
-        tab1, tab2 = st.tabs(["1. Dados", "2. Verificação"])
+        nome = st.text_input("Nome Completo")
+        profissao = st.selectbox("Sua Especialidade", ["Pintor", "Eletricista", "Encanador", "Diarista", "Mecânico"])
+        zap = st.text_input("Seu WhatsApp (apenas números)")
         
-        with tab1:
-            nome = st.text_input("Nome Completo")
-            profissao = st.selectbox("Sua Especialidade", ["Pintor", "Eletricista", "Encanador", "Diarista", "Mecânico", "Outros"])
-            contato = st.text_input("WhatsApp ou E-mail para contato")
-            
-            if st.button("Gerar Código de Verificação"):
-                if nome and contato:
-                    # Simulação de envio de código
-                    st.session_state.codigo_verificacao = str(random.randint(1000, 9999))
-                    st.info(f"🛡️ Simulação de SMS/E-mail: Seu código é **{st.session_state.codigo_verificacao}**")
-                    st.success("Código enviado com sucesso!")
-                else:
-                    st.error("Preencha todos os campos.")
-
-        with tab2:
-            st.write("Insira o código de 4 dígitos enviado:")
-            input_cod = st.text_input("Código", max_chars=4)
-            if st.button("Confirmar Identidade"):
-                if input_cod == st.session_state.codigo_verificacao:
-                    st.session_state.profissional_logado = True
-                    st.balloons()
-                    st.rerun()
-                else:
-                    st.error("Código incorreto.")
+        st.markdown('<div class="btn-acao">', unsafe_allow_html=True)
+        if st.button("FINALIZAR CADASTRO NO FIREBASE"):
+            if nome and zap:
+                # SALVANDO NO BANCO DE DADOS REAL
+                doc_ref = db.collection("profissionais").document(zap)
+                doc_ref.set({
+                    "nome": nome,
+                    "profissao": profissao,
+                    "contato": zap,
+                    "status": "Verificado",
+                    "data": str(datetime.datetime.now())
+                })
+                st.session_state.profissional_logado = True
+                st.balloons()
+                st.rerun()
+            else:
+                st.error("Por favor, preencha todos os campos.")
+        st.markdown('</div>', unsafe_allow_html=True)
     else:
-        st.markdown('<div class="status-verificado">✅ PERFIL VERIFICADO E ATIVO</div>', unsafe_allow_html=True)
-        st.write(f"Bem-vindo ao time, seu perfil já está aparecendo nas buscas do Grajaú!")
-        if st.button("Sair / Deslogar"):
-            st.session_state.profissional_logado = False
-            st.rerun()
+        st.success("✅ Seu perfil está ATIVO e salvo no banco de dados!")
+        if st.button("Sair"): st.session_state.profissional_logado = False; st.rerun()
 
-# TELA: BUSCA (MANTIDA)
+# TELA: BUSCA
 elif st.session_state.etapa == 'busca':
-    st.markdown("### 🔍 O que você precisa hoje?")
-    serv = st.selectbox("Serviço", ["", "Pintor", "Eletricista", "Encanador", "Diarista"])
-    if st.button("PESQUISAR"):
-        if serv: st.session_state.servico_busca = serv; st.session_state.etapa = 'resultado'; st.rerun()
+    st.markdown("### 🔍 Qual serviço você precisa?")
+    escolha = st.selectbox("Selecione", ["", "Pintor", "Eletricista", "Encanador", "Diarista"])
+    if escolha:
+        st.session_state.servico_busca = escolha
+        st.session_state.etapa = 'resultado'; st.rerun()
 
-# TELA: RESULTADO (COM SELO DE VERIFICADO)
+# TELA: RESULTADO (BUSCANDO DO FIREBASE)
 elif st.session_state.etapa == 'resultado':
-    st.markdown(f"### 📍 Profissional Localizado")
-    st.markdown("#### Bony Silva <span style='color:#0047AB;'>✔️ Verificado</span>", unsafe_allow_html=True)
+    st.markdown(f"### Profissionais de {st.session_state.servico_busca}")
     
-    # Mapa
-    st.image("https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/-46.6682,-23.7721,14/600x250?access_token=pk.eyJ1IjoiZ3VpZG94IiwiYSI6ImNrZnduZnR4MDBhNnoycnBnbm9idG9yejkifQ.7Wp6M_2yA6_z_rG-vH0Z6A")
+    # Exemplo de como listar do Firebase
+    profs = db.collection("profissionais").where("profissao", "==", st.session_state.servico_busca).stream()
+    
+    encontrou = False
+    for p in profs:
+        encontrou = True
+        dados = p.to_dict()
+        with st.container():
+            st.markdown(f"**{dados['nome']}** - {dados['status']} ⭐")
+            if st.button(f"Contratar {dados['nome']}", key=dados['contato']):
+                st.session_state.etapa = 'pagamento'; st.rerun()
+            st.divider()
+    
+    if not encontrou:
+        st.warning("Nenhum profissional cadastrado para esta categoria ainda.")
 
-    if audio_ready and st.button("🔊 OUVIR DETALHES"):
-        tts = gTTS(text=f"Encontramos um profissional verificado para {st.session_state.servico_busca}", lang='pt')
-        tts.save("voz.mp3")
-        st.audio("voz.mp3", autoplay=True)
-
-    if st.button("✅ CONTRATAR"): st.session_state.etapa = 'pagamento'; st.rerun()
-
-# --- REPETIR TELAS SOCIAL, ADMIN E PAGAMENTO DO V10 ---
+# TELA: REDE SOCIAL (SALVANDO POSTS NO FIREBASE)
 elif st.session_state.etapa == 'social':
-    st.write("### 👥 Comunidade")
-    with st.form("social"):
-        u, m = st.text_input("Nome"), st.text_area("Mensagem")
-        if st.form_submit_button("Postar"): st.session_state.posts.insert(0, {"u":u, "m":m}); st.rerun()
-    for p in st.session_state.posts: st.info(f"{p['u']}: {p['m']}")
+    st.markdown("### 👥 Mural do Grajaú")
+    with st.form("mural"):
+        msg = st.text_area("O que está acontecendo no bairro?")
+        if st.form_submit_button("Postar"):
+            if msg:
+                db.collection("mural").add({"msg": msg, "data": datetime.datetime.now()})
+                st.rerun()
+    
+    # Listar posts do Firebase
+    posts = db.collection("mural").order_by("data", direction=firestore.Query.DESCENDING).limit(10).stream()
+    for p in posts:
+        st.markdown(f'<div class="card-post">{p.to_dict()["msg"]}</div>', unsafe_allow_html=True)
 
+# TELA: PAGAMENTO (PIX REAL)
 elif st.session_state.etapa == 'pagamento':
-    st.image(f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={CHAVE_PIX}")
-    if st.button("✅ CONFIRMAR"): 
-        st.session_state.lucro += 25; st.session_state.vendas += 1
+    st.markdown("### 💳 Pagamento Seguro")
+    st.image(f"https://api.qrserver.com/v1/create-qr-code/?size=180x180&data={CHAVE_PIX}")
+    st.code(CHAVE_PIX)
+    if st.button("CONFIRMAR PAGAMENTO"):
+        db.collection("vendas").add({"valor": 25.0, "data": datetime.datetime.now()})
+        st.balloons()
         st.session_state.etapa = 'busca'; st.rerun()
 
+# TELA: ADMIN
 elif st.session_state.etapa == 'admin':
-    senha = st.text_input("Senha Admin", type="password")
+    st.markdown("### 📊 Painel GeralJá")
+    senha = st.text_input("Senha", type="password")
     if senha == "admin777":
-        st.metric("Lucro", f"R$ {st.session_state.lucro}")
-        st.metric("Vendas", st.session_state.vendas)
+        vendas = db.collection("vendas").stream()
+        total = sum([v.to_dict()['valor'] for v in vendas])
+        st.metric("Faturamento Acumulado", f"R$ {total:.2f}")
