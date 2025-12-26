@@ -2,87 +2,83 @@ import streamlit as st
 import random
 import time
 
-# 1. Configurações de página
-st.set_page_config(page_title="GeralJá | Elite HUB", layout="wide", initial_sidebar_state="collapsed")
+# --- CONFIGURAÇÃO E DESIGN ---
+st.set_page_config(page_title="GeralJá | Elite HUB", layout="wide")
 
-# 2. Inicialização de Memória (Session State)
-if 'radar_ligado' not in st.session_state:
-    st.session_state.radar_ligado = False
-if 'servico' not in st.session_state:
-    st.session_state.servico = "Pintura"
-
-# 3. Estilo CSS (Foco em Reatividade)
 st.markdown("""
     <style>
-    .stApp { background: #050a10; color: #e0e0e0; }
-    .brand-header {
-        background: linear-gradient(90deg, #004a8c 0%, #0d1117 100%);
-        padding: 20px; border-radius: 0 0 20px 20px; text-align: center;
-        border-bottom: 2px solid #f39c12; margin-bottom: 20px;
+    .stApp { background: #050a10; color: white; }
+    .checkout-card { 
+        background: white; color: black; padding: 25px; 
+        border-radius: 20px; text-align: center; border: 4px solid #27ae60; 
     }
-    .glass-card {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 15px; padding: 20px; margin-top: 10px;
-    }
-    /* Estilo dos botões de categoria para parecerem ativos */
-    .btn-cat {
-        background: #1a2a40; color: white; padding: 10px; 
-        border-radius: 10px; text-align: center; border: 1px solid #34495e;
-        margin: 5px; cursor: pointer;
+    .fee-badge {
+        background: #e1f5fe; color: #01579b; padding: 5px 10px;
+        border-radius: 5px; font-size: 12px; font-weight: bold;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# Cabeçalho
-st.markdown('<div class="brand-header"><h1 style="font-size: 35px; font-weight: 900; margin: 0;">GERAL<span style="color:#f39c12">JÁ</span></h1></div>', unsafe_allow_html=True)
+# Lista de profissões
+PROFISOES = ["Pintor", "Eletricista", "Encanador", "Diarista", "Pedreiro"]
 
-tab_busca, tab_pro = st.tabs(["🔍 RADAR", "👷 SOU PROFISSIONAL"])
+if 'etapa' not in st.session_state: st.session_state.etapa = 'busca'
 
-with tab_busca:
-    st.markdown("### 🛠️ Escolha o Serviço")
+# --- LOGICA DE FLUXO ---
+if st.session_state.etapa == 'busca':
+    st.markdown("## 🔍 Encontre um Profissional")
+    profissao = st.selectbox("O que você precisa?", [""] + PROFISOES)
+    local = st.text_input("📍 Seu endereço no Grajaú:")
+
+    if st.button("BUSCAR AGORA", use_container_width=True):
+        if professions and local:
+            st.session_state.profissao = profissao
+            st.session_state.etapa = 'resultado'
+            st.rerun()
+
+elif st.session_state.etapa == 'resultado':
+    # Simulando um valor de mercado
+    preco_base = random.randint(150, 400)
+    st.session_state.valor_total = preco_base
     
-    # Seleção por rádio (mais estável para celular que botões soltos)
-    opcao = st.radio("", ["🎨 Pintura", "⚡ Elétrica", "🚰 Hidráulica", "🧹 Limpeza"], horizontal=True)
-    st.session_state.servico = opcao
+    st.markdown(f"### Melhor opção para {st.session_state.profissao}")
+    st.markdown(f"""
+        <div style="background: rgba(255,255,255,0.05); padding:20px; border-radius:15px;">
+            <h2>Bony Silva</h2>
+            <p>⭐ 4.9 | Especialista Verificado</p>
+            <h1 style="color:#f39c12;">R$ {preco_base},00</h1>
+            <span class="fee-badge">🛡️ Pagamento 100% Protegido pelo GeralJá</span>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    if st.button("💳 SEGUIR PARA PAGAMENTO", use_container_width=True):
+        st.session_state.etapa = 'pagamento'
+        st.rerun()
 
-    local = st.text_input("📍 Onde você está?", placeholder="Ex: Rua Jequirituba, 100")
-
-    # Botão de Busca (Este reage e muda o estado)
-    if st.button("🚀 ATIVAR RADAR AGORA", use_container_width=True):
-        st.session_state.radar_ligado = True
-        with st.spinner("Buscando no Grajaú..."):
-            time.sleep(1)
-
-    # Exibição do Resultado (Só aparece se o radar estiver ligado)
-    if st.session_state.radar_ligado:
-        valor = random.randint(160, 280)
-        st.markdown(f"""
-            <div class="glass-card">
-                <span style="color:#27ae60; font-weight:bold; font-size:12px;">● PROFISSIONAL DISPONÍVEL</span>
-                <h2 style="margin:5px 0;">Bony Silva</h2>
-                <p style="color:#bdc3c7; margin:0;">Especialista em {st.session_state.servico}</p>
-                <h1 style="color:#f39c12; margin:10px 0;">R$ {valor},00</h1>
-                <hr style="opacity:0.1">
-                <p style="font-size:12px; color:gray;">Pagamento via PIX com Garantia GeralJá</p>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        # O BOTÃO QUE REAGE: Link direto via HTML (funciona 100% no celular)
-        link_zap = f"https://wa.me/5511991853488?text=Olá! Quero contratar o {st.session_state.servico} (Bony Silva) no endereço: {local}. Valor: R${valor}"
-        
-        st.markdown(f'''
-            <a href="{link_zap}" target="_blank" style="text-decoration:none;">
-                <div style="background: linear-gradient(90deg, #25d366, #128c7e); color:white; padding:18px; 
-                text-align:center; border-radius:15px; font-weight:bold; font-size:18px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
-                    ✅ CONTRATAR VIA WHATSAPP
-                </div>
-            </a>
-        ''', unsafe_allow_html=True)
-
-with tab_pro:
-    st.markdown("### 👷 Área do Prestador")
-    st.info("Cadastre-se para receber chamados no seu celular.")
-    st.markdown('<a href="https://forms.gle/WWj6XcbLEbcttbe76" target="_blank" style="text-decoration:none;"><div style="background:#f39c12; color:white; padding:15px; text-align:center; border-radius:10px; font-weight:bold;">📝 INICIAR CADASTRO</div></a>', unsafe_allow_html=True)
-
-st.markdown("<br><p style='text-align:center; color:gray; font-size:10px;'>GeralJá v2.8 - Grajaú SP</p>", unsafe_allow_html=True)
+elif st.session_state.etapa == 'pagamento':
+    # CÁLCULO FINANCEIRO (REGRA DOS 10%)
+    total = st.session_state.valor_total
+    taxa_plataforma = total * 0.10  # SEU LUCRO DE 10%
+    repasse_profissional = total - taxa_plataforma
+    
+    st.markdown("### 💳 Checkout Seguro")
+    st.markdown(f"""
+        <div class="checkout-card">
+            <p style="margin:0; color:gray;">VALOR TOTAL A PAGAR</p>
+            <h1 style="margin:0; font-size:45px;">R$ {total},00</h1>
+            <hr>
+            <p>Escaneie ou use o PIX Copia e Cola:</p>
+            <code style="background:#f0f0f0; padding:10px; display:block; border-radius:10px;">11991853488</code>
+            <br>
+            <p style="font-size:13px; color:#555;">
+                <b>Como funciona?</b><br>
+                Você paga R$ {total},00 agora.<br>
+                O GeralJá retém o valor e libera R$ {repasse_profissional},00 ao profissional 
+                somente após você confirmar a conclusão do serviço.
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    if st.button("✅ JÁ REALIZEI O PIX"):
+        st.success("Confirmando com o banco... Em instantes você receberá o contato!")
+        st.balloons()
