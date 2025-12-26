@@ -119,7 +119,53 @@ if st.session_state.get('abertura'):
             st.rerun()
 
     # ETAPA: PAGAMENTO (10% TAXA)
+    # --- ETAPA 3: PAGAMENTO (PIX COM QR CODE E COPIA/COLA) ---
     elif st.session_state.etapa == 'pagamento':
+        total = st.session_state.valor_total
+        # Chave aleatória fictícia para o design
+        chave_aleatoria = "00020101021226850014br.gov.bcb.pix0123geralja88991122334455"
+        
+        st.markdown("<h3 style='text-align:center;'>Finalizar Pagamento</h3>", unsafe_allow_html=True)
+        
+        # Card de Pagamento Estilo Banco Digital
+        st.markdown(f"""
+            <div class="glass-card" style="background:white; color:black; text-align:center;">
+                <p style="color:#777; font-size:12px; margin-bottom:5px;">VALOR A PAGAR</p>
+                <h1 style="margin:0; color:#27ae60; font-size:40px;">R$ {total},00</h1>
+                
+                <div style="margin: 20px 0;">
+                    <p style="font-size:14px; font-weight:bold; color:#333;">Escaneie o QR Code abaixo:</p>
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={chave_aleatoria}" 
+                         style="border: 10px solid #f9f9f9; border-radius:15px; width:180px;">
+                </div>
+                
+                <hr style="opacity:0.1">
+                
+                <p style="font-size:13px; color:#555; margin-bottom:10px;">Ou use o Pix Copia e Cola:</p>
+                <div style="background:#f0f0f0; padding:15px; border-radius:12px; border: 1px dashed #ccc;">
+                    <code style="font-size:11px; word-break: break-all; color:#333;">{chave_aleatoria}</code>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+
+        # Botão de ação para simular o "Copiar"
+        if st.button("📋 COPIAR CHAVE PIX"):
+            # No Streamlit, a cópia real precisa de componentes extras, 
+            # mas aqui simulamos visualmente para o usuário.
+            st.toast("Chave copiada para a área de transferência!", icon="✅")
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        if st.button("✅ JÁ REALIZEI O PAGAMENTO"):
+            with st.spinner('Validando transação com o banco...'):
+                time.sleep(2)
+                st.balloons()
+                st.success("Pagamento confirmado! O profissional Bony Silva recebeu seu chamado.")
+                st.info("📱 O contato dele foi enviado para o seu WhatsApp cadastrado.")
+                
+                if st.button("Voltar para o Início"):
+                    st.session_state.etapa = 'busca'
+                    st.rerun()
         st.markdown("<h3 style='text-align:center;'>Finalizar Contratação</h3>", unsafe_allow_html=True)
         st.markdown("""
             <div class="glass-card" style="background:white; color:black;">
@@ -136,3 +182,4 @@ if st.session_state.get('abertura'):
             if st.button("Fazer outra busca"):
                 st.session_state.etapa = 'busca'
                 st.rerun()
+
