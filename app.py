@@ -1,156 +1,159 @@
 import streamlit as st
 import random
 import datetime
+import time
 
-# --- 1. CONFIGURAÇÃO ---
-st.set_page_config(page_title="GeralJá | Home", layout="centered", initial_sidebar_state="collapsed")
+# --- 1. CONFIGURAÇÃO DE ELITE ---
+st.set_page_config(
+    page_title="GeralJá | Elite HUB",
+    page_icon="⚡",
+    layout="centered",
+    initial_sidebar_state="collapsed"
+)
 
-# --- 2. INICIALIZAÇÃO DE VARIÁVEIS ---
+# --- 2. INICIALIZAÇÃO E PERSISTÊNCIA ---
 if 'etapa' not in st.session_state: st.session_state.etapa = 'busca'
 if 'lucro_plataforma' not in st.session_state: st.session_state.lucro_plataforma = 0.0
 if 'pedidos_concluidos' not in st.session_state: st.session_state.pedidos_concluidos = 0
 if 'posts' not in st.session_state: 
-    st.session_state.posts = [{"user": "Equipe GeralJá", "msg": "Bem-vindos à nossa comunidade!", "data": "26/12"}]
+    st.session_state.posts = [{"user": "Equipe GeralJá", "msg": "Conectando o Grajaú aos melhores profissionais! 🚀", "data": "Agora"}]
 
-CHAVE_PIX_ALERATORIA = "09be938c-ee95-469f-b221-a3beea63964b"
 LISTA_PROS = sorted(["Pintor", "Eletricista", "Encanador", "Diarista", "Pedreiro", "Montador de Móveis", "Mecânico", "Jardineiro", "Chaveiro"])
+CHAVE_PIX = "09be938c-ee95-469f-b221-a3beea63964b"
 
-# --- 3. CSS "WHITE LABEL" (LIMPEZA TOTAL) ---
+# --- 3. CSS ULTRA MODERNO (DESIGN SYSTEM) ---
 st.markdown("""
     <style>
-    /* Força Fundo Branco Total */
-    .stApp, .stAppViewContainer, .stMain {
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+    
+    html, body, [data-testid="stAppViewContainer"] {
         background-color: #FFFFFF !important;
+        font-family: 'Inter', sans-serif;
+    }
+
+    /* Logo com Efeito de Profundidade */
+    .logo-container { text-align: center; padding: 20px 0; margin-top: -20px; }
+    .logo-geral { color: #0047AB; font-size: 58px; font-weight: 900; letter-spacing: -2px; }
+    .logo-ja { color: #FF8C00; font-size: 58px; font-weight: 900; letter-spacing: -2px; }
+
+    /* Inputs e Selects Modernos */
+    .stSelectbox div[data-baseweb="select"] { border-radius: 12px !important; }
+    .stTextInput input { border-radius: 12px !important; }
+
+    /* Botão com Gradiente e Sombra */
+    div.stButton > button {
+        background: linear-gradient(90deg, #FF8C00 0%, #F39C12 100%) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 14px !important;
+        font-weight: 700 !important;
+        height: 58px !important;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(255, 140, 0, 0.2) !important;
     }
     
-    /* Logo Centralizado */
-    .logo-container { text-align: center; margin-top: -30px; padding-bottom: 20px; }
-    .logo-geral { color: #0047AB; font-size: 55px; font-weight: 900; }
-    .logo-ja { color: #FF8C00; font-size: 55px; font-weight: 900; }
+    div.stButton > button:active { transform: scale(0.98); }
 
-    /* Estilização da Barra Lateral (Sidebar) */
-    section[data-testid="stSidebar"] {
-        background-color: #f8f9fa !important;
-        border-right: 1px solid #eee;
-    }
-
-    /* Botões da Home e Sidebar */
-    div.stButton > button {
-        background-color: #FF8C00 !important;
-        color: white !important;
-        border-radius: 12px !important;
-        font-weight: 700 !important;
-        height: 55px !important;
-        width: 100% !important;
-        border: none !important;
-    }
-
-    /* Estilo dos cards da Rede Social */
-    .post-card {
-        background: white;
-        padding: 15px;
-        border-radius: 12px;
-        border: 1px solid #eee;
-        margin-bottom: 12px;
-        color: #333;
-    }
-
-    /* Ocultar elementos desnecessários */
+    /* Sidebar Clean */
+    [data-testid="stSidebar"] { background-color: #FDFDFD !important; border-right: 1px solid #F0F0F0; }
+    
+    /* Esconder Header/Footer */
     header, footer { visibility: hidden; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 4. JANELA LATERAL RESPONSIVA (SIDEBAR) ---
+# --- 4. BARRA LATERAL (SIDEBAR) ---
 with st.sidebar:
-    st.markdown("<h2 style='color:#0047AB;'>Menu GeralJá</h2>", unsafe_allow_html=True)
-    st.write("Escolha uma opção:")
+    st.markdown("<h2 style='color:#0047AB;'>Navegação</h2>", unsafe_allow_html=True)
+    if st.button("🏠 Home / Buscar"): st.session_state.etapa = 'busca'; st.rerun()
+    if st.button("👥 Comunidade"): st.session_state.etapa = 'social'; st.rerun()
+    if st.button("🆘 Suporte Direto"): st.toast("Abrindo WhatsApp..."); time.sleep(1)
     
-    if st.button("🏠 Início / Buscar"):
-        st.session_state.etapa = 'busca'
-        st.rerun()
-        
-    if st.button("👥 Rede Social"):
-        st.session_state.etapa = 'social'
-        st.rerun()
-        
-    if st.button("🆘 Suporte 24h"):
-        st.toast("Conectando ao WhatsApp de suporte...")
-        
     st.divider()
-    
-    # ACESSO ADMIN DENTRO DA LATERAL
-    with st.expander("🔐 Área Restrita"):
-        senha = st.text_input("Senha Admin", type="password")
-        if senha == "admin777":
-            if st.button("Acessar Dashboard"):
-                st.session_state.etapa = 'admin'
-                st.rerun()
+    with st.expander("🔐 Nodo Admin"):
+        pwd = st.text_input("Acesso", type="password")
+        if pwd == "admin777":
+            if st.button("Ver Relatórios"): st.session_state.etapa = 'admin'; st.rerun()
 
-# --- 5. ROTEAMENTO DE TELAS ---
+# --- 5. LÓGICA DE TELAS ---
 
-# TELA PRINCIPAL (BUSCA)
+# TELA DE BUSCA (HOME)
 if st.session_state.etapa == 'busca':
     st.markdown("""
         <div class="logo-container">
             <span class="logo-geral">GERAL</span><span class="logo-ja">JÁ</span>
-            <p style="color: #666; margin-top: -15px;">O Grajaú resolve aqui.</p>
+            <p style="color: #888; font-weight: 500; margin-top: -10px;">Elite HUB Grajaú</p>
         </div>
     """, unsafe_allow_html=True)
-    
-    with st.container():
-        servico = st.selectbox("O que você precisa hoje?", [""] + LISTA_PROS)
-        rua = st.text_input("📍 Seu Endereço ou Referência")
-        
-        st.write("")
-        if st.button("🚀 BUSCAR PROFISSIONAL"):
-            if servico and rua:
-                st.session_state.servico_busca = servico
-                st.session_state.etapa = 'resultado'
-                st.rerun()
-            else:
-                st.warning("⚠️ Por favor, informe o serviço e o endereço.")
 
-# TELA REDE SOCIAL
+    servico = st.selectbox("O que você precisa hoje?", [""] + LISTA_PROS)
+    rua = st.text_input("📍 Localização (Rua ou Ponto de Ref.)")
+
+    if st.button("🚀 ENCONTRAR PROFISSIONAL AGORA"):
+        if servico and rua:
+            with st.status("📡 Escaneando profissionais na região...", expanded=True) as status:
+                st.write("Verificando disponibilidade...")
+                time.sleep(1)
+                st.write("Validando avaliações no Grajaú...")
+                time.sleep(1)
+                status.update(label="✅ Especialista Encontrado!", state="complete", expanded=False)
+            
+            st.session_state.servico_busca = servico
+            st.session_state.etapa = 'resultado'
+            st.rerun()
+        else:
+            st.error("Preencha o serviço e o endereço.")
+
+# TELA COMUNIDADE (SOCIAL)
 elif st.session_state.etapa == 'social':
-    st.markdown("<h2 style='color:#0047AB;'>👥 Comunidade Grajaú</h2>", unsafe_allow_html=True)
-    with st.expander("📝 Criar Publicação"):
-        n = st.text_input("Nome")
-        t = st.text_area("Mensagem")
-        if st.button("Publicar"):
+    st.markdown("<h2 style='color:#0047AB;'>👥 Comunidade</h2>", unsafe_allow_html=True)
+    with st.chat_message("user"):
+        n = st.text_input("Seu Nome")
+        t = st.text_area("O que está acontecendo no bairro?")
+        if st.button("Postar na Rede"):
             if n and t:
-                st.session_state.posts.insert(0, {"user": n, "msg": t, "data": datetime.datetime.now().strftime("%d/%m")})
+                st.session_state.posts.insert(0, {"user": n, "msg": t, "data": "Agora"})
                 st.rerun()
+
     for p in st.session_state.posts:
-        st.markdown(f"""<div class="post-card"><b>{p['user']}</b> <small style='color:gray;'>• {p['data']}</small><br>{p['msg']}</div>""", unsafe_allow_html=True)
+        with st.container():
+            st.markdown(f"""
+                <div style="background:#F8F9FB; padding:15px; border-radius:15px; border:1px solid #EEE; margin-bottom:10px;">
+                    <b style="color:#0047AB;">{p['user']}</b> <small style="color:#AAA;">• {p['data']}</small><br>
+                    <span style="color:#444;">{p['msg']}</span>
+                </div>
+            """, unsafe_allow_html=True)
 
 # TELA ADMIN
 elif st.session_state.etapa == 'admin':
-    st.markdown("<h2 style='color:#0047AB;'>📊 Painel Administrativo</h2>", unsafe_allow_html=True)
-    c1, c2 = st.columns(2)
-    c1.metric("Lucro Bruto", f"R$ {st.session_state.get('lucro_plataforma', 0):.2f}")
-    c2.metric("Serviços Pagos", st.session_state.get('pedidos_concluidos', 0))
-    if st.button("⬅ Sair"):
-        st.session_state.etapa = 'busca'; st.rerun()
+    st.markdown("<h2 style='color:#0047AB;'>📊 Dashboard de Elite</h2>", unsafe_allow_html=True)
+    col1, col2 = st.columns(2)
+    col1.metric("Receita Nodo", f"R$ {st.session_state.lucro_plataforma:.2f}", "+ 10%")
+    col2.metric("Serviços Hoje", st.session_state.pedidos_concluidos)
+    
+    st.write("### Últimas Transações")
+    st.dataframe({"Serviço": ["Eletricista", "Pintor"], "Status": ["Pago", "Pendente"], "Valor": [250, 180]})
+    
+    if st.button("⬅ Voltar"): st.session_state.etapa = 'busca'; st.rerun()
 
-# TELA RESULTADO
+# RESULTADO E PAGAMENTO
 elif st.session_state.etapa == 'resultado':
-    st.image("https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/-46.6682,-23.7721,13/600x220?access_token=pk.eyJ1IjoiZ3VpZG94IiwiYSI6ImNrZnduZnR4MDBhNnoycnBnbm9idG9yejkifQ.7Wp6M_2yA6_z_rG-vH0Z6A")
-    st.success(f"Encontramos especialistas em {st.session_state.servico_busca} próximos a você!")
-    if st.button("CONTRATAR BONY SILVA"): 
-        st.session_state.etapa = 'pagamento'; st.rerun()
-    if st.button("⬅ Voltar"): 
-        st.session_state.etapa = 'busca'; st.rerun()
+    st.markdown("### 🏆 Melhor Avaliado Encontrado")
+    st.image("https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/-46.6682,-23.7721,13/600x200?access_token=pk.eyJ1IjoiZ3VpZG94IiwiYSI6ImNrZnduZnR4MDBhNnoycnBnbm9idG9yejkifQ.7Wp6M_2yA6_z_rG-vH0Z6A")
+    st.info(f"O Sr. Bony Silva está disponível para {st.session_state.servico_busca}")
+    if st.button("CONTRATAR AGORA"): st.session_state.etapa = 'pagamento'; st.rerun()
+    if st.button("Voltar"): st.session_state.etapa = 'busca'; st.rerun()
 
-# TELA PAGAMENTO
 elif st.session_state.etapa == 'pagamento':
-    st.markdown("<h3 style='text-align:center;'>Pagamento via PIX</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align:center;'>Check-out Seguro</h3>", unsafe_allow_html=True)
     st.markdown(f"""
-        <div style="background:#f8f9fa; padding:25px; border-radius:15px; text-align:center; border: 1px solid #eee;">
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data={CHAVE_PIX_ALERATORIA}">
-            <p style='font-size:12px; color:gray; margin-top:10px;'>{CHAVE_PIX_ALERATORIA}</p>
+        <div style="background:#FFF; padding:20px; border-radius:20px; text-align:center; border: 2px solid #FF8C00;">
+            <p style='color:#555;'>Total do Serviço: <b>R$ 250,00</b></p>
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data={CHAVE_PIX}">
+            <p style='font-size:11px; color:#888; margin-top:10px;'>Copia e Cola: {CHAVE_PIX}</p>
         </div>
     """, unsafe_allow_html=True)
-    if st.button("✅ CONFIRMAR PAGAMENTO"): 
+    if st.button("✅ PAGAMENTO REALIZADO"):
         st.session_state.lucro_plataforma += 25.0
         st.session_state.pedidos_concluidos += 1
         st.session_state.etapa = 'busca'; st.balloons(); st.rerun()
