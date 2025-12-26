@@ -11,7 +11,7 @@ if 'lucro_plataforma' not in st.session_state: st.session_state.lucro_plataforma
 CHAVE_PIX_ALERATORIA = "09be938c-ee95-469f-b221-a3beea63964b"
 LISTA_PROS = sorted(["Pintor", "Eletricista", "Encanador", "Diarista", "Pedreiro", "Montador de Móveis", "Mecânico", "Jardineiro", "Chaveiro"])
 
-# --- 3. CSS (BRANCO E SIMÉTRICO) ---
+# --- 3. CSS (BRANCO + ESTILO DO MENU) ---
 st.markdown("""
     <style>
     .stApp { background-color: #FFFFFF !important; color: #333333 !important; }
@@ -32,31 +32,34 @@ st.markdown("""
         border: none !important;
     }
 
-    /* ESCONDER INTERFACE PADRÃO DO STREAMLIT */
+    /* ESCONDER INTERFACE PADRÃO */
     [data-testid="stSidebar"] { display: none; }
     header, footer { visibility: hidden; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 4. MENU SUPERIOR FIXO (ENGRENAGEM) ---
-# Esta linha cria o topo da página com o botão de acesso
-col_espaço, col_menu = st.columns([6, 1])
+# --- 4. MENU SUPERIOR (SUBSTITUINDO A ENGRENAGEM) ---
+col_vazia, col_menu = st.columns([4, 1.2]) # Coluna do menu um pouco maior para caber o texto
+
 with col_menu:
-    with st.popover("⚙️"):
-        st.write("🔑 **Acesso Restrito**")
-        senha = st.text_input("Token", type="password")
+    # Substituímos a engrenagem por um Popover escrito "MENU" ou "PAINEL"
+    with st.popover("📂 MENU ACESSO"):
+        st.write("🔒 **Área do Profissional**")
+        senha = st.text_input("Token / Senha", type="password", key="login_main")
         if senha == "admin777":
-            if st.button("Painel Admin"):
+            if st.button("ENTRAR NO PAINEL"):
                 st.session_state.etapa = 'admin'
                 st.rerun()
+        elif senha != "":
+            st.error("Token Inválido")
 
 # --- 5. FLUXO DE TELAS ---
 
 # VISÃO ADMIN
 if st.session_state.etapa == 'admin':
-    st.title("📊 Gestão GeralJá")
-    st.metric("Faturamento", f"R$ {st.session_state.lucro_plataforma:.2f}")
-    if st.button("⬅ VOLTAR"):
+    st.markdown("<h2 style='color:#0047AB;'>📊 Gestão GeralJá</h2>", unsafe_allow_html=True)
+    st.metric("Faturamento Acumulado (10%)", f"R$ {st.session_state.lucro_plataforma:.2f}")
+    if st.button("⬅ VOLTAR PARA BUSCA"):
         st.session_state.etapa = 'busca'
         st.rerun()
 
@@ -70,7 +73,7 @@ elif st.session_state.etapa == 'busca':
     """, unsafe_allow_html=True)
     
     with st.container():
-        servico = st.selectbox("Qual profissional você precisa?", [""] + LISTA_PROS)
+        servico = st.selectbox("O que você precisa hoje?", [""] + LISTA_PROS)
         rua = st.text_input("📍 Seu Endereço no Grajaú")
         
         st.write("") 
@@ -80,7 +83,7 @@ elif st.session_state.etapa == 'busca':
                 st.session_state.etapa = 'resultado'
                 st.rerun()
             else:
-                st.warning("Preencha os campos para buscar.")
+                st.warning("⚠️ Selecione o serviço e o endereço.")
 
     st.markdown("<br><br>", unsafe_allow_html=True)
     if st.button("🆘 SUPORTE 24H"):
@@ -112,6 +115,7 @@ elif st.session_state.etapa == 'pagamento':
     val = st.session_state.valor_final
     st.markdown(f"""
         <div style="background:#f1f1f1; padding:30px; border-radius:20px; text-align:center; color: black;">
+            <p style="color:gray;">PAGAMENTO PIX</p>
             <h1 style="color:#27ae60; margin:0;">R$ {val},00</h1>
             <br>
             <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data={CHAVE_PIX_ALERATORIA}">
