@@ -1,7 +1,12 @@
 import streamlit as st
 import datetime
 import time
-from gtts import gTTS
+try:
+    from gtts import gTTS
+    audio_disponivel = True
+except ImportError:
+    audio_disponivel = False
+    st.warning("⚠️ O sistema de voz ainda está sendo instalado pelo servidor. Aguarde 1 minuto.")
 import os
 
 # --- 1. CONFIGURAÇÃO DE NÚCLEO ---
@@ -133,3 +138,4 @@ elif st.session_state.etapa == 'pagamento':
         st.session_state.lucro += 25.0
         st.session_state.vendas += 1
         st.session_state.etapa = 'busca'; st.balloons(); st.rerun()
+
