@@ -1,175 +1,148 @@
 import streamlit as st
-import random
 import datetime
 import time
 
-# --- 1. CONFIGURAÇÃO DE ALTA PERFORMANCE ---
+# --- 1. CONFIGURAÇÃO DE NÚCLEO (FORÇA BARRA LATERAL) ---
 st.set_page_config(
-    page_title="GeralJá | Oficial",
+    page_title="GeralJá | Grajaú",
     page_icon="⚡",
     layout="centered",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded" # Força o menu a iniciar aberto para o usuário ver
 )
 
-# --- 2. INICIALIZAÇÃO BLINDADA (Garante que nada suma) ---
-def inicializar_estados():
-    variaveis = {
-        'etapa': 'busca',
-        'lucro_plataforma': 0.0,
-        'pedidos_concluidos': 0,
-        'servico_busca': '',
-        'posts': [{"user": "Sistema", "msg": "Bem-vindo ao Elite HUB Grajaú!", "data": "26/12"}]
-    }
-    for var, valor in variaveis.items():
-        if var not in st.session_state:
-            st.session_state[var] = valor
+# --- 2. MOTOR DE ESTADO BLINDADO ---
+if 'etapa' not in st.session_state: st.session_state.etapa = 'busca'
+if 'lucro' not in st.session_state: st.session_state.lucro = 0.0
+if 'vendas' not in st.session_state: st.session_state.vendas = 0
+if 'posts' not in st.session_state: 
+    st.session_state.posts = [{"user": "Admin", "msg": "Sistema GeralJá Online! 🚀", "data": "26/12"}]
 
-inicializar_estados()
-
-LISTA_PROS = sorted(["Pintor", "Eletricista", "Encanador", "Diarista", "Pedreiro", "Montador de Móveis", "Mecânico", "Jardineiro", "Chaveiro"])
 CHAVE_PIX = "09be938c-ee95-469f-b221-a3beea63964b"
 
-# --- 3. CSS UNIFICADO (Fundo Branco e Botões Padronizados) ---
+# --- 3. CSS ANTI-BUG (FUNDO BRANCO TOTAL) ---
 st.markdown("""
     <style>
-    /* Reset de Fundo */
-    .stApp { background-color: #FFFFFF !important; }
-    
-    /* Logo Moderno */
-    .logo-container { text-align: center; margin-bottom: 25px; padding-top: 10px; }
-    .logo-geral { color: #0047AB; font-size: 52px; font-weight: 900; letter-spacing: -1.5px; }
-    .logo-ja { color: #FF8C00; font-size: 52px; font-weight: 900; letter-spacing: -1.5px; }
+    /* Forçar fundo branco e remover faixas pretas */
+    .stApp, [data-testid="stAppViewContainer"], [data-testid="stMainViewContainer"] {
+        background-color: #FFFFFF !important;
+        color: #333333 !important;
+    }
 
-    /* Botões de Ação */
-    div.stButton > button {
-        background: #FF8C00 !important;
+    /* Logo Central */
+    .logo-box { text-align: center; padding: 20px 0; margin-top: -30px; }
+    .azul { color: #0047AB; font-size: 52px; font-weight: 900; }
+    .laranja { color: #FF8C00; font-size: 52px; font-weight: 900; }
+
+    /* Botões Padronizados */
+    .stButton > button {
+        background-color: #FF8C00 !important;
         color: white !important;
         border-radius: 12px !important;
-        font-weight: 700 !important;
         height: 55px !important;
         width: 100% !important;
+        font-weight: bold !important;
         border: none !important;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
     }
-
-    /* Cards da Rede Social */
-    .post-card {
-        background: #FDFDFD;
-        padding: 15px;
-        border-radius: 12px;
-        border: 1px solid #EEE;
-        margin-bottom: 12px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-    }
-
-    /* Ocultar Lixo Visual */
+    
+    /* Esconder cabeçalhos nativos */
     header, footer { visibility: hidden; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 4. MENU LATERAL (ORGANIZADO) ---
+# --- 4. MENU LATERAL (Sincronizado) ---
 with st.sidebar:
-    st.markdown("<h2 style='color:#0047AB;'>📌 Menu</h2>", unsafe_allow_html=True)
-    if st.button("🔍 Buscar Profissional"):
+    st.markdown("<h1 style='color:#0047AB;'>GeralJá</h1>", unsafe_allow_html=True)
+    st.write("---")
+    if st.button("🏠 Início / Busca", key="menu_home"):
         st.session_state.etapa = 'busca'
         st.rerun()
-    if st.button("👥 Rede Social"):
+    if st.button("👥 Rede Social", key="menu_social"):
         st.session_state.etapa = 'social'
         st.rerun()
     
-    st.divider()
-    with st.expander("🛡️ Área Administrativa"):
-        acesso = st.text_input("Senha", type="password", key="admin_key")
-        if acesso == "admin777":
-            if st.button("Entrar no Painel"):
+    st.write("---")
+    with st.expander("🔐 Administração"):
+        pwd = st.text_input("Senha", type="password", key="pwd_admin")
+        if pwd == "admin777":
+            if st.button("Abrir Painel", key="btn_go_admin"):
                 st.session_state.etapa = 'admin'
                 st.rerun()
 
 # --- 5. ROTEAMENTO DE TELAS ---
 
-# --- TELA: BUSCA (HOME) ---
+# TELA: BUSCA
 if st.session_state.etapa == 'busca':
-    st.markdown("""
-        <div class="logo-container">
-            <span class="logo-geral">GERAL</span><span class="logo-ja">JÁ</span>
-            <p style="color: #666; margin-top: -10px;">Encontre o que precisa no Grajaú</p>
-        </div>
-    """, unsafe_allow_html=True)
+    st.markdown('<div class="logo-box"><span class="azul">GERAL</span><span class="laranja">JÁ</span></div>', unsafe_allow_html=True)
     
-    servico = st.selectbox("O que você procura?", [""] + LISTA_PROS)
-    rua = st.text_input("📍 Seu Endereço ou Referência")
+    servico = st.selectbox("O que você precisa hoje?", ["", "Pintor", "Eletricista", "Encanador", "Diarista", "Pedreiro", "Mecânico", "Montador"], key="sel_serv")
+    rua = st.text_input("📍 Localização no Grajaú", key="input_rua")
     
-    if st.button("PESQUISAR AGORA"):
+    if st.button("🚀 PESQUISAR AGORA", key="btn_main_search"):
         if servico and rua:
             st.session_state.servico_busca = servico
             st.session_state.etapa = 'resultado'
             st.rerun()
         else:
-            st.warning("⚠️ Preencha todos os campos.")
+            st.warning("Preencha o serviço e o endereço.")
 
-# --- TELA: REDE SOCIAL ---
+# TELA: REDE SOCIAL
 elif st.session_state.etapa == 'social':
     st.markdown("<h2 style='color:#0047AB;'>👥 Comunidade Grajaú</h2>", unsafe_allow_html=True)
-    
-    with st.form("novo_post", clear_on_submit=True):
-        nome = st.text_input("Seu Nome")
-        mensagem = st.text_area("Sua mensagem...")
+    with st.form("form_social"):
+        u = st.text_input("Seu Nome")
+        m = st.text_area("O que quer postar?")
         if st.form_submit_button("Publicar"):
-            if nome and mensagem:
-                novo = {"user": nome, "msg": mensagem, "data": datetime.datetime.now().strftime("%d/%m %H:%M")}
-                st.session_state.posts.insert(0, novo)
+            if u and m:
+                st.session_state.posts.insert(0, {"user": u, "msg": m, "data": datetime.datetime.now().strftime("%d/%m")})
                 st.rerun()
 
-    for post in st.session_state.posts:
-        st.markdown(f"""
-            <div class="post-card">
-                <b>{post['user']}</b> <small style='color:gray;'>• {post['data']}</small><br>
-                <div style="margin-top:5px; color:#444;">{post['msg']}</div>
-            </div>
-        """, unsafe_allow_html=True)
+    for p in st.session_state.posts:
+        st.markdown(f"""<div style="background:#F0F2F6; padding:15px; border-radius:10px; margin-bottom:10px; border-left: 5px solid #0047AB;">
+            <b>{p['user']}</b> <small>• {p['data']}</small><br>{p['msg']}</div>""", unsafe_allow_html=True)
 
-# --- TELA: ADMIN ---
+# TELA: ADMIN
 elif st.session_state.etapa == 'admin':
-    st.markdown("<h2 style='color:#0047AB;'>📊 Painel Administrativo</h2>", unsafe_allow_html=True)
-    c1, c2 = st.columns(2)
-    c1.metric("Lucro Nodo (10%)", f"R$ {st.session_state.lucro_plataforma:.2f}")
-    c2.metric("Total de Pedidos", st.session_state.pedidos_concluidos)
-    
-    if st.button("⬅ Sair do Painel"):
+    st.title("📊 Relatório Nodo")
+    col1, col2 = st.columns(2)
+    col1.metric("Faturamento", f"R$ {st.session_state.lucro:.2f}")
+    col2.metric("Vendas", st.session_state.vendas)
+    if st.button("⬅ Sair", key="btn_exit_admin"):
         st.session_state.etapa = 'busca'
         st.rerun()
 
-# --- TELA: RESULTADO ---
+# TELA: RESULTADO (MAPA CORRIGIDO)
 elif st.session_state.etapa == 'resultado':
-    st.markdown(f"### 📍 Especialista em {st.session_state.servico_busca}")
-    st.image("https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/-46.6682,-23.7721,13/600x200?access_token=pk.eyJ1IjoiZ3VpZG94IiwiYSI6ImNrZnduZnR4MDBhNnoycnBnbm9idG9yejkifQ.7Wp6M_2yA6_z_rG-vH0Z6A")
+    st.markdown(f"### 📍 Profissional para {st.session_state.servico_busca}")
+    
+    # Mapa Estático com Pin Laranja
+    map_url = "https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/pin-s+ff8c00(-46.6682,-23.7721)/-46.6682,-23.7721,14/600x250?access_token=pk.eyJ1IjoiZ3VpZG94IiwiYSI6ImNrZnduZnR4MDBhNnoycnBnbm9idG9yejkifQ.7Wp6M_2yA6_z_rG-vH0Z6A"
+    
+    st.markdown(f'<img src="{map_url}" style="width:100%; border-radius:15px; border: 1px solid #ddd;">', unsafe_allow_html=True)
     
     st.markdown("""
-        <div style="background:#f9f9f9; padding:15px; border-radius:15px; border:1px solid #ddd; text-align:center; margin-top:10px;">
-            <h3 style="margin:0; color:#0047AB;">Bony Silva</h3>
-            <p style="color:#555;">⭐ 4.9 (120 serviços realizados)</p>
+        <div style="background:#f9f9f9; padding:15px; border-radius:15px; text-align:center; margin-top:10px;">
+            <h3 style="color:#0047AB; margin:0;">Bony Silva</h3>
+            <p>⭐ 4.9 | Chegada em 15 min</p>
             <h2 style="color:#FF8C00;">R$ 250,00</h2>
         </div>
     """, unsafe_allow_html=True)
     
-    if st.button("CONTRATAR AGORA"):
+    if st.button("✅ CONTRATAR", key="btn_confirm_pay"):
         st.session_state.etapa = 'pagamento'
         st.rerun()
-    if st.button("⬅ Voltar"):
+    if st.button("⬅ Voltar", key="btn_back_res"):
         st.session_state.etapa = 'busca'; st.rerun()
 
-# --- TELA: PAGAMENTO ---
+# TELA: PAGAMENTO
 elif st.session_state.etapa == 'pagamento':
-    st.markdown("<h3 style='text-align:center;'>Pagamento via Pix</h3>", unsafe_allow_html=True)
-    st.markdown(f"""
-        <div style="background:white; padding:25px; border-radius:20px; text-align:center; border: 2px solid #FF8C00;">
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data={CHAVE_PIX}">
-            <p style='margin-top:10px; font-size:12px; color:gray;'>Copia e Cola:<br><b>{CHAVE_PIX}</b></p>
-        </div>
-    """, unsafe_allow_html=True)
-    if st.button("✅ JÁ REALIZEI O PAGAMENTO"):
-        st.session_state.lucro_plataforma += 25.0
-        st.session_state.pedidos_concluidos += 1
+    st.markdown("<h3 style='text-align:center;'>Pagamento Pix</h3>", unsafe_allow_html=True)
+    st.markdown(f"""<div style='text-align:center; border:2px solid #FF8C00; padding:20px; border-radius:20px; background: white;'>
+        <img src='https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={CHAVE_PIX}'>
+        <p style='color:black;'><br><b>Chave:</b> {CHAVE_PIX}</p></div>""", unsafe_allow_html=True)
+    
+    if st.button("✅ JÁ PAGUEI", key="btn_finish"):
+        st.session_state.lucro += 25.0
+        st.session_state.vendas += 1
         st.session_state.etapa = 'busca'
         st.balloons()
         st.rerun()
