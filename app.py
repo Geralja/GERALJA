@@ -2,15 +2,14 @@ import streamlit as st
 import random
 import time
 
-# --- 1. CONFIGURAÇÃO DA PLATAFORMA ---
+# --- 1. CONFIGURAÇÃO ---
 st.set_page_config(page_title="GeralJá | Elite HUB", layout="centered", initial_sidebar_state="collapsed")
 
-# --- 2. BANCO DE DADOS DE SESSÃO ---
+# --- 2. BANCO DE DADOS E ESTADOS ---
+if 'etapa' not in st.session_state: st.session_state.etapa = 'busca'
 if 'lucro_plataforma' not in st.session_state: st.session_state.lucro_plataforma = 0.0
 if 'pedidos_concluidos' not in st.session_state: st.session_state.pedidos_concluidos = 0
-if 'etapa' not in st.session_state: st.session_state.etapa = 'busca'
 
-# CHAVE PIX OFICIAL DO NODO
 CHAVE_PIX_ALERATORIA = "09be938c-ee95-469f-b221-a3beea63964b"
 
 if 'db_pros' not in st.session_state:
@@ -21,36 +20,47 @@ if 'db_pros' not in st.session_state:
 
 LISTA_PROS = sorted(["Pintor", "Eletricista", "Encanador", "Diarista", "Pedreiro", "Montador de Móveis", "Mecânico", "Jardineiro", "Chaveiro"])
 
-# --- 3. ESTILO CSS ---
+# --- 3. CSS COM EFEITO DE BRILHO (GLOW) ---
 st.markdown("""
     <style>
     .stApp { background: radial-gradient(circle at top, #1a2a40 0%, #050a10 100%); color: white; }
+    
     .glass-card {
         background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(12px);
         border-radius: 20px; padding: 25px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px;
     }
-    .stButton>button {
+
+    /* BOTÃO COM BRILHO E PULSAÇÃO */
+    div.stButton > button {
         background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%) !important;
-        color: white !important; border-radius: 12px !important; border: none !important; font-weight: 900;
-        width: 100%; height: 50px;
+        color: white !important;
+        border: none !important;
+        border-radius: 12px !important;
+        padding: 15px 25px !important;
+        font-weight: 900 !important;
+        font-size: 18px !important;
+        transition: all 0.3s ease-in-out !important;
+        box-shadow: 0 0 15px rgba(243, 156, 18, 0.5) !important;
+        width: 100% !important;
+        animation: pulse-glow 2s infinite !important;
     }
+
+    @keyframes pulse-glow {
+        0% { box-shadow: 0 0 5px rgba(243, 156, 18, 0.5); transform: scale(1); }
+        50% { box-shadow: 0 0 25px rgba(243, 156, 18, 0.9); transform: scale(1.02); }
+        100% { box-shadow: 0 0 5px rgba(243, 156, 18, 0.5); transform: scale(1); }
+    }
+
+    div.stButton > button:hover {
+        background: #f1c40f !important;
+        box-shadow: 0 0 35px rgba(241, 196, 15, 1) !important;
+    }
+    
     header, footer {visibility: hidden;}
     </style>
 """, unsafe_allow_html=True)
 
-# --- 4. ÁREA DE ACESSO (SIDEBAR) ---
-with st.sidebar:
-    st.title("🔐 Portão de Acesso")
-    token = st.text_input("Token ou Chave Mestra", type="password")
-    if token == "admin777":
-        st.session_state.etapa = 'admin'
-    elif token in st.session_state.db_pros:
-        st.session_state.token_ativo = token
-        st.session_state.etapa = 'painel_pro'
-    else:
-        st.session_state.etapa = 'busca'
-
-# --- 5. ROTEAMENTO ---
+# --- 4. ROTEAMENTO DE ETAPAS ---
 
 # VISÃO ADMIN
 if st.session_state.etapa == 'admin':
@@ -79,54 +89,69 @@ if st.session_state.etapa == 'admin':
                 if st.button(f"♻️ Restaurar", key=f"rest_{tok}"):
                     d['status'] = 'Ativo'; st.rerun()
 
-# VISÃO CLIENTE
+# ETAPA: BUSCA (CORRIGIDO)
 elif st.session_state.etapa == 'busca':
     st.markdown("<h1 style='text-align:center; color:#f39c12;'>GERALJÁ</h1>", unsafe_allow_html=True)
     with st.container():
         st.markdown('<div class="glass-card">', unsafe_allow_html=True)
-        servico = st.selectbox("O que você procura?", [""] + LISTA_PROS)
-        rua = st.text_input("📍 Seu Endereço no Grajaú")
+        servico_input = st.selectbox("Qual profissional você precisa?", [""] + LISTA_PROS, key="sel_servico")
+        rua_input = st.text_input("📍 Seu Endereço no Grajaú", key="inp_rua")
         st.markdown('</div>', unsafe_allow_html=True)
-        if st.button("ATIVAR RADAR"):
-            if servico and rua:
-                st.session_state.servico_busca = servico
+        
+        # Botão com lógica de transição explícita
+        if st.button("ATIVAR RADAR 🛰️"):
+            if servico_input != "" and rua_input != "":
+                st.session_state.servico_busca = servico_input
                 st.session_state.etapa = 'resultado'
                 st.rerun()
+            else:
+                st.warning("⚠️ Selecione a profissão e digite seu endereço.")
 
+# ETAPA: RESULTADO
 elif st.session_state.etapa == 'resultado':
     st.markdown("### 📍 Localizado no Grajaú")
-    # Mapa Estático Mapbox
-    st.markdown("""
-        <div style="width:100%; height:200px; background: url('https://api.mapbox.com/styles/v1/mapbox/dark-v10/static/pin-s+f39c12(-46.6682,-23.7721)/-46.6682,-23.7721,13/600x200?access_token=pk.eyJ1IjoiZ3VpZG94IiwiYSI6ImNrZnduZnR4MDBhNnoycnBnbm9idG9yejkifQ.7Wp6M_2yA6_z_rG-vH0Z6A'); background-size: cover; border-radius: 15px; border: 1px solid #f39c12; margin-bottom: 15px;"></div>
-    """, unsafe_allow_html=True)
+    st.markdown("""<div style="width:100%; height:180px; background: url('https://api.mapbox.com/styles/v1/mapbox/dark-v10/static/-46.6682,-23.7721,13/600x180?access_token=pk.eyJ1IjoiZ3VpZG94IiwiYSI6ImNrZnduZnR4MDBhNnoycnBnbm9idG9yejkifQ.7Wp6M_2yA6_z_rG-vH0Z6A'); background-size: cover; border-radius: 15px; border: 1px solid #f39c12;"></div>""", unsafe_allow_html=True)
     
     preco = random.randint(180, 400)
     st.markdown(f'<div class="glass-card"><h2>Bony Silva</h2><p>⭐ 4.9 | {st.session_state.servico_busca}</p><h1>R$ {preco},00</h1></div>', unsafe_allow_html=True)
+    
     if st.button("💳 CONTRATAR"):
         st.session_state.valor_final = preco
         st.session_state.etapa = 'pagamento'
         st.rerun()
+    if st.button("⬅ Voltar"):
+        st.session_state.etapa = 'busca'; st.rerun()
 
+# ETAPA: PAGAMENTO
 elif st.session_state.etapa == 'pagamento':
     val = st.session_state.valor_final
     st.markdown("<h3 style='text-align:center;'>Pagamento via PIX</h3>", unsafe_allow_html=True)
     st.markdown(f"""
         <div class="glass-card" style="background:white; color:black; text-align:center;">
-            <p style="color:gray; margin:0;">TOTAL: <b>R$ {val},00</b></p>
-            <br>
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data={CHAVE_PIX_ALERATORIA}" style="border-radius:10px;">
-            <p style="font-size:10px; margin-top:10px; color:#555;">CHAVE ALEATÓRIA:</p>
+            <p style="color:gray;">TOTAL: <b>R$ {val},00</b></p>
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={CHAVE_PIX_ALERATORIA}" style="margin:10px;">
+            <p style="font-size:10px; color:#555;">CHAVE ALEATÓRIA:</p>
             <code style="word-break:break-all; font-size:11px;">{CHAVE_PIX_ALERATORIA}</code>
         </div>
     """, unsafe_allow_html=True)
+    
     if st.button("✅ JÁ REALIZEI O PAGAMENTO"):
         st.session_state.lucro_plataforma += (val * 0.10)
         st.session_state.pedidos_concluidos += 1
         st.session_state.etapa = 'chat_sucesso'
         st.rerun()
 
+# ETAPA: CHAT SUCESSO
 elif st.session_state.etapa == 'chat_sucesso':
     st.balloons()
-    st.markdown('<div class="glass-card"><h3>📲 Conversa Iniciada</h3><p style="background:#056162; padding:15px; border-radius:15px 15px 0 15px;"><b>Bony Silva:</b> Opa! Pagamento confirmado. Já estou saindo com as ferramentas! 🛠️</p></div>', unsafe_allow_html=True)
+    st.markdown('<div class="glass-card"><h3>📲 Conversa Iniciada</h3><p style="background:#056162; padding:15px; border-radius:15px 15px 0 15px;"><b>Bony Silva:</b> Pagamento confirmado! Já estou preparando as ferramentas para ir até você! 🛠️</p></div>', unsafe_allow_html=True)
     if st.button("Nova Busca"):
         st.session_state.etapa = 'busca'; st.rerun()
+
+# BARRA LATERAL (ACESSAR ADMIN)
+with st.sidebar:
+    st.title("🔐 Acesso")
+    token = st.text_input("Senha Admin", type="password")
+    if token == "admin777":
+        st.session_state.etapa = 'admin'
+        st.rerun()
