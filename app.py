@@ -1,127 +1,111 @@
 import streamlit as st
 import datetime
+try:
+    from gtts import gTTS
+    audio_ready = True
+except:
+    audio_ready = False
 
-# --- 1. CONFIGURAÇÃO DE NÚCLEO ---
-st.set_page_config(
-    page_title="GeralJá | Grajaú",
-    page_icon="⚡",
-    layout="centered",
-    initial_sidebar_state="collapsed" # Escondemos a lateral de vez
-)
+# --- 1. CONFIGURAÇÃO ---
+st.set_page_config(page_title="GeralJá | Grajaú", page_icon="⚡", layout="centered")
 
 # --- 2. MOTOR DE ESTADO ---
-if 'etapa' not in st.session_state: st.session_state.etapa = 'home'
-if 'lucro' not in st.session_state: st.session_state.lucro = 0.0
-if 'vendas' not in st.session_state: st.session_state.vendas = 0
-if 'posts' not in st.session_state: 
-    st.session_state.posts = [{"user": "Admin", "msg": "Sistema GeralJá Online! 🚀", "data": "26/12"}]
+for key, val in {'etapa': 'busca', 'lucro': 0.0, 'vendas': 0, 'posts': []}.items():
+    if key not in st.session_state: st.session_state[key] = val
 
-# --- 3. CSS PARA BOTÕES GIGANTES E CENTRALIZADOS ---
+CHAVE_PIX = "09be938c-ee95-469f-b221-a3beea63964b"
+
+# --- 3. CSS PROFISSIONAL (DESIGN ORIGINAL REFINADO) ---
 st.markdown("""
     <style>
-    /* Fundo Branco e Texto Escuro */
     .stApp { background-color: #FFFFFF !important; }
+    .logo-box { text-align: center; padding: 10px 0; }
+    .azul { color: #0047AB; font-size: 45px; font-weight: 900; }
+    .laranja { color: #FF8C00; font-size: 45px; font-weight: 900; }
     
-    /* Logo Centralizada e Gigante */
-    .logo-container { text-align: center; padding: 40px 0; }
-    .azul { color: #0047AB; font-size: 60px; font-weight: 900; }
-    .laranja { color: #FF8C00; font-size: 60px; font-weight: 900; }
-
-    /* Estilo dos Botões de Menu (Página Inteira) */
+    /* Botões Arredondados e Elegantes */
     div.stButton > button {
-        width: 100% !important;
-        height: 80px !important;
-        background-color: #0047AB !important; /* Azul para botões principais */
+        background-color: #FF8C00 !important;
         color: white !important;
-        font-size: 22px !important;
+        border-radius: 25px !important;
         font-weight: bold !important;
-        border-radius: 15px !important;
-        margin-bottom: 20px !important;
         border: none !important;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
+        width: 100%;
     }
     
-    /* Botão de Pesquisar Laranja */
-    .btn-laranja div.stButton > button {
-        background-color: #FF8C00 !important;
+    /* Estilo para as "Bolhas" da Rede Social */
+    .post-box {
+        background: #F0F2F6; padding: 15px; border-radius: 15px; 
+        margin-bottom: 10px; border-left: 5px solid #0047AB;
     }
-
-    /* Esconder elementos desnecessários */
     header, footer { visibility: hidden; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 4. ROTEAMENTO DE TELAS ---
+# --- 4. MENU DE NAVEGAÇÃO SUPERIOR (Substitui a Sidebar bugada) ---
+st.markdown('<div class="logo-box"><span class="azul">GERAL</span><span class="laranja">JÁ</span></div>', unsafe_allow_html=True)
+col_nav1, col_nav2, col_nav3 = st.columns(3)
 
-# TELA 0: HOME (O NOVO MENU)
-if st.session_state.etapa == 'home':
-    st.markdown('<div class="logo-container"><span class="azul">GERAL</span><span class="laranja">JÁ</span></div>', unsafe_allow_html=True)
-    
-    st.write("### O que vamos fazer hoje?")
-    
-    if st.button("🔍 BUSCAR UM SERVIÇO", key="home_busca"):
-        st.session_state.etapa = 'busca'
-        st.rerun()
-        
-    if st.button("👥 COMUNIDADE / REDE SOCIAL", key="home_social"):
-        st.session_state.etapa = 'social'
-        st.rerun()
-        
-    if st.button("📊 PAINEL DE CONTROLE", key="home_admin"):
-        st.session_state.etapa = 'admin'
-        st.rerun()
+with col_nav1:
+    if st.button("🏠 Início"): st.session_state.etapa = 'busca'; st.rerun()
+with col_nav2:
+    if st.button("👥 Social"): st.session_state.etapa = 'social'; st.rerun()
+with col_nav3:
+    if st.button("📊 Admin"): st.session_state.etapa = 'admin'; st.rerun()
 
-# TELA 1: BUSCA
-elif st.session_state.etapa == 'busca':
-    st.markdown("## 🔍 Qual profissional você precisa?")
-    servico = st.selectbox("Escolha o serviço", ["", "Pintor", "Eletricista", "Encanador", "Diarista"], key="s_v9")
-    rua = st.text_input("📍 Seu Endereço no Grajaú", key="r_v9")
-    
-    st.markdown('<div class="btn-laranja">', unsafe_allow_html=True)
-    if st.button("ENCONTRAR AGORA", key="b_v9"):
-        if servico and rua:
-            st.session_state.servico_busca = servico
-            st.session_state.etapa = 'resultado'; st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    if st.button("⬅ VOLTAR AO MENU"):
-        st.session_state.etapa = 'home'; st.rerun()
+st.divider()
 
-# TELA 2: SOCIAL
+# --- 5. TELAS COM TODAS AS FUNÇÕES ---
+
+# BUSCA
+if st.session_state.etapa == 'busca':
+    st.markdown("### 🔍 Encontre um Especialista")
+    servico = st.selectbox("O que você precisa?", ["", "Pintor", "Eletricista", "Encanador", "Diarista", "Mecânico"])
+    rua = st.text_input("📍 Seu endereço no Grajaú")
+    if st.button("BUSCAR AGORA") and servico and rua:
+        st.session_state.servico_busca = servico
+        st.session_state.etapa = 'resultado'; st.rerun()
+
+# REDE SOCIAL (Com memória)
 elif st.session_state.etapa == 'social':
-    st.markdown("## 👥 Rede Social Grajaú")
-    if st.button("⬅ VOLTAR AO MENU"):
-        st.session_state.etapa = 'home'; st.rerun()
-    
-    with st.form("social_v9"):
-        u, m = st.text_input("Seu Nome"), st.text_area("O que está acontecendo no bairro?")
-        if st.form_submit_button("POSTAR"):
-            st.session_state.posts.insert(0, {"user": u, "msg": m})
+    st.markdown("### 👥 Comunidade Grajaú")
+    with st.form("post_form"):
+        u, m = st.text_input("Nome"), st.text_area("O que quer dizer?")
+        if st.form_submit_button("Publicar") and u and m:
+            st.session_state.posts.insert(0, {"u": u, "m": m, "d": "Agora"})
             st.rerun()
-    
     for p in st.session_state.posts:
-        st.info(f"**{p['user']}**: {p['msg']}")
+        st.markdown(f'<div class="post-box"><b>{p["u"]}</b>: {p["m"]}</div>', unsafe_allow_html=True)
 
-# TELA 3: RESULTADO
+# RESULTADO (Com Mapa e Áudio)
 elif st.session_state.etapa == 'resultado':
-    st.success(f"✅ Profissional localizado para {st.session_state.servico_busca}!")
+    st.success(f"Encontramos um {st.session_state.servico_busca}!")
     
-    # Mapa mais simples possível (Imagem)
-    st.image("https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/-46.6682,-23.7721,13/600x300?access_token=pk.eyJ1IjoiZ3VpZG94IiwiYSI6ImNrZnduZnR4MDBhNnoycnBnbm9idG9yejkifQ.7Wp6M_2yA6_z_rG-vH0Z6A")
-    
-    st.write("### Bony Silva ⭐ 4.9")
-    if st.button("💳 CONTRATAR AGORA"):
+    # Mapa Estático Mapbox
+    mapa = "https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/-46.6682,-23.7721,14/600x250?access_token=pk.eyJ1IjoiZ3VpZG94IiwiYSI6ImNrZnduZnR4MDBhNnoycnBnbm9idG9yejkifQ.7Wp6M_2yA6_z_rG-vH0Z6A"
+    st.image(mapa, caption="Localização do Profissional")
+
+    if audio_ready and st.button("🔊 OUVIR DETALHES"):
+        tts = gTTS(text=f"Encontramos o Bony Silva para {st.session_state.servico_busca}", lang='pt')
+        tts.save("voz.mp3")
+        st.audio("voz.mp3", autoplay=True)
+
+    if st.button("✅ CONTRATAR PROFISSIONAL"):
         st.session_state.etapa = 'pagamento'; st.rerun()
-    if st.button("⬅ VOLTAR"):
-        st.session_state.etapa = 'home'; st.rerun()
 
-# TELA 4: ADMIN / PAGAMENTO (Simplificados para teste)
-elif st.session_state.etapa == 'admin':
-    st.write(f"### Lucro: R$ {st.session_state.lucro}")
-    if st.button("⬅ VOLTAR"): st.session_state.etapa = 'home'; st.rerun()
-
+# PAGAMENTO (Com Pix)
 elif st.session_state.etapa == 'pagamento':
-    st.write("### Escaneie para pagar")
-    st.image(f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={CHAVE_PIX}")
-    if st.button("✅ CONCLUÍDO"):
-        st.session_state.lucro += 25; st.session_state.etapa = 'home'; st.rerun()
+    st.markdown("### 💳 Pagamento via Pix")
+    st.image(f"https://api.qrserver.com/v1/create-qr-code/?size=180x180&data={CHAVE_PIX}")
+    st.code(CHAVE_PIX)
+    if st.button("✅ PAGAMENTO CONFIRMADO"):
+        st.session_state.lucro += 25.0; st.session_state.vendas += 1
+        st.balloons(); st.session_state.etapa = 'busca'; st.rerun()
+
+# ADMIN (Com Senha)
+elif st.session_state.etapa == 'admin':
+    st.markdown("### 🔐 Área Administrativa")
+    senha = st.text_input("Senha", type="password")
+    if senha == "admin777":
+        st.metric("Faturamento Total", f"R$ {st.session_state.lucro:.2f}")
+        st.metric("Serviços Realizados", st.session_state.vendas)
