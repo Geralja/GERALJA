@@ -2,8 +2,18 @@ import streamlit as st
 import random
 import time
 
-# --- 1. CONFIGURAÇÃO ---
-st.set_page_config(page_title="GeralJá | Soluções", layout="centered", initial_sidebar_state="collapsed")
+# --- 1. CONFIGURAÇÃO COM FOCO EM REDES SOCIAIS ---
+st.set_page_config(
+    page_title="GeralJá | Profissionais no Grajaú e região",
+    page_icon="⚡", 
+    layout="centered",
+    initial_sidebar_state="collapsed",
+    menu_items={
+        'Get Help': 'https://wa.me/5511991853488', # Seu Zap de suporte
+        'Report a bug': None,
+        'About': "### GeralJá \n O maior portal de profissionais do Grajaú!"
+    }
+)
 
 # --- 2. ESTADOS ---
 if 'etapa' not in st.session_state: st.session_state.etapa = 'busca'
@@ -146,3 +156,4 @@ elif st.session_state.etapa == 'sucesso':
     st.success("Tudo pronto! O profissional já recebeu seu chamado.")
     if st.button("VOLTAR AO INÍCIO", use_container_width=True):
         st.session_state.etapa = 'busca'; st.rerun()
+
