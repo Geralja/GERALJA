@@ -115,3 +115,4 @@ elif st.session_state.etapa == 'pagamento':
         st.session_state.etapa = 'busca'
         st.balloons()
         st.rerun()
+
