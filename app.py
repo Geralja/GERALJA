@@ -78,7 +78,74 @@ st.divider()
 # --- 5. LÓGICA DAS TELAS ---
 
 # TELA: CADASTRO DE PROFISSIONAL (SALVANDO NO FIREBASE)
+# --- 1. FUNÇÃO DE APOIO (Coloque isso logo após os 'import') ---
+def criar_link_zap(numero, mensagem):
+    # Remove espaços e caracteres do número
+    numero_limpo = "".join(filter(str.isdigit, numero))
+    msg_url = mensagem.replace(" ", "%20")
+    return f"https://wa.me/55{numero_limpo}?text={msg_url}"
+
+# --- 2. NA TELA DE CADASTRO (Substitua a sua etapa de cadastro por esta) ---
 if st.session_state.etapa == 'cadastro':
+    st.markdown("### 👷 Cadastro de Profissional")
+    
+    # Criamos abas para o processo não ficar confuso
+    passo = st.radio("Passo:", ["1. Dados Pessoais", "2. Verificação"], horizontal=True)
+
+    if passo == "1. Dados Pessoais":
+        nome_prof = st.text_input("Seu Nome Completo")
+        especialidade = st.selectbox("Sua Área", ["Pintor", "Eletricista", "Encanador", "Diarista", "Mecânico"])
+        zap_prof = st.text_input("Seu WhatsApp (com DDD)", placeholder="11912345678")
+        
+        if st.button("GERAR MEU CÓDIGO"):
+            if nome_prof and zap_prof:
+                # Gera o código e salva no Firebase
+                cod_gerado = str(random.randint(1000, 9999))
+                db.collection("verificacoes").document(zap_prof).set({
+                    "nome": nome_prof,
+                    "codigo": cod_gerado,
+                    "status": "pendente",
+                    "data": datetime.datetime.now()
+                })
+                
+                # Prepara o link gratuito de WhatsApp
+                texto_zap = f"Olá {nome_prof}, seu código de verificação para o GeralJá é: {cod_gerado}"
+                link = criar_link_zap(zap_prof, texto_zap)
+                
+                st.info(f"Código **{cod_gerado}** gerado com sucesso!")
+                st.markdown(f'''
+                    <a href="{link}" target="_blank">
+                        <button style="background-color: #25D366; color: white; border: none; padding: 10px 20px; border-radius: 10px; cursor: pointer; width: 100%;">
+                            ENVIAR CÓDIGO VIA WHATSAPP (GRÁTIS)
+                        </button>
+                    </a>
+                ''', unsafe_allow_html=True)
+            else:
+                st.warning("Preencha nome e WhatsApp!")
+
+    elif passo == "2. Verificação":
+        st.write("Insira o código que você recebeu:")
+        zap_conferir = st.text_input("Confirme seu WhatsApp")
+        input_cod = st.text_input("Código de 4 dígitos", max_chars=4)
+        
+        if st.button("VALIDAR MEU PERFIL"):
+            # Busca no Firebase se o código bate
+            doc_ref = db.collection("verificacoes").document(zap_conferir).get()
+            if doc_ref.exists:
+                dados = doc_ref.to_dict()
+                if dados['codigo'] == input_cod:
+                    # SALVA O PROFISSIONAL DEFINITIVO
+                    db.collection("profissionais").document(zap_conferir).set({
+                        "nome": dados['nome'],
+                        "status": "Verificado ✔️",
+                        "data_adesao": datetime.datetime.now()
+                    })
+                    st.success("🔥 PARABÉNS! Você agora é um profissional oficial do GeralJá!")
+                    st.balloons()
+                else:
+                    st.error("Código incorreto!")
+            else:
+                st.error("WhatsApp não encontrado. Peça o código no Passo 1.")
     st.markdown("### 👷 Cadastro de Prestador")
     
     if not st.session_state.profissional_logado:
@@ -169,3 +236,4 @@ elif st.session_state.etapa == 'admin':
         vendas = db.collection("vendas").stream()
         total = sum([v.to_dict()['valor'] for v in vendas])
         st.metric("Faturamento Acumulado", f"R$ {total:.2f}")
+
