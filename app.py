@@ -8,7 +8,7 @@ import datetime
 # --- CONFIGURAÇÃO ---
 # Mude aqui:
 # --- CONFIGURAÇÃO ---
-st.set_page_config(page_title="GeralJá | Oficial", page_icon="⚡", layout="centered")
+st.markdown('<center><span class="azul">GERAL</span><span class="laranja">JÁ</span></center>', unsafe_allow_html=True)
 
 # --- CONEXÃO FIREBASE ---
 if not firebase_admin._apps:
@@ -190,6 +190,7 @@ with aba4:
         if st.button("ADICIONAR CRÉDITOS"):
             db.collection("profissionais").document(recarga_id).update({"saldo": firestore.Increment(qtd)})
             st.success(f"Adicionado {qtd} GC!")
+
 
 
 
