@@ -173,16 +173,35 @@ with aba1: # =========================================================
                     st.markdown(f'👉 [ABRIR WHATSAPP](https://wa.me/55{"".join(filter(str.isdigit, d["whatsapp"]))})')
             else: st.warning("Profissional sem créditos.")
 
-# --- ABA 2: CARTEIRA / CADASTRO ---
-with aba2:
-    login = st.text_input("WhatsApp (Login/Cadastro):")
-    if login:
-        doc = db.collection("profissionais").document(login).get()
-        if doc.exists:
-            u = doc.to_dict()
-            st.markdown(f"### Olá, {u['nome']}!")
-            st.markdown(f'<div class="coin-box">Saldo: {u.get("saldo", 0)} GeralCoins</div>', unsafe_allow_html=True)
-            st.divider()
+# --- ABA 2: else:
+            st.info("👋 Você ainda não tem cadastro. Vamos criar um agora com nossa IA!")
+            with st.form("cad_ia"):
+                n = st.text_input("Seu Nome Completo:")
+                desc_servico = st.text_area("Descreva seu trabalho:", placeholder="Ex: Sou eletricista, faço instalação de chuveiro e fiação.")
+                
+                if st.form_submit_button("ANALISAR PERFIL COM IA"):
+                    # Lógica da IA para identificar a profissão do cadastro
+                    categoria_sugerida = "Ajudante Geral" # Padrão
+                    texto_desc = desc_servico.lower()
+                    
+                    # Usamos o mesmo "cérebro" da busca para classificar o profissional
+                    for chave, profissao in MAPEAMENTO_IA.items():
+                        if chave in texto_desc:
+                            categoria_sugerida = profissao
+                            break
+                    
+                    # Salva no banco de dados
+                    db.collection("profissionais").document(login).set({
+                        "nome": n,
+                        "whatsapp": login,
+                        "area": categoria_sugerida,
+                        "descricao": desc_servico,
+                        "saldo": BONUS_INICIAL,
+                        "aprovado": False # Admin precisa aprovar
+                    })
+                    st.success(f"✅ Perfil criado como: **{categoria_sugerida}**!")
+                    st.warning("Aguarde a aprovação do Admin para aparecer na lista.")
+                    st.rerun()
             st.image(f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={PIX_CHAVE}")
             st.markdown(f'Chave PIX: `{PIX_CHAVE}`')
             st.markdown(f'<a href="https://wa.me/{ZAP_ADMIN}?text=Fiz o PIX para o Zap: {login}" class="btn-zap">ENVIAR COMPROVANTE</a>', unsafe_allow_html=True)
@@ -222,6 +241,7 @@ with aba4:
             if st.button(f"APROVAR {p.id}"):
                 db.collection("profissionais").document(p.id).update({"aprovado": True})
                 st.rerun()
+
 
 
 
