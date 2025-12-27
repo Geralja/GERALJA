@@ -92,7 +92,17 @@ with aba1: # --- IA DE BUSCA NO INÍCIO DA ABA 1 ---
         # Outros
         "frete": "Motorista", "transporte": "Motorista", "viagem": "Motorista",
         "aula": "Professor Particular", "reforço": "Professor Particular", "inglês": "Professor Particular", "matemática": "Professor Particular",
-        "cachorro": "Pet Shop/Passeador", "gato": "Pet Shop/Passeador", "banho": "Pet Shop/Passeador", "tosa": "Pet Shop/Passeador"
+        "cachorro": "Pet Shop/Passeador", "gato": "Pet Shop/Passeador", "banho": "Pet Shop/Passeador", "tosa": "Pet Shop/Passeador" 
+        # Automóveis e Mecânica (O que faltava!)
+        "pneu": "Borracheiro", "estepe": "Borracheiro", "furou": "Borracheiro", "vulc": "Borracheiro",
+        "carro": "Mecânico", "motor": "Mecânico", "óleo": "Mecânico", "freio": "Mecânico", "bateria": "Mecânico",
+        "moto": "Mecânico de Motos", "corrente": "Mecânico de Motos",
+        "guincho": "Guincho / Socorro 24h", "reboque": "Guincho / Socorro 24h",
+        "lavar carro": "Lava Rápido", "polimento": "Lava Rápido", "estética automotiva": "Lava Rápido",
+
+        # Eventos e Festas
+        "festa": "Eventos", "bolo": "Confeiteira", "doce": "Confeiteira", "salgado": "Salgadeira",
+        "música": "DJ / Músico", "som": "DJ / Músico", "fotógrafo": "Fotógrafo",
     }
 
     entrada_usuario = st.text_input("Diga seu problema:", placeholder="Ex: meu chuveiro queimou...")
@@ -190,5 +200,6 @@ with aba4:
             if st.button(f"APROVAR {p.id}"):
                 db.collection("profissionais").document(p.id).update({"aprovado": True})
                 st.rerun()
+
 
 
