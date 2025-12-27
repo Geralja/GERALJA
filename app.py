@@ -7,7 +7,7 @@ import datetime
 
 # --- CONFIGURAÇÃO ---
 # Mude aqui:
-# --- CONFIGURAÇÃO ---
+
 st.markdown('<center><span class="azul">GERAL</span><span class="laranja">JÁ</span></center>', unsafe_allow_html=True)
 
 # --- CONEXÃO FIREBASE ---
@@ -190,6 +190,7 @@ with aba4:
         if st.button("ADICIONAR CRÉDITOS"):
             db.collection("profissionais").document(recarga_id).update({"saldo": firestore.Increment(qtd)})
             st.success(f"Adicionado {qtd} GC!")
+
 
 
 
