@@ -27,13 +27,19 @@ aba1, aba2, aba3, aba4 = st.tabs(["🔍 BUSCAR", "🏦 CARTEIRA", "📝 CADASTRO
 # --- CONEXÃO FIREBASE ---
 if not firebase_admin._apps:
     try:
+        # Carrega as credenciais dos Secrets do Streamlit
         key_dict = json.loads(st.secrets["textkey"])
         creds = credentials.Certificate(key_dict)
         firebase_admin.initialize_app(creds)
     except Exception as e:
-        st.error(f"Erro na conexão: {e}")
+        st.error(f"Erro ao inicializar Firebase: {e}")
 
-db = firestore.Client.from_service_account_info(json.loads(st.secrets["textkey"]))
+# A forma correta de instanciar o DB para evitar o AttributeError:
+try:
+    key_dict = json.loads(st.secrets["textkey"])
+    db = firestore.Client.from_service_account_info(key_dict)
+except Exception as e:
+    st.error(f"Erro ao criar cliente Firestore: {e}")
 
 # --- CONFIGURAÇÕES FIXAS ---
 PIX_CHAVE = "11991853488"
@@ -203,6 +209,7 @@ with aba4:
         if st.button("ADICIONAR CRÉDITOS"):
             db.collection("profissionais").document(recarga_id).update({"saldo": firestore.Increment(qtd)})
             st.success(f"Adicionado {qtd} GC!")
+
 
 
 
