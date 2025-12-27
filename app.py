@@ -182,12 +182,14 @@ with aba2:
             st.markdown(f"### Olá, {u['nome']}!")
             st.markdown(f'<div class="coin-box">Saldo: {u.get("saldo", 0)} GeralCoins</div>', unsafe_allow_html=True)
             st.divider()
-            st.image(f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={PIX_CHAVE}")
-            st.markdown(f'Chave PIX: `{PIX_CHAVE}`')
-            st.markdown(f'<a href="https://wa.me/{ZAP_ADMIN}?text=Fiz o PIX para o Zap: {login}" class="btn-zap">ENVIAR COMPROVANTE</a>', unsafe_allow_html=True)
-        else: # --- ABA 3: CADASTRO COM IA ---
+            else:
+            # Esta mensagem aparece se o login não for encontrado na Carteira
+            st.error("❌ WhatsApp não cadastrado. Por favor, vá na aba CADASTRO.")
+
+# --- ABA 3: CADASTRO COM IA ---
 with aba3:
-    st.subheader("🚀 Cadastre-se no GeralJá")
+    st.subheader("🚀 Cadastro de Profissionais")
+    # ... aqui continua o código da sua IA de cadastro
     novo_zap = st.text_input("Seu WhatsApp (apenas números):", key="novo_cadastro")
     
     if novo_zap:
@@ -285,6 +287,7 @@ with aba4:
             if st.button(f"APROVAR {p.id}"):
                 db.collection("profissionais").document(p.id).update({"aprovado": True})
                 st.rerun()
+
 
 
 
