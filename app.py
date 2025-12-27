@@ -23,7 +23,7 @@ db = firestore.client()
 # --- 3. CONFIGURAÇÕES FIXAS ---
 PIX_CHAVE = "11991853488"
 ZAP_ADMIN = "5511991853488"
-SENHA_ADMIN = "grajau2025"
+SENHA_ADMIN = "mumias"
 VALOR_CLIQUE = 1 
 BONUS_INICIAL = 5
 
@@ -206,6 +206,7 @@ with aba4:
             if st.button(f"APROVAR {pd['nome']} ({pd.get('localizacao', 'N/A')})"):
                 db.collection("profissionais").document(p.id).update({"aprovado": True})
                 st.rerun()
+
 
 
 
