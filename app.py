@@ -4,102 +4,114 @@ from firebase_admin import credentials, firestore
 import base64
 import json
 import datetime
-import random
 
-# --- 1. CONFIGURAÇÃO DA PÁGINA ---
+# --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="GeralJá | Grajaú", page_icon="⚡", layout="centered")
 
-# --- 2. CONEXÃO FIREBASE (MÉTODO BASE64 - BLINDADO) ---
-db = None
-
+# --- CONEXÃO FIREBASE (SISTEMA BASE64) ---
 if not firebase_admin._apps:
     try:
-        # Pega a sopa de letrinhas do Secrets
         b64_data = st.secrets["FIREBASE_BASE64"]
-        # Transforma de volta no seu JSON original
         json_data = base64.b64decode(b64_data).decode("utf-8")
         info_chave = json.loads(json_data)
         
         cred = credentials.Certificate(info_chave)
         firebase_admin.initialize_app(cred)
-        db = firestore.client()
         st.toast("🔥 GeralJá Conectado!", icon="✅")
     except Exception as e:
-        st.error(f"❌ Erro na Chave: {e}")
-        st.info("Certifique-se de que codificou o CONTEÚDO do arquivo JSON no site Base64.")
+        st.error(f"Erro de conexão: {e}")
         st.stop()
-else:
-    db = firestore.client()
 
-# --- 3. ESTADO E DESIGN ---
-if 'etapa' not in st.session_state: st.session_state.etapa = 'busca'
-CHAVE_PIX = "09be938c-ee95-469f-b221-a3beea63964b"
+db = firestore.client()
 
+# --- DESIGN PERSONALIZADO ---
 st.markdown("""
     <style>
     .stApp { background-color: #FFFFFF; }
-    .azul { color: #0047AB; font-size: 40px; font-weight: 900; }
-    .laranja { color: #FF8C00; font-size: 40px; font-weight: 900; }
-    div.stButton > button { border-radius: 8px; font-weight: bold; width: 100%; height: 45px; }
-    .card-mural { background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #0047AB; }
+    .azul { color: #0047AB; font-size: 45px; font-weight: 900; }
+    .laranja { color: #FF8C00; font-size: 45px; font-weight: 900; }
+    .card { background: #f9f9f9; padding: 15px; border-radius: 10px; border-left: 5px solid #0047AB; margin-bottom: 10px; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 4. MENU SUPERIOR ---
-st.markdown('<div style="text-align:center"><span class="azul">GERAL</span><span class="laranja">JÁ</span></div>', unsafe_allow_html=True)
-c1, c2, c3, c4 = st.columns(4)
-with c1: 
-    if st.button("🔍 Busca"): st.session_state.etapa = 'busca'; st.rerun()
-with c2: 
-    if st.button("👥 Mural"): st.session_state.etapa = 'social'; st.rerun()
-with c3: 
-    if st.button("👷 Cadastro"): st.session_state.etapa = 'cadastro'; st.rerun()
-with c4: 
-    if st.button("📊 Admin"): st.session_state.etapa = 'admin'; st.rerun()
+# --- CABEÇALHO ---
+st.markdown('<center><span class="azul">GERAL</span><span class="laranja">JÁ</span></center>', unsafe_allow_html=True)
+st.markdown("<center><b>Serviços e Comunidade no Grajaú</b></center>", unsafe_allow_html=True)
+st.write("---")
 
-st.divider()
+# --- NAVEGAÇÃO POR ABAS ---
+tab1, tab2, tab3 = st.tabs(["🔍 BUSCAR", "👷 CADASTRAR", "👥 MURAL"])
 
-# --- 5. TELAS DO SISTEMA ---
-
-if st.session_state.etapa == 'busca':
-    st.subheader("O que você procura no Grajaú?")
-    servico = st.selectbox("Escolha uma categoria", ["", "Pintor", "Eletricista", "Encanador", "Diarista", "Mecânico"])
-    if servico:
-        profs = db.collection("profissionais").where("profissao", "==", servico).stream()
+# --- TAB 1: BUSCA ---
+with tab1:
+    st.subheader("O que você precisa hoje?")
+    filtro = st.selectbox("Escolha uma categoria", ["", "Pintor", "Eletricista", "Encanador", "Diarista", "Mecânico"])
+    
+    if filtro:
+        # Busca no Firebase profissionais daquela área
+        profs = db.collection("profissionais").where("area", "==", filtro).stream()
+        encontrou = False
         for p in profs:
-            d = p.to_dict()
-            st.info(f"👤 {d['nome']} | Status: {d.get('status', 'Ativo')}")
-            if st.button(f"Ver Contato de {d['nome']}", key=p.id):
-                st.session_state.etapa = 'pagamento'; st.rerun()
+            encontrou = True
+            dados = p.to_dict()
+            st.markdown(f"""
+            <div class="card">
+                <b>👤 {dados['nome']}</b><br>
+                🔧 Especialidade: {dados['area']}<br>
+                📍 Atende no Grajaú e Região
+            </div>
+            """, unsafe_allow_html=True)
+            if st.button(f"Ver WhatsApp de {dados['nome']}", key=p.id):
+                st.warning("Página de pagamento em integração...")
+        
+        if not encontrou:
+            st.info(f"Ainda não temos {filtro}s cadastrados. Conhece um? Peça para ele se cadastrar!")
 
-elif st.session_state.etapa == 'social':
-    st.subheader("👥 Mural da Comunidade")
-    with st.form("mural"):
-        msg = st.text_area("O que está rolando no bairro?")
-        if st.form_submit_button("Postar"):
-            if msg:
-                db.collection("mural").add({"msg": msg, "data": datetime.datetime.now()})
-                st.rerun()
+# --- TAB 2: CADASTRO ---
+with tab2:
+    st.subheader("Divulgue seu trabalho!")
+    with st.form("form_cadastro", clear_on_submit=True):
+        nome_cad = st.text_input("Seu nome completo")
+        area_cad = st.selectbox("Sua especialidade", ["Pintor", "Eletricista", "Encanador", "Diarista", "Mecânico"])
+        zap_cad = st.text_input("Seu WhatsApp (ex: 11988887777)")
+        
+        enviar = st.form_submit_button("CADASTRAR MEU SERVIÇO")
+        
+        if enviar:
+            if nome_cad and zap_cad:
+                db.collection("profissionais").add({
+                    "nome": nome_cad,
+                    "area": area_cad,
+                    "whatsapp": zap_cad,
+                    "data": datetime.datetime.now()
+                })
+                st.balloons()
+                st.success(f"Parabéns {nome_cad}! Seu cadastro foi enviado com sucesso.")
+            else:
+                st.error("Por favor, preencha o nome e o WhatsApp.")
+
+# --- TAB 3: MURAL ---
+with tab3:
+    st.subheader("Mural da Comunidade")
+    with st.form("form_mural", clear_on_submit=True):
+        mensagem = st.text_area("O que quer compartilhar com o bairro?")
+        postar = st.form_submit_button("POSTAR NO MURAL")
+        
+        if postar and mensagem:
+            db.collection("mural").add({
+                "msg": mensagem,
+                "data": datetime.datetime.now()
+            })
+            st.rerun()
+
+    st.write("---")
+    # Mostra os últimos 5 posts do mural
     posts = db.collection("mural").order_by("data", direction=firestore.Query.DESCENDING).limit(5).stream()
     for p in posts:
-        st.markdown(f'<div class="card-mural">{p.to_dict()["msg"]}</div>', unsafe_allow_html=True)
-
-elif st.session_state.etapa == 'cadastro':
-    st.subheader("👷 Cadastro de Profissional")
-    nome = st.text_input("Nome")
-    zap = st.text_input("WhatsApp")
-    area = st.selectbox("Área", ["Pintor", "Eletricista", "Encanador", "Diarista", "Mecânico"])
-    if st.button("SALVAR"):
-        if nome and zap:
-            db.collection("profissionais").document(zap).set({
-                "nome": nome, "profissao": area, "status": "Verificado ✔️", "data": datetime.datetime.now()
-            })
-            st.success("Cadastrado!")
-            st.balloons()
-
-elif st.session_state.etapa == 'pagamento':
-    st.subheader("💳 Liberação de Contato")
-    st.image(f"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={CHAVE_PIX}")
-    st.code(CHAVE_PIX)
-    if st.button("VOLTAR"):
-        st.session_state.etapa = 'busca'; st.rerun()
+        item = p.to_dict()
+        st.markdown(f"""
+        <div style="background: #f0f2f6; padding: 10px; border-radius: 5px; margin-bottom: 5px;">
+            <small>{item['data'].strftime('%d/%m/%Y %H:%M')}</small><br>
+            {item['msg']}
+        </div>
+        """, unsafe_allow_html=True)
