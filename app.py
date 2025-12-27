@@ -4,6 +4,7 @@ from firebase_admin import credentials, firestore
 import base64
 import json
 import datetime
+import random
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="GeralJá | Grajaú", page_icon="⚡", layout="centered")
@@ -16,126 +17,121 @@ if not firebase_admin._apps:
         info_chave = json.loads(json_data)
         cred = credentials.Certificate(info_chave)
         firebase_admin.initialize_app(cred)
-        st.toast("🔥 GeralJá Conectado!", icon="✅")
     except Exception as e:
         st.error(f"Erro de conexão: {e}")
         st.stop()
 
 db = firestore.client()
 
-# --- DESIGN PREMIUM (CSS) ---
+# --- DESIGN SOCIAL (CSS) ---
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+    html, body, [class*="st-"] { font-family: 'Inter', sans-serif; background-color: #f0f2f5; }
     
-    html, body, [class*="st-"] { font-family: 'Roboto', sans-serif; }
+    .azul { color: #0047AB; font-size: 40px; font-weight: 800; }
+    .laranja { color: #FF8C00; font-size: 40px; font-weight: 800; }
     
-    .azul { color: #0047AB; font-size: 45px; font-weight: 900; letter-spacing: -1px; }
-    .laranja { color: #FF8C00; font-size: 45px; font-weight: 900; letter-spacing: -1px; }
+    /* Card de Post de Rede Social */
+    .social-card {
+        background: white;
+        padding: 15px;
+        border-radius: 12px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        margin-bottom: 15px;
+        border: 1px solid #ddd;
+    }
     
-    /* Card do Profissional */
-    .card-pro {
+    .social-header { display: flex; align-items: center; margin-bottom: 10px; }
+    
+    .avatar {
+        width: 40px; height: 40px;
+        background-color: #0047AB;
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        color: white; font-weight: bold; margin-right: 12px;
+    }
+    
+    .user-info { display: flex; flex-direction: column; }
+    .user-name { font-weight: 600; color: #1c1e21; font-size: 15px; }
+    .post-time { color: #65676b; font-size: 13px; }
+    .post-content { color: #050505; font-size: 15px; line-height: 1.4; }
+    
+    /* Estilo do Campo de Postagem */
+    .post-box {
         background: white;
         padding: 20px;
-        border-radius: 15px;
-        border: 1px solid #e0e0e0;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-        margin-bottom: 20px;
-        transition: transform 0.2s;
-    }
-    .card-pro:hover { transform: translateY(-3px); }
-    
-    .nome-pro { color: #333; font-size: 20px; font-weight: 700; margin-bottom: 5px; }
-    .area-pro { color: #666; font-size: 16px; margin-bottom: 10px; font-weight: 500; }
-    .selo-verificado { color: #28a745; font-size: 14px; font-weight: 700; }
-    
-    /* Botão customizado via Markdown */
-    .btn-zap {
-        background-color: #25D366;
-        color: white !important;
-        padding: 10px 20px;
-        border-radius: 10px;
-        text-decoration: none;
-        font-weight: bold;
-        display: inline-block;
-        text-align: center;
-        width: 100%;
-        margin-top: 10px;
+        border-radius: 12px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        margin-bottom: 25px;
     }
     </style>
 """, unsafe_allow_html=True)
 
 # --- CABEÇALHO ---
 st.markdown('<center><span class="azul">GERAL</span><span class="laranja">JÁ</span></center>', unsafe_allow_html=True)
-st.markdown("<center style='margin-top:-15px;'><b>O guia oficial de serviços do Grajaú</b></center>", unsafe_allow_html=True)
 st.write("")
 
-tab1, tab2, tab3 = st.tabs(["🔍 ENCONTRAR PROFISSIONAL", "👷 DIVULGAR MEU SERVIÇO", "👥 MURAL"])
+tab1, tab2, tab3 = st.tabs(["🔍 BUSCA", "👷 CADASTRO", "👥 MURAL SOCIAL"])
 
-# --- TAB 1: BUSCA ---
+# --- TAB 1 & 2 (Mantidas as lógicas anteriores) ---
 with tab1:
-    st.write("")
-    filtro = st.selectbox("O que você precisa hoje?", ["", "Pintor", "Eletricista", "Encanador", "Diarista", "Mecânico"])
-    
+    filtro = st.selectbox("Procurar no Grajaú", ["", "Pintor", "Eletricista", "Encanador", "Diarista", "Mecânico"])
     if filtro:
         profs = db.collection("profissionais").where("area", "==", filtro).stream()
-        encontrou = False
         for p in profs:
-            encontrou = True
-            dados = p.to_dict()
-            zap_formatado = dados.get('whatsapp', '').replace(' ', '').replace('-', '').replace('(', '').replace(')', '')
-            
-            # Gerando o Card Visual
-            st.markdown(f"""
-            <div class="card-pro">
-                <div style="display: flex; justify-content: space-between;">
-                    <span class="nome-pro">👤 {dados['nome']}</span>
-                    <span class="selo-verificado">Verificado ✔️</span>
-                </div>
-                <div class="area-pro">🔧 {dados['area']}</div>
-                <div style="font-size: 14px; color: #888;">📍 Atende em: Grajaú e Região</div>
-                <a href="https://wa.me/55{zap_formatado}?text=Olá%20{dados['nome']},%20vi%20seu%20contato%20no%20GeralJá!" target="_blank" class="btn-zap">
-                    CHAMAR NO WHATSAPP
-                </a>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        if not encontrou:
-            st.info(f"Ainda não temos {filtro}s cadastrados.")
+            d = p.to_dict()
+            zap = "".join(filter(str.isdigit, d.get('whatsapp', '')))
+            st.markdown(f'<div style="background:white; padding:15px; border-radius:10px; border:1px solid #ddd; margin-bottom:10px;"><b>👤 {d["nome"]}</b><br>Verificado ✔️<br><a href="https://wa.me/55{zap}" style="color:#25D366; font-weight:bold; text-decoration:none;">📱 Chamar no WhatsApp</a></div>', unsafe_allow_html=True)
 
-# --- TAB 2: CADASTRO ---
 with tab2:
-    st.subheader("Faça parte do GeralJá")
-    with st.form("form_cadastro", clear_on_submit=True):
-        nome_cad = st.text_input("Nome Completo")
-        area_cad = st.selectbox("Sua Especialidade", ["Pintor", "Eletricista", "Encanador", "Diarista", "Mecânico"])
-        zap_cad = st.text_input("WhatsApp (ex: 11999998888)")
-        enviar = st.form_submit_button("CADASTRAR MEU SERVIÇO")
-        
-        if enviar:
-            if nome_cad and zap_cad:
-                db.collection("profissionais").add({
-                    "nome": nome_cad, "area": area_cad, "whatsapp": zap_cad, "data": datetime.datetime.now()
-                })
-                st.balloons()
-                st.success("Cadastro realizado! Seu serviço já aparece na busca.")
+    with st.form("cad"):
+        n = st.text_input("Nome")
+        a = st.selectbox("Área", ["Pintor", "Eletricista", "Encanador", "Diarista", "Mecânico"])
+        w = st.text_input("WhatsApp")
+        if st.form_submit_button("Cadastrar"):
+            db.collection("profissionais").add({"nome": n, "area": a, "whatsapp": w})
+            st.success("Cadastrado!")
 
-# --- TAB 3: MURAL ---
+# --- TAB 3: MURAL SOCIAL (REFEITO TIPO REDE SOCIAL) ---
 with tab3:
-    st.subheader("Mural do Bairro")
-    with st.form("form_mural", clear_on_submit=True):
-        mensagem = st.text_area("Compartilhe algo com a comunidade...")
-        postar = st.form_submit_button("PUBLICAR")
-        if postar and mensagem:
-            db.collection("mural").add({"msg": mensagem, "data": datetime.datetime.now()})
+    st.markdown('<div class="post-box">', unsafe_allow_html=True)
+    with st.form("novo_post", clear_on_submit=True):
+        u_nome = st.text_input("Seu nome ou apelido", placeholder="Ex: João do Grajaú")
+        u_msg = st.text_area("O que você quer contar para o bairro hoje?", placeholder="Vagas de emprego, eventos, notícias...")
+        submit = st.form_submit_button("Publicar no Feed")
+        
+        if submit and u_msg:
+            # Salvando no banco com nome de usuário
+            db.collection("mural").add({
+                "usuario": u_nome if u_nome else "Vizinho Anônimo",
+                "msg": u_msg,
+                "data": datetime.datetime.now()
+            })
             st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
 
-    posts = db.collection("mural").order_by("data", direction=firestore.Query.DESCENDING).limit(10).stream()
+    # FEED DE POSTAGENS
+    st.markdown("### Feed da Comunidade")
+    posts = db.collection("mural").order_by("data", direction=firestore.Query.DESCENDING).limit(15).stream()
+    
     for p in posts:
         item = p.to_dict()
+        nome = item.get("usuario", "Anonimo")
+        inicial = nome[0].upper() if nome else "?"
+        data_formatada = item['data'].strftime('%d de %b às %H:%M')
+        
         st.markdown(f"""
-        <div style="background: #f8f9fa; padding: 15px; border-radius: 12px; margin-bottom: 10px; border: 1px solid #eee;">
-            <small style="color: #999;">{item['data'].strftime('%d/%m - %H:%M')}</small><br>
-            <span style="color: #444;">{item['msg']}</span>
+        <div class="social-card">
+            <div class="social-header">
+                <div class="avatar">{inicial}</div>
+                <div class="user-info">
+                    <span class="user-name">{nome}</span>
+                    <span class="post-time">{data_formatada}</span>
+                </div>
+            </div>
+            <div class="post-content">
+                {item['msg']}
+            </div>
         </div>
         """, unsafe_allow_html=True)
