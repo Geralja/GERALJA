@@ -172,8 +172,21 @@ with aba1: # =========================================================
                     st.success("Liberado!")
                     st.markdown(f'👉 [ABRIR WHATSAPP](https://wa.me/55{"".join(filter(str.isdigit, d["whatsapp"]))})')
             else: st.warning("Profissional sem créditos.")
-# --- ABA 2: CARTEIRA ---
+# --- ABA 2: CARTEIRA (Acesso para cadastrados) ---
 with aba2:
+    login = st.text_input("WhatsApp para entrar na Carteira:", key="login_carteira")
+    if login:
+        doc = db.collection("profissionais").document(login).get()
+        if doc.exists:
+            u = doc.to_dict()
+            st.markdown(f"### Olá, {u['nome']}!")
+            st.markdown(f'<div class="coin-box">Saldo: {u.get("saldo", 0)} GeralCoins</div>', unsafe_allow_html=True)
+            st.divider()
+            st.image(f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={PIX_CHAVE}")
+            st.markdown(f'Chave PIX: `{PIX_CHAVE}`')
+            st.markdown(f'<a href="https://wa.me/{ZAP_ADMIN}?text=Fiz o PIX para o Zap: {login}" class="btn-zap">ENVIAR COMPROVANTE</a>', unsafe_allow_html=True)
+        else:
+            st.error("❌ Esse WhatsApp não está cadastrado. Vá na aba de Cadastro.")
     login = st.text_input("WhatsApp (Login/Cadastro):")
     if login:
         doc = db.collection("profissionais").document(login).get()
@@ -246,6 +259,7 @@ with aba4:
             if st.button(f"APROVAR {p.id}"):
                 db.collection("profissionais").document(p.id).update({"aprovado": True})
                 st.rerun()
+
 
 
 
