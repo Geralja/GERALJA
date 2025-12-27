@@ -24,18 +24,16 @@ st.markdown('<center><span class="azul">GERAL</span><span class="laranja">JÁ</s
 # --- 4. ABAS ---
 aba1, aba2, aba3, aba4 = st.tabs(["🔍 BUSCAR", "🏦 CARTEIRA", "📝 CADASTRO", "🔐 ADMIN"])
 
-# --- 5. CONEXÃO FIREBASE (Aqui começa o seu código antigo) ---
 # --- CONEXÃO FIREBASE ---
 if not firebase_admin._apps:
     try:
-        b64_data = st.secrets["FIREBASE_BASE64"]
-        json_data = base64.b64decode(b64_data).decode("utf-8")
-        info_chave = json.loads(json_data)
-        cred = credentials.Certificate(info_chave)
-        firebase_admin.initialize_app(cred)
-    except: st.stop()
+        key_dict = json.loads(st.secrets["textkey"])
+        creds = credentials.Certificate(key_dict)
+        firebase_admin.initialize_app(creds)
+    except Exception as e:
+        st.error(f"Erro na conexão: {e}")
 
-db = firestore.client()
+db = firestore.Client.from_service_account_info(json.loads(st.secrets["textkey"]))
 
 # --- CONFIGURAÇÕES FIXAS ---
 PIX_CHAVE = "11991853488"
@@ -205,6 +203,7 @@ with aba4:
         if st.button("ADICIONAR CRÉDITOS"):
             db.collection("profissionais").document(recarga_id).update({"saldo": firestore.Increment(qtd)})
             st.success(f"Adicionado {qtd} GC!")
+
 
 
 
