@@ -5,10 +5,10 @@ import base64
 import json
 import datetime
 
-# --- CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(page_title="GeralJá | Grajaú", page_icon="⚡", layout="centered")
+# --- CONFIGURAÇÃO ---
+st.set_page_config(page_title="GeralJá | Business", page_icon="💰", layout="centered")
 
-# --- CONEXÃO FIREBASE (SISTEMA BASE64) ---
+# --- CONEXÃO FIREBASE ---
 if not firebase_admin._apps:
     try:
         b64_data = st.secrets["FIREBASE_BASE64"]
@@ -20,122 +20,103 @@ if not firebase_admin._apps:
 
 db = firestore.client()
 
-# --- SUPER LISTA DE PROFISSÕES (CONSOLIDADA) ---
-profissoes_brutas = [
-    # Suas e Essenciais de Bairro
-    "Barman", "Bartender", "Garçom", "Garçonete", "Churrasqueiro", "Cozinheiro(a)", "Padeiro", "Confeiteiro(a)",
-    "Diarista", "Doméstica", "Passadeira", "Pintor", "Eletricista", "Encanador", "Pedreiro", "Ajudante Geral",
-    "Jardineiro", "Piscineiro", "Marceneiro", "Carpinteiro", "Serralheiro", "Gesseiro", "Azulejista",
-    "Mecânico", "Borracheiro", "Montador de Móveis", "Manicure", "Pedicure", "Cabeleireiro(a)", "Barbeiro",
-    "Esteticista", "Massagista", "Depiladora", "Maquiador(a)", "Fotógrafo", "Motorista", "Entregador",
-    "Segurança", "Vigilante", "Babá", "Cuidador de Idosos", "Pet Sitter", "Adestrador",
-    
-    # Saúde e Bem-estar
-    "Médico Especialista", "Enfermeiro(a)", "Técnico em Enfermagem", "Fisioterapeuta", "Nutricionista", 
-    "Psicólogo(a)", "Dentista", "Fonoaudiólogo", "Terapeuta Holístico", "Acupuncturista", "Biomédico",
-    "Massoterapeuta", "Naturopata", "Terapeuta Ocupacional",
-    
-    # Tecnologia e Digital
-    "Desenvolvedor Mobile", "Desenvolvedor Web", "Especialista em IA", "Cientista de Dados", 
-    "Analista de Redes", "Analista de TI", "Especialista em UX/UI", "Game Designer", "Especialista em Marketing Digital",
-    "Analista de Mídia Social", "Designer Gráfico", "Editor de Vídeo", "Especialista em Cibersegurança",
-    
-    # Educação e Negócios
-    "Professor(a) Particular", "Professor de Idiomas", "Tutor", "Contador", "Analista Financeiro",
-    "Advogado(a)", "Corretor de Imóveis", "Vendedor", "Representante Comercial", "Consultor de Vendas",
-    "Analista de RH", "Gerente de Projetos", "Arquiteto(a)", "Engenheiro Civil",
-    
-    # Artes e Entretenimento
-    "DJ", "Cantor(a)", "Músico", "Produtor de Eventos", "Cerimonialista", "Animador de Festas",
-    "Ilustrador", "Artista Plástico", "Designer de Interiores", "Palestrante", "Escritor(a)"
-]
+# --- VALORES DA PLATAFORMA ---
+VALOR_CLIQUE = 1  # Custa 1 GeralCoin abrir o contato
+BONUS_CADASTRO = 5 # Novos usuários ganham 5 GC
 
-# Remove duplicatas e ordena de A a Z
-LISTA_FINAL = sorted(list(set(profissoes_brutas)))
-
-# --- CSS PERSONALIZADO ---
+# --- CSS ESTILIZADO ---
 st.markdown("""
     <style>
-    .azul { color: #0047AB; font-size: 45px; font-weight: 900; }
-    .laranja { color: #FF8C00; font-size: 45px; font-weight: 900; }
+    .azul { color: #0047AB; font-size: 40px; font-weight: 900; }
+    .laranja { color: #FF8C00; font-size: 40px; font-weight: 900; }
     .card-pro {
         background: white; padding: 20px; border-radius: 15px;
         box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 20px;
-        border-left: 10px solid #0047AB;
+        border-top: 6px solid #FF8C00;
     }
-    .badge-verificado {
-        background: #25D366; color: white; padding: 4px 12px;
-        border-radius: 20px; font-size: 12px; font-weight: bold;
+    .coin-balance {
+        background: #FFF9C4; color: #F57F17; padding: 10px;
+        border-radius: 10px; text-align: center; font-weight: bold; font-size: 20px;
     }
-    .botao-zap {
-        background-color: #25D366; color: white !important;
-        text-decoration: none; padding: 12px; border-radius: 10px;
-        display: block; text-align: center; font-weight: bold; margin-top: 15px;
+    .pacote-card {
+        border: 1px solid #ddd; padding: 10px; border-radius: 8px;
+        text-align: center; background: #f9f9f9;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# --- CABEÇALHO ---
+# --- HEADER ---
 st.markdown('<center><span class="azul">GERAL</span><span class="laranja">JÁ</span></center>', unsafe_allow_html=True)
-st.write("---")
 
-tab1, tab2, tab3 = st.tabs(["🔍 BUSCAR", "👷 CADASTRAR", "👥 MURAL"])
+tab1, tab2, tab3 = st.tabs(["🔍 BUSCAR", "🏦 MINHA CARTEIRA", "👥 MURAL"])
 
-# --- ABA 1: BUSCA ---
+# --- TAB 1: BUSCA COM CONSUMO ---
 with tab1:
-    st.subheader("O que você procura no bairro?")
-    escolha = st.selectbox("Selecione a profissão ou digite para buscar:", [""] + LISTA_FINAL)
+    st.subheader("O que você busca hoje?")
+    # Simulando a lista de profissões (em produção usaríamos a lista completa de 1000)
+    busca = st.selectbox("Escolha a categoria:", ["", "Pintor", "Eletricista", "Encanador", "Barman", "Diarista"])
     
-    if escolha:
-        # Busca profissionais aprovados dessa categoria
-        query = db.collection("profissionais").where("area", "==", escolha).where("aprovado", "==", True).stream()
+    if busca:
+        profs = db.collection("profissionais").where("area", "==", busca).where("aprovado", "==", True).stream()
         
-        encontrou = False
-        for p in query:
-            encontrou = True
+        for p in profs:
             d = p.to_dict()
-            zap_limpo = "".join(filter(str.isdigit, d.get('whatsapp', '')))
+            pid = p.id
+            saldo = d.get("saldo", 0)
             
             st.markdown(f"""
             <div class="card-pro">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-size: 20px; font-weight: bold;">👤 {d['nome']}</span>
-                    <span class="badge-verificado">VERIFICADO ✔️</span>
+                <div style="display: flex; justify-content: space-between;">
+                    <span style="font-size: 18px; font-weight: bold;">👤 {d['nome']}</span>
+                    <span style="color: #25D366; font-weight: bold;">Verificado ✔️</span>
                 </div>
-                <div style="margin-top: 10px; color: #555;">
-                    <b>Serviço:</b> {d['area']}<br>
-                    📍 Atendimento no Grajaú e proximidades
-                </div>
-                <a href="https://wa.me/55{zap_limpo}?text=Olá%20{d['nome']},%20vi%20seu%20anúncio%20no%20GeralJá!" class="botao-zap">
-                    CHAMAR NO WHATSAPP
-                </a>
-            </div>
+                <p>🔧 Especialista em {d['area']}</p>
             """, unsafe_allow_html=True)
-        
-        if not encontrou:
-            st.info(f"Ainda não temos '{escolha}' aprovados. Seja o primeiro a indicar um!")
-
-# --- ABA 2: CADASTRO ---
-with tab2:
-    st.subheader("👷 Divulgue seu Trabalho")
-    with st.form("form_cad_final", clear_on_submit=True):
-        nome_f = st.text_input("Nome Completo")
-        zap_f = st.text_input("WhatsApp (Ex: 11988887777)")
-        area_f = st.selectbox("Qual sua profissão?", LISTA_FINAL)
-        
-        submit = st.form_submit_button("SOLICITAR MEU ANÚNCIO")
-        
-        if submit:
-            if nome_f and zap_f:
-                db.collection("profissionais").document(zap_f).set({
-                    "nome": nome_f, "whatsapp": zap_f, "area": area_f,
-                    "aprovado": False, "data": datetime.datetime.now()
-                })
-                st.balloons()
-                st.success("✅ Pedido enviado! Você aparecerá na busca após nossa revisão.")
+            
+            if saldo >= VALOR_CLIQUE:
+                if st.button(f"VER WHATSAPP DE {d['nome'].upper()}", key=pid):
+                    # Deduz saldo e mostra o link
+                    db.collection("profissionais").document(pid).update({"saldo": firestore.Increment(-VALOR_CLIQUE)})
+                    zap_limpo = "".join(filter(str.isdigit, d['whatsapp']))
+                    st.success(f"Contato liberado! -{VALOR_CLIQUE} GC")
+                    st.markdown(f'👉 [ABRIR WHATSAPP](https://wa.me/55{zap_limpo})', unsafe_allow_html=True)
             else:
-                st.error("Por favor, preencha todos os campos.")
+                st.warning("Este profissional atingiu o limite de contatos gratuitos.")
+            st.markdown("</div>", unsafe_allow_html=True)
 
-# --- ABA 3: MURAL ---
+# --- TAB 2: CARTEIRA E LOJA ---
+with tab2:
+    st.subheader("Área do Profissional")
+    login = st.text_input("Seu WhatsApp cadastrado:")
+    
+    if login:
+        doc = db.collection("profissionais").document(login).get()
+        if doc.exists:
+            user = doc.to_dict()
+            st.markdown(f"### Olá, {user['nome']}!")
+            st.markdown(f'<div class="coin-balance">Saldo: {user.get("saldo", 0)} GeralCoins 💰</div>', unsafe_allow_html=True)
+            
+            st.write("---")
+            st.subheader("🛒 Recarregar Créditos")
+            
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                st.markdown('<div class="pacote-card"><b>Bronze</b><br>10 GC<br>R$ 10</div>', unsafe_allow_html=True)
+                if st.button("Comprar 10"): st.info("Chame o Admin no Pix")
+            with c2:
+                st.markdown('<div class="pacote-card"><b>Prata</b><br>30 GC<br>R$ 25</div>', unsafe_allow_html=True)
+                if st.button("Comprar 30"): st.info("Chame o Admin no Pix")
+            with c3:
+                st.markdown('<div class="pacote-card"><b>Ouro</b><br>70 GC<br>R$ 50</div>', unsafe_allow_html=True)
+                if st.button("Comprar 70"): st.info("Chame o Admin no Pix")
+                
+            st.caption("Ao clicar em comprar, envie o comprovante PIX para o administrador para a liberação.")
+        else:
+            st.error("WhatsApp não cadastrado.")
+            if st.button("Criar meu cadastro agora"):
+                # Lógica para levar ao formulário
+                pass
+
+# --- TAB 3: MURAL ---
 with tab3:
-    st.write("Em breve: Mural social com fotos e curtidas para a comunidade!")
+    st.info("Mural em transição para o sistema de recompensas!")
