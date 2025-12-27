@@ -27,8 +27,8 @@ SENHA_ADMIN = "grajau2025"
 VALOR_CLIQUE = 1 
 BONUS_INICIAL = 5
 
-# --- 4. LISTA COMPLETA DE PROFISSÕES (Sua lista devolvida na íntegra) ---
-   
+# --- 4. LISTA COMPLETA DE PROFISSÕES (Sintaxe Corrigida) ---
+profissoes_completas = [
     "Ajudante Geral", "Almoxarife", "Antropólogo", "Arquiteto", "Azulejista", "Babá", "Barbeiro", 
     "Barman", "Bartender", "Bibliotecário", "Borracheiro", "Cabeleireiro", "Carpinteiro", "Churrasqueiro",
     "Confeiteira", "Costureira", "Cozinheira", "Curador de Museu", "Diarista", "Doméstica", "Eletricista", 
@@ -40,7 +40,7 @@ BONUS_INICIAL = 5
     "Game Designer", "Analista Financeiro", "Contador Público", "Gerente de Projetos", "Atleta Profissional",
     "Professor Universitário", "Biólogo", "Engenheiro Ambiental", "Segurança Pessoal", "Investigador",
     "Jornalista de TV", "Fotógrafo", "DJ", "Cantor(a)", "Designer de Interiores", "Corretor de Imóveis"
-   
+]
 LISTA_FINAL = sorted(list(set(profissoes_completas)))
 
 # --- 5. MAPEAMENTO DA IA (Todas as chaves originais) ---
