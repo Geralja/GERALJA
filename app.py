@@ -126,65 +126,68 @@ with aba3:
                     })
                     st.success(f"✅ Cadastrado como {cat_ia}! Aguarde aprovação.")
 
-# --- ABA 4: ADMIN (SISTEMA DE CRÉDITOS INTELIGENTE) ---
+# --- ABA 4: ADMIN (CONTROLE TOTAL) ---
 with aba4:
     senha = st.text_input("Senha Admin", type="password")
     if senha == SENHA_ADMIN:
-        st.subheader("⚙️ Gestão de Créditos e Aprovação")
+        st.subheader("⚙️ Painel de Controle Master")
         
-        # 1. Filtro de Inteligência (Ver quem precisa de atenção)
-        col1, col2 = st.columns(2)
-        with col1:
-            # Lista profissionais sem saldo
-            st.write("🔴 **Sem Saldo**")
-            lis_sem_saldo = db.collection("profissionais").where("saldo", "<", 1).stream()
-            for p in lis_sem_saldo:
-                pd = p.to_dict()
-                st.caption(f"{pd['nome']} ({p.id})")
+        # --- BUSCA DE USUÁRIO PARA GESTÃO ---
+        st.write("### 👤 Gerenciar Profissional")
+        user_id = st.text_input("Digite o WhatsApp do profissional:")
         
-        with col2:
-            # Lista os que mais recebem cliques (Os "Top do Grajaú")
-            st.write("⭐ **Mais Procurados**")
-            st.caption("Baseado em saldo investido")
-        
-        st.divider()
-
-        # 2. Painel de Recarga Rápida
-        st.write("### 💰 Adicionar GeralCoins")
-        pro_id = st.text_input("WhatsApp do Profissional (apenas números):")
-        qtd_coins = st.number_input("Quantidade de GC:", min_value=1, value=10)
-        
-        if st.button("CONFIRMAR RECARGA"):
-            pro_ref = db.collection("profissionais").document(pro_id)
-            if pro_ref.get().exists:
-                pro_ref.update({
-                    "saldo": firestore.Increment(qtd_coins),
-                    "ultima_recarga": datetime.datetime.now()
-                })
-                st.success(f"✅ {qtd_coins} GC adicionados com sucesso!")
-            else:
-                st.error("Profissional não encontrado.")
-
-        st.divider()
-
-        # 3. IA de Aprovação (Qualidade GeralJá)
-        st.write("### 👷 Pendentes de Aprovação")
-        pendentes = db.collection("profissionais").where("aprovado", "==", False).stream()
-        
-        for p in pendentes:
-            pd = p.to_dict()
-            with st.expander(f"Analisar: {pd['nome']}"):
-                st.write(f"**Bio:** {pd['descricao']}")
-                st.write(f"**Categoria IA:** {pd['area']}")
+        if user_id:
+            user_ref = db.collection("profissionais").document(user_id)
+            doc = user_ref.get()
+            
+            if doc.exists:
+                u = doc.to_dict()
+                st.warning(f"Gerenciando: **{u['nome']}** | Status: {'✅ Ativo' if u.get('aprovado') else '❌ Bloqueado/Pendente'}")
                 
-                # Botões de ação rápida
-                c1, c2 = st.columns(2)
-                if c1.button(f"APROVAR ✅", key=f"ap_{p.id}"):
-                    db.collection("profissionais").document(p.id).update({"aprovado": True})
-                    st.rerun()
-                if c2.button(f"REJEITAR ❌", key=f"re_{p.id}"):
-                    db.collection("profissionais").document(p.id).delete()
-                    st.rerun()
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    # RESETAR SENHA
+                    nova_senha = st.text_input("Nova Senha", value="1234")
+                    if st.button("RESETAR SENHA"):
+                        user_ref.update({"senha": nova_senha})
+                        st.success("Senha alterada!")
+
+                with col2:
+                    # PUNIÇÃO (Retirar créditos)
+                    valor_punicao = st.number_input("Retirar Coins (Punição)", min_value=1, value=5)
+                    if st.button("PUNIR"):
+                        user_ref.update({"saldo": firestore.Increment(-valor_punicao)})
+                        st.error(f"Punido com -{valor_punicao} GC")
+
+                with col3:
+                    # BLOQUEAR / REMOVER
+                    if st.button("REMOVER DO APP"):
+                        user_ref.delete()
+                        st.success("Usuário removido!")
+                        st.rerun()
+
+                # BOTÃO DE BLOQUEIO/APROVAÇÃO RÁPIDA
+                if u.get("aprovado"):
+                    if st.button("🚫 BLOQUEAR ACESSO"):
+                        user_ref.update({"aprovado": False})
+                        st.rerun()
+                else:
+                    if st.button("✅ DESBLOQUEAR / APROVAR"):
+                        user_ref.update({"aprovado": True})
+                        st.rerun()
+            else:
+                st.error("Usuário não encontrado.")
+
+        st.divider()
+        
+        # --- RECARGA DE CRÉDITOS ---
+        st.write("### 💰 Recarga de Saldo")
+        recarga_id = st.text_input("WhatsApp para Recarga:")
+        qtd = st.number_input("Qtd de GeralCoins:", min_value=1, value=10)
+        if st.button("ADICIONAR CRÉDITOS"):
+            db.collection("profissionais").document(recarga_id).update({"saldo": firestore.Increment(qtd)})
+            st.success(f"Adicionado {qtd} GC!")
 
 
 
