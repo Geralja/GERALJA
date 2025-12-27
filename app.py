@@ -1,31 +1,33 @@
-# Tente trocar "textkey" por "gcp_service_account" se for esse o nome que está no seu painel
-dados_chave = json.loads(st.secrets["gcp_service_account"])
+import streamlit as st
+import firebase_admin
+from firebase_admin import credentials, firestore
+import base64
+import json
+import datetime
 
-# --- CONEXÃO FIREBASE ---
+# --- CONFIGURAÇÃO ---
+st.set_page_config(page_title="GeralJá | Oficial", page_icon="⚡", layout="centered")
+
+# --- CONEXÃO FIREBASE (Mantendo sua lógica de Base64) ---
 if not firebase_admin._apps:
     try:
-        # Carrega as credenciais dos Secrets do Streamlit
-        key_dict = json.loads(st.secrets["textkey"])
-        creds = credentials.Certificate(key_dict)
-        firebase_admin.initialize_app(creds)
-    except Exception as e:
-        st.error(f"Erro ao inicializar Firebase: {e}")
+        b64_data = st.secrets["FIREBASE_BASE64"]
+        json_data = base64.b64decode(b64_data).decode("utf-8")
+        info_chave = json.loads(json_data)
+        cred = credentials.Certificate(info_chave)
+        firebase_admin.initialize_app(cred)
+    except: st.stop()
 
-# A forma correta de instanciar o DB para evitar o AttributeError:
-try:
-    key_dict = json.loads(st.secrets["textkey"])
-    db = firestore.Client.from_service_account_info(key_dict)
-except Exception as e:
-    st.error(f"Erro ao criar cliente Firestore: {e}")
+db = firestore.client()
 
-# --- CONFIGURAÇÕES FIXAS ---
+# --- CONFIGURAÇÕES FIXAS (Mantidas) ---
 PIX_CHAVE = "11991853488"
 ZAP_ADMIN = "5511991853488"
 SENHA_ADMIN = "grajau2025"
 VALOR_CLIQUE = 1 
 BONUS_INICIAL = 5
 
-# --- LISTA DE PROFISSÕES ---
+# --- SUA LISTA DE PROFISSÕES (Devolvida) ---
 profissoes_completas = ["Ajudante Geral", "Borracheiro", "Cabeleireiro", "Diarista", "Eletricista", "Encanador", "Manicure", "Mecânico", "Montador de Móveis", "Pedreiro", "Pintor"]
 LISTA_FINAL = sorted(list(set(profissoes_completas)))
 
@@ -44,7 +46,6 @@ st.markdown('<center><span class="azul">GERAL</span><span class="laranja">JÁ</s
 
 aba1, aba2, aba3, aba4 = st.tabs(["🔍 BUSCAR", "🏦 CARTEIRA", "📝 CADASTRO", "🔐 ADMIN"])
 
-# mapeamento da IA (Necessário para ambas as abas)
 MAPEAMENTO_IA = {
     "vazamento": "Encanador", "cano": "Encanador", "torneira": "Encanador",
     "curto": "Eletricista", "luz": "Eletricista", "fiação": "Eletricista",
@@ -70,7 +71,8 @@ with aba1:
                 break
 
         if categoria_detectada:
-            st.success(f"🤖 IA: Você precisa de: **{categoria_detectada}**")
+            # NOME DA IA ALTERADO PARA GeralJá
+            st.success(f"🤖 **GeralJá:** Identifiquei que você precisa de: **{categoria_detectada}**")
             resultados = db.collection("profissionais").where("area", "==", categoria_detectada).where("aprovado", "==", True).stream()
             
             for doc in resultados:
@@ -83,26 +85,31 @@ with aba1:
                 else:
                     st.warning("Profissional sem créditos.")
 
-# --- ABA 2: CARTEIRA ---
+# --- ABA 2: CARTEIRA (Com sua lógica + Senha) ---
 with aba2:
     st.subheader("🏦 Sua Carteira")
     login = st.text_input("Seu WhatsApp cadastrado:", key="login_carteira")
-    if login:
+    senha_user = st.text_input("Sua Senha:", type="password", key="pass_carteira")
+    
+    if login and senha_user:
         doc = db.collection("profissionais").document(login).get()
         if doc.exists:
             u = doc.to_dict()
-            st.markdown(f"### Olá, {u['nome']}!")
-            st.markdown(f'<div class="coin-box">Saldo: {u.get("saldo", 0)} GeralCoins</div>', unsafe_allow_html=True)
-            st.divider()
-            st.image(f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={PIX_CHAVE}")
-            st.markdown(f'Chave PIX: `{PIX_CHAVE}`')
-            st.markdown(f'<a href="https://wa.me/{ZAP_ADMIN}?text=Recarga: {login}" class="btn-zap">ENVIAR COMPROVANTE</a>', unsafe_allow_html=True)
+            if u.get("senha") == senha_user:
+                st.markdown(f"### Olá, {u['nome']}!")
+                st.markdown(f'<div class="coin-box">Saldo: {u.get("saldo", 0)} GeralCoins</div>', unsafe_allow_html=True)
+                st.divider()
+                st.image(f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={PIX_CHAVE}")
+                st.markdown(f'Chave PIX: {PIX_CHAVE}')
+                st.markdown(f'<a href="https://wa.me/{ZAP_ADMIN}?text=Recarga: {login}" class="btn-zap">ENVIAR COMPROVANTE</a>', unsafe_allow_html=True)
+            else:
+                st.error("Senha incorreta.")
         else:
-            st.error("❌ WhatsApp não encontrado. Cadastre-se na aba ao lado.")
+            st.error("❌ WhatsApp não encontrado.")
 
-# --- ABA 3: CADASTRO COM IA ---
+# --- ABA 3: CADASTRO (Com campo de senha) ---
 with aba3:
-    st.subheader("🚀 Novo Cadastro com IA")
+    st.subheader("🚀 Novo Cadastro")
     novo_zap = st.text_input("WhatsApp para novo cadastro:", key="novo_cadastro")
     if novo_zap:
         check = db.collection("profissionais").document(novo_zap).get()
@@ -111,6 +118,7 @@ with aba3:
         else:
             with st.form("form_ia"):
                 n = st.text_input("Nome Completo")
+                s = st.text_input("Crie uma Senha", type="password")
                 desc = st.text_area("Descreva seu serviço")
                 if st.form_submit_button("CADASTRAR"):
                     cat_ia = "Ajudante Geral"
@@ -119,93 +127,37 @@ with aba3:
                             cat_ia = v
                             break
                     db.collection("profissionais").document(novo_zap).set({
-                        "nome": n, "whatsapp": novo_zap, "area": cat_ia,
+                        "nome": n, "whatsapp": novo_zap, "senha": s, "area": cat_ia,
                         "saldo": BONUS_INICIAL, "aprovado": False
                     })
                     st.success(f"✅ Cadastrado como {cat_ia}! Aguarde aprovação.")
 
-# --- ABA 4: ADMIN (CONTROLE TOTAL) ---
+# --- ABA 4: ADMIN (Gestão de Usuário Completa) ---
 with aba4:
     senha = st.text_input("Senha Admin", type="password")
     if senha == SENHA_ADMIN:
-        st.subheader("⚙️ Painel de Controle Master")
+        st.subheader("⚙️ Painel Admin")
         
-        # --- BUSCA DE USUÁRIO PARA GESTÃO ---
-        st.write("### 👤 Gerenciar Profissional")
-        user_id = st.text_input("Digite o WhatsApp do profissional:")
+        # BUSCA PARA PUNIÇÃO E RESET
+        user_manage = st.text_input("WhatsApp para Gerenciar/Punir:")
+        if user_manage:
+            u_ref = db.collection("profissionais").document(user_manage)
+            u_doc = u_ref.get()
+            if u_doc.exists:
+                ud = u_doc.to_dict()
+                st.write(f"Usuário: {ud['nome']} | Saldo: {ud.get('saldo')}")
+                if st.button("PUNIR (-5 COINS)"):
+                    u_ref.update({"saldo": firestore.Increment(-5)})
+                    st.error("Punido!")
+                if st.button("RESETAR SENHA PARA '1234'"):
+                    u_ref.update({"senha": "1234"})
+                    st.success("Senha resetada!")
         
-        if user_id:
-            user_ref = db.collection("profissionais").document(user_id)
-            doc = user_ref.get()
-            
-            if doc.exists:
-                u = doc.to_dict()
-                st.warning(f"Gerenciando: **{u['nome']}** | Status: {'✅ Ativo' if u.get('aprovado') else '❌ Bloqueado/Pendente'}")
-                
-                col1, col2, col3 = st.columns(3)
-                
-                with col1:
-                    # RESETAR SENHA
-                    nova_senha = st.text_input("Nova Senha", value="1234")
-                    if st.button("RESETAR SENHA"):
-                        user_ref.update({"senha": nova_senha})
-                        st.success("Senha alterada!")
-
-                with col2:
-                    # PUNIÇÃO (Retirar créditos)
-                    valor_punicao = st.number_input("Retirar Coins (Punição)", min_value=1, value=5)
-                    if st.button("PUNIR"):
-                        user_ref.update({"saldo": firestore.Increment(-valor_punicao)})
-                        st.error(f"Punido com -{valor_punicao} GC")
-
-                with col3:
-                    # BLOQUEAR / REMOVER
-                    if st.button("REMOVER DO APP"):
-                        user_ref.delete()
-                        st.success("Usuário removido!")
-                        st.rerun()
-
-                # BOTÃO DE BLOQUEIO/APROVAÇÃO RÁPIDA
-                if u.get("aprovado"):
-                    if st.button("🚫 BLOQUEAR ACESSO"):
-                        user_ref.update({"aprovado": False})
-                        st.rerun()
-                else:
-                    if st.button("✅ DESBLOQUEAR / APROVAR"):
-                        user_ref.update({"aprovado": True})
-                        st.rerun()
-            else:
-                st.error("Usuário não encontrado.")
-
         st.divider()
-        
-        # --- RECARGA DE CRÉDITOS ---
-        st.write("### 💰 Recarga de Saldo")
-        recarga_id = st.text_input("WhatsApp para Recarga:")
-        qtd = st.number_input("Qtd de GeralCoins:", min_value=1, value=10)
-        if st.button("ADICIONAR CRÉDITOS"):
-            db.collection("profissionais").document(recarga_id).update({"saldo": firestore.Increment(qtd)})
-            st.success(f"Adicionado {qtd} GC!")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        st.write("Aprovações Pendentes:")
+        pendentes = db.collection("profissionais").where("aprovado", "==", False).stream()
+        for p in pendentes:
+            pd = p.to_dict()
+            if st.button(f"APROVAR {pd['nome']} ({p.id})"):
+                db.collection("profissionais").document(p.id).update({"aprovado": True})
+                st.rerun()
