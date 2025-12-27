@@ -5,7 +5,7 @@ import base64
 import json
 import datetime
 
-# --- 1. CONFIGURAÇÃO (Obrigatório ser o primeiro) ---
+# --- 1. CONFIGURAÇÃO INICIAL ---
 st.set_page_config(page_title="GeralJá | Oficial", page_icon="⚡", layout="centered")
 
 # --- 2. CONEXÃO FIREBASE (Sua lógica original preservada) ---
@@ -16,7 +16,9 @@ if not firebase_admin._apps:
         info_chave = json.loads(json_data)
         cred = credentials.Certificate(info_chave)
         firebase_admin.initialize_app(cred)
-    except: st.stop()
+    except Exception as e:
+        st.error(f"Erro de Conexão: {e}")
+        st.stop()
 
 db = firestore.client()
 
@@ -27,7 +29,7 @@ SENHA_ADMIN = "mumias"
 VALOR_CLIQUE = 1 
 BONUS_INICIAL = 5
 
-# --- 4. LISTA COMPLETA DE PROFISSÕES (Sintaxe Corrigida) ---
+# --- 4. LISTA DE PROFISSÕES ---
 profissoes_completas = [
     "Ajudante Geral", "Almoxarife", "Antropólogo", "Arquiteto", "Azulejista", "Babá", "Barbeiro", 
     "Barman", "Bartender", "Bibliotecário", "Borracheiro", "Cabeleireiro", "Carpinteiro", "Churrasqueiro",
@@ -43,169 +45,220 @@ profissoes_completas = [
 ]
 LISTA_FINAL = sorted(list(set(profissoes_completas)))
 
-# --- 5. MAPEAMENTO DA IA (Todas as chaves originais) ---
+# --- 5. MAPEAMENTO DA IA (Motor de Busca Otimizado) ---
 MAPEAMENTO_IA = {
-   "vazamento": "Encanador", "cano": "Encanador", "torneira": "Encanador", "esgoto": "Encanador", "pia": "Encanador", "privada": "Encanador", "infiltração": "Encanador",
-        "curto": "Eletricista", "luz": "Eletricista", "tomada": "Eletricista", "chuveiro": "Eletricista", "fiação": "Eletricista", "disjuntor": "Eletricista", "lâmpada": "Eletricista",
-        "pintar": "Pintor", "parede": "Pintor", "massa": "Pintor", "grafiato": "Pintor", "verniz": "Pintor",
-        "reforma": "Pedreiro", "laje": "Pedreiro", "tijolo": "Pedreiro", "reboco": "Pedreiro", "piso": "Pedreiro", "azulejo": "Pedreiro", "cimento": "Pedreiro", "muro": "Pedreiro",
-        "telhado": "Telhadista", "calha": "Telhadista", "goteira": "Telhadista",
-        "montar": "Montador de Móveis", "armário": "Montador de Móveis", "guarda-roupa": "Montador de Móveis", "cozinha": "Montador de Móveis",
-
-        # Beleza e Estética
-        "unha": "Manicure", "pé": "Manicure", "mão": "Manicure", "esmalte": "Manicure", "gel": "Manicure",
-        "cabelo": "Cabeleireiro", "corte": "Cabeleireiro", "escova": "Cabeleireiro", "tintura": "Cabeleireiro", "luzes": "Cabeleireiro",
-        "barba": "Barbeiro", "degradê": "Barbeiro", "navalha": "Barbeiro",
-        "sobrancelha": "Esteticista", "cílios": "Esteticista", "maquiagem": "Esteticista", "depilação": "Esteticista", "pele": "Esteticista",
-
-        # Serviços Domésticos
-        "faxina": "Diarista", "limpeza": "Diarista", "passar": "Diarista", "lavar": "Diarista", "organizar": "Diarista",
-        "carreto": "Ajudante Geral", "mudança": "Ajudante Geral", "entulho": "Ajudante Geral", "carregar": "Ajudante Geral", "bico": "Ajudante Geral",
-        "jardim": "Jardineiro", "grama": "Jardineiro", "poda": "Jardineiro",
-
-        # Tecnologia e Eletrônicos
-        "computador": "Técnico de TI", "celular": "Técnico de TI", "formatar": "Técnico de TI", "notebook": "Técnico de TI", "tela": "Técnico de TI", "wifi": "Técnico de TI", "internet": "Técnico de TI",
-        "televisão": "Técnico de Eletrônicos", "tv": "Técnico de Eletrônicos", "som": "Técnico de Eletrônicos", "microondas": "Técnico de Eletrônicos",
-        "geladeira": "Refrigeração", "ar condicionado": "Refrigeração", "freezer": "Refrigeração",
-
-        # Outros e Animais
-        "frete": "Motorista", "transporte": "Motorista", "viagem": "Motorista",
-        "aula": "Professor Particular", "reforço": "Professor Particular", "inglês": "Professor Particular", "matemática": "Professor Particular",
-        "cachorro": "Pet Shop/Passeador", "gato": "Pet Shop/Passeador", "banho": "Pet Shop/Passeador", "tosa": "Pet Shop/Passeador",
-
-        # Automóveis e Mecânica
-        "pneu": "Borracheiro", "estepe": "Borracheiro", "furou": "Borracheiro", "vulc": "Borracheiro",
-        "carro": "Mecânico", "motor": "Mecânico", "óleo": "Mecânico", "freio": "Mecânico", "bateria": "Mecânico",
-        "moto": "Mecânico de Motos", "corrente": "Mecânico de Motos",
-        "guincho": "Guincho / Socorro 24h", "reboque": "Guincho / Socorro 24h",
-        "lavar carro": "Lava Rápido", "polimento": "Lava Rápido", "estética automotiva": "Lava Rápido",
-
-        # Eventos e Festas
-        "festa": "Eventos", "bolo": "Confeiteira", "doce": "Confeiteira", "salgado": "Salgadeira",
-        "música": "DJ / Músico", "som": "DJ / Músico", "fotógrafo": "Fotógrafo"
+    "vazamento": "Encanador", "cano": "Encanador", "torneira": "Encanador", "esgoto": "Encanador", "pia": "Encanador", "privada": "Encanador", "infiltração": "Encanador",
+    "curto": "Eletricista", "luz": "Eletricista", "tomada": "Eletricista", "chuveiro": "Eletricista", "fiação": "Eletricista", "disjuntor": "Eletricista", "lâmpada": "Eletricista",
+    "pintar": "Pintor", "parede": "Pintor", "massa": "Pintor", "grafiato": "Pintor", "verniz": "Pintor", "pintor": "Pintor", "pintura": "Pintor",
+    "reforma": "Pedreiro", "laje": "Pedreiro", "tijolo": "Pedreiro", "reboco": "Pedreiro", "piso": "Pedreiro", "azulejo": "Pedreiro", "cimento": "Pedreiro", "muro": "Pedreiro", "pedreiro": "Pedreiro",
+    "telhado": "Telhadista", "calha": "Telhadista", "goteira": "Telhadista",
+    "montar": "Montador de Móveis", "armário": "Montador de Móveis", "guarda-roupa": "Montador de Móveis", "cozinha": "Montador de Móveis",
+    "unha": "Manicure", "pé": "Manicure", "mão": "Manicure", "esmalte": "Manicure", "gel": "Manicure", "manicure": "Manicure",
+    "cabelo": "Cabeleireiro", "corte": "Cabeleireiro", "escova": "Cabeleireiro", "tintura": "Cabeleireiro", "luzes": "Cabeleireiro",
+    "barba": "Barbeiro", "degradê": "Barbeiro", "navalha": "Barbeiro", "barbeiro": "Barbeiro",
+    "sobrancelha": "Esteticista", "cílios": "Esteticista", "maquiagem": "Esteticista", "depilação": "Esteticista", "pele": "Esteticista",
+    "faxina": "Diarista", "limpeza": "Diarista", "passar": "Diarista", "lavar": "Diarista", "organizar": "Diarista", "diarista": "Diarista",
+    "carreto": "Ajudante Geral", "mudança": "Ajudante Geral", "entulho": "Ajudante Geral", "carregar": "Ajudante Geral", "bico": "Ajudante Geral",
+    "jardim": "Jardineiro", "grama": "Jardineiro", "poda": "Jardineiro",
+    "computador": "Técnico de TI", "celular": "Técnico de TI", "formatar": "Técnico de TI", "notebook": "Técnico de TI", "tela": "Técnico de TI", "wifi": "Técnico de TI", "internet": "Técnico de TI",
+    "televisão": "Técnico de Eletrônicos", "tv": "Técnico de Eletrônicos", "som": "Técnico de Eletrônicos", "microondas": "Técnico de Eletrônicos",
+    "geladeira": "Refrigeração", "ar condicionado": "Refrigeração", "freezer": "Refrigeração",
+    "frete": "Motorista", "transporte": "Motorista", "viagem": "Motorista", "motorista": "Motorista",
+    "aula": "Professor Particular", "reforço": "Professor Particular", "inglês": "Professor Particular", "matemática": "Professor Particular",
+    "cachorro": "Pet Shop/Passeador", "gato": "Pet Shop/Passeador", "banho": "Pet Shop/Passeador", "tosa": "Pet Shop/Passeador",
+    "pneu": "Borracheiro", "estepe": "Borracheiro", "furou": "Borracheiro", "vulc": "Borracheiro", "borracharia": "Borracheiro",
+    "carro": "Mecânico", "motor": "Mecânico", "óleo": "Mecânico", "freio": "Mecânico", "bateria": "Mecânico",
+    "moto": "Mecânico de Motos", "corrente": "Mecânico de Motos",
+    "guincho": "Guincho / Socorro 24h", "reboque": "Guincho / Socorro 24h",
+    "lavar carro": "Lava Rápido", "polimento": "Lava Rápido", "estética automotiva": "Lava Rápido",
+    "festa": "Eventos", "bolo": "Confeiteira", "doce": "Confeiteira", "salgado": "Salgadeira",
+    "música": "DJ / Músico", "som": "DJ / Músico", "fotógrafo": "Fotógrafo"
 }
 
-# --- 6. ESTILIZAÇÃO CSS ---
+# --- 6. ESTILIZAÇÃO CSS (Design Premium) ---
 st.markdown(f"""
     <style>
-    .azul {{ color: #0047AB; font-size: 40px; font-weight: 900; }}
-    .laranja {{ color: #FF8C00; font-size: 40px; font-weight: 900; }}
-    .card-pro {{ background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 20px; border-left: 8px solid #0047AB; }}
-    .coin-box {{ background: #FFF9C4; color: #F57F17; padding: 15px; border-radius: 10px; text-align: center; font-weight: bold; border: 2px solid #F57F17; }}
-    .btn-zap {{ background-color: #25D366; color: white !important; padding: 12px; border-radius: 10px; text-decoration: none; display: block; text-align: center; font-weight: bold; }}
+    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;900&display=swap');
+    body {{ background-color: #f0f2f6; font-family: 'Roboto', sans-serif; }}
+    .azul {{ color: #0047AB; font-size: 45px; font-weight: 900; letter-spacing: -2px; }}
+    .laranja {{ color: #FF8C00; font-size: 45px; font-weight: 900; letter-spacing: -2px; }}
+    .card-pro {{ 
+        background: white; padding: 25px; border-radius: 20px; 
+        box-shadow: 0 10px 25px rgba(0,0,0,0.05); margin-bottom: 20px; 
+        border-left: 10px solid #0047AB; transition: transform 0.3s;
+    }}
+    .card-pro:hover {{ transform: translateY(-5px); }}
+    .coin-box {{ 
+        background: linear-gradient(135deg, #FFF9C4 0%, #FFF176 100%); 
+        color: #F57F17; padding: 20px; border-radius: 15px; 
+        text-align: center; font-size: 24px; font-weight: bold; border: 2px solid #F57F17; 
+    }}
+    .btn-zap {{ 
+        background-color: #25D366; color: white !important; 
+        padding: 15px; border-radius: 12px; text-decoration: none; 
+        display: block; text-align: center; font-weight: bold; font-size: 18px;
+    }}
+    .stTabs [data-baseweb="tab-list"] {{ gap: 10px; }}
+    .stTabs [data-baseweb="tab"] {{ 
+        background-color: #e0e0e0; border-radius: 10px 10px 0 0; 
+        padding: 10px 20px; font-weight: bold; 
+    }}
+    .stTabs [aria-selected="true"] {{ background-color: #0047AB !important; color: white !important; }}
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<center><span class="azul">GERAL</span><span class="laranja">JÁ</span></center>', unsafe_allow_html=True)
+st.markdown('<center><span class="azul">GERAL</span><span class="laranja">JÁ</span><br><small>Serviços num Estalo ⚡</small></center>', unsafe_allow_html=True)
+st.markdown("---")
 
 aba1, aba2, aba3, aba4 = st.tabs(["🔍 BUSCAR", "🏦 CARTEIRA", "📝 CADASTRO", "🔐 ADMIN"])
 
-# --- ABA 1: BUSCA COM IA ---
+# --- ABA 1: BUSCA INTELIGENTE ---
 with aba1:
     st.markdown("### 🔍 O que você precisa hoje?")
-    pergunta = st.text_input("Descreva o que você precisa:", placeholder="Ex: meu pneu furou")
+    pergunta = st.text_input("Diga o que aconteceu:", placeholder="Ex: Preciso de um pintor ou meu cano quebrou", key="main_search")
     
     if pergunta:
         busca_limpa = pergunta.lower()
         categoria_detectada = None
+        
+        # Lógica de IA Robusta
         for chave, profissao in MAPEAMENTO_IA.items():
             if chave in busca_limpa:
                 categoria_detectada = profissao
                 break
+        
+        # Busca Secundária (Nome Direto)
+        if not categoria_detectada:
+            for p_nome in LISTA_FINAL:
+                if p_nome.lower() in busca_limpa:
+                    categoria_detectada = p_nome
+                    break
 
         if categoria_detectada:
-            st.success(f"🤖 **GeralJá:** Identifiquei que você precisa de: **{categoria_detectada}**")
-            resultados = db.collection("profissionais").where("area", "==", categoria_detectada).where("aprovado", "==", True).stream()
+            st.success(f"🤖 **GeralJá:** Entendi! Buscando profissionais de: **{categoria_detectada}**")
+            profs = db.collection("profissionais").where("area", "==", categoria_detectada).where("aprovado", "==", True).stream()
             
-            for doc in resultados:
+            count = 0
+            for doc in profs:
+                count += 1
                 d = doc.to_dict()
-                loc = d.get("localizacao", "Não informada")
-                st.markdown(f'<div class="card-pro"><h4>👤 {d["nome"]}</h4><p>📍 <b>Local:</b> {loc}</p><p><b>Especialidade:</b> {d["area"]}</p></div>', unsafe_allow_html=True)
+                st.markdown(f'''
+                    <div class="card-pro">
+                        <h4>👤 {d["nome"]}</h4>
+                        <p>📍 <b>Local:</b> {d.get("localizacao", "Grajaú e Região")}</p>
+                        <p>💼 <b>Especialidade:</b> {d["area"]}</p>
+                    </div>
+                ''', unsafe_allow_html=True)
+                
                 if d.get("saldo", 0) >= VALOR_CLIQUE:
-                    if st.button(f"VER CONTATO: {d['nome'].upper()}", key=f"src_{doc.id}"):
+                    if st.button(f"VER WHATSAPP DE {d['nome'].upper()}", key=f"btn_{doc.id}"):
                         db.collection("profissionais").document(doc.id).update({"saldo": firestore.Increment(-VALOR_CLIQUE)})
-                        st.success(f"👉 [FALAR NO WHATSAPP](https://wa.me/55{d['whatsapp']})")
+                        st.markdown(f'<a href="https://wa.me/55{d["whatsapp"]}?text=Olá, vi seu perfil no GeralJá!" class="btn-zap">CHAMAR AGORA NO WHATSAPP</a>', unsafe_allow_html=True)
                 else:
-                    st.warning("Profissional sem créditos.")
+                    st.warning("Este profissional está offline no momento (sem créditos).")
+            
+            if count == 0:
+                st.info(f"Ainda não temos profissionais aprovados para {categoria_detectada} nesta região.")
         else:
-            st.error("🤖 **GeralJá:** Ainda não entendi esse pedido. Tente algo como 'Preciso de um Pedreiro'.")
+            st.error("🤖 **GeralJá:** Ainda não entendi esse pedido. Tente ser mais direto como 'Pintor' ou 'Eletricista'.")
 
-# --- ABA 2: CARTEIRA (Com Senha de Usuário) ---
+# --- ABA 2: CARTEIRA DO PROFISSIONAL ---
 with aba2:
-    st.subheader("🏦 Sua Carteira")
-    login = st.text_input("Seu WhatsApp cadastrado:", key="login_carteira")
-    senha_user = st.text_input("Sua Senha:", type="password", key="pass_carteira")
+    st.markdown("### 🏦 Área do Profissional")
+    c_zap = st.text_input("WhatsApp cadastrado:", placeholder="Apenas números", key="wallet_zap")
+    c_pass = st.text_input("Sua Senha:", type="password", key="wallet_pass")
     
-    if login and senha_user:
-        doc = db.collection("profissionais").document(login).get()
-        if doc.exists:
-            u = doc.to_dict()
-            if u.get("senha") == senha_user:
-                st.markdown(f"### Olá, {u['nome']}!")
-                st.markdown(f'<div class="coin-box">Saldo: {u.get("saldo", 0)} GeralCoins</div>', unsafe_allow_html=True)
+    if c_zap and c_pass:
+        u_doc = db.collection("profissionais").document(c_zap).get()
+        if u_doc.exists:
+            dados = u_doc.to_dict()
+            if dados.get("senha") == c_pass:
+                st.markdown(f"## Bem-vindo, {dados['nome']}!")
+                st.markdown(f'<div class="coin-box">SALDO ATUAL: {dados.get("saldo", 0)} GeralCoins</div>', unsafe_allow_html=True)
                 st.divider()
-                st.image(f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={PIX_CHAVE}")
-                st.markdown(f'Chave PIX: {PIX_CHAVE}')
-                st.markdown(f'<a href="https://wa.me/{ZAP_ADMIN}?text=Recarga: {login}" class="btn-zap">ENVIAR COMPROVANTE</a>', unsafe_allow_html=True)
+                st.markdown("### 💰 Recarregar Créditos")
+                st.write("Cada clique de cliente custa 1 GeralCoin.")
+                st.image(f"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={PIX_CHAVE}")
+                st.code(f"Chave PIX: {PIX_CHAVE}", language="text")
+                st.markdown(f'<a href="https://wa.me/{ZAP_ADMIN}?text=Fiz o PIX para o WhatsApp: {c_zap}" class="btn-zap">ENVIAR COMPROVANTE</a>', unsafe_allow_html=True)
             else:
                 st.error("Senha incorreta.")
         else:
-            st.error("❌ WhatsApp não encontrado.")
+            st.error("WhatsApp não encontrado no sistema.")
 
-# --- ABA 3: CADASTRO COM LISTA E IA ---
+# --- ABA 3: NOVO CADASTRO ---
 with aba3:
-    st.subheader("🚀 Novo Cadastro")
-    novo_zap = st.text_input("WhatsApp para novo cadastro:", key="novo_cadastro")
-    if novo_zap:
-        if db.collection("profissionais").document(novo_zap).get().exists:
-            st.warning("Você já tem cadastro!")
-        else:
-            with st.form("form_ia"):
-                n = st.text_input("Nome Completo")
-                s = st.text_input("Crie uma Senha", type="password")
-                l = st.text_input("Localização (Ex: Grajaú, SP)")
-                escolha_manual = st.selectbox("Selecione sua Profissão:", LISTA_FINAL)
-                desc = st.text_area("Descreva seu serviço para a IA")
-                
-                if st.form_submit_button("CADASTRAR"):
-                    cat_final = escolha_manual
-                    for k, v in MAPEAMENTO_IA.items():
-                        if k in desc.lower(): cat_final = v; break
-                    
-                    db.collection("profissionais").document(novo_zap).set({
-                        "nome": n, "whatsapp": novo_zap, "senha": s, "area": cat_final,
-                        "localizacao": l, "saldo": BONUS_INICIAL, "aprovado": False
-                    })
-                    st.success(f"✅ Cadastrado como {cat_final}! Aguarde aprovação.")
-
-# --- ABA 4: ADMIN MASTER (Punição e Gestão) ---
-with aba4:
-    senha = st.text_input("Senha Admin", type="password")
-    if senha == SENHA_ADMIN:
-        st.subheader("⚙️ Painel Admin")
+    st.markdown("### 📝 Junte-se ao GeralJá")
+    st.write("Cadastre seus serviços e apareça para milhares de clientes.")
+    
+    with st.form("cad_form", clear_on_submit=True):
+        n = st.text_input("Nome Completo")
+        z = st.text_input("WhatsApp (com DDD, só números)")
+        s = st.text_input("Crie uma Senha Forte")
+        l = st.text_input("Sua Localização (Ex: Grajaú, SP)")
+        a = st.selectbox("Sua Especialidade:", LISTA_FINAL)
+        desc = st.text_area("Descreva seu trabalho em uma frase (IA usa isso)")
         
-        gerir_zap = st.text_input("WhatsApp para Gerenciar/Punir:")
-        if gerir_zap:
-            u_ref = db.collection("profissionais").document(gerir_zap)
-            u_doc = u_ref.get()
-            if u_doc.exists:
-                ud = u_doc.to_dict()
-                st.write(f"Profissional: {ud['nome']} | Saldo: {ud.get('saldo')}")
-                if st.button("PUNIR (-5 COINS)"):
-                    u_ref.update({"saldo": firestore.Increment(-5)})
-                    st.error("Punição aplicada!")
-                if st.button("RESETAR SENHA (1234)"):
-                    u_ref.update({"senha": "1234"})
-                    st.success("Senha resetada!")
+        enviar = st.form_submit_button("FINALIZAR CADASTRO")
+        
+        if enviar:
+            if n and z and s:
+                # Lógica IA de Cadastro
+                area_final = a
+                for k, v in MAPEAMENTO_IA.items():
+                    if k in desc.lower(): area_final = v; break
+                
+                db.collection("profissionais").document(z).set({
+                    "nome": n, "whatsapp": z, "senha": s, "area": area_final,
+                    "localizacao": l, "saldo": BONUS_INICIAL, "aprovado": False,
+                    "data": datetime.datetime.now()
+                })
+                st.balloons()
+                st.success(f"✅ Cadastro realizado como {area_final}! Você ganhou {BONUS_INICIAL} moedas de bônus. Aguarde a ativação pelo Admin.")
+            else:
+                st.error("Por favor, preencha os campos obrigatórios.")
 
-        st.divider()
-        st.write("Aprovações Pendentes:")
-        pendentes = db.collection("profissionais").where("aprovado", "==", False).stream()
-        for p in pendentes:
-            pd = p.to_dict()
-            if st.button(f"APROVAR {pd['nome']} ({pd.get('localizacao', 'N/A')})"):
-                db.collection("profissionais").document(p.id).update({"aprovado": True})
-                st.rerun()
+# --- ABA 4: ADMINISTRAÇÃO MASTER ---
+with aba4:
+    st.markdown("### 🔐 Painel de Controle")
+    adm_pass = st.text_input("Senha Master:", type="password", key="adm_key")
+    
+    if adm_pass == SENHA_ADMIN:
+        st.success("Acesso Autorizado")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("Gerenciar Profissional")
+            target = st.text_input("WhatsApp do Profissional:")
+            if target:
+                p_ref = db.collection("profissionais").document(target)
+                p_doc = p_ref.get()
+                if p_doc.exists:
+                    p_info = p_doc.to_dict()
+                    st.write(f"**Nome:** {p_info['nome']}")
+                    st.write(f"**Saldo:** {p_info.get('saldo')}")
+                    if st.button("PUNIR (-5 MOEDAS)"):
+                        p_ref.update({"saldo": firestore.Increment(-5)})
+                        st.warning("Punição aplicada!")
+                        st.rerun()
+                    if st.button("RESETAR SENHA (1234)"):
+                        p_ref.update({"senha": "1234"})
+                        st.success("Senha resetada para 1234")
+        
+        with col2:
+            st.subheader("Aprovações Pendentes")
+            pendentes = db.collection("profissionais").where("aprovado", "==", False).stream()
+            for p in pendentes:
+                p_data = p.to_dict()
+                st.write(f"➡️ {p_data['nome']} ({p_data['area']})")
+                if st.button(f"APROVAR {p_data['nome'].split()[0]}", key=f"ap_{p.id}"):
+                    db.collection("profissionais").document(p.id).update({"aprovado": True})
+                    st.rerun()
+    elif adm_pass:
+        st.error("Senha Master Incorreta.")
+
+# --- RODAPÉ ---
+st.markdown("<br><center>© 2025 GeralJá Oficial - O maior portal do Grajaú</center>", unsafe_allow_html=True)
 
 
 
