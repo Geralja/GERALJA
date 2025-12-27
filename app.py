@@ -203,7 +203,7 @@ with aba2:
                         "saldo": BONUS_INICIAL, "aprovado": False
                     })
                     st.rerun()
-                    })
+                
                     st.success(f"✅ Perfil criado como: **{categoria_sugerida}**!")
                     st.warning("Aguarde a aprovação do Admin para aparecer na lista.")
                     st.rerun()
@@ -246,6 +246,7 @@ with aba4:
             if st.button(f"APROVAR {p.id}"):
                 db.collection("profissionais").document(p.id).update({"aprovado": True})
                 st.rerun()
+
 
 
 
