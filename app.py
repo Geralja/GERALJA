@@ -1,52 +1,63 @@
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, firestore
-import json
 import datetime
 import random
 
-# --- CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(page_title="GeralJá | Grajaú", page_icon="⚡", layout="centered")
+# --- 1. CONFIGURAÇÃO DA PÁGINA ---
+st.set_page_config(page_title="GeralJá | Oficial", page_icon="⚡", layout="centered")
 
-# --- CONEXÃO FIREBASE (SISTEMA ANTI-ERRO) ---
+# --- 2. CONEXÃO FIREBASE (PEÇA POR PEÇA) ---
 db = None
 
 if not firebase_admin._apps:
     try:
-        # Lê o segredo como texto bruto para evitar erros de formatação TOML
-        raw_data = st.secrets["CHAVE_BRUTA"].strip()
-        info_chave = json.loads(raw_data)
+        # Monta o dicionário manualmente usando as chaves individuais dos Secrets
+        firebase_dict = {
+            "type": "service_account",
+            "project_id": st.secrets["PROJECT_ID"],
+            "private_key_id": st.secrets["PRIVATE_KEY_ID"],
+            # O .replace garante que as quebras de linha da chave sejam lidas corretamente
+            "private_key": st.secrets["PRIVATE_KEY"].replace('\\n', '\n'),
+            "client_email": st.secrets["CLIENT_EMAIL"],
+            "client_id": st.secrets["CLIENT_ID"],
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+            "client_x509_cert_url": f"https://www.googleapis.com/robot/v1/metadata/x509/{st.secrets['CLIENT_EMAIL']}",
+            "universe_domain": "googleapis.com"
+        }
         
-        cred = credentials.Certificate(info_chave)
+        cred = credentials.Certificate(firebase_dict)
         firebase_admin.initialize_app(cred)
         db = firestore.client()
+        st.toast("Conexão estabelecida!", icon="✅")
     except Exception as e:
-        st.error(f"⚠️ Erro de Conexão: {e}")
+        st.error(f"❌ Erro de Configuração: {e}")
+        st.info("Verifique se os nomes das chaves no Secrets estão corretos (PROJECT_ID, etc).")
 else:
     db = firestore.client()
 
-# --- FUNÇÕES DE APOIO ---
+# --- 3. FUNÇÕES ---
 def criar_link_zap(numero, mensagem):
     n = "".join(filter(str.isdigit, numero))
     return f"https://wa.me/55{n}?text={mensagem.replace(' ', '%20')}"
 
-# --- ESTADO DO APP ---
+# --- 4. ESTADO E DESIGN ---
 if 'etapa' not in st.session_state: st.session_state.etapa = 'busca'
 CHAVE_PIX = "09be938c-ee95-469f-b221-a3beea63964b"
 
-# --- DESIGN CSS ---
 st.markdown("""
     <style>
     .stApp { background-color: #FFFFFF; }
     .azul { color: #0047AB; font-size: 40px; font-weight: 900; }
     .laranja { color: #FF8C00; font-size: 40px; font-weight: 900; }
-    div.stButton > button { border-radius: 8px; font-weight: bold; width: 100%; height: 45px; }
-    .card-social { background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #0047AB; }
-    .card-prof { background: #ffffff; padding: 20px; border-radius: 15px; border: 1px solid #eee; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    div.stButton > button { border-radius: 8px; font-weight: bold; width: 100%; }
+    .card-social { background: #f8f9fa; padding: 12px; border-radius: 10px; margin-bottom: 8px; border-left: 5px solid #0047AB; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- CABEÇALHO ---
+# --- 5. CABEÇALHO ---
 st.markdown('<div style="text-align:center"><span class="azul">GERAL</span><span class="laranja">JÁ</span></div>', unsafe_allow_html=True)
 c1, c2, c3, c4 = st.columns(4)
 with c1: 
@@ -60,83 +71,50 @@ with c4:
 
 st.divider()
 
-# --- LÓGICA DE TELAS ---
+# --- 6. TELAS ---
 
 if db is None:
-    st.warning("Aguardando conexão com o banco de dados...")
+    st.warning("Sistema aguardando configuração do banco de dados.")
 
-# TELA: BUSCA
 elif st.session_state.etapa == 'busca':
-    st.subheader("O que você procura no Grajaú?")
-    servico = st.selectbox("Escolha uma categoria", ["", "Pintor", "Eletricista", "Encanador", "Diarista", "Mecânico"])
-    
-    if servico:
-        docs = db.collection("profissionais").where("profissao", "==", servico).stream()
-        encontrou = False
-        for d in docs:
-            encontrou = True
-            info = d.to_dict()
-            with st.container():
-                st.markdown(f"""
-                <div class="card-prof">
-                    <h3>{info['nome']}</h3>
-                    <p>📍 Atende no bairro | <b>{info['status']}</b></p>
-                </div>
-                """, unsafe_allow_html=True)
-                if st.button(f"Ver Contato de {info['nome']}", key=d.id):
+    area = st.selectbox("O que você procura no Grajaú?", ["", "Pintor", "Eletricista", "Encanador", "Diarista", "Mecânico"])
+    if area:
+        profs = db.collection("profissionais").where("profissao", "==", area).stream()
+        for p in profs:
+            d = p.to_dict()
+            with st.expander(f"👤 {d['nome']}"):
+                st.write(f"Serviço: {area}")
+                if st.button(f"Liberar Contato: {d['nome']}", key=p.id):
                     st.session_state.etapa = 'pagamento'; st.rerun()
-                st.write("")
-        if not encontrou:
-            st.info("Ainda não temos profissionais nesta categoria. Seja o primeiro a se cadastrar!")
 
-# TELA: MURAL SOCIAL
 elif st.session_state.etapa == 'social':
-    st.subheader("👥 Mural da Comunidade")
-    with st.form("mural_form", clear_on_submit=True):
-        msg = st.text_area("O que está rolando no bairro?")
-        if st.form_submit_button("Postar no Mural"):
+    st.subheader("👥 Mural do Bairro")
+    with st.form("mural_form"):
+        msg = st.text_area("Poste algo para o Grajaú")
+        if st.form_submit_button("Enviar"):
             if msg:
                 db.collection("mural").add({"msg": msg, "data": datetime.datetime.now()})
-                st.success("Postado!")
                 st.rerun()
-    
     posts = db.collection("mural").order_by("data", direction=firestore.Query.DESCENDING).limit(10).stream()
     for p in posts:
         st.markdown(f'<div class="card-social">{p.to_dict()["msg"]}</div>', unsafe_allow_html=True)
 
-# TELA: CADASTRO
 elif st.session_state.etapa == 'cadastro':
-    st.subheader("👷 Cadastre seus serviços")
-    nome = st.text_input("Seu Nome")
-    area = st.selectbox("Sua Profissão", ["Pintor", "Eletricista", "Encanador", "Diarista", "Mecânico"])
-    zap = st.text_input("WhatsApp (ex: 11988887777)")
-    
-    if st.button("FINALIZAR CADASTRO"):
-        if nome and zap:
-            cod_verif = str(random.randint(1000, 9999))
-            db.collection("profissionais").document(zap).set({
-                "nome": nome, "profissao": area, "status": "Verificado ✔️", "data": datetime.datetime.now()
+    st.subheader("👷 Cadastro de Profissional")
+    n = st.text_input("Nome")
+    a = st.selectbox("Sua Área", ["Pintor", "Eletricista", "Encanador", "Diarista", "Mecânico"])
+    z = st.text_input("WhatsApp")
+    if st.button("CADASTRAR"):
+        if n and z:
+            db.collection("profissionais").document(z).set({
+                "nome": n, "profissao": a, "status": "Verificado ✔️", "data": datetime.datetime.now()
             })
+            st.success("Cadastro realizado!")
             st.balloons()
-            st.success("Cadastro realizado com sucesso no Firebase!")
-        else:
-            st.error("Preencha todos os campos!")
 
-# TELA: PAGAMENTO
 elif st.session_state.etapa == 'pagamento':
-    st.subheader("💳 Liberação de Contato")
-    st.write("Para manter o projeto GeralJá e verificar os profissionais, cobramos uma taxa única de R$ 25,00.")
-    st.image(f"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={CHAVE_PIX}")
-    st.code(CHAVE_PIX, language="text")
-    if st.button("JÁ PAGUEI / VOLTAR"):
+    st.subheader("💳 Pagamento de Taxa")
+    st.image(f"https://api.qrserver.com/v1/create-qr-code/?size=180x180&data={CHAVE_PIX}")
+    st.info("Taxa de R$ 25,00 para liberar o contato verificado.")
+    if st.button("VOLTAR"):
         st.session_state.etapa = 'busca'; st.rerun()
-
-# TELA: ADMIN
-elif st.session_state.etapa == 'admin':
-    st.subheader("📊 Painel Administrativo")
-    senha = st.text_input("Senha de Acesso", type="password")
-    if senha == "admin777":
-        total_profs = len(list(db.collection("profissionais").stream()))
-        st.metric("Profissionais Cadastrados", total_profs)
-        if st.button("Limpar Mural (Cuidado)"):
-            st.warning("Função de limpeza em manutenção.")
