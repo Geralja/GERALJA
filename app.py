@@ -126,18 +126,65 @@ with aba3:
                     })
                     st.success(f"✅ Cadastrado como {cat_ia}! Aguarde aprovação.")
 
-# --- ABA 4: ADMIN ---
+# --- ABA 4: ADMIN (SISTEMA DE CRÉDITOS INTELIGENTE) ---
 with aba4:
     senha = st.text_input("Senha Admin", type="password")
     if senha == SENHA_ADMIN:
-        st.subheader("⚙️ Painel Admin")
+        st.subheader("⚙️ Gestão de Créditos e Aprovação")
+        
+        # 1. Filtro de Inteligência (Ver quem precisa de atenção)
+        col1, col2 = st.columns(2)
+        with col1:
+            # Lista profissionais sem saldo
+            st.write("🔴 **Sem Saldo**")
+            lis_sem_saldo = db.collection("profissionais").where("saldo", "<", 1).stream()
+            for p in lis_sem_saldo:
+                pd = p.to_dict()
+                st.caption(f"{pd['nome']} ({p.id})")
+        
+        with col2:
+            # Lista os que mais recebem cliques (Os "Top do Grajaú")
+            st.write("⭐ **Mais Procurados**")
+            st.caption("Baseado em saldo investido")
+        
+        st.divider()
+
+        # 2. Painel de Recarga Rápida
+        st.write("### 💰 Adicionar GeralCoins")
+        pro_id = st.text_input("WhatsApp do Profissional (apenas números):")
+        qtd_coins = st.number_input("Quantidade de GC:", min_value=1, value=10)
+        
+        if st.button("CONFIRMAR RECARGA"):
+            pro_ref = db.collection("profissionais").document(pro_id)
+            if pro_ref.get().exists:
+                pro_ref.update({
+                    "saldo": firestore.Increment(qtd_coins),
+                    "ultima_recarga": datetime.datetime.now()
+                })
+                st.success(f"✅ {qtd_coins} GC adicionados com sucesso!")
+            else:
+                st.error("Profissional não encontrado.")
+
+        st.divider()
+
+        # 3. IA de Aprovação (Qualidade GeralJá)
+        st.write("### 👷 Pendentes de Aprovação")
         pendentes = db.collection("profissionais").where("aprovado", "==", False).stream()
+        
         for p in pendentes:
             pd = p.to_dict()
-            if st.button(f"APROVAR {pd['nome']} ({p.id})"):
-                db.collection("profissionais").document(p.id).update({"aprovado": True})
-                st.rerun()
-
+            with st.expander(f"Analisar: {pd['nome']}"):
+                st.write(f"**Bio:** {pd['descricao']}")
+                st.write(f"**Categoria IA:** {pd['area']}")
+                
+                # Botões de ação rápida
+                c1, c2 = st.columns(2)
+                if c1.button(f"APROVAR ✅", key=f"ap_{p.id}"):
+                    db.collection("profissionais").document(p.id).update({"aprovado": True})
+                    st.rerun()
+                if c2.button(f"REJEITAR ❌", key=f"re_{p.id}"):
+                    db.collection("profissionais").document(p.id).delete()
+                    st.rerun()
 
 
 
