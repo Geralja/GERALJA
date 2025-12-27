@@ -1,24 +1,26 @@
 import streamlit as st
-import firebase_admin
-from firebase_admin import credentials, firestore
-import base64
+from google.cloud import firestore
 import json
-import datetime
 
-# --- CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(page_title="GeralJá | Oficial", page_icon="⚡", layout="centered")
+# --- 1. CONFIGURAÇÃO DA PÁGINA ---
+st.set_page_config(page_title="GeralJá", page_icon="⚡", layout="centered")
 
-# --- ESTILO DAS CORES (CSS) ---
+# --- 2. ESTILIZAÇÃO CSS (Onde ficam as cores) ---
 st.markdown("""
     <style>
-    .azul { color: #1E90FF; font-weight: bold; font-size: 42px; font-family: sans-serif; }
-    .laranja { color: #FF8C00; font-weight: bold; font-size: 42px; font-family: sans-serif; }
+    .azul { color: #1E90FF; font-weight: bold; font-size: 40px; }
+    .laranja { color: #FF8C00; font-weight: bold; font-size: 40px; }
+    .coin-box { background-color: #f0f2f6; padding: 20px; border-radius: 10px; text-align: center; font-size: 24px; font-weight: bold; color: #FF8C00; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- LOGO CENTRALIZADO ---
+# --- 3. LOGO ---
 st.markdown('<center><span class="azul">GERAL</span><span class="laranja">JÁ</span></center>', unsafe_allow_html=True)
 
+# --- 4. ABAS ---
+aba1, aba2, aba3, aba4 = st.tabs(["🔍 BUSCAR", "🏦 CARTEIRA", "📝 CADASTRO", "🔐 ADMIN"])
+
+# --- 5. CONEXÃO FIREBASE (Aqui começa o seu código antigo) ---
 # --- CONEXÃO FIREBASE ---
 if not firebase_admin._apps:
     try:
@@ -199,6 +201,7 @@ with aba4:
         if st.button("ADICIONAR CRÉDITOS"):
             db.collection("profissionais").document(recarga_id).update({"saldo": firestore.Increment(qtd)})
             st.success(f"Adicionado {qtd} GC!")
+
 
 
 
