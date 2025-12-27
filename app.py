@@ -4,12 +4,11 @@ from firebase_admin import credentials, firestore
 import base64
 import json
 import datetime
-import random
 
-# --- CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(page_title="GeralJá | Grajaú", page_icon="⚡", layout="centered")
+# --- CONFIGURAÇÃO ---
+st.set_page_config(page_title="GeralJá Social", page_icon="👥", layout="centered")
 
-# --- CONEXÃO FIREBASE (SISTEMA BASE64) ---
+# --- CONEXÃO FIREBASE ---
 if not firebase_admin._apps:
     try:
         b64_data = st.secrets["FIREBASE_BASE64"]
@@ -17,121 +16,104 @@ if not firebase_admin._apps:
         info_chave = json.loads(json_data)
         cred = credentials.Certificate(info_chave)
         firebase_admin.initialize_app(cred)
-    except Exception as e:
-        st.error(f"Erro de conexão: {e}")
-        st.stop()
+    except: st.stop()
 
 db = firestore.client()
 
-# --- DESIGN SOCIAL (CSS) ---
+# --- CSS ESTILO REDE SOCIAL ---
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
-    html, body, [class*="st-"] { font-family: 'Inter', sans-serif; background-color: #f0f2f5; }
-    
     .azul { color: #0047AB; font-size: 40px; font-weight: 800; }
     .laranja { color: #FF8C00; font-size: 40px; font-weight: 800; }
-    
-    /* Card de Post de Rede Social */
-    .social-card {
-        background: white;
-        padding: 15px;
-        border-radius: 12px;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-        margin-bottom: 15px;
-        border: 1px solid #ddd;
-    }
-    
-    .social-header { display: flex; align-items: center; margin-bottom: 10px; }
-    
-    .avatar {
-        width: 40px; height: 40px;
-        background-color: #0047AB;
-        border-radius: 50%;
-        display: flex; align-items: center; justify-content: center;
-        color: white; font-weight: bold; margin-right: 12px;
-    }
-    
-    .user-info { display: flex; flex-direction: column; }
-    .user-name { font-weight: 600; color: #1c1e21; font-size: 15px; }
-    .post-time { color: #65676b; font-size: 13px; }
-    .post-content { color: #050505; font-size: 15px; line-height: 1.4; }
-    
-    /* Estilo do Campo de Postagem */
-    .post-box {
-        background: white;
-        padding: 20px;
-        border-radius: 12px;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-        margin-bottom: 25px;
-    }
+    .feed-card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 15px; border: 1px solid #eee; }
+    .avatar { width: 45px; height: 45px; background: #0047AB; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 12px; }
+    .like-btn { color: #65676b; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 5px; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- CABEÇALHO ---
+# --- TÍTULO ---
 st.markdown('<center><span class="azul">GERAL</span><span class="laranja">JÁ</span></center>', unsafe_allow_html=True)
-st.write("")
 
-tab1, tab2, tab3 = st.tabs(["🔍 BUSCA", "👷 CADASTRO", "👥 MURAL SOCIAL"])
+tab1, tab2, tab3 = st.tabs(["🔍 BUSCA", "👷 CADASTRO", "👥 MURAL RESTRITO"])
 
-# --- TAB 1 & 2 (Mantidas as lógicas anteriores) ---
+# --- TAB 1: BUSCA ---
 with tab1:
-    filtro = st.selectbox("Procurar no Grajaú", ["", "Pintor", "Eletricista", "Encanador", "Diarista", "Mecânico"])
-    if filtro:
-        profs = db.collection("profissionais").where("area", "==", filtro).stream()
+    servico = st.selectbox("O que busca no Grajaú?", ["", "Pintor", "Eletricista", "Encanador", "Diarista", "Mecânico"])
+    if servico:
+        profs = db.collection("profissionais").where("area", "==", servico).where("aprovado", "==", True).stream()
         for p in profs:
             d = p.to_dict()
-            zap = "".join(filter(str.isdigit, d.get('whatsapp', '')))
-            st.markdown(f'<div style="background:white; padding:15px; border-radius:10px; border:1px solid #ddd; margin-bottom:10px;"><b>👤 {d["nome"]}</b><br>Verificado ✔️<br><a href="https://wa.me/55{zap}" style="color:#25D366; font-weight:bold; text-decoration:none;">📱 Chamar no WhatsApp</a></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="feed-card"><b>{d["nome"]}</b> ✅<br>WhatsApp: {d["whatsapp"]}</div>', unsafe_allow_html=True)
 
+# --- TAB 2: CADASTRO DE ACESSO ---
 with tab2:
-    with st.form("cad"):
-        n = st.text_input("Nome")
-        a = st.selectbox("Área", ["Pintor", "Eletricista", "Encanador", "Diarista", "Mecânico"])
-        w = st.text_input("WhatsApp")
-        if st.form_submit_button("Cadastrar"):
-            db.collection("profissionais").add({"nome": n, "area": a, "whatsapp": w})
-            st.success("Cadastrado!")
-
-# --- TAB 3: MURAL SOCIAL (REFEITO TIPO REDE SOCIAL) ---
-with tab3:
-    st.markdown('<div class="post-box">', unsafe_allow_html=True)
-    with st.form("novo_post", clear_on_submit=True):
-        u_nome = st.text_input("Seu nome ou apelido", placeholder="Ex: João do Grajaú")
-        u_msg = st.text_area("O que você quer contar para o bairro hoje?", placeholder="Vagas de emprego, eventos, notícias...")
-        submit = st.form_submit_button("Publicar no Feed")
-        
-        if submit and u_msg:
-            # Salvando no banco com nome de usuário
-            db.collection("mural").add({
-                "usuario": u_nome if u_nome else "Vizinho Anônimo",
-                "msg": u_msg,
-                "data": datetime.datetime.now()
+    st.subheader("Solicitar Acesso ao GeralJá")
+    st.info("Após o cadastro, um administrador precisará aprovar seu perfil para você postar no mural.")
+    with st.form("cad_user"):
+        nome_c = st.text_input("Nome Completo")
+        zap_c = st.text_input("WhatsApp (Seu Login)")
+        area_c = st.selectbox("Você é profissional de que área?", ["Apenas Morador", "Pintor", "Eletricista", "Encanador", "Diarista", "Mecânico"])
+        if st.form_submit_button("Solicitar Aprovação"):
+            db.collection("profissionais").document(zap_c).set({
+                "nome": nome_c, "whatsapp": zap_c, "area": area_c, 
+                "aprovado": False, "data": datetime.datetime.now()
             })
-            st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
+            st.success("Solicitação enviada! Aguarde a aprovação do administrador.")
 
-    # FEED DE POSTAGENS
-    st.markdown("### Feed da Comunidade")
-    posts = db.collection("mural").order_by("data", direction=firestore.Query.DESCENDING).limit(15).stream()
+# --- TAB 3: MURAL (SÓ PARA APROVADOS) ---
+with tab3:
+    st.subheader("👥 Mural da Comunidade")
+    
+    # --- LOGIN SIMPLES ---
+    login_zap = st.text_input("Digite seu WhatsApp cadastrado para postar:", type="password")
+    user_data = None
+    if login_zap:
+        user_doc = db.collection("profissionais").document(login_zap).get()
+        if user_doc.exists:
+            user_data = user_doc.to_dict()
+            if not user_data.get("aprovado"):
+                st.warning("⚠️ Seu perfil ainda não foi aprovado pelo administrador.")
+                user_data = None
+        else:
+            st.error("❌ Usuário não encontrado. Cadastre-se na aba ao lado.")
+
+    # --- CAMPO DE POSTAR (SÓ APARECE SE APROVADO) ---
+    if user_data and user_data.get("aprovado"):
+        st.markdown(f"Olá, **{user_data['nome']}**! Compartilhe algo:")
+        with st.form("post_social", clear_on_submit=True):
+            texto = st.text_area("O que está acontecendo no Grajaú?")
+            if st.form_submit_button("Publicar"):
+                db.collection("mural").add({
+                    "nome": user_data['nome'],
+                    "texto": texto,
+                    "likes": 0,
+                    "data": datetime.datetime.now()
+                })
+                st.rerun()
+    
+    st.divider()
+
+    # --- FEED DE POSTAGENS ---
+    posts = db.collection("mural").order_by("data", direction=firestore.Query.DESCENDING).limit(20).stream()
     
     for p in posts:
-        item = p.to_dict()
-        nome = item.get("usuario", "Anonimo")
-        inicial = nome[0].upper() if nome else "?"
-        data_formatada = item['data'].strftime('%d de %b às %H:%M')
+        post = p.to_dict()
+        pid = p.id
+        inicial = post['nome'][0].upper()
         
         st.markdown(f"""
-        <div class="social-card">
-            <div class="social-header">
+        <div class="feed-card">
+            <div style="display: flex; align-items: center; margin-bottom: 10px;">
                 <div class="avatar">{inicial}</div>
-                <div class="user-info">
-                    <span class="user-name">{nome}</span>
-                    <span class="post-time">{data_formatada}</span>
-                </div>
+                <div><b>{post['nome']}</b><br><small>{post['data'].strftime('%d/%m %H:%M')}</small></div>
             </div>
-            <div class="post-content">
-                {item['msg']}
-            </div>
+            <div style="margin-bottom: 15px;">{post['texto']}</div>
+            <div class="like-btn">❤️ {post.get('likes', 0)} curtidas</div>
         </div>
         """, unsafe_allow_html=True)
+        
+        # Botão de Like funcional (SÓ PARA APROVADOS)
+        if user_data and user_data.get("aprovado"):
+            if st.button(f"Curtir post de {post['nome']}", key=f"btn_{pid}"):
+                db.collection("mural").document(pid).update({"likes": firestore.Increment(1)})
+                st.rerun()
