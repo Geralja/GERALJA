@@ -5,10 +5,19 @@ import base64
 import json
 import datetime
 
-# --- CONFIGURAÇÃO ---
+# --- CONFIGURAÇÃO DA PÁGINA ---
+st.set_page_config(page_title="GeralJá | Oficial", page_icon="⚡", layout="centered")
 
-# Apague este bloco se preferir o nome simples:
-st.markdown('<center><span class="azul">GeralJá</span><span class="laranja">JÁ</span></center>', unsafe_allow_html=True)
+# --- ESTILO DAS CORES (CSS) ---
+st.markdown("""
+    <style>
+    .azul { color: #1E90FF; font-weight: bold; font-size: 42px; font-family: sans-serif; }
+    .laranja { color: #FF8C00; font-weight: bold; font-size: 42px; font-family: sans-serif; }
+    </style>
+""", unsafe_allow_html=True)
+
+# --- LOGO CENTRALIZADO ---
+st.markdown('<center><span class="azul">GERAL</span><span class="laranja">JÁ</span></center>', unsafe_allow_html=True)
 
 # --- CONEXÃO FIREBASE ---
 if not firebase_admin._apps:
@@ -190,6 +199,7 @@ with aba4:
         if st.button("ADICIONAR CRÉDITOS"):
             db.collection("profissionais").document(recarga_id).update({"saldo": firestore.Increment(qtd)})
             st.success(f"Adicionado {qtd} GC!")
+
 
 
 
