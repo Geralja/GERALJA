@@ -189,7 +189,7 @@ with aba2:
 # --- ABA 3: CADASTRO COM IA ---
 with aba3:
     st.subheader("🚀 Cadastro de Profissionais")
-    # ... aqui continua o código da sua IA de cadastro
+
     novo_zap = st.text_input("Seu WhatsApp (apenas números):", key="novo_cadastro")
     
     if novo_zap:
@@ -287,6 +287,7 @@ with aba4:
             if st.button(f"APROVAR {p.id}"):
                 db.collection("profissionais").document(p.id).update({"aprovado": True})
                 st.rerun()
+
 
 
 
