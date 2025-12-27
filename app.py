@@ -60,12 +60,14 @@ st.markdown('<center><span class="azul">GERAL</span><span class="laranja">JÁ</s
 aba1, aba2, aba3, aba4 = st.tabs(["🔍 BUSCAR", "🏦 CARTEIRA", "👥 MURAL", "🔐 ADMIN"])
 
 # --- ABA 1: BUSCA ---
-with aba1: # --- IA DE BUSCA NO INÍCIO DA ABA 1 ---
+with aba1: # =========================================================
+    # --- MÓDULO IA GERALJÁ COMPLETO (SISTEMA DE BUSCA) ---
+    # =========================================================
     st.markdown("### 🔍 O que você precisa no Grajaú hoje?")
     
-    # 1. O "Cérebro" da IA
+    # 1. O "Cérebro" da IA - Mapeamento Robusto
     MAPEAMENTO_IA = {
-       # Manutenção e Construção
+        # Manutenção e Construção
         "vazamento": "Encanador", "cano": "Encanador", "torneira": "Encanador", "esgoto": "Encanador", "pia": "Encanador", "privada": "Encanador", "infiltração": "Encanador",
         "curto": "Eletricista", "luz": "Eletricista", "tomada": "Eletricista", "chuveiro": "Eletricista", "fiação": "Eletricista", "disjuntor": "Eletricista", "lâmpada": "Eletricista",
         "pintar": "Pintor", "parede": "Pintor", "massa": "Pintor", "grafiato": "Pintor", "verniz": "Pintor",
@@ -89,11 +91,12 @@ with aba1: # --- IA DE BUSCA NO INÍCIO DA ABA 1 ---
         "televisão": "Técnico de Eletrônicos", "tv": "Técnico de Eletrônicos", "som": "Técnico de Eletrônicos", "microondas": "Técnico de Eletrônicos",
         "geladeira": "Refrigeração", "ar condicionado": "Refrigeração", "freezer": "Refrigeração",
 
-        # Outros
+        # Outros e Animais
         "frete": "Motorista", "transporte": "Motorista", "viagem": "Motorista",
         "aula": "Professor Particular", "reforço": "Professor Particular", "inglês": "Professor Particular", "matemática": "Professor Particular",
-        "cachorro": "Pet Shop/Passeador", "gato": "Pet Shop/Passeador", "banho": "Pet Shop/Passeador", "tosa": "Pet Shop/Passeador" 
-        # Automóveis e Mecânica (O que faltava!)
+        "cachorro": "Pet Shop/Passeador", "gato": "Pet Shop/Passeador", "banho": "Pet Shop/Passeador", "tosa": "Pet Shop/Passeador",
+
+        # Automóveis e Mecânica
         "pneu": "Borracheiro", "estepe": "Borracheiro", "furou": "Borracheiro", "vulc": "Borracheiro",
         "carro": "Mecânico", "motor": "Mecânico", "óleo": "Mecânico", "freio": "Mecânico", "bateria": "Mecânico",
         "moto": "Mecânico de Motos", "corrente": "Mecânico de Motos",
@@ -102,41 +105,60 @@ with aba1: # --- IA DE BUSCA NO INÍCIO DA ABA 1 ---
 
         # Eventos e Festas
         "festa": "Eventos", "bolo": "Confeiteira", "doce": "Confeiteira", "salgado": "Salgadeira",
-        "música": "DJ / Músico", "som": "DJ / Músico", "fotógrafo": "Fotógrafo",
+        "música": "DJ / Músico", "som": "DJ / Músico", "fotógrafo": "Fotógrafo"
     }
 
-    entrada_usuario = st.text_input("Diga seu problema:", placeholder="Ex: meu chuveiro queimou...")
+    # 2. Entrada do Usuário
+    pergunta = st.text_input("Descreva o que você precisa:", placeholder="Ex: meu pneu furou ou preciso pintar a casa")
 
-    if entrada_usuario:
-        busca = entrada_usuario.lower()
-        categoria_ia = None
+    if pergunta:
+        busca_limpa = pergunta.lower()
+        categoria_detectada = None
 
-        # Procura a palavra-chave
+        # Lógica de varredura da IA
         for chave, profissao in MAPEAMENTO_IA.items():
-            if chave in busca:
-                categoria_ia = profissao
+            if chave in busca_limpa:
+                categoria_detectada = profissao
                 break
 
-        if categoria_ia:
-            st.info(f"🤖 **IA GeralJá:** Entendi! Buscando por: **{categoria_ia}**")
+        if categoria_detectada:
+            st.success(f"🤖 **IA GeralJá:** Identifiquei que você precisa de: **{categoria_detectada}**")
             
-            # Busca no Banco de Dados
-            docs = db.collection("profissionais").where("area", "==", categoria_ia).where("aprovado", "==", True).stream()
+            # 3. Busca no Firebase (Apenas aprovados)
+            resultados = db.collection("profissionais").where("area", "==", categoria_detectada).where("aprovado", "==", True).stream()
             
-            achou = False
-            for d in docs:
-                achou = True
-                p = d.to_dict()
-                with st.expander(f"👤 {p['nome']}"):
-                    st.write(f"✅ Especialidade: {p['area']}")
-                    # Aqui futuramente checaremos o saldo para mostrar o telefone
-                    st.write(f"📞 Contato: {p.get('whatsapp', 'Disponível após lead')}")
+            encontrou = False
+            for doc in resultados:
+                encontrou = True
+                d = doc.to_dict()
+                
+                # Card de exibição do profissional
+                with st.container():
+                    st.markdown(f"""
+                    <div style="border:1px solid #ddd; padding:15px; border-radius:10px; margin-bottom:10px; background-color:#f9f9f9">
+                        <h4>👤 {d['nome']}</h4>
+                        <p><b>Especialidade:</b> {d['area']}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Sistema de Ver WhatsApp com Cobrança
+                    if d.get("saldo", 0) >= VALOR_CLIQUE:
+                        if st.button(f"VER CONTATO DE {d['nome'].upper()}", key=f"btn_{doc.id}"):
+                            # Desconta o crédito do profissional
+                            db.collection("profissionais").document(doc.id).update({"saldo": firestore.Increment(-VALOR_CLIQUE)})
+                            st.balloons()
+                            st.success("Contato liberado!")
+                            # Link para o WhatsApp
+                            zap_link = f"https://wa.me/55{d['whatsapp'].replace(' ', '').replace('-', '')}"
+                            st.markdown(f"👉 [CLIQUE AQUI PARA FALAR COM {d['nome'].upper()}]({zap_link})")
+                    else:
+                        st.warning("Este profissional está temporariamente sem créditos para novos leads.")
             
-            if not achou:
-                st.warning(f"Ainda não temos {categoria_ia} cadastrados.")
+            if not encontrou:
+                st.warning(f"Ainda não temos profissionais de **{categoria_detectada}** cadastrados próximos a você.")
         else:
-            st.warning("🤔 Não identifiquei o serviço. Tente palavras como 'vazamento', 'luz' ou 'pintar'.")
-    
+            st.error("🤖 **IA GeralJá:** Ainda não entendi esse pedido. Tente usar palavras simples como 'pintar', 'pneu', 'luz' ou 'faxina'.")
+
     st.divider() # Linha para separar a busca da lista geral
     servico = st.selectbox("O que você procura no Grajaú?", [""] + LISTA_FINAL)
     if servico:
@@ -200,6 +222,7 @@ with aba4:
             if st.button(f"APROVAR {p.id}"):
                 db.collection("profissionais").document(p.id).update({"aprovado": True})
                 st.rerun()
+
 
 
 
