@@ -182,7 +182,7 @@ with aba2:
             st.markdown(f"### Olá, {u['nome']}!")
             st.markdown(f'<div class="coin-box">Saldo: {u.get("saldo", 0)} GeralCoins</div>', unsafe_allow_html=True)
             st.divider()
-            else:
+          
             # Esta mensagem aparece se o login não for encontrado na Carteira
             st.error("❌ WhatsApp não cadastrado. Por favor, vá na aba CADASTRO.")
 
@@ -287,6 +287,7 @@ with aba4:
             if st.button(f"APROVAR {p.id}"):
                 db.collection("profissionais").document(p.id).update({"aprovado": True})
                 st.rerun()
+
 
 
 
