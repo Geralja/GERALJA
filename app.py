@@ -210,7 +210,7 @@ with aba2:
             st.image(f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={PIX_CHAVE}")
             st.markdown(f'Chave PIX: `{PIX_CHAVE}`')
             st.markdown(f'<a href="https://wa.me/{ZAP_ADMIN}?text=Fiz o PIX para o Zap: {login}" class="btn-zap">ENVIAR COMPROVANTE</a>', unsafe_allow_html=True)
-        else:
+        
             with st.form("cad"):
                 n = st.text_input("Nome")
                 a = st.selectbox("Profissão", LISTA_FINAL)
@@ -246,6 +246,7 @@ with aba4:
             if st.button(f"APROVAR {p.id}"):
                 db.collection("profissionais").document(p.id).update({"aprovado": True})
                 st.rerun()
+
 
 
 
