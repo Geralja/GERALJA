@@ -1,9 +1,13 @@
 import streamlit as st
 from google.cloud import firestore
+import firebase_admin
+from firebase_admin import credentials, firestore as admin_firestore
 import json
 
 # --- 1. CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(page_title="GeralJá", page_icon="⚡", layout="centered")
+st.set_page_config(page_title="GeralJá | Oficial", page_icon="⚡", layout="centered")
+
+# ... (continua o restante do código)
 
 # --- 2. ESTILIZAÇÃO CSS (Onde ficam as cores) ---
 st.markdown("""
@@ -201,6 +205,7 @@ with aba4:
         if st.button("ADICIONAR CRÉDITOS"):
             db.collection("profissionais").document(recarga_id).update({"saldo": firestore.Increment(qtd)})
             st.success(f"Adicionado {qtd} GC!")
+
 
 
 
