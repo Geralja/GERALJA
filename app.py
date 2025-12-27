@@ -45,14 +45,44 @@ LISTA_FINAL = sorted(list(set(profissoes_completas)))
 
 # --- 5. MAPEAMENTO DA IA (Todas as chaves originais) ---
 MAPEAMENTO_IA = {
-    "vazamento": "Encanador", "cano": "Encanador", "torneira": "Encanador",
-    "curto": "Eletricista", "luz": "Eletricista", "fiação": "Eletricista",
-    "pintar": "Pintor", "parede": "Pintor",
-    "reforma": "Pedreiro", "laje": "Pedreiro", "piso": "Pedreiro",
-    "pneu": "Borracheiro", "estepe": "Borracheiro", "furou": "Borracheiro",
-    "faxina": "Diarista", "limpeza": "Diarista",
-    "unha": "Manicure", "cabelo": "Cabeleireiro",
-    "montar": "Montador de Móveis", "guarda-roupa": "Montador de Móveis"
+   "vazamento": "Encanador", "cano": "Encanador", "torneira": "Encanador", "esgoto": "Encanador", "pia": "Encanador", "privada": "Encanador", "infiltração": "Encanador",
+        "curto": "Eletricista", "luz": "Eletricista", "tomada": "Eletricista", "chuveiro": "Eletricista", "fiação": "Eletricista", "disjuntor": "Eletricista", "lâmpada": "Eletricista",
+        "pintar": "Pintor", "parede": "Pintor", "massa": "Pintor", "grafiato": "Pintor", "verniz": "Pintor",
+        "reforma": "Pedreiro", "laje": "Pedreiro", "tijolo": "Pedreiro", "reboco": "Pedreiro", "piso": "Pedreiro", "azulejo": "Pedreiro", "cimento": "Pedreiro", "muro": "Pedreiro",
+        "telhado": "Telhadista", "calha": "Telhadista", "goteira": "Telhadista",
+        "montar": "Montador de Móveis", "armário": "Montador de Móveis", "guarda-roupa": "Montador de Móveis", "cozinha": "Montador de Móveis",
+
+        # Beleza e Estética
+        "unha": "Manicure", "pé": "Manicure", "mão": "Manicure", "esmalte": "Manicure", "gel": "Manicure",
+        "cabelo": "Cabeleireiro", "corte": "Cabeleireiro", "escova": "Cabeleireiro", "tintura": "Cabeleireiro", "luzes": "Cabeleireiro",
+        "barba": "Barbeiro", "degradê": "Barbeiro", "navalha": "Barbeiro",
+        "sobrancelha": "Esteticista", "cílios": "Esteticista", "maquiagem": "Esteticista", "depilação": "Esteticista", "pele": "Esteticista",
+
+        # Serviços Domésticos
+        "faxina": "Diarista", "limpeza": "Diarista", "passar": "Diarista", "lavar": "Diarista", "organizar": "Diarista",
+        "carreto": "Ajudante Geral", "mudança": "Ajudante Geral", "entulho": "Ajudante Geral", "carregar": "Ajudante Geral", "bico": "Ajudante Geral",
+        "jardim": "Jardineiro", "grama": "Jardineiro", "poda": "Jardineiro",
+
+        # Tecnologia e Eletrônicos
+        "computador": "Técnico de TI", "celular": "Técnico de TI", "formatar": "Técnico de TI", "notebook": "Técnico de TI", "tela": "Técnico de TI", "wifi": "Técnico de TI", "internet": "Técnico de TI",
+        "televisão": "Técnico de Eletrônicos", "tv": "Técnico de Eletrônicos", "som": "Técnico de Eletrônicos", "microondas": "Técnico de Eletrônicos",
+        "geladeira": "Refrigeração", "ar condicionado": "Refrigeração", "freezer": "Refrigeração",
+
+        # Outros e Animais
+        "frete": "Motorista", "transporte": "Motorista", "viagem": "Motorista",
+        "aula": "Professor Particular", "reforço": "Professor Particular", "inglês": "Professor Particular", "matemática": "Professor Particular",
+        "cachorro": "Pet Shop/Passeador", "gato": "Pet Shop/Passeador", "banho": "Pet Shop/Passeador", "tosa": "Pet Shop/Passeador",
+
+        # Automóveis e Mecânica
+        "pneu": "Borracheiro", "estepe": "Borracheiro", "furou": "Borracheiro", "vulc": "Borracheiro",
+        "carro": "Mecânico", "motor": "Mecânico", "óleo": "Mecânico", "freio": "Mecânico", "bateria": "Mecânico",
+        "moto": "Mecânico de Motos", "corrente": "Mecânico de Motos",
+        "guincho": "Guincho / Socorro 24h", "reboque": "Guincho / Socorro 24h",
+        "lavar carro": "Lava Rápido", "polimento": "Lava Rápido", "estética automotiva": "Lava Rápido",
+
+        # Eventos e Festas
+        "festa": "Eventos", "bolo": "Confeiteira", "doce": "Confeiteira", "salgado": "Salgadeira",
+        "música": "DJ / Músico", "som": "DJ / Músico", "fotógrafo": "Fotógrafo"
 }
 
 # --- 6. ESTILIZAÇÃO CSS ---
@@ -176,3 +206,4 @@ with aba4:
             if st.button(f"APROVAR {pd['nome']} ({pd.get('localizacao', 'N/A')})"):
                 db.collection("profissionais").document(p.id).update({"aprovado": True})
                 st.rerun()
+
