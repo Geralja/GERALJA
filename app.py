@@ -28,7 +28,6 @@ VALOR_CLIQUE = 1
 BONUS_INICIAL = 5
 
 # --- 4. LISTA COMPLETA DE PROFISSÕES (Sua lista devolvida na íntegra) ---
-profissoes_completas = [
     "Ajudante Geral", "Almoxarife", "Antropólogo", "Arquiteto", "Azulejista", "Babá", "Barbeiro", 
     "Barman", "Bartender", "Bibliotecário", "Borracheiro", "Cabeleireiro", "Carpinteiro", "Churrasqueiro",
     "Confeiteira", "Costureira", "Cozinheira", "Curador de Museu", "Diarista", "Doméstica", "Eletricista", 
@@ -206,6 +205,7 @@ with aba4:
             if st.button(f"APROVAR {pd['nome']} ({pd.get('localizacao', 'N/A')})"):
                 db.collection("profissionais").document(p.id).update({"aprovado": True})
                 st.rerun()
+
 
 
 
