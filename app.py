@@ -185,7 +185,33 @@ with aba2:
             st.image(f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={PIX_CHAVE}")
             st.markdown(f'Chave PIX: `{PIX_CHAVE}`')
             st.markdown(f'<a href="https://wa.me/{ZAP_ADMIN}?text=Fiz o PIX para o Zap: {login}" class="btn-zap">ENVIAR COMPROVANTE</a>', unsafe_allow_html=True)
+        else: # --- ABA 3: CADASTRO COM IA ---
+with aba3:
+    st.subheader("🚀 Cadastre-se no GeralJá")
+    novo_zap = st.text_input("Seu WhatsApp (apenas números):", key="novo_cadastro")
+    
+    if novo_zap:
+        # Verifica se já existe para não duplicar
+        check = db.collection("profissionais").document(novo_zap).get()
+        if check.exists:
+            st.warning("Você já tem cadastro! Use a aba CARTEIRA.")
         else:
+            with st.form("cad_ia_novo"):
+                n = st.text_input("Nome Completo")
+                desc = st.text_area("O que você faz? (A IA vai te classificar)")
+                if st.form_submit_button("CADASTRAR COM IA"):
+                    # Lógica da IA
+                    cat = "Ajudante Geral"
+                    for chave, prof in MAPEAMENTO_IA.items():
+                        if chave in desc.lower():
+                            cat = prof
+                            break
+                    
+                    db.collection("profissionais").document(novo_zap).set({
+                        "nome": n, "whatsapp": novo_zap, "area": cat, 
+                        "saldo": BONUS_INICIAL, "aprovado": False
+                    })
+                    st.success(f"✅ Cadastrado como {cat}! Aguarde aprovação.")
             st.error("❌ Esse WhatsApp não está cadastrado. Vá na aba de Cadastro.")
     login = st.text_input("WhatsApp (Login/Cadastro):")
     if login:
@@ -259,6 +285,7 @@ with aba4:
             if st.button(f"APROVAR {p.id}"):
                 db.collection("profissionais").document(p.id).update({"aprovado": True})
                 st.rerun()
+
 
 
 
