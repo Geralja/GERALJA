@@ -1,15 +1,13 @@
 import streamlit as st
-from google.cloud import firestore
-import firebase_admin
-from firebase_admin import credentials, firestore as admin_firestore
 import json
+import firebase_admin
+from firebase_admin import credentials
+from google.cloud import firestore
 
-# --- 1. CONFIGURAÇÃO DA PÁGINA ---
+# 1. CONFIGURAÇÃO (Sempre a primeira coisa do Streamlit)
 st.set_page_config(page_title="GeralJá | Oficial", page_icon="⚡", layout="centered")
 
-# ... (continua o restante do código)
-
-# --- 2. ESTILIZAÇÃO CSS (Onde ficam as cores) ---
+# 2. ESTILO CSS
 st.markdown("""
     <style>
     .azul { color: #1E90FF; font-weight: bold; font-size: 40px; }
@@ -18,8 +16,27 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 3. LOGO ---
+# 3. LOGO
 st.markdown('<center><span class="azul">GERAL</span><span class="laranja">JÁ</span></center>', unsafe_allow_html=True)
+
+# 4. CONEXÃO FIREBASE (O jeito que não dá erro)
+if not firebase_admin._apps:
+    try:
+        dados_chave = json.loads(st.secrets["textkey"])
+        creds = credentials.Certificate(dados_chave)
+        firebase_admin.initialize_app(creds)
+    except Exception as e:
+        st.error(f"Erro no Firebase Admin: {e}")
+
+# Criando o cliente do banco de dados (db)
+try:
+    dados_chave = json.loads(st.secrets["textkey"])
+    db = firestore.Client.from_service_account_info(dados_chave)
+except Exception as e:
+    st.error(f"Erro no Firestore Client: {e}")
+
+# 5. ABAS
+aba1, aba2, aba3, aba4 = st.tabs(["🔍 BUSCAR", "🏦 CARTEIRA", "📝 CADASTRO", "🔐 ADMIN"])
 
 # --- 4. ABAS ---
 aba1, aba2, aba3, aba4 = st.tabs(["🔍 BUSCAR", "🏦 CARTEIRA", "📝 CADASTRO", "🔐 ADMIN"])
@@ -209,6 +226,7 @@ with aba4:
         if st.button("ADICIONAR CRÉDITOS"):
             db.collection("profissionais").document(recarga_id).update({"saldo": firestore.Increment(qtd)})
             st.success(f"Adicionado {qtd} GC!")
+
 
 
 
