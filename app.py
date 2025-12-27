@@ -60,7 +60,52 @@ st.markdown('<center><span class="azul">GERAL</span><span class="laranja">JÁ</s
 aba1, aba2, aba3, aba4 = st.tabs(["🔍 BUSCAR", "🏦 CARTEIRA", "👥 MURAL", "🔐 ADMIN"])
 
 # --- ABA 1: BUSCA ---
-with aba1:
+with aba1: # --- IA DE BUSCA NO INÍCIO DA ABA 1 ---
+    st.markdown("### 🔍 O que você precisa no Grajaú hoje?")
+    
+    # 1. O "Cérebro" da IA
+    MAPEAMENTO_IA = {
+        "vazamento": "Encanador", "cano": "Encanador", "torneira": "Encanador",
+        "curto": "Eletricista", "luz": "Eletricista", "tomada": "Eletricista", "chuveiro": "Eletricista",
+        "pintar": "Pintor", "parede": "Pintor", "reforma": "Pedreiro", "laje": "Pedreiro",
+        "unha": "Manicure", "cabelo": "Cabeleireiro", "corte": "Cabeleireiro",
+        "computador": "Técnico de TI", "celular": "Técnico de TI",
+        "faxina": "Diarista", "limpeza": "Diarista", "carreto": "Ajudante Geral"
+    }
+
+    entrada_usuario = st.text_input("Diga seu problema:", placeholder="Ex: meu chuveiro queimou...")
+
+    if entrada_usuario:
+        busca = entrada_usuario.lower()
+        categoria_ia = None
+
+        # Procura a palavra-chave
+        for chave, profissao in MAPEAMENTO_IA.items():
+            if chave in busca:
+                categoria_ia = profissao
+                break
+
+        if categoria_ia:
+            st.info(f"🤖 **IA GeralJá:** Entendi! Buscando por: **{categoria_ia}**")
+            
+            # Busca no Banco de Dados
+            docs = db.collection("profissionais").where("area", "==", categoria_ia).where("aprovado", "==", True).stream()
+            
+            achou = False
+            for d in docs:
+                achou = True
+                p = d.to_dict()
+                with st.expander(f"👤 {p['nome']}"):
+                    st.write(f"✅ Especialidade: {p['area']}")
+                    # Aqui futuramente checaremos o saldo para mostrar o telefone
+                    st.write(f"📞 Contato: {p.get('whatsapp', 'Disponível após lead')}")
+            
+            if not achou:
+                st.warning(f"Ainda não temos {categoria_ia} cadastrados.")
+        else:
+            st.warning("🤔 Não identifiquei o serviço. Tente palavras como 'vazamento', 'luz' ou 'pintar'.")
+    
+    st.divider() # Linha para separar a busca da lista geral
     servico = st.selectbox("O que você procura no Grajaú?", [""] + LISTA_FINAL)
     if servico:
         profs = db.collection("profissionais").where("area", "==", servico).where("aprovado", "==", True).stream()
@@ -123,3 +168,4 @@ with aba4:
             if st.button(f"APROVAR {p.id}"):
                 db.collection("profissionais").document(p.id).update({"aprovado": True})
                 st.rerun()
+
