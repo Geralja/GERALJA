@@ -1,9 +1,34 @@
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, firestore
-import datetime
-import random
+import base64
 import json
+import datetime
+
+# --- CONEXÃO FIREBASE (MÉTODO BASE64 - À PROVA DE ERROS) ---
+db = None
+
+if not firebase_admin._apps:
+    try:
+        # 1. Pega o código do cofre
+        b64_data = st.secrets["FIREBASE_BASE64"]
+        # 2. Decodifica para JSON original
+        json_data = base64.b64decode(b64_data).decode("utf-8")
+        info_chave = json.loads(json_data)
+        
+        cred = credentials.Certificate(info_chave)
+        firebase_admin.initialize_app(cred)
+        db = firestore.client()
+        st.toast("Conectado com sucesso!", icon="✅")
+    except Exception as e:
+        st.error(f"❌ Erro na decodificação: {e}")
+        st.stop()
+else:
+    db = firestore.client()
+
+# --- ABAIXO SEGUE O RESTANTE DO SEU CÓDIGO (Busca, Mural, etc) ---
+st.title("GeralJá Grajaú")
+st.write("Se você está vendo isso, o banco de dados finalmente conectou!")
 
 # --- 1. CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="GeralJá | Grajaú", page_icon="⚡", layout="centered")
@@ -134,3 +159,4 @@ elif st.session_state.etapa == 'pagamento':
     st.code(CHAVE_PIX)
     if st.button("VOLTAR PARA BUSCA"):
         st.session_state.etapa = 'busca'; st.rerun()
+
