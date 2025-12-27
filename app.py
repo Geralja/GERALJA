@@ -116,28 +116,16 @@ profissoes_completas = [
  "Capitão" ("Comandante", "Líder", "Especialista")
  "Marinheiro" ("Tripulante", "Especialista", "Navegador")
  "Policial" ("Agente", "Oficial", "Segurança")
-79. "Bombeiro" ("Socorrista", "Especialista", "Salvador")
-80. "Soldado" ("Militar", "Combatente", "Defensor")
-81. "Segurança" ("Vigilante", "Guarda", "Proteção")
-82. "Guarda" ("Segurança", "Vigilante", "Proteção")
-83. "Vigilante" ("Segurança", "Guarda", "Proteção")
-84. "Detetive" ("Investigador", "Especialista", "Analista")
-85. "Investigador" ("Detetive", "Especialista", "Analista")
-86. "Juiz" ("Magistrado", "Árbitro", "Decisor")
-87. "Promotor" ("Advogado", "Representante", "Fiscal")
-88. "Advogado de Defesa" ("Defensor", "Representante", "Advogado")
-89. "Procurador" ("Representante", "Advogado", "Fiscal")
-90. "Delegado" ("Chefe", "Comandante", "Líder")
-91. "Terapeuta" ("Psicólogo", "Conselheiro", "Especialista")
-92. "Conselheiro" ("Terapeuta", "Psicólogo", "Especialista")
-93. "Especialista em Marketing" ("Mercadólogo", "Publicitário", "Comunicador")
-94. "Especialista em Vendas" ("Vendedor", "Comerciante", "Negociante")
-95. "Gerente de Projetos" ("Líder", "Coordenador", "Especialista")
-96. "Desenvolvedor de Software" ("Programador", "Técnico", "Especialista")
-97. "Analista de Sistemas" ("Especialista", "Técnico", "Consultor")
-98. "Especialista em Redes" ("Técnico", "Administrador", "Especialista")
-99. "Especialista em Segurança" ("Técnico", "Consultor", "Especialista")
-]
+ "Bombeiro" ("Socorrista", "Especialista", "Salvador")
+"Soldado" ("Militar", "Combatente", "Defensor")
+ "Segurança" ("Vigilante", "Guarda", "Proteção")
+ "Guarda" ("Segurança", "Vigilante", "Proteção")
+ "Vigilante" ("Segurança", "Guarda", "Proteção") "Detetive" ("Investigador", "Especialista", "Analista") "Investigador" ("Detetive", "Especialista", "Analista")
+ "Juiz" ("Magistrado", "Árbitro", "Decisor")
+ "Promotor" ("Advogado", "Representante", "Fiscal")
+ "Advogado de Defesa" ("Defensor", "Representante", "Advogado")
+ "Procurador" ("Representante", "Advogado", "Fiscal") "Delegado" ("Chefe", "Comandante", "Líder")
+
 LISTA_FINAL = sorted(list(set(profissoes_completas)))
 
 # --- 5. MAPEAMENTO DA IA (Todas as chaves originais) ---
@@ -303,5 +291,6 @@ with aba4:
             if st.button(f"APROVAR {pd['nome']} ({pd.get('localizacao', 'N/A')})"):
                 db.collection("profissionais").document(p.id).update({"aprovado": True})
                 st.rerun()
+
 
 
