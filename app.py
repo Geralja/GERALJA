@@ -49,21 +49,19 @@ st.markdown("""
     .area-pro { color: #666; font-size: 16px; margin-bottom: 10px; font-weight: 500; }
     .selo-verificado { color: #28a745; font-size: 14px; font-weight: 700; }
     
-    /* Botão de WhatsApp */
+    /* Botão customizado via Markdown */
     .btn-zap {
         background-color: #25D366;
         color: white !important;
-        padding: 12px 20px;
+        padding: 10px 20px;
         border-radius: 10px;
         text-decoration: none;
         font-weight: bold;
-        display: block;
+        display: inline-block;
         text-align: center;
         width: 100%;
-        margin-top: 15px;
-        box-sizing: border-box;
+        margin-top: 10px;
     }
-    .btn-zap:hover { background-color: #128C7E; text-decoration: none; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -72,7 +70,6 @@ st.markdown('<center><span class="azul">GERAL</span><span class="laranja">JÁ</s
 st.markdown("<center style='margin-top:-15px;'><b>O guia oficial de serviços do Grajaú</b></center>", unsafe_allow_html=True)
 st.write("")
 
-# --- NAVEGAÇÃO ---
 tab1, tab2, tab3 = st.tabs(["🔍 ENCONTRAR PROFISSIONAL", "👷 DIVULGAR MEU SERVIÇO", "👥 MURAL"])
 
 # --- TAB 1: BUSCA ---
@@ -86,25 +83,25 @@ with tab1:
         for p in profs:
             encontrou = True
             dados = p.to_dict()
-            # Limpa o número para o link do zap
-            zap_limpo = "".join(filter(str.isdigit, dados.get('whatsapp', '')))
+            zap_formatado = dados.get('whatsapp', '').replace(' ', '').replace('-', '').replace('(', '').replace(')', '')
             
+            # Gerando o Card Visual
             st.markdown(f"""
             <div class="card-pro">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; justify-content: space-between;">
                     <span class="nome-pro">👤 {dados['nome']}</span>
                     <span class="selo-verificado">Verificado ✔️</span>
                 </div>
                 <div class="area-pro">🔧 {dados['area']}</div>
                 <div style="font-size: 14px; color: #888;">📍 Atende em: Grajaú e Região</div>
-                <a href="https://wa.me/55{zap_limpo}?text=Olá%20{dados['nome']},%20vi%20seu%20contato%20no%20GeralJá!" target="_blank" class="btn-zap">
+                <a href="https://wa.me/55{zap_formatado}?text=Olá%20{dados['nome']},%20vi%20seu%20contato%20no%20GeralJá!" target="_blank" class="btn-zap">
                     CHAMAR NO WHATSAPP
                 </a>
             </div>
             """, unsafe_allow_html=True)
         
         if not encontrou:
-            st.info(f"Ainda não temos {filtro}s cadastrados no sistema.")
+            st.info(f"Ainda não temos {filtro}s cadastrados.")
 
 # --- TAB 2: CADASTRO ---
 with tab2:
@@ -112,25 +109,22 @@ with tab2:
     with st.form("form_cadastro", clear_on_submit=True):
         nome_cad = st.text_input("Nome Completo")
         area_cad = st.selectbox("Sua Especialidade", ["Pintor", "Eletricista", "Encanador", "Diarista", "Mecânico"])
-        zap_cad = st.text_input("WhatsApp com DDD (ex: 11999998888)")
+        zap_cad = st.text_input("WhatsApp (ex: 11999998888)")
         enviar = st.form_submit_button("CADASTRAR MEU SERVIÇO")
         
         if enviar:
             if nome_cad and zap_cad:
                 db.collection("profissionais").add({
-                    "nome": nome_cad, 
-                    "area": area_cad, 
-                    "whatsapp": zap_cad, 
-                    "data": datetime.datetime.now()
+                    "nome": nome_cad, "area": area_cad, "whatsapp": zap_cad, "data": datetime.datetime.now()
                 })
                 st.balloons()
-                st.success("Cadastro realizado com sucesso! Procure seu nome na busca.")
+                st.success("Cadastro realizado! Seu serviço já aparece na busca.")
 
 # --- TAB 3: MURAL ---
 with tab3:
-    st.subheader("Mural da Comunidade")
+    st.subheader("Mural do Bairro")
     with st.form("form_mural", clear_on_submit=True):
-        mensagem = st.text_area("Compartilhe algo com o bairro...")
+        mensagem = st.text_area("Compartilhe algo com a comunidade...")
         postar = st.form_submit_button("PUBLICAR")
         if postar and mensagem:
             db.collection("mural").add({"msg": mensagem, "data": datetime.datetime.now()})
