@@ -8,7 +8,7 @@ import datetime
 # --- CONFIGURAÇÃO ---
 st.set_page_config(page_title="GeralJá | Oficial", page_icon="⚡", layout="centered")
 
-# --- CONEXÃO FIREBASE (Mantendo sua lógica de Base64) ---
+# --- CONEXÃO FIREBASE ---
 if not firebase_admin._apps:
     try:
         b64_data = st.secrets["FIREBASE_BASE64"]
@@ -20,15 +20,27 @@ if not firebase_admin._apps:
 
 db = firestore.client()
 
-# --- CONFIGURAÇÕES FIXAS (Mantidas) ---
+# --- CONFIGURAÇÕES FIXAS ---
 PIX_CHAVE = "11991853488"
 ZAP_ADMIN = "5511991853488"
 SENHA_ADMIN = "grajau2025"
 VALOR_CLIQUE = 1 
 BONUS_INICIAL = 5
 
-# --- SUA LISTA DE PROFISSÕES (Devolvida) ---
-profissoes_completas = ["Ajudante Geral", "Borracheiro", "Cabeleireiro", "Diarista", "Eletricista", "Encanador", "Manicure", "Mecânico", "Montador de Móveis", "Pedreiro", "Pintor"]
+# --- LISTA COMPLETA DE PROFISSÕES ---
+profissoes_completas = [
+    "Ajudante Geral", "Almoxarife", "Antropólogo", "Arquiteto", "Azulejista", "Babá", "Barbeiro", 
+    "Barman", "Bartender", "Bibliotecário", "Borracheiro", "Cabeleireiro", "Carpinteiro", "Churrasqueiro",
+    "Confeiteira", "Costureira", "Cozinheira", "Curador de Museu", "Diarista", "Doméstica", "Eletricista", 
+    "Encanador", "Esteticista", "Fonoaudiólogo", "Garçom", "Garçonete", "Geógrafo", "Gesseiro", "Guia Turístico", 
+    "Historiador", "Jardineiro", "Manicure", "Marceneiro", "Marinheiro", "Massagista", "Mecânico", 
+    "Médico Especialista", "Montador de Móveis", "Motorista", "Nutricionista", "Padeiro", "Pedreiro", 
+    "Piloto de Avião", "Pintor", "Psicólogo", "Serralheiro", "Sociólogo", "Técnico em TI", "Vendedor", 
+    "Vigilante", "Especialista em IA", "Desenvolvedor Mobile", "Analista de Redes", "Especialista em UX/UI", 
+    "Game Designer", "Analista Financeiro", "Contador Público", "Gerente de Projetos", "Atleta Profissional",
+    "Professor Universitário", "Biólogo", "Engenheiro Ambiental", "Segurança Pessoal", "Investigador",
+    "Jornalista de TV", "Fotógrafo", "DJ", "Cantor(a)", "Designer de Interiores", "Corretor de Imóveis"
+]
 LISTA_FINAL = sorted(list(set(profissoes_completas)))
 
 # --- ESTILIZAÇÃO ---
@@ -64,17 +76,13 @@ with aba1:
     
     if pergunta:
         busca_limpa = pergunta.lower()
-        categoria_detectada = None
+        cat_detectada = None
         for chave, profissao in MAPEAMENTO_IA.items():
-            if chave in busca_limpa:
-                categoria_detectada = profissao
-                break
+            if chave in busca_limpa: cat_detectada = profissao; break
 
-        if categoria_detectada:
-            # NOME DA IA ALTERADO PARA GeralJá
-            st.success(f"🤖 **GeralJá:** Identifiquei que você precisa de: **{categoria_detectada}**")
-            resultados = db.collection("profissionais").where("area", "==", categoria_detectada).where("aprovado", "==", True).stream()
-            
+        if cat_detectada:
+            st.success(f"🤖 **GeralJá:** Identifiquei que você precisa de: **{cat_detectada}**")
+            resultados = db.collection("profissionais").where("area", "==", cat_detectada).where("aprovado", "==", True).stream()
             for doc in resultados:
                 d = doc.to_dict()
                 st.markdown(f'<div class="card-pro"><h4>👤 {d["nome"]}</h4><p><b>Especialidade:</b> {d["area"]}</p></div>', unsafe_allow_html=True)
@@ -82,79 +90,73 @@ with aba1:
                     if st.button(f"VER CONTATO: {d['nome'].upper()}", key=f"src_{doc.id}"):
                         db.collection("profissionais").document(doc.id).update({"saldo": firestore.Increment(-VALOR_CLIQUE)})
                         st.success(f"👉 [FALAR NO WHATSAPP](https://wa.me/55{d['whatsapp']})")
-                else:
-                    st.warning("Profissional sem créditos.")
+                else: st.warning("Profissional sem créditos.")
+        else:
+            st.error("🤖 **GeralJá:** Ainda não entendi esse pedido. Tente algo como 'Preciso de um Pedreiro'.")
 
-# --- ABA 2: CARTEIRA (Com sua lógica + Senha) ---
+# --- ABA 2: CARTEIRA (COM SENHA) ---
 with aba2:
     st.subheader("🏦 Sua Carteira")
     login = st.text_input("Seu WhatsApp cadastrado:", key="login_carteira")
-    senha_user = st.text_input("Sua Senha:", type="password", key="pass_carteira")
+    senha_u = st.text_input("Sua Senha:", type="password", key="senha_carteira")
     
-    if login and senha_user:
+    if login and senha_u:
         doc = db.collection("profissionais").document(login).get()
         if doc.exists:
             u = doc.to_dict()
-            if u.get("senha") == senha_user:
+            if u.get("senha") == senha_u:
                 st.markdown(f"### Olá, {u['nome']}!")
                 st.markdown(f'<div class="coin-box">Saldo: {u.get("saldo", 0)} GeralCoins</div>', unsafe_allow_html=True)
                 st.divider()
                 st.image(f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={PIX_CHAVE}")
-                st.markdown(f'Chave PIX: {PIX_CHAVE}')
+                st.info(f"Chave PIX: {PIX_CHAVE}")
                 st.markdown(f'<a href="https://wa.me/{ZAP_ADMIN}?text=Recarga: {login}" class="btn-zap">ENVIAR COMPROVANTE</a>', unsafe_allow_html=True)
-            else:
-                st.error("Senha incorreta.")
-        else:
-            st.error("❌ WhatsApp não encontrado.")
+            else: st.error("❌ Senha incorreta!")
+        else: st.error("❌ WhatsApp não encontrado.")
 
-# --- ABA 3: CADASTRO (Com campo de senha) ---
+# --- ABA 3: CADASTRO ---
 with aba3:
     st.subheader("🚀 Novo Cadastro")
     novo_zap = st.text_input("WhatsApp para novo cadastro:", key="novo_cadastro")
     if novo_zap:
-        check = db.collection("profissionais").document(novo_zap).get()
-        if check.exists:
+        if db.collection("profissionais").document(novo_zap).get().exists:
             st.warning("Você já tem cadastro!")
         else:
             with st.form("form_ia"):
                 n = st.text_input("Nome Completo")
                 s = st.text_input("Crie uma Senha", type="password")
-                desc = st.text_area("Descreva seu serviço")
+                escolha_manual = st.selectbox("Selecione sua Profissão:", LISTA_FINAL)
+                desc = st.text_area("Ou descreva seu serviço para a IA")
                 if st.form_submit_button("CADASTRAR"):
-                    cat_ia = "Ajudante Geral"
+                    cat_final = escolha_manual
                     for k, v in MAPEAMENTO_IA.items():
-                        if k in desc.lower():
-                            cat_ia = v
-                            break
+                        if k in desc.lower(): cat_final = v; break
                     db.collection("profissionais").document(novo_zap).set({
-                        "nome": n, "whatsapp": novo_zap, "senha": s, "area": cat_ia,
+                        "nome": n, "whatsapp": novo_zap, "senha": s, "area": cat_final,
                         "saldo": BONUS_INICIAL, "aprovado": False
                     })
-                    st.success(f"✅ Cadastrado como {cat_ia}! Aguarde aprovação.")
+                    st.success(f"✅ Cadastrado como {cat_final}! Aguarde aprovação.")
 
-# --- ABA 4: ADMIN (Gestão de Usuário Completa) ---
+# --- ABA 4: ADMIN MASTER ---
 with aba4:
-    senha = st.text_input("Senha Admin", type="password")
-    if senha == SENHA_ADMIN:
+    acesso = st.text_input("Senha Admin", type="password")
+    if acesso == SENHA_ADMIN:
         st.subheader("⚙️ Painel Admin")
-        
-        # BUSCA PARA PUNIÇÃO E RESET
-        user_manage = st.text_input("WhatsApp para Gerenciar/Punir:")
-        if user_manage:
-            u_ref = db.collection("profissionais").document(user_manage)
+        user_id = st.text_input("Gerenciar WhatsApp:")
+        if user_id:
+            u_ref = db.collection("profissionais").document(user_id)
             u_doc = u_ref.get()
             if u_doc.exists:
                 ud = u_doc.to_dict()
-                st.write(f"Usuário: {ud['nome']} | Saldo: {ud.get('saldo')}")
+                st.warning(f"Usuário: {ud['nome']} | Saldo: {ud.get('saldo')}")
                 if st.button("PUNIR (-5 COINS)"):
                     u_ref.update({"saldo": firestore.Increment(-5)})
                     st.error("Punido!")
-                if st.button("RESETAR SENHA PARA '1234'"):
+                if st.button("RESETAR SENHA (1234)"):
                     u_ref.update({"senha": "1234"})
-                    st.success("Senha resetada!")
-        
+                    st.success("Senha resetada para 1234!")
+
         st.divider()
-        st.write("Aprovações Pendentes:")
         pendentes = db.collection("profissionais").where("aprovado", "==", False).stream()
         for p in pendentes:
             pd = p.to_dict()
