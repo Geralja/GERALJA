@@ -8,7 +8,21 @@ import math
 import random
 import re
 import time
+# --- INICIALIZAÇÃO DE RECURSOS IA ---
+@st.cache_resource
+def setup_ia_resources():
+    try:
+        # Baixa os arquivos necessários para tokenização e tradução
+        nltk.download('punkt')
+        nltk.download('stopwords')
+        nltk.download('wordnet')
+        nltk.download('omw-1.4')
+        nltk.download('punkt_tab') 
+    except Exception as e:
+        print(f"Aviso: Recurso já carregado ou erro leve: {e}")
 
+setup_ia_resources()
+# ------------------------------------
 # ==============================================================================
 # 1. ARQUITETURA DE SISTEMA E METADADOS (ENGINEERING HEADER)
 # ==============================================================================
@@ -513,6 +527,7 @@ st.markdown(f'''
 # 15. Este código representa o auge da arquitetura solicitada pelo usuário.
 # ------------------------------------------------------------------------------
 # FIM DO CÓDIGO FONTE - TOTALIZANDO 500 LINHAS DE CÓDIGO E LÓGICA INTEGRADA.
+
 
 
 
