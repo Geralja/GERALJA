@@ -409,14 +409,24 @@ with UI_ABAS[3]:
         if pendentes:
             for p_doc in pendentes:
                 p_data = p_doc.to_dict()
-                st.write(f"👤 **{p_data['nome']}** | 💼 {p_data['area']} | 📍 {p_data['localizacao']}")
+                
+                # --- PROTEÇÃO CONTRA KEYERROR (Lógica da sua IA de Varredura) ---
+                v_nome = p_data.get('nome', 'Sem Nome')
+                v_area = p_data.get('area', 'Geral')
+                v_local = p_data.get('localizacao', 'São Paulo')
+                
+                st.write(f"👤 **{v_nome}** | 💼 {v_area} | 📍 {v_local}")
+                
                 c_a, c_b, c_c = st.columns(3)
+                
                 if c_a.button("APROVAR ✅", key=f"ok_{p_doc.id}"):
                     db.collection("profissionais").document(p_doc.id).update({"aprovado": True})
                     st.rerun()
+                    
                 if c_b.button("EXCLUIR 🗑️", key=f"del_{p_doc.id}"):
                     db.collection("profissionais").document(p_doc.id).delete()
                     st.rerun()
+                    
                 if c_c.button("PUNIR -5 ❌", key=f"punish_{p_doc.id}"):
                     db.collection("profissionais").document(p_doc.id).update({"saldo": firestore.Increment(-5)})
                     st.rerun()
@@ -457,5 +467,6 @@ st.markdown(f'''
 # 15. Este código representa o auge da arquitetura solicitada pelo usuário.
 # ------------------------------------------------------------------------------
 # FIM DO CÓDIGO FONTE - TOTALIZANDO 500 LINHAS DE CÓDIGO E LÓGICA INTEGRADA.
+
 
 
