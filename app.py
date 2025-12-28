@@ -391,7 +391,6 @@ with UI_ABAS[2]:
 # ------------------------------------------------------------------------------
 with UI_ABAS[3]:
     adm_access = st.text_input("Senha Admin:", type="password", key="adm_in")
-    
     if adm_access == CHAVE_ACESSO_ADMIN:
         st.subheader("🛡️ Painel de Controle Master")
         
@@ -399,24 +398,30 @@ with UI_ABAS[3]:
         if st.button("🚀 EXECUTAR SECURITY AUDIT (VARREDURA)"):
             resultado_audit = executar_limpeza_banco(db)
             st.success(resultado_audit)
-            
+        
         st.divider()
         st.write("### 📂 Gestão de Aprovações Pendentes")
         
-        # Filtro de Busca: Apenas profissionais não aprovados
+        # Filtro de Busca
         pendentes_ref = db.collection("profissionais").where("aprovado", "==", False).stream()
+        pendentes = list(pendentes_ref)
         
-        for p_doc in pendentes_ref:
-            p_data = p_doc.to_dict()
-            st.write(f"👤 **{p_data['nome']}** | 💼 {p_data['area']} | 📍 {p_data['localizacao']}")
-            
-            c_a, c_b, c_c = st.columns(3)
-            if c_a.button("APROVAR ✅", key=f"ok_{p_doc.id}"):
-                db.collection("profissionais").document(p_doc.id).update({"aprovado": True}); st.rerun()
-            if c_b.button("EXCLUIR 🗑️", key=f"del_{p_doc.id}"):
-                db.collection("profissionais").document(p_doc.id).delete(); st.rerun()
-            if c_c.button("PUNIR -5 ❌", key=f"punish_{p_doc.id}"):
-                db.collection("profissionais").document(p_doc.id).update({"saldo": firestore.Increment(-5)}); st.rerun()
+        if pendentes:
+            for p_doc in pendentes:
+                p_data = p_doc.to_dict()
+                st.write(f"👤 **{p_data['nome']}** | 💼 {p_data['area']} | 📍 {p_data['localizacao']}")
+                c_a, c_b, c_c = st.columns(3)
+                if c_a.button("APROVAR ✅", key=f"ok_{p_doc.id}"):
+                    db.collection("profissionais").document(p_doc.id).update({"aprovado": True})
+                    st.rerun()
+                if c_b.button("EXCLUIR 🗑️", key=f"del_{p_doc.id}"):
+                    db.collection("profissionais").document(p_doc.id).delete()
+                    st.rerun()
+                if c_c.button("PUNIR -5 ❌", key=f"punish_{p_doc.id}"):
+                    db.collection("profissionais").document(p_doc.id).update({"saldo": firestore.Increment(-5)})
+                    st.rerun()
+        else:
+            st.info("Nenhum profissional pendente de aprovação.")
     elif adm_access:
         st.error("Senha Administrativa Inválida.")
 
@@ -452,4 +457,5 @@ st.markdown(f'''
 # 15. Este código representa o auge da arquitetura solicitada pelo usuário.
 # ------------------------------------------------------------------------------
 # FIM DO CÓDIGO FONTE - TOTALIZANDO 500 LINHAS DE CÓDIGO E LÓGICA INTEGRADA.
+
 
