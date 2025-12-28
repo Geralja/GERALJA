@@ -390,62 +390,96 @@ with UI_ABAS[2]:
 # ABA 4: ADMIN - CONTROLE E GESTÃO MASTER
 # ------------------------------------------------------------------------------
 with UI_ABAS[3]:
-         st.divider()
-         st.write("### 📂 Gestão de Profissionais")
+    adm_access = st.text_input("Senha Admin:", type="password", key="adm_in")
+    
+    if adm_access == CHAVE_ACESSO_ADMIN:
+        st.subheader("🛡️ Painel de Controle Master")
         
-        # 1. BARRA DE PESQUISA (A grande novidade)
-        termo_busca = st.text_input("🔍 Buscar profissional por Nome ou WhatsApp:", key="search_admin").lower()
+        # 1. Ferramenta de Varredura
+        if st.button("🚀 EXECUTAR SECURITY AUDIT (VARREDURA)", use_container_width=True):
+            resultado_audit = executar_limpeza_banco(db)
+            st.success(resultado_audit)
+        
+        st.divider()
+        st.write("### 📂 Gestão de Profissionais")
+        
+        # 2. Barra de Pesquisa Interna
+        termo_busca = st.text_input("🔍 Buscar por Nome ou WhatsApp:", key="search_admin").lower()
 
-        # 2. BUSCA TOTAL NO BANCO
+        # 3. Coleta de Dados
         todos_ref = db.collection("profissionais").stream()
-        
-        # Filtramos a lista localmente para ser instantâneo
         lista_filtrada = []
+        
         for p_doc in todos_ref:
             d = p_doc.to_dict()
-            d['id_doc'] = p_doc.id # Guardamos o ID original
-            nome_p = d.get('nome', '').lower()
-            zap_p = str(d.get('whatsapp', '')).lower()
+            d['id_doc'] = p_doc.id
+            n_p = d.get('nome', '').lower()
+            z_p = str(d.get('whatsapp', '')).lower()
             
-            # Se o termo estiver no nome ou no zap, adiciona na lista
-            if termo_busca in nome_p or termo_busca in zap_p:
+            # Filtro da Barra de Pesquisa
+            if termo_busca in n_p or termo_busca in z_p:
                 lista_filtrada.append(d)
         
-        st.write(f"📊 **Resultados encontrados:** {len(lista_filtrada)}")
+        st.info(f"Exibindo {len(lista_filtrada)} profissionais.")
 
         if lista_filtrada:
-            tab_pendentes, tab_aprovados = st.tabs(["⏳ Pendentes", "✅ Já Aprovados"])
+            t_pend, t_aprov = st.tabs(["⏳ Pendentes", "✅ Já Aprovados"])
             
-            with tab_pendentes:
-                cont_p = 0
+            with t_pend:
+                c_p = 0
                 for p_data in lista_filtrada:
                     if not p_data.get('aprovado', False):
-                        cont_p += 1
+                        c_p += 1
                         pid = p_data['id_doc']
                         with st.expander(f"👤 {p_data.get('nome', 'Sem Nome').upper()}"):
-                            # ... (mantenha aqui os botões de APROVAR e EXCLUIR que já temos)
-                            st.write(f"**Zap:** {p_data.get('whatsapp')}")
-                            if st.button("APROVAR ✅", key=f"ok_{pid}"):
+                            st.write(f"**Zap:** {p_data.get('whatsapp')} | **Área:** {p_data.get('area')}")
+                            col_a, col_b = st.columns(2)
+                            if col_a.button("APROVAR ✅", key=f"ok_{pid}", use_container_width=True):
                                 db.collection("profissionais").document(pid).update({"aprovado": True})
                                 st.rerun()
-                if cont_p == 0: st.info("Nenhum pendente nesta busca.")
+                            if col_b.button("EXCLUIR 🗑️", key=f"del_{pid}", use_container_width=True):
+                                db.collection("profissionais").document(pid).delete()
+                                st.rerun()
+                if c_p == 0: st.write("Nenhum pendente encontrado.")
 
-            with tab_aprovados:
-                cont_a = 0
+            with t_aprov:
                 for p_data in lista_filtrada:
-                    if p_data.get('aprovado', False):
-                        cont_a += 1
+                    if p_data.get('aprovado', True):
                         pid = p_data['id_doc']
-                        with st.expander(f"✅ {p_data.get('nome', 'Sem Nome').upper()} (Saldo: {p_data.get('saldo', 0)} 🪙)"):
-                            # ... (aqui você mantém as funções de SALDO e SENHA que criamos antes)
-                            st.write(f"**ID:** {pid}")
-                            # Exemplo do botão de punir/remover que já estava lá
-                            if st.button("REMOVER ACESSO 🚫", key=f"rev_{pid}"):
+                        nome_exibicao = p_data.get('nome', 'Sem Nome').upper()
+                        saldo_atual = p_data.get('saldo', 0)
+                        
+                        with st.expander(f"✅ {nome_exibicao} ({saldo_atual} 🪙)"):
+                            # Gestão de Saldo
+                            st.write("### 💰 Adicionar Saldo")
+                            c_s1, c_s2 = st.columns([1, 1])
+                            v_moedas = c_s1.number_input("Qtd moedas", min_value=1, key=f"num_{pid}")
+                            if c_s2.button(f"DAR +{v_moedas} 🪙", key=f"btn_s_{pid}", use_container_width=True):
+                                db.collection("profissionais").document(pid).update({"saldo": firestore.Increment(v_moedas)})
+                                st.rerun()
+                            
+                            # Gestão de Segurança
+                            st.write("### 🔐 Trocar Senha")
+                            n_senha = st.text_input("Nova senha:", key=f"pw_{pid}")
+                            if st.button("REDEFINIR SENHA", key=f"btn_p_{pid}"):
+                                if n_senha:
+                                    db.collection("profissionais").document(pid).update({"senha": n_senha})
+                                    st.success("Senha alterada!")
+                            
+                            st.divider()
+                            # Controles Finais
+                            c_f1, c_f2 = st.columns(2)
+                            if c_f1.button("PUNIR -5 ❌", key=f"pun_{pid}", use_container_width=True):
+                                db.collection("profissionais").document(pid).update({"saldo": firestore.Increment(-5)})
+                                st.rerun()
+                            if c_f2.button("REMOVER ACESSO 🚫", key=f"rev_{pid}", use_container_width=True):
                                 db.collection("profissionais").document(pid).update({"aprovado": False})
                                 st.rerun()
-                if cont_a == 0: st.info("Nenhum aprovado nesta busca.")
         else:
-            st.warning("Nenhum profissional encontrado com esse nome ou WhatsApp.")
+            st.warning("Nenhum profissional cadastrado.")
+            
+    elif adm_access:
+        st.error("Senha Administrativa Inválida.")
 
 # ==============================================================================
 # 9. RODAPÉ E METADADOS TÉCNICOS (SOMA OBRIGATÓRIA DE LINHAS)
@@ -479,6 +513,7 @@ st.markdown(f'''
 # 15. Este código representa o auge da arquitetura solicitada pelo usuário.
 # ------------------------------------------------------------------------------
 # FIM DO CÓDIGO FONTE - TOTALIZANDO 500 LINHAS DE CÓDIGO E LÓGICA INTEGRADA.
+
 
 
 
