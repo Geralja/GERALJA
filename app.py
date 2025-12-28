@@ -391,47 +391,64 @@ with UI_ABAS[2]:
 # ------------------------------------------------------------------------------
 with UI_ABAS[3]:
     adm_access = st.text_input("Senha Admin:", type="password", key="adm_in")
+    
     if adm_access == CHAVE_ACESSO_ADMIN:
         st.subheader("🛡️ Painel de Controle Master")
         
-        # Ferramenta de Varredura de Segurança
-        if st.button("🚀 EXECUTAR SECURITY AUDIT (VARREDURA)"):
-            resultado_audit = executar_limpeza_banco(db)
-            st.success(resultado_audit)
+        # Grid de ferramentas superiores
+        col_audit, col_stats = st.columns([2, 1])
+        with col_audit:
+            if st.button("🚀 EXECUTAR SECURITY AUDIT (VARREDURA)", use_container_width=True):
+                resultado_audit = executar_limpeza_banco(db)
+                st.success(resultado_audit)
         
         st.divider()
         st.write("### 📂 Gestão de Aprovações Pendentes")
         
-        # Filtro de Busca
+        # Chamada ao banco
         pendentes_ref = db.collection("profissionais").where("aprovado", "==", False).stream()
         pendentes = list(pendentes_ref)
         
         if pendentes:
             for p_doc in pendentes:
                 p_data = p_doc.to_dict()
+                pid = p_doc.id
                 
-                # --- PROTEÇÃO CONTRA KEYERROR (Lógica da sua IA de Varredura) ---
-                v_nome = p_data.get('nome', 'Sem Nome')
-                v_area = p_data.get('area', 'Geral')
-                v_local = p_data.get('localizacao', 'São Paulo')
+                # --- PROTEÇÃO DE DADOS (BLINDAGEM CONTRA ERROS) ---
+                # Se faltar qualquer dado no banco, o app não trava mais
+                nome_p = p_data.get('nome', 'Sem Nome')
+                area_p = p_data.get('area', 'Não Definida')
+                loc_p = p_data.get('localizacao', 'São Paulo')
+                zap_p = p_data.get('whatsapp', pid) # Usa o ID como backup do zap
+                saldo_p = p_data.get('saldo', 0)
                 
-                st.write(f"👤 **{v_nome}** | 💼 {v_area} | 📍 {v_local}")
-                
-                c_a, c_b, c_c = st.columns(3)
-                
-                if c_a.button("APROVAR ✅", key=f"ok_{p_doc.id}"):
-                    db.collection("profissionais").document(p_doc.id).update({"aprovado": True})
-                    st.rerun()
+                # Interface em Expander (Fica muito mais limpo)
+                with st.expander(f"👤 {nome_p.upper()} - {area_p}"):
+                    st.write(f"**WhatsApp:** {zap_p} | **Local:** {loc_p} | **Saldo Atual:** {saldo_p}🪙")
                     
-                if c_b.button("EXCLUIR 🗑️", key=f"del_{p_doc.id}"):
-                    db.collection("profissionais").document(p_doc.id).delete()
-                    st.rerun()
+                    # Botões de Ação
+                    c_a, c_b, c_c = st.columns(3)
                     
-                if c_c.button("PUNIR -5 ❌", key=f"punish_{p_doc.id}"):
-                    db.collection("profissionais").document(p_doc.id).update({"saldo": firestore.Increment(-5)})
-                    st.rerun()
+                    if c_a.button("APROVAR ✅", key=f"ok_{pid}", use_container_width=True):
+                        db.collection("profissionais").document(pid).update({"aprovado": True})
+                        st.toast(f"{nome_p} aprovado!") # Aviso rápido no canto da tela
+                        time.sleep(1)
+                        st.rerun()
+                        
+                    if c_b.button("EXCLUIR 🗑️", key=f"del_{pid}", use_container_width=True):
+                        db.collection("profissionais").document(pid).delete()
+                        st.toast(f"Cadastro de {nome_p} removido.")
+                        time.sleep(1)
+                        st.rerun()
+                        
+                    if c_c.button("PUNIR -5 ❌", key=f"punish_{pid}", use_container_width=True):
+                        db.collection("profissionais").document(pid).update({"saldo": firestore.Increment(-5)})
+                        st.warning(f"Saldo de {nome_p} reduzido.")
+                        time.sleep(1)
+                        st.rerun()
         else:
-            st.info("Nenhum profissional pendente de aprovação.")
+            st.info("✅ Tudo limpo! Nenhum profissional pendente de aprovação.")
+            
     elif adm_access:
         st.error("Senha Administrativa Inválida.")
 
@@ -467,6 +484,7 @@ st.markdown(f'''
 # 15. Este código representa o auge da arquitetura solicitada pelo usuário.
 # ------------------------------------------------------------------------------
 # FIM DO CÓDIGO FONTE - TOTALIZANDO 500 LINHAS DE CÓDIGO E LÓGICA INTEGRADA.
+
 
 
 
