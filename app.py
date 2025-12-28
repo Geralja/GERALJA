@@ -1,8 +1,3 @@
-import nltk
-from nltk.tokenize import word_tokenize
-from nltk.corpus import stopwords
-from nltk.stem import WordNetLemmatizer
-# ... outros imports (streamlit, firestore, etc)
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, firestore
@@ -13,21 +8,7 @@ import math
 import random
 import re
 import time
-# --- INICIALIZAÇÃO DE RECURSOS IA ---
-@st.cache_resource
-def setup_ia_resources():
-    try:
-        # Baixa os arquivos necessários para tokenização e tradução
-        nltk.download('punkt')
-        nltk.download('stopwords')
-        nltk.download('wordnet')
-        nltk.download('omw-1.4')
-        nltk.download('punkt_tab') 
-    except Exception as e:
-        print(f"Aviso: Recurso já carregado ou erro leve: {e}")
 
-setup_ia_resources()
-# ------------------------------------
 # ==============================================================================
 # 1. ARQUITETURA DE SISTEMA E METADADOS (ENGINEERING HEADER)
 # ==============================================================================
@@ -35,7 +16,7 @@ setup_ia_resources()
 # Esta seção configura o comportamento do navegador e os motores de busca (SEO).
 st.set_page_config(
     page_title="GeralJá | Profissionais de São Paulo",
-    page_icon="⚡",
+    page_icon="?",
     layout="centered",
     initial_sidebar_state="collapsed",
     menu_items={
@@ -65,7 +46,7 @@ def inicializar_infraestrutura_dados():
             credenciais = credentials.Certificate(cred_dict)
             return firebase_admin.initialize_app(credenciais)
         except Exception as erro_fatal:
-            st.error(f"🚨 FALHA DE INFRAESTRUTURA: {erro_fatal}")
+            st.error(f"?? FALHA DE INFRAESTRUTURA: {erro_fatal}")
             st.stop()
     return firebase_admin.get_app()
 
@@ -209,9 +190,9 @@ def executar_limpeza_banco(db_instancia):
             if upd:
                 db_instancia.collection("profissionais").document(doc.id).update(upd)
                 correcoes += 1
-        return f"🛡️ Integridade Garantida: {correcoes} perfis ajustados."
+        return f"??? Integridade Garantida: {correcoes} perfis ajustados."
     except Exception as e:
-        return f"❌ Erro na auditoria: {e}"
+        return f"? Erro na auditoria: {e}"
 
 # ==============================================================================
 # 7. ESTILIZAÇÃO CSS CUSTOMIZADA (LAYOUT SÃO PAULO PREMIUM)
@@ -258,73 +239,78 @@ st.markdown('<center><p class="txt-sub-sp">São Paulo Profissional</p></center>'
 # Saudação Contextual
 hora_atual = (datetime.datetime.now().hour - 3) % 24 # Ajuste Brasília
 txt_hora = "Bom dia" if hora_atual < 12 else "Boa tarde" if hora_atual < 18 else "Boa noite"
-st.caption(f"📍 {txt_hora}, São Paulo! Buscando especialistas qualificados agora.")
+st.caption(f"?? {txt_hora}, São Paulo! Buscando especialistas qualificados agora.")
 
 # ==============================================================================
 # 8. SISTEMA DE NAVEGAÇÃO BLINDADO (SOLUÇÃO DEFINITIVA)
 # ==============================================================================
 # Definindo as abas através de um dicionário para garantir acesso por ID
-ABAS_TITULOS = ["🔍 BUSCAR SERVIÇO", "👤 MINHA CONTA", "📝 CADASTRAR", "🔐 ADMIN"]
+ABAS_TITULOS = ["?? BUSCAR SERVIÇO", "?? MINHA CONTA", "?? CADASTRAR", "?? ADMIN"]
 UI_ABAS = st.tabs(ABAS_TITULOS)
 
 # ------------------------------------------------------------------------------
 # ABA 1: CLIENTE - BUSCA E RESULTADOS
 # ------------------------------------------------------------------------------
-# --- BLOCO DA IA DE BUSCA ROBUSTA ---
-
-def busca_inteligente(busca, profissionais):
-    # Tokenizar a busca
-    tokens = word_tokenize(busca.lower())
-    # Remover stopwords
-    stop_words = set(stopwords.words('portuguese'))
-    tokens = [t for t in tokens if t not in stop_words]
-    # Lemmatizar tokens
-    lemmatizer = WordNetLemmatizer()
-    tokens = [lemmatizer.lemmatize(t) for t in tokens]
-    # Encontrar profissionais relevantes
-    resultados = []
-    for p in profissionais:
-        p_data = p.to_dict()
-        # Verificar se os tokens estão no nome, área ou localização
-        score = 0
-        for t in tokens:
-            score += fuzz.partial_ratio(t, p_data['nome'].lower())
-            score += fuzz.partial_ratio(t, p_data['area'].lower())
-            score += fuzz.partial_ratio(t, p_data['localizacao'].lower())
-        if score > 50: # ajustar o threshold
-            resultados.append({'profissional': p_data, 'score': score})
-    # Ordenar resultados por score
-    resultados.sort(key=lambda x: x['score'], reverse=True)
-    return resultados
-
-# No seu código de busca
 with UI_ABAS[0]:
-    st.subheader("🔍 Encontre um Profissional")
-    busca_cliente = st.text_input("O que você procura? (Ex: Pintor, João, Centro)", key="busca_geral").strip().lower()
-    profissionais = db.collection("profissionais").where("aprovado", "==", True).stream()
-    resultados = busca_inteligente(busca_cliente, profissionais)
-    # mostrar resultados
-    if resultados:
-        st.write(f"✅ Encontramos {len(resultados)} profissionais disponíveis:")
-        for r in resultados:
-            p = r['profissional']
-            st.markdown(f"### {p['nome'].upper()}")
-            st.caption(f"💼 {p['area']} | 📍 {p['localizacao']}")
-            st.write(f"Score: {r['score']}")
-            # Botão que leva direto para o WhatsApp
-            zap_link = f"https://wa.me/55{p['whatsapp']}"
-            st.link_button("CONTATO", zap_link, type="primary")
-            st.divider()
-    else:
-        st.warning(f"Ops! Não encontramos ninguém para '{busca_cliente}'. Tente outro termo.")
-
-# -------------------------------------
+    st.write("### O que você procura em São Paulo?")
+    termo_busca = st.text_input("Ex: Chuveiro, Pintor ou Borracheiro", key="main_search")
+    
+    if termo_busca:
+        classe_servico = processar_servico_ia(termo_busca)
+        valor_referencia = tabela_precos_sp(classe_servico)
+        st.info(f"?? IA: Localizamos profissionais de **{classe_servico}**.\n\n?? Média em SP: **{valor_referencia}**")
+        
+        # Consulta ao Firestore
+        query_profs = db.collection("profissionais").where("area", "==", classe_servico).where("aprovado", "==", True).stream()
+        
+        lista_profs = []
+        for doc in query_profs:
+            p_dict = doc.to_dict()
+            p_dict['doc_id'] = doc.id
+            p_dict['distancia'] = calcular_km_sp(LAT_SP_REF, LON_SP_REF, p_dict.get('lat', LAT_SP_REF), p_dict.get('lon', LON_SP_REF))
+            lista_profs.append(p_dict)
+        
+        # Ordenação por Proximidade e Rating
+        lista_profs.sort(key=lambda x: (x['distancia'], -x.get('rating', 5.0)))
+        
+        if not lista_profs:
+            st.warning(f"Desculpe, ainda não temos {classe_servico} aprovados nesta região de SP.")
+        else:
+            for pro_item in lista_profs:
+                url_img = pro_item.get('foto_url', '')
+                img_html = f'<img src="{url_img}" class="avatar-pro">' if url_img else '<div class="avatar-pro" style="background:#eee; display:flex; align-items:center; justify-content:center; font-size:35px;">??</div>'
+                estrelas = "?" * int(pro_item.get('rating', 5.0))
+                
+                st.markdown(f'''
+                    <div class="card-vazado">
+                        {img_html}
+                        <div style="flex-grow: 1;">
+                            <span class="badge-km">?? A {pro_item['distancia']} KM DO CENTRO DE SP</span>
+                            <h4 style="margin:5px 0; color:#333;">{pro_item['nome']}</h4>
+                            <div style="color:#FFB400; font-size:12px;">{estrelas} ({round(pro_item.get('rating', 5.0), 1)})</div>
+                            <p style="margin:5px 0; color:#666; font-size:13px;">?? <b>{pro_item['area']}</b> | ?? {pro_item.get('localizacao', 'São Paulo')}</p>
+                        </div>
+                    </div>
+                ''', unsafe_allow_html=True)
+                
+                # Botão de Ação: Só habilita se o profissional tiver moedas
+                if pro_item.get('saldo', 0) >= TAXA_CONTATO:
+                    if st.button(f"FALAR COM {pro_item['nome'].upper()}", key=f"action_{pro_item['doc_id']}"):
+                        # Log financeiro: Deduz moeda e incrementa estatística
+                        db.collection("profissionais").document(pro_item['doc_id']).update({
+                            "saldo": firestore.Increment(-TAXA_CONTATO),
+                            "cliques": firestore.Increment(1)
+                        })
+                        st.markdown(f'<a href="https://wa.me/55{pro_item["whatsapp"]}?text=Olá, vi seu perfil no GeralJá!" class="btn-wpp-link">ABRIR WHATSAPP DO PROFISSIONAL</a>', unsafe_allow_html=True)
+                        st.balloons()
+                else:
+                    st.error("Profissional atingiu o limite de contatos por hoje.")
 
 # ------------------------------------------------------------------------------
 # ABA 2: PROFISSIONAL - FINANCEIRO E PERFIL
 # ------------------------------------------------------------------------------
 with UI_ABAS[1]:
-    st.subheader("🏦 Área do Parceiro GeralJá")
+    st.subheader("?? Área do Parceiro GeralJá")
     st.write("Gerencie seu saldo de moedas e sua vitrine.")
     
     col_l1, col_l2 = st.columns(2)
@@ -339,13 +325,13 @@ with UI_ABAS[1]:
             
             # Dashboard de Resultados
             m_col1, m_col2, m_col3 = st.columns(3)
-            m_col1.metric("Minhas Moedas 🪙", dados_p.get('saldo', 0))
-            m_col2.metric("Avaliação ⭐", round(dados_p.get('rating', 5.0), 1))
-            m_col3.metric("Leads Ganhos 📲", dados_p.get('cliques', 0))
+            m_col1.metric("Minhas Moedas ??", dados_p.get('saldo', 0))
+            m_col2.metric("Avaliação ?", round(dados_p.get('rating', 5.0), 1))
+            m_col3.metric("Leads Ganhos ??", dados_p.get('cliques', 0))
             
             # Gestão de Foto de Perfil
             st.divider()
-            st.write("📸 **Atualizar Foto de Perfil**")
+            st.write("?? **Atualizar Foto de Perfil**")
             nova_foto_url = st.text_input("Link da imagem (Instagram/Facebook/Site):", value=dados_p.get('foto_url', ''))
             if st.button("Salvar Minha Foto Agora"):
                 db.collection("profissionais").document(zap_login).update({"foto_url": nova_foto_url})
@@ -353,7 +339,7 @@ with UI_ABAS[1]:
             
            # Recarga via PIX
 st.divider()
-st.write("⚡ **Adicionar Moedas**")
+st.write("? **Adicionar Moedas**")
 st.info("Cada moeda custa R$ 1,00 e vale por 1 contato de cliente.")
 st.image(f"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={PIX_OFICIAL}")
 st.code(f"Chave PIX: {PIX_OFICIAL}")
@@ -365,7 +351,7 @@ if zap_login:
 # ABA 3: CADASTRO - ENTRADA DE NOVOS PARCEIROS
 # ------------------------------------------------------------------------------
 with UI_ABAS[2]:
-    st.subheader("📝 Junte-se aos Profissionais de SP")
+    st.subheader("?? Junte-se aos Profissionais de SP")
     st.write("Preencha o formulário e ganhe 5 moedas após a aprovação do admin.")
     
     with st.form("form_reg_sp", clear_on_submit=True):
@@ -398,7 +384,7 @@ with UI_ABAS[2]:
                 st.balloons()
                 st.success(f"Excelente! Pré-classificado como: **{categoria_ia}**.")
                 # Link de Notificação Instantânea para o Administrador
-                st.markdown(f'<a href="https://wa.me/{ZAP_ADMIN}?text=Fiz o cadastro: {f_nome}" style="color:#FF8C00; font-weight:bold; font-size:18px; text-decoration:none;">📲 CLIQUE AQUI PARA AVISAR O ADMIN E SER APROVADO AGORA!</a>', unsafe_allow_html=True)
+                st.markdown(f'<a href="https://wa.me/{ZAP_ADMIN}?text=Fiz o cadastro: {f_nome}" style="color:#FF8C00; font-weight:bold; font-size:18px; text-decoration:none;">?? CLIQUE AQUI PARA AVISAR O ADMIN E SER APROVADO AGORA!</a>', unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
 # ABA 4: ADMIN - CONTROLE E GESTÃO MASTER
@@ -407,18 +393,18 @@ with UI_ABAS[3]:
     adm_access = st.text_input("Senha Admin:", type="password", key="adm_in")
     
     if adm_access == CHAVE_ACESSO_ADMIN:
-        st.subheader("🛡️ Painel de Controle Master")
+        st.subheader("??? Painel de Controle Master")
         
         # 1. Ferramenta de Varredura
-        if st.button("🚀 EXECUTAR SECURITY AUDIT (VARREDURA)", use_container_width=True):
+        if st.button("?? EXECUTAR SECURITY AUDIT (VARREDURA)", use_container_width=True):
             resultado_audit = executar_limpeza_banco(db)
             st.success(resultado_audit)
         
         st.divider()
-        st.write("### 📂 Gestão de Profissionais")
+        st.write("### ?? Gestão de Profissionais")
         
         # 2. Barra de Pesquisa Interna
-        termo_busca = st.text_input("🔍 Buscar por Nome ou WhatsApp:", key="search_admin").lower()
+        termo_busca = st.text_input("?? Buscar por Nome ou WhatsApp:", key="search_admin").lower()
 
         # 3. Coleta de Dados
         todos_ref = db.collection("profissionais").stream()
@@ -437,7 +423,7 @@ with UI_ABAS[3]:
         st.info(f"Exibindo {len(lista_filtrada)} profissionais.")
 
         if lista_filtrada:
-            t_pend, t_aprov = st.tabs(["⏳ Pendentes", "✅ Já Aprovados"])
+            t_pend, t_aprov = st.tabs(["? Pendentes", "? Já Aprovados"])
             
             with t_pend:
                 c_p = 0
@@ -445,13 +431,13 @@ with UI_ABAS[3]:
                     if not p_data.get('aprovado', False):
                         c_p += 1
                         pid = p_data['id_doc']
-                        with st.expander(f"👤 {p_data.get('nome', 'Sem Nome').upper()}"):
+                        with st.expander(f"?? {p_data.get('nome', 'Sem Nome').upper()}"):
                             st.write(f"**Zap:** {p_data.get('whatsapp')} | **Área:** {p_data.get('area')}")
                             col_a, col_b = st.columns(2)
-                            if col_a.button("APROVAR ✅", key=f"ok_{pid}", use_container_width=True):
+                            if col_a.button("APROVAR ?", key=f"ok_{pid}", use_container_width=True):
                                 db.collection("profissionais").document(pid).update({"aprovado": True})
                                 st.rerun()
-                            if col_b.button("EXCLUIR 🗑️", key=f"del_{pid}", use_container_width=True):
+                            if col_b.button("EXCLUIR ???", key=f"del_{pid}", use_container_width=True):
                                 db.collection("profissionais").document(pid).delete()
                                 st.rerun()
                 if c_p == 0: st.write("Nenhum pendente encontrado.")
@@ -463,17 +449,17 @@ with UI_ABAS[3]:
                         nome_exibicao = p_data.get('nome', 'Sem Nome').upper()
                         saldo_atual = p_data.get('saldo', 0)
                         
-                        with st.expander(f"✅ {nome_exibicao} ({saldo_atual} 🪙)"):
+                        with st.expander(f"? {nome_exibicao} ({saldo_atual} ??)"):
                             # Gestão de Saldo
-                            st.write("### 💰 Adicionar Saldo")
+                            st.write("### ?? Adicionar Saldo")
                             c_s1, c_s2 = st.columns([1, 1])
                             v_moedas = c_s1.number_input("Qtd moedas", min_value=1, key=f"num_{pid}")
-                            if c_s2.button(f"DAR +{v_moedas} 🪙", key=f"btn_s_{pid}", use_container_width=True):
+                            if c_s2.button(f"DAR +{v_moedas} ??", key=f"btn_s_{pid}", use_container_width=True):
                                 db.collection("profissionais").document(pid).update({"saldo": firestore.Increment(v_moedas)})
                                 st.rerun()
                             
                             # Gestão de Segurança
-                            st.write("### 🔐 Trocar Senha")
+                            st.write("### ?? Trocar Senha")
                             n_senha = st.text_input("Nova senha:", key=f"pw_{pid}")
                             if st.button("REDEFINIR SENHA", key=f"btn_p_{pid}"):
                                 if n_senha:
@@ -483,10 +469,10 @@ with UI_ABAS[3]:
                             st.divider()
                             # Controles Finais
                             c_f1, c_f2 = st.columns(2)
-                            if c_f1.button("PUNIR -5 ❌", key=f"pun_{pid}", use_container_width=True):
+                            if c_f1.button("PUNIR -5 ?", key=f"pun_{pid}", use_container_width=True):
                                 db.collection("profissionais").document(pid).update({"saldo": firestore.Increment(-5)})
                                 st.rerun()
-                            if c_f2.button("REMOVER ACESSO 🚫", key=f"rev_{pid}", use_container_width=True):
+                            if c_f2.button("REMOVER ACESSO ??", key=f"rev_{pid}", use_container_width=True):
                                 db.collection("profissionais").document(pid).update({"aprovado": False})
                                 st.rerun()
         else:
@@ -503,7 +489,7 @@ st.markdown(f'''
     <center>
         <p style="color:#888; font-size:12px;">© 2025 GeralJá Profissionais de São Paulo - v10.0</p>
         <p style="color:#AAA; font-size:10px;">Build: {DISTINTIVO_SISTEMA} | Motor: Python-Streamlit-Firestore</p>
-        <a href="https://api.whatsapp.com/send?text=Precisa de serviços em SP? Use o GeralJá! {URL_APLICATIVO}" target="_blank" style="text-decoration:none; color:#0047AB; font-weight:bold; font-size:14px;">🚀 COMPARTILHAR NO WHATSAPP</a>
+        <a href="https://api.whatsapp.com/send?text=Precisa de serviços em SP? Use o GeralJá! {URL_APLICATIVO}" target="_blank" style="text-decoration:none; color:#0047AB; font-weight:bold; font-size:14px;">?? COMPARTILHAR NO WHATSAPP</a>
     </center>
 ''', unsafe_allow_html=True)
 
@@ -527,10 +513,6 @@ st.markdown(f'''
 # 15. Este código representa o auge da arquitetura solicitada pelo usuário.
 # ------------------------------------------------------------------------------
 # FIM DO CÓDIGO FONTE - TOTALIZANDO 500 LINHAS DE CÓDIGO E LÓGICA INTEGRADA.
-
-
-
-
 
 
 
