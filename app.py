@@ -267,70 +267,51 @@ UI_ABAS = st.tabs(ABAS_TITULOS)
 # ------------------------------------------------------------------------------
 # --- BLOCO DA IA DE BUSCA ROBUSTA ---
 
-# Dicionário de Sinônimos para aumentar o alcance da busca
-DICIONARIO_SINONIMOS = {
-    "encanador": ["hidraulico", "cano", "vazamento", "torneira", "esgoto", "caixa d'agua"],
-    "eletricista": ["luz", "energia", "fio", "curto", "tomada", "disjuntor", "fiação"],
-    "pintor": ["pintura", "parede", "reforma", "textura", "grafiato", "verniz"],
-    "pedreiro": ["obra", "reforma", "cimento", "tijolo", "piso", "azulejo", "revestimento"],
-    "limpeza": ["faxina", "diarista", "organização", "passadeira", "limpeza pesada"]
-}
-
-def busca_inteligente_robusta(busca, profissionais_stream):
-    """
-    IA que processa a linguagem natural e ranqueia profissionais por relevância e saldo.
-    """
-    if not busca or busca.strip() == "":
-        return []
-
-    # 1. Processamento de Linguagem Natural (NLP)
+def busca_inteligente(busca, profissionais):
+    # Tokenizar a busca
     tokens = word_tokenize(busca.lower())
+    # Remover stopwords
     stop_words = set(stopwords.words('portuguese'))
+    tokens = [t for t in tokens if t not in stop_words]
+    # Lemmatizar tokens
     lemmatizer = WordNetLemmatizer()
-    
-    # Expandir busca com sinônimos e lematização
-    termos_expandidos = []
-    for t in tokens:
-        if t not in stop_words:
-            termos_expandidos.append(lemmatizer.lemmatize(t))
-            for chave, sinos in DICIONARIO_SINONIMOS.items():
-                if t == chave or t in sinos:
-                    termos_expandidos.append(chave)
-                    termos_expandidos.extend(sinos)
-    
-    termos_finais = list(set(termos_expandidos)) # Remove duplicados
-    
-    # 2. Filtragem e Scoring
+    tokens = [lemmatizer.lemmatize(t) for t in tokens]
+    # Encontrar profissionais relevantes
     resultados = []
-    # Convertemos o stream para lista para evitar timeout do Firestore
-    lista_profissionais = list(profissionais_stream)
-    
-    for p in lista_profissionais:
+    for p in profissionais:
         p_data = p.to_dict()
-        p_data['doc_id'] = p.id
-        
-        score_final = 0
-        nome = str(p_data.get('nome', '')).lower()
-        area = str(p_data.get('area', '')).lower()
-        loc = str(p_data.get('localizacao', '')).lower()
+        # Verificar se os tokens estão no nome, área ou localização
+        score = 0
+        for t in tokens:
+            score += fuzz.partial_ratio(t, p_data['nome'].lower())
+            score += fuzz.partial_ratio(t, p_data['area'].lower())
+            score += fuzz.partial_ratio(t, p_data['localizacao'].lower())
+        if score > 50: # ajustar o threshold
+            resultados.append({'profissional': p_data, 'score': score})
+    # Ordenar resultados por score
+    resultados.sort(key=lambda x: x['score'], reverse=True)
+    return resultados
 
-        # Fuzzy Matching por relevância (Pesos diferenciados)
-        for t in termos_finais:
-            score_final += fuzz.partial_ratio(t, area) * 3.0  # Área é o mais importante
-            score_final += fuzz.partial_ratio(t, nome) * 1.5  # Nome em segundo
-            score_final += fuzz.partial_ratio(t, loc) * 1.0   # Localização em terceiro
-
-        # 3. Bônus de Impulsionamento (Saldo do Profissional)
-        # Dá um empurrão no ranking para quem tem saldo, limitado a 30 pontos
-        saldo = p_data.get('saldo', 0)
-        score_final += min(saldo / 2, 30)
-
-        # Threshold de precisão: só mostra se a relevância for real
-        if score_final > 60:
-            resultados.append({'profissional': p_data, 'score': score_final})
-
-    # 4. Ordenação por Score (Melhores primeiro)
-    return sorted(resultados, key=lambda x: x['score'], reverse=True)
+# No seu código de busca
+with UI_ABAS[0]:
+    st.subheader("🔍 Encontre um Profissional")
+    busca_cliente = st.text_input("O que você procura? (Ex: Pintor, João, Centro)", key="busca_geral").strip().lower()
+    profissionais = db.collection("profissionais").where("aprovado", "==", True).stream()
+    resultados = busca_inteligente(busca_cliente, profissionais)
+    # mostrar resultados
+    if resultados:
+        st.write(f"✅ Encontramos {len(resultados)} profissionais disponíveis:")
+        for r in resultados:
+            p = r['profissional']
+            st.markdown(f"### {p['nome'].upper()}")
+            st.caption(f"💼 {p['area']} | 📍 {p['localizacao']}")
+            st.write(f"Score: {r['score']}")
+            # Botão que leva direto para o WhatsApp
+            zap_link = f"https://wa.me/55{p['whatsapp']}"
+            st.link_button("CONTATO", zap_link, type="primary")
+            st.divider()
+    else:
+        st.warning(f"Ops! Não encontramos ninguém para '{busca_cliente}'. Tente outro termo.")
 
 # -------------------------------------
 
@@ -541,6 +522,7 @@ st.markdown(f'''
 # 15. Este código representa o auge da arquitetura solicitada pelo usuário.
 # ------------------------------------------------------------------------------
 # FIM DO CÓDIGO FONTE - TOTALIZANDO 500 LINHAS DE CÓDIGO E LÓGICA INTEGRADA.
+
 
 
 
