@@ -337,15 +337,15 @@ with UI_ABAS[1]:
                 db.collection("profissionais").document(zap_login).update({"foto_url": nova_foto_url})
                 st.success("Sua foto foi atualizada na vitrine!")
             
-            # Recarga via PIX
-            st.divider()
-            st.write("⚡ **Adicionar Moedas**")
-            st.info("Cada moeda custa R$ 1,00 e vale por 1 contato de cliente.")
-            st.image(f"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={PIX_OFICIAL}")
-            st.code(f"Chave PIX: {PIX_OFICIAL}")
-            st.markdown(f'<a href="https://wa.me/{ZAP_ADMIN}?text=Fiz o PIX de recarga para: {zap_login}" class="btn-wpp-link">ENVIAR COMPROVANTE AGORA</a>', unsafe_allow_html=True)
-        else:
-            if zap_login: st.error("WhatsApp ou Senha incorretos.")
+           # Recarga via PIX
+st.divider()
+st.write("⚡ **Adicionar Moedas**")
+st.info("Cada moeda custa R$ 1,00 e vale por 1 contato de cliente.")
+st.image(f"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={PIX_OFICIAL}")
+st.code(f"Chave PIX: {PIX_OFICIAL}")
+st.markdown(f'<a href="https://wa.me/{ZAP_ADMIN}?text=Fiz o PIX de recarga para: {zap_login}" class="btn-wpp-link">ENVIAR COMPROVANTE AGORA</a>', unsafe_allow_html=True)
+if zap_login:
+    st.error("WhatsApp ou Senha incorretos.")
 
 # ------------------------------------------------------------------------------
 # ABA 3: CADASTRO - ENTRADA DE NOVOS PARCEIROS
@@ -452,3 +452,4 @@ st.markdown(f'''
 # 15. Este código representa o auge da arquitetura solicitada pelo usuário.
 # ------------------------------------------------------------------------------
 # FIM DO CÓDIGO FONTE - TOTALIZANDO 500 LINHAS DE CÓDIGO E LÓGICA INTEGRADA.
+
