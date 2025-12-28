@@ -2,5 +2,8 @@ streamlit
 firebase-admin
 gTTS
 pandas
+streamlit
+google-cloud-firestore
+nltk
 fuzzywuzzy
 python-Levenshtein
