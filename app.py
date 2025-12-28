@@ -1,3 +1,4 @@
+import nltk
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, firestore
@@ -522,6 +523,7 @@ st.markdown(f'''
 # 15. Este código representa o auge da arquitetura solicitada pelo usuário.
 # ------------------------------------------------------------------------------
 # FIM DO CÓDIGO FONTE - TOTALIZANDO 500 LINHAS DE CÓDIGO E LÓGICA INTEGRADA.
+
 
 
 
