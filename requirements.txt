@@ -2,3 +2,5 @@ streamlit
 firebase-admin
 gTTS
 pandas
+fuzzywuzzy
+python-Levenshtein
