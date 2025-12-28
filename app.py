@@ -265,60 +265,74 @@ UI_ABAS = st.tabs(ABAS_TITULOS)
 # ------------------------------------------------------------------------------
 # ABA 1: CLIENTE - BUSCA E RESULTADOS
 # ------------------------------------------------------------------------------
-with UI_ABAS[0]:
-    st.write("### O que você procura em São Paulo?")
-    termo_busca = st.text_input("Ex: Chuveiro, Pintor ou Borracheiro", key="main_search")
+# --- BLOCO DA IA DE BUSCA ROBUSTA ---
+
+# Dicionário de Sinônimos para aumentar o alcance da busca
+DICIONARIO_SINONIMOS = {
+    "encanador": ["hidraulico", "cano", "vazamento", "torneira", "esgoto", "caixa d'agua"],
+    "eletricista": ["luz", "energia", "fio", "curto", "tomada", "disjuntor", "fiação"],
+    "pintor": ["pintura", "parede", "reforma", "textura", "grafiato", "verniz"],
+    "pedreiro": ["obra", "reforma", "cimento", "tijolo", "piso", "azulejo", "revestimento"],
+    "limpeza": ["faxina", "diarista", "organização", "passadeira", "limpeza pesada"]
+}
+
+def busca_inteligente_robusta(busca, profissionais_stream):
+    """
+    IA que processa a linguagem natural e ranqueia profissionais por relevância e saldo.
+    """
+    if not busca or busca.strip() == "":
+        return []
+
+    # 1. Processamento de Linguagem Natural (NLP)
+    tokens = word_tokenize(busca.lower())
+    stop_words = set(stopwords.words('portuguese'))
+    lemmatizer = WordNetLemmatizer()
     
-    if termo_busca:
-        classe_servico = processar_servico_ia(termo_busca)
-        valor_referencia = tabela_precos_sp(classe_servico)
-        st.info(f"🤖 IA: Localizamos profissionais de **{classe_servico}**.\n\n💰 Média em SP: **{valor_referencia}**")
+    # Expandir busca com sinônimos e lematização
+    termos_expandidos = []
+    for t in tokens:
+        if t not in stop_words:
+            termos_expandidos.append(lemmatizer.lemmatize(t))
+            for chave, sinos in DICIONARIO_SINONIMOS.items():
+                if t == chave or t in sinos:
+                    termos_expandidos.append(chave)
+                    termos_expandidos.extend(sinos)
+    
+    termos_finais = list(set(termos_expandidos)) # Remove duplicados
+    
+    # 2. Filtragem e Scoring
+    resultados = []
+    # Convertemos o stream para lista para evitar timeout do Firestore
+    lista_profissionais = list(profissionais_stream)
+    
+    for p in lista_profissionais:
+        p_data = p.to_dict()
+        p_data['doc_id'] = p.id
         
-        # Consulta ao Firestore
-        query_profs = db.collection("profissionais").where("area", "==", classe_servico).where("aprovado", "==", True).stream()
-        
-        lista_profs = []
-        for doc in query_profs:
-            p_dict = doc.to_dict()
-            p_dict['doc_id'] = doc.id
-            p_dict['distancia'] = calcular_km_sp(LAT_SP_REF, LON_SP_REF, p_dict.get('lat', LAT_SP_REF), p_dict.get('lon', LON_SP_REF))
-            lista_profs.append(p_dict)
-        
-        # Ordenação por Proximidade e Rating
-        lista_profs.sort(key=lambda x: (x['distancia'], -x.get('rating', 5.0)))
-        
-        if not lista_profs:
-            st.warning(f"Desculpe, ainda não temos {classe_servico} aprovados nesta região de SP.")
-        else:
-            for pro_item in lista_profs:
-                url_img = pro_item.get('foto_url', '')
-                img_html = f'<img src="{url_img}" class="avatar-pro">' if url_img else '<div class="avatar-pro" style="background:#eee; display:flex; align-items:center; justify-content:center; font-size:35px;">👤</div>'
-                estrelas = "⭐" * int(pro_item.get('rating', 5.0))
-                
-                st.markdown(f'''
-                    <div class="card-vazado">
-                        {img_html}
-                        <div style="flex-grow: 1;">
-                            <span class="badge-km">📍 A {pro_item['distancia']} KM DO CENTRO DE SP</span>
-                            <h4 style="margin:5px 0; color:#333;">{pro_item['nome']}</h4>
-                            <div style="color:#FFB400; font-size:12px;">{estrelas} ({round(pro_item.get('rating', 5.0), 1)})</div>
-                            <p style="margin:5px 0; color:#666; font-size:13px;">💼 <b>{pro_item['area']}</b> | 🏠 {pro_item.get('localizacao', 'São Paulo')}</p>
-                        </div>
-                    </div>
-                ''', unsafe_allow_html=True)
-                
-                # Botão de Ação: Só habilita se o profissional tiver moedas
-                if pro_item.get('saldo', 0) >= TAXA_CONTATO:
-                    if st.button(f"FALAR COM {pro_item['nome'].upper()}", key=f"action_{pro_item['doc_id']}"):
-                        # Log financeiro: Deduz moeda e incrementa estatística
-                        db.collection("profissionais").document(pro_item['doc_id']).update({
-                            "saldo": firestore.Increment(-TAXA_CONTATO),
-                            "cliques": firestore.Increment(1)
-                        })
-                        st.markdown(f'<a href="https://wa.me/55{pro_item["whatsapp"]}?text=Olá, vi seu perfil no GeralJá!" class="btn-wpp-link">ABRIR WHATSAPP DO PROFISSIONAL</a>', unsafe_allow_html=True)
-                        st.balloons()
-                else:
-                    st.error("Profissional atingiu o limite de contatos por hoje.")
+        score_final = 0
+        nome = str(p_data.get('nome', '')).lower()
+        area = str(p_data.get('area', '')).lower()
+        loc = str(p_data.get('localizacao', '')).lower()
+
+        # Fuzzy Matching por relevância (Pesos diferenciados)
+        for t in termos_finais:
+            score_final += fuzz.partial_ratio(t, area) * 3.0  # Área é o mais importante
+            score_final += fuzz.partial_ratio(t, nome) * 1.5  # Nome em segundo
+            score_final += fuzz.partial_ratio(t, loc) * 1.0   # Localização em terceiro
+
+        # 3. Bônus de Impulsionamento (Saldo do Profissional)
+        # Dá um empurrão no ranking para quem tem saldo, limitado a 30 pontos
+        saldo = p_data.get('saldo', 0)
+        score_final += min(saldo / 2, 30)
+
+        # Threshold de precisão: só mostra se a relevância for real
+        if score_final > 60:
+            resultados.append({'profissional': p_data, 'score': score_final})
+
+    # 4. Ordenação por Score (Melhores primeiro)
+    return sorted(resultados, key=lambda x: x['score'], reverse=True)
+
+# -------------------------------------
 
 # ------------------------------------------------------------------------------
 # ABA 2: PROFISSIONAL - FINANCEIRO E PERFIL
@@ -527,6 +541,7 @@ st.markdown(f'''
 # 15. Este código representa o auge da arquitetura solicitada pelo usuário.
 # ------------------------------------------------------------------------------
 # FIM DO CÓDIGO FONTE - TOTALIZANDO 500 LINHAS DE CÓDIGO E LÓGICA INTEGRADA.
+
 
 
 
