@@ -395,59 +395,58 @@ with UI_ABAS[3]:
     if adm_access == CHAVE_ACESSO_ADMIN:
         st.subheader("🛡️ Painel de Controle Master")
         
-        # Grid de ferramentas superiores
-        col_audit, col_stats = st.columns([2, 1])
-        with col_audit:
-            if st.button("🚀 EXECUTAR SECURITY AUDIT (VARREDURA)", use_container_width=True):
-                resultado_audit = executar_limpeza_banco(db)
-                st.success(resultado_audit)
+        # 1. Ferramentas de Manutenção
+        if st.button("🚀 EXECUTAR SECURITY AUDIT (VARREDURA)", use_container_width=True):
+            resultado_audit = executar_limpeza_banco(db)
+            st.success(resultado_audit)
         
         st.divider()
-        st.write("### 📂 Gestão de Aprovações Pendentes")
+
+        # 2. BUSCA TOTAL (Sem filtros para garantir que você veja todos)
+        # Trocamos o .where() por .stream() puro para carregar todo o banco
+        todos_ref = db.collection("profissionais").stream()
+        lista_geral = list(todos_ref)
         
-        # Chamada ao banco
-        pendentes_ref = db.collection("profissionais").where("aprovado", "==", False).stream()
-        pendentes = list(pendentes_ref)
-        
-        if pendentes:
-            for p_doc in pendentes:
-                p_data = p_doc.to_dict()
-                pid = p_doc.id
-                
-                # --- PROTEÇÃO DE DADOS (BLINDAGEM CONTRA ERROS) ---
-                # Se faltar qualquer dado no banco, o app não trava mais
-                nome_p = p_data.get('nome', 'Sem Nome')
-                area_p = p_data.get('area', 'Não Definida')
-                loc_p = p_data.get('localizacao', 'São Paulo')
-                zap_p = p_data.get('whatsapp', pid) # Usa o ID como backup do zap
-                saldo_p = p_data.get('saldo', 0)
-                
-                # Interface em Expander (Fica muito mais limpo)
-                with st.expander(f"👤 {nome_p.upper()} - {area_p}"):
-                    st.write(f"**WhatsApp:** {zap_p} | **Local:** {loc_p} | **Saldo Atual:** {saldo_p}🪙")
-                    
-                    # Botões de Ação
-                    c_a, c_b, c_c = st.columns(3)
-                    
-                    if c_a.button("APROVAR ✅", key=f"ok_{pid}", use_container_width=True):
-                        db.collection("profissionais").document(pid).update({"aprovado": True})
-                        st.toast(f"{nome_p} aprovado!") # Aviso rápido no canto da tela
-                        time.sleep(1)
-                        st.rerun()
-                        
-                    if c_b.button("EXCLUIR 🗑️", key=f"del_{pid}", use_container_width=True):
-                        db.collection("profissionais").document(pid).delete()
-                        st.toast(f"Cadastro de {nome_p} removido.")
-                        time.sleep(1)
-                        st.rerun()
-                        
-                    if c_c.button("PUNIR -5 ❌", key=f"punish_{pid}", use_container_width=True):
-                        db.collection("profissionais").document(pid).update({"saldo": firestore.Increment(-5)})
-                        st.warning(f"Saldo de {nome_p} reduzido.")
-                        time.sleep(1)
-                        st.rerun()
+        st.write(f"📊 **Total de Cadastros no Banco:** {len(lista_geral)}")
+
+        if lista_geral:
+            # Criamos duas abas internas no Admin para organizar
+            tab_pendentes, tab_aprovados = st.tabs(["⏳ Pendentes", "✅ Já Aprovados"])
+            
+            with tab_pendentes:
+                cont_p = 0
+                for p_doc in lista_geral:
+                    p_data = p_doc.to_dict()
+                    if not p_data.get('aprovado', False): # Se não estiver aprovado
+                        cont_p += 1
+                        with st.expander(f"👤 {p_data.get('nome', 'Sem Nome').upper()}"):
+                            st.write(f"**Zap:** {p_data.get('whatsapp')} | **Área:** {p_data.get('area')}")
+                            
+                            c1, c2 = st.columns(2)
+                            if c1.button("APROVAR ✅", key=f"ok_{p_doc.id}"):
+                                db.collection("profissionais").document(p_doc.id).update({"aprovado": True})
+                                st.rerun()
+                            if c2.button("EXCLUIR 🗑️", key=f"del_{p_doc.id}"):
+                                db.collection("profissionais").document(p_doc.id).delete()
+                                st.rerun()
+                if cont_p == 0: st.info("Nenhum pendente.")
+
+            with tab_aprovados:
+                for p_doc in lista_geral:
+                    p_data = p_doc.to_dict()
+                    if p_data.get('aprovado', False): # Se já estiver aprovado
+                        with st.expander(f"✅ {p_data.get('nome', 'Sem Nome')}"):
+                            st.write(f"**Saldo:** {p_data.get('saldo')} 🪙 | **Cliques:** {p_data.get('cliques', 0)}")
+                            
+                            c3, c4 = st.columns(2)
+                            if c3.button("PUNIR -5 ❌", key=f"pun_{p_doc.id}"):
+                                db.collection("profissionais").document(p_doc.id).update({"saldo": firestore.Increment(-5)})
+                                st.rerun()
+                            if c4.button("REMOVER ACESSO 🚫", key=f"rev_{p_doc.id}"):
+                                db.collection("profissionais").document(p_doc.id).update({"aprovado": False})
+                                st.rerun()
         else:
-            st.info("✅ Tudo limpo! Nenhum profissional pendente de aprovação.")
+            st.warning("⚠️ O banco de dados está vazio. Ninguém se cadastrou ainda.")
             
     elif adm_access:
         st.error("Senha Administrativa Inválida.")
@@ -484,6 +483,7 @@ st.markdown(f'''
 # 15. Este código representa o auge da arquitetura solicitada pelo usuário.
 # ------------------------------------------------------------------------------
 # FIM DO CÓDIGO FONTE - TOTALIZANDO 500 LINHAS DE CÓDIGO E LÓGICA INTEGRADA.
+
 
 
 
