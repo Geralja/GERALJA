@@ -390,7 +390,7 @@ with UI_ABAS[2]:
 # ABA 4: ADMIN - CONTROLE E GESTÃO MASTER
 # ------------------------------------------------------------------------------
 with UI_ABAS[3]:
- st.divider()
+         st.divider()
         st.write("### 📂 Gestão de Profissionais")
         
         # 1. BARRA DE PESQUISA (A grande novidade)
@@ -479,6 +479,7 @@ st.markdown(f'''
 # 15. Este código representa o auge da arquitetura solicitada pelo usuário.
 # ------------------------------------------------------------------------------
 # FIM DO CÓDIGO FONTE - TOTALIZANDO 500 LINHAS DE CÓDIGO E LÓGICA INTEGRADA.
+
 
 
 
