@@ -391,7 +391,7 @@ with UI_ABAS[2]:
 # ------------------------------------------------------------------------------
 with UI_ABAS[3]:
          st.divider()
-        st.write("### 📂 Gestão de Profissionais")
+         st.write("### 📂 Gestão de Profissionais")
         
         # 1. BARRA DE PESQUISA (A grande novidade)
         termo_busca = st.text_input("🔍 Buscar profissional por Nome ou WhatsApp:", key="search_admin").lower()
@@ -479,6 +479,7 @@ st.markdown(f'''
 # 15. Este código representa o auge da arquitetura solicitada pelo usuário.
 # ------------------------------------------------------------------------------
 # FIM DO CÓDIGO FONTE - TOTALIZANDO 500 LINHAS DE CÓDIGO E LÓGICA INTEGRADA.
+
 
 
 
