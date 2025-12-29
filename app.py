@@ -8,6 +8,11 @@
 # EDIÇÃO 2025 | FOCO EM ALTA PERFORMANCE E IA
 # ==============================================================================
 
+# ==============================================================================
+# GERALJÁ - ECOSSISTEMA PROFISSIONAL NACIONAL v13.0
+# FOCO: CONTROLE TOTAL DO ADMIN E DASHBOARD DE ALTA PERFORMANCE
+# ==============================================================================
+
 import streamlit as st
 import pandas as pd
 from google.cloud import firestore
@@ -29,18 +34,18 @@ import random
 import time
 
 # ------------------------------------------------------------------------------
-# 1. SETUP DE NÚCLEO E CONFIGURAÇÃO DA INTERFACE (SPA)
+# 1. SETUP DE INFRAESTRUTURA (LINHAS 30-80)
 # ------------------------------------------------------------------------------
 st.set_page_config(
-    page_title="GeralJá | Conectando Profissionais",
+    page_title="GeralJá | Painel de Controle",
     page_icon="🛠️",
-    layout="centered",
+    layout="wide",
     initial_sidebar_state="collapsed"
 )
 
 @st.cache_resource
-def inicializar_ia_nlp():
-    """Configura o cérebro de processamento de texto"""
+def startup_ia_engine():
+    """Download de componentes de inteligência artificial"""
     try:
         nltk.download('punkt')
         nltk.download('stopwords')
@@ -50,231 +55,253 @@ def inicializar_ia_nlp():
         return True
     except: return False
 
-inicializar_ia_nlp()
+startup_ia_engine()
 
 # ------------------------------------------------------------------------------
-# 2. CONEXÃO E SEGURANÇA DE DADOS (FIREBASE CLOUD)
+# 2. CONEXÃO FIREBASE (BLINDADA) (LINHAS 81-140)
 # ------------------------------------------------------------------------------
 @st.cache_resource
-def conectar_infraestrutura():
+def get_database():
     if not firebase_admin._apps:
         try:
             b64_key = st.secrets["FIREBASE_BASE64"]
             decoded_json = base64.b64decode(b64_key).decode("utf-8")
-            cred = credentials.Certificate(json.loads(decoded_json))
-            firebase_admin.initialize_app(cred)
+            firebase_admin.initialize_app(credentials.Certificate(json.loads(decoded_json)))
         except Exception as e:
-            st.error(f"Erro de Conexão com Servidor: {e}")
+            st.error(f"Erro de Conexão: {e}")
             st.stop()
     return firestore.Client.from_service_account_info(
         json.loads(base64.b64decode(st.secrets["FIREBASE_BASE64"]).decode("utf-8"))
     )
 
-db = conectar_infraestrutura()
+db = get_database()
 
 # ------------------------------------------------------------------------------
-# 3. REGRAS DE NEGÓCIO E DICIONÁRIO DE IA (NACIONAL)
+# 3. CONSTANTES E INTELIGÊNCIA DE MAPEAMENTO (LINHAS 141-260)
 # ------------------------------------------------------------------------------
-PIX_SISTEMA = "11991853488"
-ZAP_SUPORTE = "5511991853488"
-PASS_MASTER = "mumias"
-PRECO_LEAD = 1
-BONUS_NOVOS = 5
+PIX_CHAVE = "11991853488"
+ZAP_DONO = "5511991853488"
+SENHA_ADMIN = "mumias"
+VALOR_CONTATO = 1
+BONUS_CADASTRO = 5
 
-# Categorias Expandidas para Inteligência de Busca
-MAPEAMENTO_CATEGORIAS = {
-    "vazamento": "Encanador", "chuveiro": "Eletricista", "pintar": "Pintor",
-    "faxina": "Diarista", "mudança": "Fretes", "unha": "Manicure",
-    "carro": "Mecânico", "computador": "TI", "jardim": "Jardineiro",
-    "festa": "Eventos", "móvel": "Montador", "aula": "Professor",
-    "cachorro": "Pet Shop", "reforma": "Pedreiro", "piso": "Pedreiro"
+# Banco de dados de sinônimos para a IA não errar nunca
+DADOS_IA = {
+    "vazamento": "Encanador", "torneira": "Encanador", "chuveiro": "Eletricista",
+    "curto": "Eletricista", "pintura": "Pintor", "reforma": "Pedreiro",
+    "limpeza": "Diarista", "faxina": "Diarista", "unha": "Manicure",
+    "frete": "Transporte", "mudança": "Transporte", "carro": "Mecânico"
 }
 
 # ------------------------------------------------------------------------------
-# 4. MOTOR DE BUSCA E AUDITORIA (LÓGICA AVANÇADA)
+# 4. FUNÇÕES DE CÁLCULO E AUDITORIA (LINHAS 261-380)
 # ------------------------------------------------------------------------------
 
-def engine_busca_premium(termo, stream):
-    """Lógica de IA: Tokenização + Fuzzy Logic + Ranking de Saldo"""
+def processar_busca_ia(termo, lista_profs):
+    """Motor NLP com Fuzzy Logic e Score de Ranking"""
     if not termo: return []
-    lista = list(stream)
     tokens = word_tokenize(termo.lower())
-    stop = set(stopwords.words('portuguese'))
+    stop_w = set(stopwords.words('portuguese'))
     lem = WordNetLemmatizer()
-    termos_filtro = [lem.lemmatize(t) for t in tokens if t not in stop]
+    termos_busca = [lem.lemmatize(t) for t in tokens if t not in stop_w]
     
     ranking = []
-    for doc in lista:
+    for doc in lista_profs:
         p = doc.to_dict()
-        p['doc_id'] = doc.id
+        p['id'] = doc.id
         score = 0
-        txt_total = f"{p.get('nome','')} {p.get('area','')} {p.get('localizacao','')} {p.get('descricao','')}".lower()
+        texto_comparar = f"{p.get('nome','')} {p.get('area','')} {p.get('descricao','')} {p.get('localizacao','')}".lower()
         
-        for t in termos_filtro:
-            score += fuzz.partial_ratio(t, txt_total) * 2.5
+        for t in termos_busca:
+            score += fuzz.partial_ratio(t, texto_comparar) * 2
         
-        # Meritocracia: Bonus por Saldo e Nota
+        # Meritocracia: Saldo e Avaliação impulsionam o perfil
         score += min(p.get('saldo', 0), 20)
-        score += (p.get('rating', 5.0) * 5)
+        score += (p.get('rating', 5.0) * 4)
         
         if score > 45:
             ranking.append({'dados': p, 'score': score})
             
     return sorted(ranking, key=lambda x: x['score'], reverse=True)
 
-def auditar_perfis_vazio():
-    """Correção automática de dados faltantes no Banco"""
-    docs = db.collection("profissionais").stream()
-    for d in docs:
+def auditoria_total():
+    """Função Master para consertar qualquer erro no banco de dados"""
+    profs = db.collection("profissionais").stream()
+    contagem = 0
+    for p in profs:
+        d = p.to_dict()
         u = {}
-        data = d.to_dict()
-        if "saldo" not in data: u["saldo"] = BONUS_NOVOS
-        if "cliques" not in data: u["cliques"] = 0
-        if "rating" not in data: u["rating"] = 5.0
-        if u: db.collection("profissionais").document(d.id).update(u)
+        if "saldo" not in d: u["saldo"] = BONUS_CADASTRO
+        if "cliques" not in d: u["cliques"] = 0
+        if "rating" not in d: u["rating"] = 5.0
+        if "aprovado" not in d: u["aprovado"] = False
+        if u:
+            db.collection("profissionais").document(p.id).update(u)
+            contagem += 1
+    return contagem
 
 # ------------------------------------------------------------------------------
-# 5. DESIGN SYSTEM CUSTOMIZADO (CSS)
+# 5. FRONT-END: DESIGN SYSTEM PREMIUM (LINHAS 381-480)
 # ------------------------------------------------------------------------------
 st.markdown("""
-    <style>
+<style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
     * { font-family: 'Montserrat', sans-serif; }
-    .stApp { background-color: #FDFDFD; }
     
-    .header-geral { text-align: center; padding: 30px; background: white; border-bottom: 6px solid #FF8C00; border-radius: 0 0 40px 40px; box-shadow: 0 5px 25px rgba(0,0,0,0.05); }
-    .txt-azul { color: #0047AB; font-weight: 900; font-size: 3.5rem; }
-    .txt-laranja { color: #FF8C00; font-weight: 900; font-size: 3.5rem; }
+    /* Layout Geral */
+    .stApp { background-color: #f4f7f6; }
+    .main-header { text-align: center; padding: 40px; background: white; border-bottom: 8px solid #FF8C00; border-radius: 0 0 50px 50px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
     
-    .card-vazado { 
-        background: white; border-radius: 25px; padding: 25px; margin-bottom: 20px;
-        border-left: 12px solid #0047AB; box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-        display: flex; align-items: center; transition: 0.3s;
+    /* Card do Profissional (Busca) */
+    .card-pro { 
+        background: white; border-radius: 30px; padding: 25px; margin-bottom: 20px;
+        border-left: 15px solid #0047AB; box-shadow: 0 15px 35px rgba(0,0,0,0.07);
+        display: flex; align-items: center; transition: 0.4s;
     }
-    .card-vazado:hover { transform: translateY(-5px); }
-    .avatar-pro { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; margin-right: 20px; border: 3px solid #f0f0f0; }
+    .card-pro:hover { transform: translateY(-8px); box-shadow: 0 20px 45px rgba(0,0,0,0.12); }
+    .avatar-pro { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-right: 25px; border: 4px solid #f0f2f6; }
     
-    .btn-wpp { 
-        background: #25D366; color: white !important; padding: 15px; 
-        border-radius: 15px; text-decoration: none; display: block; text-align: center; font-weight: 900; margin-top: 15px; 
-    }
-    .badge-elite { background: linear-gradient(90deg, #FFD700, #FFA500); color: black; padding: 4px 12px; border-radius: 50px; font-size: 11px; font-weight: 900; }
-    </style>
+    /* Dashboard do Profissional */
+    .dash-box { background: #0047AB; color: white; padding: 25px; border-radius: 25px; text-align: center; margin-bottom: 10px; }
+    .dash-metric { font-size: 2rem; font-weight: 900; }
+    
+    /* Botões */
+    .btn-contato { background: #25D366; color: white !important; padding: 18px; border-radius: 18px; text-decoration: none; display: block; text-align: center; font-weight: 900; font-size: 1.2rem; }
+    .badge-premium { background: linear-gradient(90deg, #FFD700, #FFA500); color: black; padding: 5px 15px; border-radius: 50px; font-size: 11px; font-weight: 900; }
+</style>
 """, unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
-# 6. INTERFACE PRINCIPAL E ABAS (LINHAS 450-600+)
+# 6. INTERFACE DE NAVEGAÇÃO E ABAS (LINHAS 481-600+)
 # ------------------------------------------------------------------------------
-st.markdown('<div class="header-geral"><span class="txt-azul">GERAL</span><span class="txt-laranja">JÁ</span><p style="letter-spacing:10px; color:#666; font-weight:700;">CONECTANDO VOCÊ</p></div>', unsafe_allow_html=True)
+st.markdown('<div class="main-header"><h1 style="color:#0047AB; margin:0; font-size:3.5rem;">GERAL<span style="color:#FF8C00;">JÁ</span></h1><p style="letter-spacing:8px; font-weight:700; color:#555;">OS MELHORES ESTÃO AQUI</p></div>', unsafe_allow_html=True)
 
-ABAS = st.tabs(["🔍 BUSCAR", "🏢 CATEGORIAS", "👤 MEU PERFIL", "✍️ CADASTRAR", "🛡️ ADMIN"])
+TABS = st.tabs(["🔍 ENCONTRAR ESPECIALISTA", "👤 ÁREA DO PROFISSIONAL", "✍️ NOVO CADASTRO", "🛡️ PAINEL ADMIN"])
 
-# ABA 1: CLIENTE - BUSCA
-with ABAS[0]:
-    busca = st.text_input("O que você precisa hoje?", placeholder="Ex: Encanador para consertar torneira", key="search_main")
-    if busca:
-        query = db.collection("profissionais").where("aprovado", "==", True).stream()
-        resultados = engine_busca_premium(busca, query)
+# --- ABA 1: BUSCA DO CLIENTE ---
+with TABS[0]:
+    busca_query = st.text_input("O que você precisa hoje?", placeholder="Ex: Preciso de um encanador para ontem!", key="search_user")
+    
+    if busca_query:
+        dados_ativos = db.collection("profissionais").where("aprovado", "==", True).stream()
+        res = processar_busca_ia(busca_query, dados_ativos)
         
-        if not resultados:
-            st.warning("Nenhum profissional encontrado para este termo.")
+        if not res:
+            st.warning("IA: Nenhum profissional disponível no momento para este serviço.")
         else:
-            for r in resultados:
-                p = r['dados']
-                selo = '<span class="badge-elite">🏆 DESTAQUE</span>' if p.get('saldo', 0) > 30 else ""
+            for item in res:
+                p = item['dados']
+                selo_html = '<span class="badge-premium">🏆 ELITE</span>' if p.get('saldo',0) > 40 else '<span class="badge-premium" style="background:#0047AB; color:white;">✓ VERIFICADO</span>'
                 
                 st.markdown(f"""
-                <div class="card-vazado">
+                <div class="card-pro">
                     <img src="{p.get('foto_url') or 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="avatar-pro">
                     <div style="flex-grow:1;">
-                        {selo} <br>
-                        <b style="font-size:22px; color:#333;">{p.get('nome','').upper()}</b><br>
-                        <span style="color:#666;">💼 {p.get('area','')} | 📍 {p.get('localizacao','')}</span><br>
-                        <span style="color:#FFB400;">{"⭐" * int(p.get('rating', 5))}</span> ({p.get('rating', 5.0)})
+                        {selo_html} <br>
+                        <b style="font-size:1.6rem; color:#222;">{p.get('nome','').upper()}</b><br>
+                        <span style="color:#0047AB; font-weight:700;">{p.get('area','')}</span> • 📍 {p.get('localizacao','')}<br>
+                        <span style="color:#FFB400; font-size:1.2rem;">{"★" * int(p.get('rating',5))}</span> <small>({p.get('rating', 5.0)})</small>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
                 
-                if p.get('saldo', 0) >= PRECO_LEAD:
-                    if st.button(f"CONTATAR {p.get('nome','').split()[0].upper()}", key=f"c_{p['doc_id']}"):
-                        db.collection("profissionais").document(p['doc_id']).update({
-                            "saldo": firestore.Increment(-PRECO_LEAD),
+                if p.get('saldo', 0) >= VALOR_CONTATO:
+                    if st.button(f"LIBERAR CONTATO DE {p.get('nome','').split()[0].upper()}", key=f"btn_{p['id']}"):
+                        db.collection("profissionais").document(p['id']).update({
+                            "saldo": firestore.Increment(-VALOR_CONTATO),
                             "cliques": firestore.Increment(1)
                         })
-                        # Voz gTTS
-                        f_audio = io.BytesIO(); gTTS(text=f"Chamando {p.get('nome')}", lang='pt').write_to_fp(f_audio)
-                        st.audio(f_audio, format="audio/mp3")
-                        st.markdown(f'<a href="https://wa.me/55{p.get("whatsapp")}?text=Vi você no GeralJá" class="btn-wpp">ABRIR WHATSAPP</a>', unsafe_allow_html=True)
+                        # Voz da IA
+                        st.audio(io.BytesIO(gTTS(text=f"Chamando {p.get('nome')}", lang='pt')._write_to_fp()), format="audio/mp3")
+                        st.markdown(f'<a href="https://wa.me/55{p.get("whatsapp")}?text=Olá, vi você no GeralJá!" class="btn-contato">CHAMAR NO WHATSAPP</a>', unsafe_allow_html=True)
                 else:
-                    st.info("Este profissional está temporariamente indisponível.")
+                    st.info("Agenda lotada para este profissional hoje.")
 
-# ABA 2: CATEGORIAS RÁPIDAS
-with ABAS[1]:
-    st.subheader("Explore Especialidades")
-    cols = st.columns(2)
-    lista_cats = ["Encanador", "Eletricista", "Diarista", "Pintor", "Mecânico", "Pedreiro", "TI", "Manicure"]
-    for i, c in enumerate(lista_cats):
-        if cols[i % 2].button(f"🛠️ {c}", use_container_width=True):
-            st.info(f"Busque por '{c}' na aba principal!")
-
-# ABA 3: PERFIL PROFISSIONAL
-with ABAS[2]:
-    st.subheader("Área do Profissional")
+# --- ABA 2: PÁGINA DO PROFISSIONAL (MELHORADA) ---
+with TABS[1]:
+    st.subheader("Login do Parceiro")
     c1, c2 = st.columns(2)
-    z_in = c1.text_input("WhatsApp (Login)")
-    p_in = c2.text_input("Senha", type="password")
-    if z_in and p_in:
-        doc = db.collection("profissionais").document(z_in).get()
-        if doc.exists and doc.to_dict().get('senha') == p_in:
-            d = doc.to_dict()
-            st.success(f"Bem-vindo, {d.get('nome')}!")
+    user_zap = c1.text_input("WhatsApp cadastrado", key="login_z")
+    user_pass = c2.text_input("Sua Senha", type="password", key="login_p")
+    
+    if user_zap and user_pass:
+        doc_p = db.collection("profissionais").document(user_zap).get()
+        if doc_p.exists and doc_p.to_dict().get('senha') == user_pass:
+            d = doc_p.to_dict()
+            st.success(f"Bem-vindo de volta, {d.get('nome')}!")
+            
+            # DASHBOARD REAL
             col1, col2, col3 = st.columns(3)
-            col1.metric("Moedas", d.get('saldo', 0))
-            col2.metric("Cliques", d.get('cliques', 0))
-            col3.metric("Nota", d.get('rating', 5.0))
+            with col1:
+                st.markdown(f'<div class="dash-box">Saldo Disponível<br><span class="dash-metric">{d.get("saldo")} 🪙</span></div>', unsafe_allow_html=True)
+            with col2:
+                st.markdown(f'<div class="dash-box" style="background:#FF8C00;">Clientes Interessados<br><span class="dash-metric">{d.get("cliques")} 🚀</span></div>', unsafe_allow_html=True)
+            with col3:
+                st.markdown(f'<div class="dash-box" style="background:#28a745;">Avaliação Média<br><span class="dash-metric">{d.get("rating")} ⭐</span></div>', unsafe_allow_html=True)
+            
             st.divider()
-            st.write("💰 **Recarga via PIX**")
-            st.image(f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={PIX_SISTEMA}")
-            st.code(f"Chave PIX: {PIX_SISTEMA}")
-        else: st.error("Acesso negado.")
+            # ÁREA DE RECARGA
+            st.write("### 💳 Recarregar Moedas")
+            sc1, sc2 = st.columns([1,2])
+            sc1.image(f"https://api.qrserver.com/v1/create-qr-code/?size=180x180&data={PIX_CHAVE}")
+            sc2.write(f"**Passo 1:** Pague R$ 1,00 por moeda via PIX.")
+            sc2.code(f"Chave PIX: {PIX_CHAVE}")
+            sc2.write("**Passo 2:** Envie o comprovante para o administrador.")
+            sc2.markdown(f'<a href="https://wa.me/{ZAP_DONO}?text=Fiz o PIX para recarga: {d.get("nome")}" style="background:#0047AB; color:white; padding:10px; border-radius:10px; text-decoration:none;">ENVIAR COMPROVANTE</a>', unsafe_allow_html=True)
+        else: st.error("Dados inválidos.")
 
-# ABA 4: CADASTRO
-with ABAS[3]:
-    with st.form("reg_nac"):
-        st.subheader("Crie sua Conta")
-        f_n = st.text_input("Nome / Empresa")
-        f_w = st.text_input("WhatsApp com DDD")
-        f_s = st.text_input("Senha")
-        f_l = st.text_input("Cidade / Bairro")
-        f_d = st.text_area("Descreva seu trabalho")
-        if st.form_submit_button("CADASTRAR"):
-            area_ia = "Especialista"
-            for k, v in MAPEAMENTO_CATEGORIAS.items():
-                if k in f_d.lower(): area_ia = v
-            db.collection("profissionais").document(f_w).set({
-                "nome": f_n, "whatsapp": f_w, "senha": f_s, "area": area_ia,
-                "localizacao": f_l, "saldo": BONUS_NOVOS, "aprovado": False,
-                "cliques": 0, "rating": 5.0, "descricao": f_d
-            })
-            st.success(f"Cadastrado como {area_ia}! Aguarde aprovação.")
-            st.markdown(f'<a href="https://wa.me/{ZAP_SUPORTE}?text=Quero aprovação: {f_n}">CHAMAR SUPORTE</a>', unsafe_allow_html=True)
-
-# ABA 5: ADMIN MASTER
-with ABAS[4]:
-    if st.text_input("Master Key", type="password") == PASS_MASTER:
-        st.write("### Gestão de Parceiros")
-        if st.button("🔧 CORRIGIR BANCO (AUDITORIA)"): auditar_perfis_vazio()
+# --- ABA 3: CADASTRO ---
+with TABS[2]:
+    st.write("### ✍️ Entre para o nosso time")
+    with st.form("form_registro"):
+        fn = st.text_input("Nome da sua Empresa ou Seu Nome")
+        fw = st.text_input("WhatsApp (Ex: 11999998888)")
+        fs = st.text_input("Crie uma Senha", type="password")
+        fl = st.text_input("Cidade / Região")
+        fd = st.text_area("Descreva o que você faz com detalhes")
         
-        profs = db.collection("profissionais").stream()
-        for p_doc in profs:
-            d = p_doc.to_dict()
-            with st.expander(f"{d.get('nome')} | {d.get('saldo')} 🪙"):
-                ca, cb = st.columns(2)
-                if ca.button("APROVAR ✅", key=f"ok_{p_doc.id}"):
-                    db.collection("profissionais").document(p_doc.id).update({"aprovado": True})
+        if st.form_submit_button("SOLICITAR MEU ACESSO"):
+            area_detectada = "Especialista"
+            for k, v in DADOS_IA.items():
+                if k in fd.lower(): area_detectada = v
+            
+            db.collection("profissionais").document(fw).set({
+                "nome": fn, "whatsapp": fw, "senha": fs, "area": area_detectada,
+                "localizacao": fl, "descricao": fd, "saldo": BONUS_CADASTRO,
+                "aprovado": False, "cliques": 0, "rating": 5.0,
+                "lat": -23.5 + random.uniform(-0.5, 0.5), "lon": -46.6 + random.uniform(-0.5, 0.5)
+            })
+            st.success(f"Cadastro enviado como **{area_detectada}**! Fale com o admin.")
+            st.markdown(f'<a href="https://wa.me/{ZAP_DONO}?text=Olá, acabei de me cadastrar: {fn}">AVISAR ADMIN AGORA</a>', unsafe_allow_html=True)
+
+# --- ABA 4: ADMIN CONTROLE TOTAL (RECUPERADA) ---
+with TABS[3]:
+    if st.text_input("Chave Mestra", type="password") == SENHA_ADMIN:
+        st.write("### 🛡️ Painel de Gestão Master")
+        
+        # Botões de Ação Global
+        if st.button("🚀 EXECUTAR LIMPEZA E AUDITORIA DE DADOS", use_container_width=True):
+            corrigidos = auditoria_total()
+            st.success(f"Auditoria completa! {corrigidos} perfis foram blindados.")
+            
+        st.divider()
+        # Lista de Gestão Individual
+        todos = db.collection("profissionais").stream()
+        for doc in todos:
+            d = doc.to_dict()
+            with st.expander(f"{'✅' if d.get('aprovado') else '⏳'} {d.get('nome')} | Saldo: {d.get('saldo')}"):
+                col_a, col_b, col_c, col_d = st.columns(4)
+                if col_a.button("APROVAR ✅", key=f"ap_{doc.id}"):
+                    db.collection("profissionais").document(doc.id).update({"aprovado": True})
                     st.rerun()
-                if cb.button("BANIR 🗑️", key=f"del_{p_doc.id}"):
-                    db.collection("profissionais").document(p_doc.id).delete()
+                if col_b.button("+10 MOEDAS 🪙", key=f"m1_{doc.id}"):
+                    db.collection("profissionais").document(doc.id).update({"saldo": firestore.Increment(10)})
+                    st.rerun()
+                if col_c.button("ZERAR SALDO 🛑", key=f"z1_{doc.id}"):
+                    db.collection("profissionais").document(doc.id).update({"saldo": 0})
+                    st.rerun()
+                if col_d.button("BANIR 🗑️", key=f"del_{doc.id}"):
+                    db.collection("profissionais").document(doc.id).delete()
                     st.rerun()
 
-st.markdown("<br><hr><center><small>GeralJá v12.0 | Engine Nacional 2025</small></center>", unsafe_allow_html=True)
+st.markdown("<br><hr><center><small>GeralJá v13.0 | 2025 | Sistema de Alta Disponibilidade</small></center>", unsafe_allow_html=True)
