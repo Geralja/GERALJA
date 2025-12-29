@@ -6,7 +6,14 @@ from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from fuzzywuzzy import fuzz
-
+import firebase_admin
+from firebase_admin import credentials
+import json
+import base64
+import re
+import math
+import datetime
+import random
 # ==============================================================================
 # 1. ARQUITETURA DE SISTEMA E METADADOS (ENGINEERING HEADER)
 # ==============================================================================
@@ -72,6 +79,11 @@ LON_SP_REF = -46.6333
 # ==============================================================================
 # 4. MOTOR DE INTELIGÊNCIA ARTIFICIAL (MAPEAMENTO DE CATEGORIAS)
 # ==============================================================================
+def busca_inteligente(busca, profissionais_stream):
+    if not busca: return []
+    # (Cole aqui aquela função robusta que te mandei com tokens e score)
+    # ...
+    return resultados
 # Dicionário massivo para processamento de linguagem natural (NLP)
 # Este bloco é vital para o filtro cirúrgico exigido.
 CONCEITOS_SERVICOS = {
@@ -254,55 +266,26 @@ with UI_ABAS[0]:
     termo_busca = st.text_input("Ex: Chuveiro, Pintor ou Borracheiro", key="main_search")
     
     if termo_busca:
+        # 1. IA classifica a categoria (para mostrar a média de preço)
         classe_servico = processar_servico_ia(termo_busca)
         valor_referencia = tabela_precos_sp(classe_servico)
-        st.info(f"?? IA: Localizamos profissionais de **{classe_servico}**.\n\n?? Média em SP: **{valor_referencia}**")
+        st.info(f"🤖 IA: Localizamos profissionais de **{classe_servico}**.\n\n💰 Média em SP: **{valor_referencia}**")
         
-        # Consulta ao Firestore
-        query_profs = db.collection("profissionais").where("area", "==", classe_servico).where("aprovado", "==", True).stream()
+        # 2. IA de Busca Robusta (A que compara palavras e erros de digitação)
+        query_profs = db.collection("profissionais").where("aprovado", "==", True).stream()
         
-        lista_profs = []
-        for doc in query_profs:
-            p_dict = doc.to_dict()
-            p_dict['doc_id'] = doc.id
-            p_dict['distancia'] = calcular_km_sp(LAT_SP_REF, LON_SP_REF, p_dict.get('lat', LAT_SP_REF), p_dict.get('lon', LON_SP_REF))
-            lista_profs.append(p_dict)
+        # CHAMA A FUNÇÃO IA (Certifique-se de ter colado ela no topo)
+        resultados_ia = busca_inteligente_robusta(termo_busca, query_profs)
         
-        # Ordenação por Proximidade e Rating
-        lista_profs.sort(key=lambda x: (x['distancia'], -x.get('rating', 5.0)))
-        
-        if not lista_profs:
-            st.warning(f"Desculpe, ainda não temos {classe_servico} aprovados nesta região de SP.")
+        if not resultados_ia:
+            st.warning(f"Ainda não temos especialistas para '{termo_busca}' em SP.")
         else:
-            for pro_item in lista_profs:
-                url_img = pro_item.get('foto_url', '')
-                img_html = f'<img src="{url_img}" class="avatar-pro">' if url_img else '<div class="avatar-pro" style="background:#eee; display:flex; align-items:center; justify-content:center; font-size:35px;">??</div>'
-                estrelas = "?" * int(pro_item.get('rating', 5.0))
+            for item in resultados_ia:
+                pro_item = item['profissional']
+                dist = calcular_km_sp(LAT_SP_REF, LON_SP_REF, pro_item.get('lat', LAT_SP_REF), pro_item.get('lon', LON_SP_REF))
                 
-                st.markdown(f'''
-                    <div class="card-vazado">
-                        {img_html}
-                        <div style="flex-grow: 1;">
-                            <span class="badge-km">?? A {pro_item['distancia']} KM DO CENTRO DE SP</span>
-                            <h4 style="margin:5px 0; color:#333;">{pro_item['nome']}</h4>
-                            <div style="color:#FFB400; font-size:12px;">{estrelas} ({round(pro_item.get('rating', 5.0), 1)})</div>
-                            <p style="margin:5px 0; color:#666; font-size:13px;">?? <b>{pro_item['area']}</b> | ?? {pro_item.get('localizacao', 'São Paulo')}</p>
-                        </div>
-                    </div>
-                ''', unsafe_allow_html=True)
-                
-                # Botão de Ação: Só habilita se o profissional tiver moedas
-                if pro_item.get('saldo', 0) >= TAXA_CONTATO:
-                    if st.button(f"FALAR COM {pro_item['nome'].upper()}", key=f"action_{pro_item['doc_id']}"):
-                        # Log financeiro: Deduz moeda e incrementa estatística
-                        db.collection("profissionais").document(pro_item['doc_id']).update({
-                            "saldo": firestore.Increment(-TAXA_CONTATO),
-                            "cliques": firestore.Increment(1)
-                        })
-                        st.markdown(f'<a href="https://wa.me/55{pro_item["whatsapp"]}?text=Olá, vi seu perfil no GeralJá!" class="btn-wpp-link">ABRIR WHATSAPP DO PROFISSIONAL</a>', unsafe_allow_html=True)
-                        st.balloons()
-                else:
-                    st.error("Profissional atingiu o limite de contatos por hoje.")
+                # Renderiza o seu HTML (Card Vazado) aqui...
+                # (Mantenha o seu código de st.markdown igual)
 
 # ------------------------------------------------------------------------------
 # ABA 2: PROFISSIONAL - FINANCEIRO E PERFIL
@@ -511,6 +494,7 @@ st.markdown(f'''
 # 15. Este código representa o auge da arquitetura solicitada pelo usuário.
 # ------------------------------------------------------------------------------
 # FIM DO CÓDIGO FONTE - TOTALIZANDO 500 LINHAS DE CÓDIGO E LÓGICA INTEGRADA.
+
 
 
 
