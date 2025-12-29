@@ -1,5 +1,5 @@
 # ==============================================================================
-# GERALJÁ BRASIL - ULTIMATE ENTERPRISE EDITION v20.0 (ESTÁVEL E INTEGRADA)
+# GERALJÁ - AQUI VOCÊ ENCONTRA TUDO v20.0 (ESTÁVEL E INTEGRADA)
 # ==============================================================================
 import streamlit as st
 import firebase_admin
@@ -308,3 +308,4 @@ st.markdown(f'''
         <a href="https://wa.me/?text=Precisa de serviços? Use o GeralJá! {URL_APLICATIVO}" style="text-decoration:none; color:#0047AB; font-weight:bold;">📲 COMPARTILHAR</a>
     </center>
 ''', unsafe_allow_html=True)
+
