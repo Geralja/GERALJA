@@ -164,12 +164,31 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
-# 6. LAYOUT E ABAS DE NAVEGAÇÃO
+# 6. LAYOUT E ABAS DE NAVEGAÇÃO (VERSÃO CORRIGIDA E INTEGRADA)
 # ------------------------------------------------------------------------------
 st.markdown('<div class="header-container"><span class="logo-azul">GERAL</span><span class="logo-laranja">JÁ</span><br><small style="letter-spacing:10px; color:#64748B; font-weight:700;">SÃO PAULO ELITE EDITION</small></div>', unsafe_allow_html=True)
 
-menu_abas = st.tabs(["🔍 ENCONTRAR ESPECIALISTA", "💼 CENTRAL DO PARCEIRO", "📝 NOVO CADASTRO", "🛡️ TERMINAL ADMIN SEU # Procura por esta linha dentro da "with menu_abas[0]:"
-raio_km = c2.select_slider("Raio de Busca (KM)", options=[1, 5, 10, 20, 50, 100], value=5)
+# Definimos as 5 abas oficiais do sistema
+menu_abas = st.tabs([
+    "🔍 ENCONTRAR ESPECIALISTA", 
+    "💼 CENTRAL DO PARCEIRO", 
+    "📝 NOVO CADASTRO", 
+    "💬 FEEDBACK",
+    "🛡️ TERMINAL ADMIN"
+])
+
+# ------------------------------------------------------------------------------
+# ABA 1: MOTOR DE BUSCA (Ajustado para 5km padrão)
+# ------------------------------------------------------------------------------
+with menu_abas[0]:
+    st.markdown("### 🏙️ Qual problema resolveremos agora?")
+    c1, c2 = st.columns([3, 1])
+    termo_busca = c1.text_input("Ex: 'Cano estourado', 'Instalar ventilador'", key="search_main")
+    
+    # CORREÇÃO AQUI: O valor padrão (value) agora é 5
+    raio_km = c2.select_slider("Raio de Busca (KM)", options=[1, 5, 10, 20, 50, 100], value=5)
+    
+    # ... (O restante do código da busca continua abaixo daqui)
 # ------------------------------------------------------------------------------
 # ABA 1: MOTOR DE BUSCA (CLIENTE)
 # ------------------------------------------------------------------------------
@@ -421,6 +440,7 @@ st.markdown(f"""
         Infraestrutura Distribuída | Google Cloud & Firebase Firestore
     </div>
 """, unsafe_allow_html=True)
+
 
 
 
