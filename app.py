@@ -1,4 +1,181 @@
 # ==============================================================================
+# ============================================================================== 
+# GERALJÁ SP - ENTERPRISE EDITION v19.0 
+# O SISTEMA MAIS COMPLETO JÁ DESENVOLVIDO PARA GESTÃO DE SERVIÇOS 
+# ============================================================================== 
+import streamlit as st 
+import firebase_admin 
+from firebase_admin import credentials, firestore 
+import base64 
+import json 
+import datetime 
+import math 
+import random 
+import re 
+import time 
+import pandas as pd 
+from io import BytesIO 
+
+# ------------------------------------------------------------------------------ 
+# 1. ARQUITETURA DE SISTEMA (CONFIGURAÇÃO GLOBAL) 
+# ------------------------------------------------------------------------------ 
+st.set_page_config( 
+    page_title="GeralJá | Ecossistema Profissional SP", 
+    page_icon="🏙️", 
+    layout="wide",  # Layout expandido para ferramentas profissionais 
+    initial_sidebar_state="collapsed" 
+) 
+
+# ------------------------------------------------------------------------------ 
+# 2. CONEXÃO E INFRAESTRUTURA DE DADOS (FIREBASE CORE) 
+# ------------------------------------------------------------------------------ 
+@st.cache_resource 
+def conectar_banco_master(): 
+    """Inicializa a conexão com o Google Firebase via Service Account.""" 
+    if not firebase_admin._apps: 
+        try: 
+            b64_key = st.secrets["FIREBASE_BASE64"] 
+            decoded_json = base64.b64decode(b64_key).decode("utf-8") 
+            cred_dict = json.loads(decoded_json) 
+            cred = credentials.Certificate(cred_dict) 
+            return firebase_admin.initialize_app(cred) 
+        except Exception as e: 
+            st.error(f"❌ ERRO CRÍTICO NA CONEXÃO: {e}") 
+            st.stop() 
+    return firebase_admin.get_app() 
+
+app_engine = conectar_banco_master() 
+db = firestore.client() 
+
+# ------------------------------------------------------------------------------ 
+# 3. CONSTANTES E PARÂMETROS DE GOVERNANÇA 
+# ------------------------------------------------------------------------------ 
+# Dados de Operação Financeira 
+PIX_OFICIAL = "11991853488" 
+ZAP_ADMIN = "5511991853488" 
+CHAVE_ADMIN = "mumias" 
+VALOR_MOEDA_REAL = 1.00  # R$ 1,00 por moeda 
+TAXA_CONTATO = 1  # 1 moeda por clique de cliente 
+BONUS_WELCOME = 5  # Moedas grátis no cadastro 
+
+# Geocoordenadas de São Paulo (Marco Zero - Praça da Sé) 
+LAT_REF_SP = -23.5505 
+LON_REF_SP = -46.6333 
+
+CATEGORIAS_OFICIAIS = [
+    "Encanador", "Eletricista", "Pintor", "Pedreiro", "Gesseiro",
+    "Telhadista", "Mecânico", "Borracheiro", "Guincho 24h", "Diarista",
+    "Jardineiro", "Piscineiro", "TI", "Refrigeração", "Ajudante Geral"
+]
+
+# ------------------------------------------------------------------------------ 
+# 4. MOTOR DE INTELIGÊNCIA ARTIFICIAL (MAPEAMENTO SEMÂNTICO) 
+# ------------------------------------------------------------------------------ 
+CONCEITOS_EXPANDIDOS = { 
+    # HIDRÁULICA 
+    "vazamento": "Encanador", 
+    "cano": "Encanador", 
+    "torneira": "Encanador", 
+    "esgoto": "Encanador", 
+    "pia": "Encanador", 
+    "caixa": "Encanador", 
+    "infiltração": "Encanador", 
+    "registro": "Encanador", 
+    # ELÉTRICA 
+    "curto": "Eletricista", 
+    "luz": "Eletricista", 
+    "tomada": "Eletricista", 
+    "chuveiro": "Eletricista", 
+    "fiação": "Eletricista", 
+    "disjuntor": "Eletricista", 
+    "lâmpada": "Eletricista", 
+    "fio": "Eletricista", 
+    # CONSTRUÇÃO E REFORMA 
+    "pintar": "Pintor", 
+    "parede": "Pintor", 
+    "massa": "Pintor", 
+    "grafiato": "Pintor", 
+    "verniz": "Pintor", 
+    "reforma": "Pedreiro", 
+    "laje": "Pedreiro", 
+    "tijolo": "Pedreiro", 
+    "piso": "Pedreiro", 
+    "azulejo": "Pedreiro", 
+    "gesso": "Gesseiro", 
+    "drywall": "Gesseiro", 
+    "forro": "Gesseiro", 
+    "telhado": "Telhadista", 
+    "calha": "Telhadista", 
+    # AUTOMOTIVO 
+    "carro": "Mecânico", 
+    "motor": "Mecânico", 
+    "embreagem": "Mecânico", 
+    "freio": "Mecânico", 
+    "óleo": "Mecânico", 
+    "pneu": "Borracheiro", 
+    "borracharia": "Borracheiro", 
+    "guincho": "Guincho 24h", 
+    "reboque": "Guincho 24h", 
+    # SERVIÇOS DOMÉSTICOS 
+    "faxina": "Diarista", 
+    "limpeza": "Diarista", 
+    "passar": "Diarista", 
+    "doméstica": "Diarista", 
+    "jardim": "Jardineiro", 
+    "grama": "Jardineiro", 
+    "poda": "Jardineiro", 
+    "piscina": "Piscineiro", 
+    # TECNOLOGIA 
+    "computador": "TI", 
+    "celular": "TI", 
+    "formatar": "TI", 
+    "wifi": "TI", 
+    "rede": "TI", 
+    "ar": "Refrigeração", 
+    "geladeira": "Refrigeração", 
+    "freezer": "Refrigeração" 
+} 
+
+def processar_ia_avancada(texto): 
+    if not texto: 
+        return "Ajudante Geral" 
+    t_clean = texto.lower().strip() 
+    for chave, categoria in CONCEITOS_EXPANDIDOS.items(): 
+        if re.search(rf"\b{chave}\b", t_clean): 
+            return categoria 
+    return "Ajudante Geral" 
+
+def calcular_distancia_real(lat1, lon1, lat2, lon2): 
+    """Cálculo de Haversine para precisão métrica.""" 
+    if None in [lat1, lon1, lat2, lon2]: 
+        return 999.0 
+    R = 6371 
+    dlat = math.radians(lat2 - lat1) 
+    dlon = math.radians(lon2 - lon1) 
+    a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2 
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a)) 
+    return round(R * c, 1) 
+
+def converter_img_b64(file): 
+    return base64.b64encode(file.read()).decode() 
+
+# ------------------------------------------------------------------------------ 
+# 5. DESIGN SYSTEM (INTERFACE PREMIUM SÃO PAULO) 
+# ------------------------------------------------------------------------------ 
+st.markdown(f""" 
+<style> 
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap'); 
+    * {{ font-family: 'Inter', sans-serif; }} 
+    .stApp {{ background-color: #F8FAFC; }} 
+    /* Header Estilizado */ 
+    .header-container {{ background: white; padding: 40px; border-radius: 0 0 60px 60px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border-bottom: 8px solid #FF8C00; }} 
+    .logo-azul {{ color: #0047AB; font-weight: 900; font-size: 60px; letter-spacing: -2px; }} 
+    .logo-laranja {{ color: #FF8C00; font-weight: 900; font-size: 60px; letter-spacing: -2px; }} 
+    /* Cards de Profissionais */ 
+    .pro-card {{ background: white; border-radius: 30px; padding: 25px; margin-bottom: 20px; border-left: 15px solid #0047AB; box-shadow: 0 10px 20px rgba(0,0,0,0.03); display: flex; align-items: center; transition: 0.3s; }} 
+    .pro-card:hover {{ transform: translateY(-5px); box-shadow: 0 15px 35px rgba(0,0,0,0.08); }} 
+    .pro-img {{ width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 4px solid #F1F5F9; margin-right: 25px; }} 
+    /* Bad
 # GERALJÁ SP - ENTERPRISE EDITION v19.0
 # O SISTEMA MAIS COMPLETO JÁ DESENVOLVIDO PARA GESTÃO DE SERVIÇOS
 # ==============================================================================
@@ -428,6 +605,7 @@ st.markdown(f"""
         <p style="color:#94A3B8; font-size:10px;">Cloud: Google Firebase | Logic: Python 3.10 | UI: Streamlit Carbon</p>
     </center>
 """, unsafe_allow_html=True)
+
 
 
 
