@@ -314,7 +314,7 @@ with menu_abas[1]:
                         
                         st.success("✅ Perfil atualizado com sucesso!")
                         time.sleep(1.5)
-                        st.rerun()))
+                        st.rerun()
                 
                 st.write("📍 **Ajustar Minha Localização (GPS)**")
                 c_gps1, c_gps2 = st.columns(2)
@@ -448,4 +448,5 @@ st.markdown(f"""
         <p style="color:#94A3B8; font-size:10px;">Cloud: Google Firebase | Logic: Python 3.10 | UI: Streamlit Carbon</p>
     </center>
 """, unsafe_allow_html=True)
+
 
