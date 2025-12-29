@@ -395,7 +395,7 @@ with menu_abas[3]:
             if not busca_adm or busca_adm.lower() in p['nome'].lower() or busca_adm in pid:
                 status_icon = "✅" if p.get('aprovado') else "⏳"
                 with st.expander(f"{status_icon} {p['nome']} | Moedas: {p['saldo']} | {p['area']}")
-                    st.write(f"**WhatsApp:** {pid} | **Local:** {p.get('localizacao')}")
+                    st.write(f"**WhatsApp:** {pid} | **Local:** {p.get('localizacao')}"):
                     
                     c_ad1, c_ad2, c_ad3 = st.columns(3)
                     if c_ad1.button("APROVAR PERFIL", key=f"ok_{pid}"):
@@ -428,6 +428,7 @@ st.markdown(f"""
         <p style="color:#94A3B8; font-size:10px;">Cloud: Google Firebase | Logic: Python 3.10 | UI: Streamlit Carbon</p>
     </center>
 """, unsafe_allow_html=True)
+
 
 
 
