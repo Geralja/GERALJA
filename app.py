@@ -250,49 +250,124 @@ with UI_ABAS[2]:
                 st.success(f"Cadastro realizado! Categoria: **{cat_ia_auto}**.")
                 st.markdown(f'<a href="https://wa.me/{ZAP_ADMIN}?text=Fiz o cadastro: {f_n}" class="btn-wpp">AVISAR ADMIN PARA APROVAR</a>', unsafe_allow_html=True)
 
-# ABA 4: ADMIN MASTER (AUDITORIA, PUNÇÃO E GESTÃO)
+# =============================================================
+# MÓDULO ADMINISTRATIVO GERALJÁ - GESTÃO TOTAL
+# =============================================================
 with UI_ABAS[3]:
-    adm_pass = st.text_input("Senha Admin Master", type="password")
-    if adm_pass == CHAVE_ACESSO_ADMIN:
-        st.write("### 🛠️ Ferramentas Administrativas")
-        if st.button("🚀 EXECUTAR SECURITY AUDIT (VARREDURA TOTAL)"):
-            st.success(executar_auditoria_seguranca(db))
+    acesso_cod = st.text_input("Chave Administrativa:", type="password", key="adm_key")
+    
+    if acesso_cod == CHAVE_ACESSO_ADMIN:
+        st.subheader("🛡️ Painel de Controle e Gestão")
         
+        # --- FERRAMENTAS DE MANUTENÇÃO ---
+        col_m1, col_m2 = st.columns(2)
+        if col_m1.button("🚀 EXECUTAR VARREDURA DE SEGURANÇA", use_container_width=True):
+            try:
+                # Sanitização automática para evitar KeyError
+                all_docs = db.collection("profissionais").stream()
+                count = 0
+                for doc in all_docs:
+                    d_ref = doc.to_dict()
+                    upd_data = {}
+                    if "area" not in d_ref: upd_data["area"] = "Ajudante Geral"
+                    if "saldo" not in d_ref: upd_data["saldo"] = 0
+                    if upd_data:
+                        db.collection("profissionais").document(doc.id).update(upd_data)
+                        count += 1
+                st.success(f"Sanitização concluída! {count} perfis corrigidos.")
+            except Exception as e:
+                st.error(f"Erro na varredura: {e}")
+
         st.divider()
-        search_adm = st.text_input("🔍 Buscar Profissional (Nome/Zap)").lower()
-        profs_adm = db.collection("profissionais").stream()
         
-        for p_doc in profs_adm:
-            p = p_doc.to_dict()
-            pid = p_doc.id
-            if not search_adm or search_adm in p['nome'].lower() or search_adm in pid:
-                with st.expander(f"{'✅' if p['aprovado'] else '⏳'} {p['nome'].upper()} ({p.get('saldo')} 🪙)"):
-                    st.write(f"ID: {pid} | Área: {p['area']}")
+        # --- FILTRO DE BUSCA ---
+        busca_term = st.text_input("Filtrar por Nome, Zap ou Cidade:", key="adm_search").lower()
+        
+        # --- LISTAGEM DE PROFISSIONAIS ---
+        try:
+            profs_stream = db.collection("profissionais").stream()
+            
+            for doc in profs_stream:
+                p = doc.to_dict()
+                pid = doc.id
+                nome_atual = p.get('nome', 'Sem Nome').upper()
+                zap_atual = p.get('whatsapp', pid)
+                area_atual = p.get('area', 'Não Classificada')
+                cidade_atual = p.get('cidade', 'Não Informada')
+                
+                # Filtro lógico
+                if not busca_term or busca_term in nome_atual.lower() or busca_term in zap_atual or busca_term in cidade_atual.lower():
+                    status_icon = "✅" if p.get('aprovado', False) else "⏳"
                     
-                    # Colunas de Ação
-                    c1, c2, c3 = st.columns(3)
-                    if c1.button("APROVAR ✅", key=f"ok_{pid}"):
-                        db.collection("profissionais").document(pid).update({"aprovado": True})
-                        st.rerun()
-                    if c2.button("PUNIR -5 ❌", key=f"pun_{pid}"):
-                        db.collection("profissionais").document(pid).update({"saldo": firestore.Increment(-5)})
-                        st.rerun()
-                    if c3.button("EXCLUIR 🗑️", key=f"del_{pid}"):
-                        db.collection("profissionais").document(pid).delete()
-                        st.rerun()
-                    
-                    # Gestão de Créditos e Senha
-                    st.write("---")
-                    col_m, col_p = st.columns(2)
-                    v_add = col_m.number_input("Moedas", 1, 100, 10, key=f"add_v_{pid}")
-                    if col_m.button(f"ADICIONAR {v_add} 🪙", key=f"btn_add_{pid}"):
-                        db.collection("profissionais").document(pid).update({"saldo": firestore.Increment(v_add)})
-                        st.rerun()
-                    
-                    n_pw = col_p.text_input("Nova Senha", key=f"new_pw_{pid}")
-                    if col_p.button("TROCAR SENHA 🔑", key=f"btn_pw_{pid}"):
-                        db.collection("profissionais").document(pid).update({"senha": n_pw})
-                        st.success("Senha alterada!")
+                    with st.expander(f"{status_icon} {nome_atual} | {area_atual} ({p.get('saldo', 0)} 🪙)"):
+                        
+                        # --- SEÇÃO 1: EDIÇÃO DE PERFIL ---
+                        st.markdown("#### 📝 Editar Perfil")
+                        with st.form(key=f"edit_pro_{pid}"):
+                            e_col1, e_col2 = st.columns(2)
+                            edit_nome = e_col1.text_input("Nome/Empresa", value=p.get('nome', ''))
+                            edit_area = e_col2.text_input("Área de Atuação", value=p.get('area', ''))
+                            
+                            e_col3, e_col4 = st.columns(2)
+                            edit_cidade = e_col3.text_input("Cidade", value=p.get('cidade', ''))
+                            edit_zap = e_col4.text_input("WhatsApp (Login)", value=p.get('whatsapp', ''))
+                            
+                            edit_desc = st.text_area("Descrição do Serviço", value=p.get('descricao', ''))
+                            
+                            if st.form_submit_button("💾 SALVAR ALTERAÇÕES"):
+                                db.collection("profissionais").document(pid).update({
+                                    "nome": edit_nome,
+                                    "area": edit_area,
+                                    "cidade": edit_cidade,
+                                    "descricao": edit_desc,
+                                    "whatsapp": edit_zap
+                                })
+                                st.success("Perfil atualizado!")
+                                st.rerun()
+
+                        # --- SEÇÃO 2: FINANCEIRO E ACESSO ---
+                        st.markdown("#### ⚙️ Controle e Financeiro")
+                        c_act1, c_act2, c_act3, c_act4 = st.columns(4)
+                        
+                        # Botão de Aprovação Dinâmico
+                        if p.get('aprovado', False):
+                            if c_act1.button("REMOVER ACESSO 🚫", key=f"dis_{pid}", use_container_width=True):
+                                db.collection("profissionais").document(pid).update({"aprovado": False})
+                                st.rerun()
+                        else:
+                            if c_act1.button("APROVAR ✅", key=f"app_{pid}", use_container_width=True):
+                                db.collection("profissionais").document(pid).update({"aprovado": True})
+                                st.rerun()
+
+                        # Punição Financeira
+                        if c_act2.button("PUNIR -5 🪙", key=f"pun_{pid}", use_container_width=True):
+                            db.collection("profissionais").document(pid).update({"saldo": firestore.Increment(-5)})
+                            st.rerun()
+
+                        # Reset de Credenciais
+                        if c_act3.button("RESET SENHA 🔑", key=f"pw_{pid}", use_container_width=True):
+                            db.collection("profissionais").document(pid).update({"senha": "123"})
+                            st.info("Senha resetada para: 123")
+
+                        # Exclusão Definitiva
+                        if c_act4.button("EXCLUIR PERFIL 🗑️", key=f"del_{pid}", use_container_width=True):
+                            db.collection("profissionais").document(pid).delete()
+                            st.rerun()
+
+                        # Adição de Moedas
+                        st.write("---")
+                        s_col1, s_col2 = st.columns([1, 2])
+                        qtd_moedas = s_col1.number_input("Qtd Moedas", 1, 1000, 10, key=f"num_{pid}")
+                        if s_col2.button(f"ADICIONAR +{qtd_moedas} MOEDAS", key=f"add_{pid}", use_container_width=True):
+                            db.collection("profissionais").document(pid).update({"saldo": firestore.Increment(qtd_moedas)})
+                            st.rerun()
+                            
+        except Exception as e:
+            st.error(f"Erro ao carregar lista: {e}")
+
+    elif acesso_cod:
+        st.error("Chave Administrativa Inválida.")
 
 # RODAPÉ TÉCNICO
 st.markdown("<br><hr><center><p style='color:#64748B; font-size:12px;'>GeralJá Brasil v2.000 © 2025 | Build: Nacional Premium</p></center>", unsafe_allow_html=True)
+
