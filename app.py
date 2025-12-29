@@ -97,86 +97,34 @@ def busca_inteligente(busca, profissionais_stream):
 # Dicionário massivo para processamento de linguagem natural (NLP)
 # Este bloco é vital para o filtro cirúrgico exigido.
 CONCEITOS_SERVICOS = {
-    # SEGMENTO: INFRAESTRUTURA HIDRÁULICA
-    "vazamento": "Encanador", "cano": "Encanador", "torneira": "Encanador", 
-    "esgoto": "Encanador", "pia": "Encanador", "privada": "Encanador", 
-    "caixa d'água": "Encanador", "infiltração": "Encanador", "registro": "Encanador",
-    "hidrante": "Bombeiro Civil", "bombeiro": "Bombeiro Civil",
+def busca_inteligente_robusta(busca, profissionais_stream):
+    if not busca or busca.strip() == "": return []
     
-    # SEGMENTO: MANUTENÇÃO ELÉTRICA TÉCNICA
-    "curto": "Eletricista", "luz": "Eletricista", "tomada": "Eletricista", 
-    "chuveiro": "Eletricista", "fiação": "Eletricista", "disjuntor": "Eletricista", 
-    "lâmpada": "Eletricista", "instalação elétrica": "Eletricista", "fio": "Eletricista",
+    lista_profs = list(profissionais_stream)
+    tokens = word_tokenize(busca.lower())
+    stop_words = set(stopwords.words('portuguese'))
+    lemmatizer = WordNetLemmatizer()
+    termos_busca = [lemmatizer.lemmatize(t) for t in tokens if t not in stop_words]
     
-    # SEGMENTO: CONSTRUÇÃO CIVIL E REVESTIMENTOS
-    "pintar": "Pintor", "parede": "Pintor", "massa": "Pintor", "grafiato": "Pintor", 
-    "verniz": "Pintor", "pintura": "Pintor", "reforma": "Pedreiro", "laje": "Pedreiro", 
-    "tijolo": "Pedreiro", "reboco": "Pedreiro", "piso": "Pedreiro", "azulejo": "Pedreiro", 
-    "cimento": "Pedreiro", "muro": "Pedreiro", "pedreiro": "Pedreiro", "gesso": "Gesseiro",
-    "drywall": "Gesseiro", "sanca": "Gesseiro", "moldura": "Gesseiro", "porcelanato": "Pedreiro",
-    
-    # SEGMENTO: ESTRUTURAS METÁLICAS E TELHADOS
-    "telhado": "Telhadista", "calha": "Telhadista", "goteira": "Telhadista", 
-    "telha": "Telhadista", "serralheiro": "Serralheiro", "portão": "Serralheiro",
-    "solda": "Serralheiro", "ferro": "Serralheiro", "grade": "Serralheiro",
-    
-    # SEGMENTO: MOBILIÁRIO E MARCENARIA
-    "montar": "Montador de Móveis", "armário": "Montador de Móveis", 
-    "guarda-roupa": "Montador de Móveis", "cozinha": "Montador de Móveis", 
-    "marceneiro": "Marceneiro", "madeira": "Marceneiro", "restaurar": "Marceneiro",
-    
-    # SEGMENTO: ESTÉTICA E CUIDADOS PESSOAIS
-    "unha": "Manicure", "pé": "Manicure", "mão": "Manicure", "esmalte": "Manicure", 
-    "gel": "Manicure", "alongamento": "Manicure", "cabelo": "Cabeleireiro", 
-    "corte": "Cabeleireiro", "escova": "Cabeleireiro", "tintura": "Cabeleireiro", 
-    "luzes": "Cabeleireiro", "barba": "Barbeiro", "degradê": "Barbeiro", 
-    "navalha": "Barbeiro", "sobrancelha": "Esteticista", "cílios": "Esteticista", 
-    "maquiagem": "Esteticista", "depilação": "Esteticista",
-    
-    # SEGMENTO: SERVIÇOS DOMÉSTICOS (SOMA DE VALOR)
-    "faxina": "Diarista", "limpeza": "Diarista", "passar": "Diarista", 
-    "lavar": "Diarista", "doméstica": "Doméstica", "babá": "Babá", 
-    "berçarista": "Babá", "jardim": "Jardineiro", "grama": "Jardineiro", "poda": "Jardineiro",
-    
-    # SEGMENTO: MECÂNICA E AUTOMOTIVO (SOMA DE DETALHE)
-    "pneu": "Borracheiro", "estepe": "Borracheiro", "furou": "Borracheiro", 
-    "borracharia": "Borracheiro", "carro": "Mecânico", "motor": "Mecânico", 
-    "óleo": "Mecânico", "freio": "Mecânico", "embreagem": "Mecânico",
-    "moto": "Mecânico de Motos", "biz": "Mecânico de Motos", "titan": "Mecânico de Motos", 
-    "scooter": "Mecânico de Motos", "guincho": "Guincho / Socorro 24h",
-    
-    # SEGMENTO: TECNOLOGIA E REFRIGERAÇÃO
-    "computador": "Técnico de TI", "celular": "Técnico de TI", "wifi": "Técnico de TI",
-    "ar condicionado": "Técnico de Ar Condicionado", "geladeira": "Refrigeração", 
-    "freezer": "Refrigeração", "piscina": "Técnico em Piscinas", 
-    "festa": "Eventos", "bolo": "Confeiteira", "aula": "Professor Particular"
-}
+    resultados = []
+    for p in lista_profs:
+        p_data = p.to_dict()
+        p_data['doc_id'] = p.id
+        score = 0
+        area = str(p_data.get('area', '')).lower()
+        nome = str(p_data.get('nome', '')).lower()
+        
+        for t in termos_busca:
+            score += fuzz.partial_ratio(t, area) * 3
+            score += fuzz.partial_ratio(t, nome) * 1
+        
+        # Bônus por saldo
+        score += min(p_data.get('saldo', 0) / 2, 30)
 
-# ==============================================================================
-# 5. FUNÇÕES CORE DE PROCESSAMENTO (LÓGICA MATEMÁTICA E IA)
-# ==============================================================================
-def processar_servico_ia(texto_cliente):
-    """
-    Motor de busca semântica que classifica o pedido do cliente.
-    """
-    if not texto_cliente: return "Ajudante Geral"
-    t_clean = texto_cliente.lower().strip()
-    for key, prof in CONCEITOS_SERVICOS.items():
-        if re.search(rf"\b{key}\b", t_clean):
-            return prof
-    return "Ajudante Geral"
-
-def calcular_km_sp(lat1, lon1, lat2, lon2):
-    """
-    Cálculo de distância radial (Haversine) para ordenação por proximidade.
-    """
-    R_RAIO = 6371 
-    d_lat = math.radians(lat2 - lat1)
-    d_lon = math.radians(lon2 - lon1)
-    calculo_a = (math.sin(d_lat / 2)**2 + 
-                math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(d_lon / 2)**2)
-    calculo_c = 2 * math.atan2(math.sqrt(calculo_a), math.sqrt(1 - calculo_a))
-    return round(R_RAIO * calculo_c, 1)
+        if score > 50:
+            resultados.append({'profissional': p_data, 'score': score})
+            
+    return sorted(resultados, key=lambda x: x['score'], reverse=True)
 
 def tabela_precos_sp(categoria_ia):
     """
@@ -276,26 +224,18 @@ with UI_ABAS[0]:
     termo_busca = st.text_input("Ex: Chuveiro, Pintor ou Borracheiro", key="main_search")
     
     if termo_busca:
-        # 1. IA classifica a categoria (para mostrar a média de preço)
-        classe_servico = processar_servico_ia(termo_busca)
-        valor_referencia = tabela_precos_sp(classe_servico)
-        st.info(f"🤖 IA: Localizamos profissionais de **{classe_servico}**.\n\n💰 Média em SP: **{valor_referencia}**")
-        
-        # 2. IA de Busca Robusta (A que compara palavras e erros de digitação)
+        # Puxa os dados do Firebase
         query_profs = db.collection("profissionais").where("aprovado", "==", True).stream()
         
-        # CHAMA A FUNÇÃO IA (Certifique-se de ter colado ela no topo)
+        # CHAMA A IA ROBUSTA (A que você colou lá em cima)
         resultados_ia = busca_inteligente_robusta(termo_busca, query_profs)
         
         if not resultados_ia:
-            st.warning(f"Ainda não temos especialistas para '{termo_busca}' em SP.")
+            st.warning("Ops! Não encontramos ninguém para essa busca específica.")
         else:
             for item in resultados_ia:
                 pro_item = item['profissional']
-                dist = calcular_km_sp(LAT_SP_REF, LON_SP_REF, pro_item.get('lat', LAT_SP_REF), pro_item.get('lon', LON_SP_REF))
-                
-                # Renderiza o seu HTML (Card Vazado) aqui...
-                # (Mantenha o seu código de st.markdown igual)
+                # Aqui você continua com o seu código de cards HTML (st.markdown)
 
 # ------------------------------------------------------------------------------
 # ABA 2: PROFISSIONAL - FINANCEIRO E PERFIL
@@ -504,6 +444,7 @@ st.markdown(f'''
 # 15. Este código representa o auge da arquitetura solicitada pelo usuário.
 # ------------------------------------------------------------------------------
 # FIM DO CÓDIGO FONTE - TOTALIZANDO 500 LINHAS DE CÓDIGO E LÓGICA INTEGRADA.
+
 
 
 
