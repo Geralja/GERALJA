@@ -1,8 +1,6 @@
 # ==============================================================================
-# GERALJÁ SP - ENTERPRISE EDITION v19.0 (STABLE & EXPANDED)
-# O SISTEMA MAIS COMPLETO JÁ DESENVOLVIDO PARA GESTÃO DE SERVIÇOS EM SÃO PAULO
+# GERALJÁ BRASIL - ULTIMATE ENTERPRISE EDITION v20.0 (ESTÁVEL E INTEGRADA)
 # ==============================================================================
-
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, firestore
@@ -13,354 +11,300 @@ import math
 import random
 import re
 import time
-import pandas as pd
-from io import BytesIO
 
-# ------------------------------------------------------------------------------
-# 1. CONFIGURAÇÃO DE AMBIENTE E PERFORMANCE
-# ------------------------------------------------------------------------------
+# ==============================================================================
+# 1. ARQUITETURA DE SISTEMA E METADADOS (ENGINEERING HEADER)
+# ==============================================================================
 st.set_page_config(
-    page_title="GeralJá | Ecossistema Profissional SP",
+    page_title="GeralJá | Ecossistema Profissional Brasil",
     page_icon="🏙️",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="collapsed",
+    menu_items={
+        'Get Help': 'https://wa.me/5511991853488',
+        'Report a bug': 'https://wa.me/5511991853488',
+        'About': "GeralJá v20.0 - Ecossistema Nacional de Serviços."
+    }
 )
 
-# ------------------------------------------------------------------------------
-# 2. CAMADA DE PERSISTÊNCIA (FIREBASE)
-# ------------------------------------------------------------------------------
+# ==============================================================================
+# 2. CAMADA DE PERSISTÊNCIA: CONEXÃO FIREBASE (BLINDAGEM DE DADOS)
+# ==============================================================================
 @st.cache_resource
-def conectar_banco_master():
-    """Inicializa a conexão com segurança e tratamento de falhas."""
+def inicializar_infraestrutura_dados():
     if not firebase_admin._apps:
         try:
-            if "FIREBASE_BASE64" not in st.secrets:
-                st.error("🔑 Chave de segurança FIREBASE_BASE64 não encontrada nos Secrets.")
-                st.stop()
-            
             b64_key = st.secrets["FIREBASE_BASE64"]
             decoded_json = base64.b64decode(b64_key).decode("utf-8")
             cred_dict = json.loads(decoded_json)
-            cred = credentials.Certificate(cred_dict)
-            return firebase_admin.initialize_app(cred)
-        except Exception as e:
-            st.error(f"❌ FALHA NA INFRAESTRUTURA: {e}")
+            credenciais = credentials.Certificate(cred_dict)
+            return firebase_admin.initialize_app(credenciais)
+        except Exception as erro_fatal:
+            st.error(f"❌ FALHA DE INFRAESTRUTURA: {erro_fatal}")
             st.stop()
     return firebase_admin.get_app()
 
-app_engine = conectar_banco_master()
+app_engine = inicializar_infraestrutura_dados()
 db = firestore.client()
 
-# ------------------------------------------------------------------------------
-# 3. POLÍTICAS DE GOVERNANÇA E CONSTANTES
-# ------------------------------------------------------------------------------
+# ==============================================================================
+# 3. DICIONÁRIO DE CONSTANTES E REGRAS FINANCEIRAS
+# ==============================================================================
 PIX_OFICIAL = "11991853488"
 ZAP_ADMIN = "5511991853488"
-CHAVE_ADMIN = "mumias"
+CHAVE_ACESSO_ADMIN = "mumias"
 TAXA_CONTATO = 1
 BONUS_WELCOME = 5
+URL_APLICATIVO = "https://geralja.streamlit.app"
+DISTINTIVO_SISTEMA = "BUILD 2025.20 - BRASIL GOLD"
 
-# Localização Referência: São Paulo - SP
-LAT_REF_SP = -23.5505
-LON_REF_SP = -46.6333
+# Marco Zero (São Paulo) para fallback de distância
+LAT_SP_REF = -23.5505
+LON_SP_REF = -46.6333
 
-CATEGORIAS_OFICIAIS = [
-    "Encanador", "Eletricista", "Pintor", "Pedreiro", "Gesseiro",
-    "Telhadista", "Mecânico", "Borracheiro", "Guincho 24h", "Diarista",
-    "Jardineiro", "Piscineiro", "TI", "Refrigeração", "Ajudante Geral"
-]
+LISTA_ESTADOS = ["AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"]
 
-# ------------------------------------------------------------------------------
-# 4. MOTOR DE IA E GEOLOCALIZAÇÃO
-# ------------------------------------------------------------------------------
-CONCEITOS_EXPANDIDOS = {
-    "vazamento": "Encanador", "cano": "Encanador", "torneira": "Encanador", "esgoto": "Encanador",
-    "curto": "Eletricista", "fiação": "Eletricista", "disjuntor": "Eletricista", "luz": "Eletricista",
-    "pintar": "Pintor", "reforma": "Pedreiro", "piso": "Pedreiro", "gesso": "Gesseiro",
-    "carro": "Mecânico", "motor": "Mecânico", "guincho": "Guincho 24h", "pneu": "Borracheiro",
-    "faxina": "Diarista", "jardim": "Jardineiro", "piscina": "Piscineiro",
-    "computador": "TI", "celular": "TI", "wifi": "TI", "ar": "Refrigeração"
+# ==============================================================================
+# 4. MOTOR DE INTELIGÊNCIA ARTIFICIAL (MAPEAMENTO MASSIVO NLP)
+# ==============================================================================
+CONCEITOS_SERVICOS = {
+    "vazamento": "Encanador", "cano": "Encanador", "torneira": "Encanador", 
+    "esgoto": "Encanador", "pia": "Encanador", "privada": "Encanador", 
+    "curto": "Eletricista", "luz": "Eletricista", "tomada": "Eletricista", 
+    "chuveiro": "Eletricista", "fiação": "Eletricista", "disjuntor": "Eletricista", 
+    "pintar": "Pintor", "parede": "Pintor", "massa": "Pintor", "reforma": "Pedreiro", 
+    "piso": "Pedreiro", "azulejo": "Pedreiro", "gesso": "Gesseiro", "drywall": "Gesseiro",
+    "telhado": "Telhadista", "calha": "Telhadista", "goteira": "Telhadista", 
+    "montar": "Montador de Móveis", "armário": "Montador de Móveis", 
+    "unha": "Manicure", "pé": "Manicure", "cabelo": "Cabeleireiro", "barba": "Barbeiro",
+    "faxina": "Diarista", "limpeza": "Diarista", "passar": "Diarista", 
+    "jardim": "Jardineiro", "piscina": "Piscineiro", "pneu": "Borracheiro",
+    "carro": "Mecânico", "motor": "Mecânico", "guincho": "Guincho 24h",
+    "computador": "TI", "celular": "TI", "ar condicionado": "Refrigeração"
 }
 
-def processar_ia_avancada(texto):
-    """Analisa a intenção do cliente e mapeia para a categoria correta."""
-    if not texto: return "Ajudante Geral"
-    t_clean = texto.lower().strip()
-    for chave, categoria in CONCEITOS_EXPANDIDOS.items():
-        if re.search(rf"\b{chave}\b", t_clean):
-            return categoria
+# ==============================================================================
+# 5. FUNÇÕES CORE (LÓGICA E MATEMÁTICA)
+# ==============================================================================
+def processar_servico_ia(texto_cliente):
+    if not texto_cliente: return "Ajudante Geral"
+    t_clean = texto_cliente.lower().strip()
+    for key, prof in CONCEITOS_SERVICOS.items():
+        if re.search(rf"\b{key}\b", t_clean): return prof
     return "Ajudante Geral"
 
-def calcular_distancia_real(lat1, lon1, lat2, lon2):
-    """Cálculo Matemático de Haversine para Precisão Geográfica."""
+def calcular_km_real(lat1, lon1, lat2, lon2):
     try:
         if None in [lat1, lon1, lat2, lon2]: return 999.0
-        R = 6371 # Raio da Terra em KM
-        dlat = math.radians(lat2 - lat1)
-        dlon = math.radians(lon2 - lon1)
-        a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
-        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
-        return round(R * c, 1)
-    except:
-        return 999.0
+        R = 6371 
+        d_lat, d_lon = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
+        a = math.sin(d_lat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(d_lon/2)**2
+        return round(R * (2 * math.atan2(math.sqrt(a), math.sqrt(1-a))), 1)
+    except: return 999.0
 
-def converter_img_b64(file):
-    """Converte arquivos de imagem para armazenamento Base64 no Firebase."""
-    if file is None: return ""
-    return base64.b64encode(file.read()).decode()
+def executar_limpeza_banco(db_instancia):
+    profs_ref = db_instancia.collection("profissionais").stream()
+    correcoes = 0
+    for doc in profs_ref:
+        d, upd = doc.to_dict(), {}
+        if "rating" not in d: upd["rating"] = 5.0
+        if "saldo" not in d: upd["saldo"] = BONUS_WELCOME
+        if "cliques" not in d: upd["cliques"] = 0
+        if "aprovado" not in d: upd["aprovado"] = False
+        if upd:
+            db_instancia.collection("profissionais").document(doc.id).update(upd)
+            correcoes += 1
+    return f"✅ Integridade Garantida: {correcoes} perfis ajustados."
 
-# ------------------------------------------------------------------------------
-# 5. DESIGN SYSTEM - CSS CUSTOMIZADO (EXPANDIDO)
-# ------------------------------------------------------------------------------
-st.markdown("""
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-    
-    * { font-family: 'Inter', sans-serif; transition: all 0.2s ease-in-out; }
-    .stApp { background-color: #F8FAFC; }
-    
-    /* Header Container */
-    .header-container { 
-        background: white; padding: 50px 20px; border-radius: 0 0 60px 60px; 
-        text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.08); 
-        border-bottom: 10px solid #FF8C00; margin-bottom: 30px;
-    }
-    
-    .logo-azul { color: #0047AB; font-weight: 900; font-size: 70px; letter-spacing: -3px; }
-    .logo-laranja { color: #FF8C00; font-weight: 900; font-size: 70px; letter-spacing: -3px; }
-    
-    /* Cards Profissionais */
-    .pro-card { 
-        background: white; border-radius: 35px; padding: 30px; margin-bottom: 25px; 
-        border-left: 20px solid #0047AB; box-shadow: 0 15px 30px rgba(0,0,0,0.05); 
-        display: flex; align-items: center; border-right: 1px solid #E2E8F0;
-    }
-    
-    .pro-card:hover { transform: scale(1.01); box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
-    
-    .pro-img { 
-        width: 120px; height: 120px; border-radius: 50%; object-fit: cover; 
-        border: 5px solid #F1F5F9; margin-right: 30px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-    }
-    
-    /* Badges */
-    .badge-dist { background: #DBEAFE; color: #1E40AF; padding: 8px 16px; border-radius: 15px; font-weight: 800; font-size: 12px; text-transform: uppercase; }
-    .badge-area { background: #FFEDD5; color: #9A3412; padding: 8px 16px; border-radius: 15px; font-weight: 800; font-size: 12px; text-transform: uppercase; margin-left: 10px; }
-    
-    /* Botoes */
-    .btn-zap { 
-        background: #22C55E; color: white !important; padding: 18px; border-radius: 20px; 
-        text-decoration: none; font-weight: 900; display: block; text-align: center; 
-        font-size: 18px; margin-top: 15px; box-shadow: 0 4px 14px 0 rgba(34, 197, 94, 0.39);
-    }
-    .btn-zap:hover { background: #16a34a; transform: translateY(-2px); }
-
-    /* Painel Admin e Metricas */
-    .metric-box { 
-        background: #1E293B; color: white; padding: 30px; border-radius: 30px; 
-        text-align: center; border-bottom: 6px solid #FF8C00; box-shadow: 0 10px 20px rgba(0,0,0,0.15);
-    }
-</style>
+# ==============================================================================
+# 6. ESTILIZAÇÃO CSS (LAYOUT BRASIL PREMIUM)
+# ==============================================================================
+st.markdown(f"""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
+    * {{ font-family: 'Montserrat', sans-serif; }}
+    .stApp {{ background-color: #FAFAFA; }}
+    .header-box {{ text-align: center; padding: 30px 0; background: white; border-radius: 0 0 40px 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border-bottom: 8px solid #FF8C00; }}
+    .txt-azul {{ color: #0047AB !important; font-size: 60px; font-weight: 900; letter-spacing: -3px; }}
+    .txt-laranja {{ color: #FF8C00 !important; font-size: 60px; font-weight: 900; letter-spacing: -3px; }}
+    .card-vazado {{ background: white; border-radius: 25px; padding: 25px; margin-bottom: 20px; border-left: 15px solid #0047AB; box-shadow: 0 8px 25px rgba(0,0,0,0.05); display: flex; align-items: center; }}
+    .avatar-pro {{ width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-right: 25px; border: 4px solid #F1F5F9; }}
+    .badge-km {{ background: #EBF4FF; color: #0047AB; padding: 6px 14px; border-radius: 10px; font-size: 11px; font-weight: 900; }}
+    .btn-zap {{ background: #22C55E; color: white !important; padding: 15px; border-radius: 15px; text-decoration: none; display: block; text-align: center; font-weight: 900; margin-top: 10px; }}
+    .metric-box {{ background: #1E293B; color: white; padding: 20px; border-radius: 20px; text-align: center; }}
+    </style>
 """, unsafe_allow_html=True)
 
-# ------------------------------------------------------------------------------
-# 6. LAYOUT E ABAS DE NAVEGAÇÃO
-# ------------------------------------------------------------------------------
-st.markdown('<div class="header-container"><span class="logo-azul">GERAL</span><span class="logo-laranja">JÁ</span><br><small style="letter-spacing:10px; color:#64748B; font-weight:700;">SÃO PAULO ELITE EDITION</small></div>', unsafe_allow_html=True)
+st.markdown('<div class="header-box"><span class="txt-azul">GERAL</span><span class="txt-laranja">JÁ</span><br><p style="color:#555; font-size:14px; font-weight:700; text-transform:uppercase; letter-spacing:8px; margin-top:10px;">Brasil Profissional</p></div>', unsafe_allow_html=True)
 
-menu_abas = st.tabs(["🔍 ENCONTRAR ESPECIALISTA", "💼 CENTRAL DO PARCEIRO", "📝 NOVO CADASTRO", "🛡️ TERMINAL ADMIN"])
+# ==============================================================================
+# 7. SISTEMA DE NAVEGAÇÃO
+# ==============================================================================
+UI_ABAS = st.tabs(["🔍 BUSCAR SERVIÇO", "💼 MINHA CONTA", "📝 CADASTRAR", "🛡️ ADMIN"])
 
-# ------------------------------------------------------------------------------
-# ABA 1: MOTOR DE BUSCA (CLIENTE)
-# ------------------------------------------------------------------------------
-with menu_abas[0]:
-    st.markdown("### 🏙️ Qual problema resolveremos agora?")
-    c1, c2 = st.columns([3, 1])
-    termo_busca = c1.text_input("Ex: 'Cano estourado', 'Instalar ventilador', 'Pintar portão'", key="search_main")
-    raio_km = c2.select_slider("Raio de Busca (KM)", options=[1, 5, 10, 20, 50, 100], value=20)
-    
+# --- ABA 1: BUSCA NACIONAL ---
+with UI_ABAS[0]:
+    st.write("### 🏙️ O que você procura hoje?")
+    col_c1, col_c2, col_c3 = st.columns([1, 2, 1])
+    busca_cidade = col_c1.text_input("Cidade", placeholder="Ex: São Paulo")
+    termo_busca = col_c2.text_input("Qual serviço?", placeholder="Ex: Chuveiro, Pintor...")
+    raio_km = col_c3.select_slider("Raio (KM)", options=[1, 5, 10, 50, 100, "Brasil"], value=50)
+
     if termo_busca:
-        cat_ia = processar_ia_avancada(termo_busca)
-        st.info(f"✨ **Análise da IA:** Filtrando os melhores profissionais em **{cat_ia}** próximo a você.")
+        classe_servico = processar_servico_ia(termo_busca)
+        st.info(f"✨ IA: Buscando profissionais de **{classe_servico}**.")
         
-        profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
-        lista_ranking = []
+        query = db.collection("profissionais").where("area", "==", classe_servico).where("aprovado", "==", True).stream()
+        lista_final = []
         
-        for p_doc in profs:
-            p = p_doc.to_dict()
-            p['id'] = p_doc.id
-            dist = calcular_distancia_real(LAT_REF_SP, LON_REF_SP, p.get('lat', LAT_REF_SP), p.get('lon', LON_REF_SP))
-            if dist <= raio_km:
-                p['dist'] = dist
-                lista_ranking.append(p)
-        
-        lista_ranking.sort(key=lambda x: x['dist'])
-        
-        if not lista_ranking:
-            st.warning("📍 Nenhum profissional desta categoria atende neste raio no momento.")
+        for doc in query:
+            p = doc.to_dict()
+            p['id'] = doc.id
+            dist = calcular_km_real(LAT_SP_REF, LON_SP_REF, p.get('lat', LAT_SP_REF), p.get('lon', LON_SP_REF))
+            p['distancia'] = dist
+            
+            # Lógica de Filtro Nacional Somada
+            if raio_km == "Brasil":
+                lista_final.append(p)
+            elif busca_cidade and busca_cidade.lower() in p.get('cidade', '').lower():
+                lista_final.append(p)
+            elif isinstance(raio_km, int) and dist <= raio_km:
+                lista_final.append(p)
+
+        lista_final.sort(key=lambda x: x.get('distancia', 0))
+
+        if not lista_final:
+            st.warning("Nenhum profissional encontrado com estes critérios.")
         else:
-            for pro in lista_ranking:
-                with st.container():
-                    st.markdown(f"""
-                    <div class="pro-card">
-                        <img src="{pro.get('foto_url') or 'https://api.dicebear.com/7.x/avataaars/svg?seed='+pro['id']}" class="pro-img">
-                        <div style="flex-grow:1;">
-                            <span class="badge-dist">📍 {pro['dist']} KM DE VOCÊ</span>
-                            <span class="badge-area">💎 {pro['area']}</span>
-                            <h2 style="margin:15px 0; color:#1E293B;">{pro.get('nome', 'Profissional').upper()}</h2>
-                            <p style="color:#475569; font-size:15px; line-height:1.6;">{pro.get('descricao', 'Especialista em serviços gerais pronto para te atender.')}</p>
-                            <p style="color:#64748B; font-size:13px;">⭐ {pro.get('rating', 5.0)} | 🏙️ {pro.get('localizacao', 'São Paulo - SP')}</p>
+            for pro in lista_final:
+                loc_txt = f"{pro.get('cidade', 'SP')} | {pro['distancia']} KM"
+                st.markdown(f'''
+                    <div class="card-vazado">
+                        <img src="{pro.get('foto_url') or 'https://api.dicebear.com/7.x/avataaars/svg?seed='+pro['id']}" class="avatar-pro">
+                        <div style="flex-grow: 1;">
+                            <span class="badge-km">📍 {loc_txt}</span>
+                            <h3 style="margin:5px 0;">{pro['nome'].upper()}</h3>
+                            <p style="color:#666; font-size:14px;">⭐ {pro.get('rating', 5.0)} | <b>{pro['area']}</b></p>
+                            <p style="font-size:13px;">{pro.get('descricao', '')}</p>
                         </div>
                     </div>
-                    """, unsafe_allow_html=True)
-                    
-                    if pro.get('saldo', 0) >= TAXA_CONTATO:
-                        if st.button(f"FALAR COM {pro['nome'].split()[0].upper()}", key=f"btn_{pro['id']}"):
-                            db.collection("profissionais").document(pro['id']).update({
-                                "saldo": firestore.Increment(-TAXA_CONTATO),
-                                "cliques": firestore.Increment(1)
-                            })
-                            st.balloons()
-                            st.markdown(f'<a href="https://wa.me/55{pro["whatsapp"]}?text=Olá {pro["nome"]}, vi seu anúncio no GeralJá!" class="btn-zap">ABRIR CONVERSA NO WHATSAPP</a>', unsafe_allow_html=True)
-                    else:
-                        st.error("⏳ Este profissional está com a agenda lotada (sem saldo).")
+                ''', unsafe_allow_html=True)
+                
+                if pro.get('saldo', 0) >= TAXA_CONTATO:
+                    if st.button(f"CONTATAR {pro['nome'].split()[0].upper()}", key=f"btn_{pro['id']}"):
+                        db.collection("profissionais").document(pro['id']).update({
+                            "saldo": firestore.Increment(-TAXA_CONTATO),
+                            "cliques": firestore.Increment(1)
+                        })
+                        st.balloons()
+                        st.markdown(f'<a href="https://wa.me/55{pro["whatsapp"]}?text=Olá, vi seu perfil no GeralJá!" class="btn-zap">ABRIR WHATSAPP</a>', unsafe_allow_html=True)
+                else:
+                    st.error("Limite de contatos atingido por este profissional.")
 
-# ------------------------------------------------------------------------------
-# ABA 2: CENTRAL DO PROFISSIONAL (LOGIN / DASHBOARD)
-# ------------------------------------------------------------------------------
-with menu_abas[1]:
+# --- ABA 2: MINHA CONTA (DASHBOARD) ---
+with UI_ABAS[1]:
     if 'auth' not in st.session_state: st.session_state.auth = False
     
     if not st.session_state.auth:
-        st.subheader("🔑 Login do Parceiro")
-        col_l1, col_l2 = st.columns(2)
-        login_zap = col_l1.text_input("WhatsApp (Login)", placeholder="11999998888")
-        login_pw = col_l2.text_input("Senha", type="password")
-        
-        if st.button("ENTRAR NO PAINEL", use_container_width=True):
-            user_doc = db.collection("profissionais").document(login_zap).get()
-            if user_doc.exists and user_doc.to_dict().get('senha') == login_pw:
-                st.session_state.auth = True
-                st.session_state.user_id = login_zap
+        c1, c2 = st.columns(2)
+        l_zap = c1.text_input("WhatsApp", key="login_z")
+        l_pw = c2.text_input("Senha", type="password", key="login_p")
+        if st.button("ACESSAR PAINEL"):
+            doc = db.collection("profissionais").document(l_zap).get()
+            if doc.exists and doc.to_dict().get('senha') == l_pw:
+                st.session_state.auth, st.session_state.user_id = True, l_zap
                 st.rerun()
-            else:
-                st.error("❌ Credenciais inválidas.")
+            else: st.error("Acesso negado.")
     else:
-        uid = st.session_state.user_id
-        dados = db.collection("profissionais").document(uid).get().to_dict()
+        dados = db.collection("profissionais").document(st.session_state.user_id).get().to_dict()
+        st.success(f"Bem-vindo, {dados['nome']}!")
         
-        st.success(f"### Bem-vindo, {dados.get('nome')}!")
+        col_m1, col_m2, col_m3 = st.columns(3)
+        col_m1.markdown(f'<div class="metric-box">MOEDAS<br><b>{dados.get("saldo")}</b></div>', unsafe_allow_html=True)
+        col_m2.markdown(f'<div class="metric-box">CLIQUES<br><b>{dados.get("cliques")}</b></div>', unsafe_allow_html=True)
+        col_m3.markdown(f'<div class="metric-box">AVALIAÇÃO<br><b>{dados.get("rating")} ⭐</b></div>', unsafe_allow_html=True)
         
-        # Dashboard de Métricas
-        m1, m2, m3, m4 = st.columns(4)
-        m1.markdown(f'<div class="metric-box"><small>SALDO</small><br><b style="font-size:35px;">{dados.get("saldo", 0)} 🪙</b></div>', unsafe_allow_html=True)
-        m2.markdown(f'<div class="metric-box"><small>LEADS</small><br><b style="font-size:35px;">{dados.get("cliques", 0)} 🚀</b></div>', unsafe_allow_html=True)
-        m3.markdown(f'<div class="metric-box"><small>NOTA</small><br><b style="font-size:35px;">{dados.get("rating", 5.0)} ⭐</b></div>', unsafe_allow_html=True)
-        m4.markdown(f'<div class="metric-box" style="background:{"#059669" if dados.get("aprovado") else "#B91C1C"}"><small>STATUS</small><br><b style="font-size:25px;">{"ATIVO" if dados.get("aprovado") else "BLOQUEADO"}</b></div>', unsafe_allow_html=True)
-        
-        st.divider()
-        
-        # Edição de Perfil
-        with st.expander("🛠️ EDITAR MEUS DADOS PÚBLICOS"):
-            with st.form("edit_form_final"):
-                ed_nome = st.text_input("Nome de Exibição", value=dados.get('nome'))
-                ed_cat = st.selectbox("Sua Categoria", CATEGORIAS_OFICIAIS, index=CATEGORIAS_OFICIAIS.index(dados.get('area')) if dados.get('area') in CATEGORIAS_OFICIAIS else 0)
-                ed_desc = st.text_area("Descrição do Perfil", value=dados.get('descricao'), height=150)
-                ed_loc = st.text_input("Bairro/Cidade", value=dados.get('localizacao'))
-                
-                up_foto = st.file_uploader("Trocar Foto de Perfil", type=['jpg','png','jpeg'])
-                
-                if st.form_submit_button("SALVAR TODAS AS ALTERAÇÕES"):
-                    upd_payload = {
-                        "nome": ed_nome, "area": ed_cat, "descricao": ed_desc, 
-                        "localizacao": ed_loc, "ultima_att": datetime.datetime.now()
-                    }
-                    if up_foto: upd_payload["foto_url"] = f"data:image/png;base64,{converter_img_b64(up_foto)}"
-                    
-                    db.collection("profissionais").document(uid).update(upd_payload)
-                    st.success("✅ Perfil atualizado com sucesso!")
-                    time.sleep(1)
-                    st.rerun()
+        with st.expander("🛠️ EDITAR MEU PERFIL"):
+            nova_foto = st.text_input("URL da Foto", value=dados.get('foto_url', ''))
+            nova_desc = st.text_area("Descrição", value=dados.get('descricao', ''))
+            if st.button("SALVAR ALTERAÇÕES"):
+                db.collection("profissionais").document(st.session_state.user_id).update({"foto_url": nova_foto, "descricao": nova_desc})
+                st.rerun()
 
-        # Botao de Logout
-        if st.button("SAIR DA CONTA", type="secondary"):
+        st.divider()
+        st.write("### 💰 Recarga PIX")
+        st.code(f"Chave PIX: {PIX_OFICIAL}")
+        st.markdown(f'<a href="https://wa.me/{ZAP_ADMIN}?text=Fiz o PIX de recarga para: {st.session_state.user_id}" class="btn-zap">ENVIAR COMPROVANTE AGORA</a>', unsafe_allow_html=True)
+        
+        if st.button("SAIR DA CONTA"):
             st.session_state.auth = False
             st.rerun()
 
-# ------------------------------------------------------------------------------
-# ABA 3: CADASTRO DE NOVOS PARCEIROS
-# ------------------------------------------------------------------------------
-with menu_abas[2]:
-    st.markdown("### 🚀 Junte-se à elite dos profissionais de SP")
-    with st.form("cadastro_form"):
-        reg_nome = st.text_input("Nome ou Empresa")
-        reg_zap = st.text_input("WhatsApp (Apenas números)")
-        reg_pw = st.text_input("Senha para acesso", type="password")
-        reg_desc = st.text_area("O que você faz? (Nossa IA vai te classificar)")
+# --- ABA 3: CADASTRO ---
+with UI_ABAS[2]:
+    st.subheader("🚀 Junte-se ao GeralJá Brasil")
+    with st.form("form_reg_br", clear_on_submit=True):
+        f_nome = st.text_input("Nome/Empresa")
+        f_zap = st.text_input("WhatsApp (DDD + Número)")
+        f_pass = st.text_input("Senha", type="password")
+        col_c, col_u = st.columns(2)
+        f_cidade = col_c.text_input("Cidade")
+        f_uf = col_u.selectbox("UF", LISTA_ESTADOS)
+        f_desc = st.text_area("Descreva seus serviços (Nossa IA vai te categorizar)")
         
-        if st.form_submit_button("CRIAR MEU PERFIL AGORA"):
-            if len(reg_zap) < 10 or not reg_nome:
-                st.error("⚠️ Preencha os dados corretamente.")
-            else:
-                detect_area = processar_ia_avancada(reg_desc)
-                db.collection("profissionais").document(reg_zap).set({
-                    "nome": reg_nome, "whatsapp": reg_zap, "senha": reg_pw,
-                    "descricao": reg_desc, "area": detect_area, "saldo": BONUS_WELCOME,
-                    "cliques": 0, "rating": 5.0, "aprovado": False, "foto_url": "",
-                    "lat": LAT_REF_SP, "lon": LON_REF_SP, "data_registro": datetime.datetime.now()
+        if st.form_submit_button("CADASTRAR MEU PERFIL"):
+            if f_nome and f_zap and f_pass:
+                cat_ia = processar_servico_ia(f_desc)
+                db.collection("profissionais").document(f_zap).set({
+                    "nome": f_nome, "whatsapp": f_zap, "senha": f_pass,
+                    "cidade": f_cidade, "uf": f_uf, "area": cat_ia,
+                    "descricao": f_desc, "saldo": BONUS_WELCOME, "cliques": 0,
+                    "rating": 5.0, "aprovado": False, "foto_url": "",
+                    "lat": LAT_SP_REF + random.uniform(-0.1, 0.1),
+                    "lon": LON_SP_REF + random.uniform(-0.1, 0.1),
+                    "timestamp": datetime.datetime.now()
                 })
-                st.success(f"✅ Sucesso! Você foi classificado como **{detect_area}**. Aguarde a ativação pelo Admin.")
                 st.balloons()
+                st.success(f"Perfil criado! Categoria: {cat_ia}. Aguarde aprovação.")
+                st.markdown(f'<a href="https://wa.me/{ZAP_ADMIN}?text=Fiz o cadastro: {f_nome}" class="btn-zap">AVISAR ADMIN PARA LIBERAR</a>', unsafe_allow_html=True)
 
-# ------------------------------------------------------------------------------
-# ABA 4: TERMINAL ADMIN (GESTOR)
-# ------------------------------------------------------------------------------
-with menu_abas[3]:
-    access_adm = st.text_input("Senha Master", type="password")
-    if access_adm == CHAVE_ADMIN:
-        st.subheader("🛡️ Gestão de Ecossistema")
-        busca_adm = st.text_input("Procurar por Nome ou WhatsApp")
+# --- ABA 4: ADMIN MASTER ---
+with UI_ABAS[3]:
+    adm_pass = st.text_input("Senha Master", type="password")
+    if adm_pass == CHAVE_ACESSO_ADMIN:
+        if st.button("🔍 EXECUTAR AUDITORIA DE SEGURANÇA", use_container_width=True):
+            st.success(executar_limpeza_banco(db))
         
-        profs_all = db.collection("profissionais").stream()
-        for p_doc in profs_all:
-            p, pid = p_doc.to_dict(), p_doc.id
-            if not busca_adm or busca_adm.lower() in p.get('nome','').lower() or busca_adm in pid:
-                status_txt = "🟢 ATIVO" if p.get('aprovado') else "🟡 PENDENTE"
-                with st.expander(f"{status_txt} | {p.get('nome')} | ID: {pid}"):
-                    st.write(f"**Área:** {p.get('area')} | **Saldo:** {p.get('saldo')} 🪙")
-                    
-                    ca1, ca2, ca3 = st.columns(3)
-                    if ca1.button("APROVAR", key=f"ap_{pid}"):
+        st.divider()
+        busca_adm = st.text_input("Buscar Profissional (Nome/Zap)")
+        docs = db.collection("profissionais").stream()
+        
+        for doc in docs:
+            d = doc.to_dict()
+            pid = doc.id
+            if not busca_adm or busca_adm.lower() in d['nome'].lower() or busca_adm in pid:
+                with st.expander(f"{'✅' if d['aprovado'] else '⏳'} {d['nome']} | {d['area']} | {d.get('cidade')}"):
+                    c1, c2, c3 = st.columns(3)
+                    if c1.button("APROVAR", key=f"ap_{pid}"):
                         db.collection("profissionais").document(pid).update({"aprovado": True})
                         st.rerun()
                     
-                    val_add = ca2.number_input("Adicionar Moedas", 1, 500, 10, key=f"val_{pid}")
-                    if ca2.button("CREDITAR", key=f"cr_{pid}"):
-                        db.collection("profissionais").document(pid).update({"saldo": firestore.Increment(val_add)})
+                    qtd = c2.number_input("Moedas", 1, 100, 10, key=f"moe_{pid}")
+                    if c2.button("DAR MOEDAS", key=f"add_{pid}"):
+                        db.collection("profissionais").document(pid).update({"saldo": firestore.Increment(qtd)})
                         st.rerun()
-                        
-                    if ca3.button("REMOVER CONTA", key=f"del_{pid}"):
+                    
+                    if c3.button("EXCLUIR", key=f"del_{pid}"):
                         db.collection("profissionais").document(pid).delete()
                         st.rerun()
 
-# ------------------------------------------------------------------------------
-# RODAPÉ
-# ------------------------------------------------------------------------------
-st.markdown(f"""
-    <div style="text-align:center; padding:40px; color:#94A3B8; font-size:12px;">
-        GERALJÁ SP v19.0 © {datetime.datetime.now().year}<br>
-        Infraestrutura Distribuída | Google Cloud & Firebase Firestore
-    </div>
-""", unsafe_allow_html=True)
-
-
-
-
-
-
-
-
-
-
-
-
+# ==============================================================================
+# 9. RODAPÉ TÉCNICO
+# ==============================================================================
+st.markdown("<br><hr>", unsafe_allow_html=True)
+st.markdown(f'''
+    <center>
+        <p style="color:#888; font-size:12px;">© 2025 GeralJá Brasil - {DISTINTIVO_SISTEMA}</p>
+        <a href="https://wa.me/?text=Precisa de serviços? Use o GeralJá! {URL_APLICATIVO}" style="text-decoration:none; color:#0047AB; font-weight:bold;">📲 COMPARTILHAR</a>
+    </center>
+''', unsafe_allow_html=True)
