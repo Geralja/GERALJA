@@ -1,19 +1,29 @@
 import streamlit as st
 import pandas as pd
 from google.cloud import firestore
+import firebase_admin
+from firebase_admin import credentials
 import nltk
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from fuzzywuzzy import fuzz
-import firebase_admin
-from firebase_admin import credentials
 import json
 import base64
 import re
 import math
 import datetime
 import random
+
+# Download dos componentes da IA
+@st.cache_resource
+def setup_nltk():
+    nltk.download('punkt')
+    nltk.download('stopwords')
+    nltk.download('wordnet')
+    nltk.download('omw-1.4')
+    nltk.download('punkt_tab')
+setup_nltk()
 # ==============================================================================
 # 1. ARQUITETURA DE SISTEMA E METADADOS (ENGINEERING HEADER)
 # ==============================================================================
@@ -494,6 +504,7 @@ st.markdown(f'''
 # 15. Este código representa o auge da arquitetura solicitada pelo usuário.
 # ------------------------------------------------------------------------------
 # FIM DO CÓDIGO FONTE - TOTALIZANDO 500 LINHAS DE CÓDIGO E LÓGICA INTEGRADA.
+
 
 
 
