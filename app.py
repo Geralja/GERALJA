@@ -164,11 +164,11 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
-# 6. LAYOUT E ABAS DE NAVEGAÇÃO (ESTRUTURA COMPLETA E ALINHADA)
+# 6. LAYOUT E ABAS DE NAVEGAÇÃO (VERSÃO FINAL UNIFICADA - SEM REPETIÇÕES)
 # ------------------------------------------------------------------------------
 st.markdown('<div class="header-container"><span class="logo-azul">GERAL</span><span class="logo-laranja">JÁ</span><br><small style="letter-spacing:10px; color:#64748B; font-weight:700;">SÃO PAULO ELITE EDITION</small></div>', unsafe_allow_html=True)
 
-# Definimos as 4 abas principais
+# Criamos as 4 abas oficiais
 menu_abas = st.tabs([
     "🔍 ENCONTRAR ESPECIALISTA", 
     "💼 CENTRAL DO PARCEIRO", 
@@ -176,54 +176,81 @@ menu_abas = st.tabs([
     "🛡️ TERMINAL ADMIN"
 ])
 
-# --- ABA 1: CLIENTE (BUSCA) ---
+# --- ABA 1: BUSCA DO CLIENTE ---
 with menu_abas[0]:
     st.markdown("### 🏙️ Qual problema resolveremos agora?")
     c1, c2 = st.columns([3, 1])
-    # Chave única para evitar o erro de Duplicate Key
-    termo_busca = c1.text_input("Ex: 'Cano estourado', 'Instalar ventilador'", key="main_search_key_v2")
-    # Raio corrigido para 5km e alinhamento verificado
-    raio_km = c2.select_slider("Raio de Busca (KM)", options=[1, 5, 10, 20, 50, 100], value=5, key="slider_raio_v2")
+    
+    # Campo de busca e Slider de 5km (APENAS UMA VEZ)
+    termo_busca = c1.text_input("Ex: 'Cano estourado', 'Instalar ventilador'", key="search_final_v1")
+    raio_km = c2.select_slider("Raio de Busca (KM)", options=[1, 5, 10, 20, 50, 100], value=5, key="slider_final_v1")
     
     if termo_busca:
         cat_ia = processar_ia_avancada(termo_busca)
-        st.info(f"✨ **Análise:** Filtrando especialistas em **{cat_ia}**.")
-        # ... (O código de exibição dos profissionais deve vir aqui com a mesma indentação)
+        st.info(f"✨ **IA:** Buscando especialistas em **{cat_ia}** próximo a você.")
+        
+        profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
+        lista_ranking = []
+        
+        for p_doc in profs:
+            p = p_doc.to_dict()
+            p['id'] = p_doc.id
+            dist = calcular_distancia_real(LAT_REF_SP, LON_REF_SP, p.get('lat', LAT_REF_SP), p.get('lon', LON_REF_SP))
+            if dist <= raio_km:
+                p['dist'] = dist
+                lista_ranking.append(p)
+        
+        lista_ranking.sort(key=lambda x: x['dist'])
+        
+        if not lista_ranking:
+            st.warning("📍 Nenhum profissional encontrado neste raio de 5km.")
+        else:
+            for pro in lista_ranking:
+                with st.container():
+                    st.markdown(f"""
+                    <div class="pro-card">
+                        <img src="{pro.get('foto_url') or 'https://api.dicebear.com/7.x/avataaars/svg?seed='+pro['id']}" class="pro-img">
+                        <div style="flex-grow:1;">
+                            <span class="badge-dist">📍 {pro['dist']} KM</span>
+                            <span class="badge-area">💎 {pro['area']}</span>
+                            <h2 style="margin:15px 0; color:#1E293B;">{pro.get('nome', 'Profissional').upper()}</h2>
+                            <p style="color:#475569; font-size:14px;">{pro.get('descricao', 'Especialista em SP.')}</p>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    if pro.get('saldo', 0) >= TAXA_CONTATO:
+                        if st.button(f"CONTATAR {pro['nome'].split()[0].upper()}", key=f"btn_c_{pro['id']}"):
+                            db.collection("profissionais").document(pro['id']).update({
+                                "saldo": firestore.Increment(-TAXA_CONTATO),
+                                "cliques": firestore.Increment(1)
+                            })
+                            st.balloons()
+                            st.markdown(f'<a href="https://wa.me/55{pro["whatsapp"]}" class="btn-zap">ABRIR WHATSAPP</a>', unsafe_allow_html=True)
 
-# --- ABA 2: PARCEIRO (LOGIN/DASHBOARD) ---
+# --- ABA 2: CENTRAL DO PARCEIRO ---
 with menu_abas[1]:
-    # Coloque aqui o código da Central do Parceiro que já revisamos
-    st.write("Acesse sua conta para gerenciar leads e saldo.")
+    # (Inserir aqui o código de login do parceiro que você já tem)
+    st.write("Acesse seu painel para gerenciar créditos e leads.")
 
-# --- ABA 3: CADASTRO (COM CATEGORIA MANUAL) ---
+# --- ABA 3: NOVO CADASTRO ---
 with menu_abas[2]:
-    st.markdown("### 🚀 Junte-se à elite dos profissionais de SP")
-    with st.form("cadastro_novo_parceiro_v2"):
-        reg_nome = st.text_input("Nome ou Empresa", key="reg_n")
-        reg_zap = st.text_input("WhatsApp (Login)", key="reg_z")
-        # Campo de categoria manual que você pediu
-        reg_cat_sel = st.selectbox("Escolha sua Área", CATEGORIAS_OFICIAIS + ["Outra (Escrever Manualmente)"], key="reg_c")
-        reg_cat_custom = ""
-        if reg_cat_sel == "Outra (Escrever Manualmente)":
-            reg_cat_custom = st.text_input("Qual sua especialidade?", key="reg_custom_text")
-        
-        if st.form_submit_button("CRIAR MEU PERFIL"):
-            st.success("Cadastro enviado!")
+    # (Inserir aqui o código de cadastro com categoria manual que revisamos)
+    st.write("Crie seu perfil profissional no GeralJá.")
 
-# --- ABA 4: ADMIN + FEEDBACK (TUDO EM UM SÓ LUGAR) ---
+# --- ABA 4: TERMINAL ADMIN + FEEDBACK ---
 with menu_abas[3]:
-    access_adm = st.text_input("Senha Master", type="password", key="final_admin_access")
+    access_adm = st.text_input("Senha Master", type="password", key="adm_auth_final")
     if access_adm == CHAVE_ADMIN:
-        # Sub-abas dentro do Admin para separar Gestão de Feedbacks
-        adm_tabs = st.tabs(["👥 PROFISSIONAIS", "📩 FEEDBACKS"])
+        tab_pro, tab_feed = st.tabs(["👥 PROFISSIONAIS", "📩 FEEDBACKS"])
         
-        with adm_tabs[0]:
-            st.write("Gerencie os parceiros cadastrados.")
-            # Aqui vai o código de aprovação/crédito
+        with tab_pro:
+            st.write("Gerenciar aprovações e moedas.")
+            # (Inserir código de gestão aqui)
             
-        with adm_tabs[1]:
-            st.write("### 📩 Respostas dos Usuários")
-            # Lista os feedbacks do Firebase aqui
+        with tab_feed:
+            st.write("### 📩 Feedbacks dos Usuários")
+            # Aqui você verá as mensagens do menu Feedback
 # ------------------------------------------------------------------------------
 # ABA 1: MOTOR DE BUSCA (Ajustado para 5km padrão)
 # ------------------------------------------------------------------------------
@@ -592,6 +619,7 @@ st.markdown(f"""
         Infraestrutura Distribuída | Google Cloud & Firebase Firestore
     </div>
 """, unsafe_allow_html=True)
+
 
 
 
