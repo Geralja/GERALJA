@@ -225,8 +225,12 @@ with menu_abas[0]:
                     else:
                         st.error("⏳ Este profissional está com a agenda lotada (sem saldo).")
 
+# --- ADICIONE "Outro" NAS CATEGORIAS OFICIAIS NO TOPO DO CODIGO ---
+if "Outro (Personalizado)" not in CATEGORIAS_OFICIAIS:
+    CATEGORIAS_OFICIAIS.append("Outro (Personalizado)")
+
 # ------------------------------------------------------------------------------
-# ABA 2: CENTRAL DO PROFISSIONAL (LOGIN / DASHBOARD)
+# ABA 2: CENTRAL DO PROFISSIONAL (LOGIN / DASHBOARD) - ATUALIZADA
 # ------------------------------------------------------------------------------
 with menu_abas[1]:
     if 'auth' not in st.session_state: st.session_state.auth = False
@@ -264,23 +268,43 @@ with menu_abas[1]:
         with st.expander("🛠️ EDITAR MEUS DADOS PÚBLICOS"):
             with st.form("edit_form_final"):
                 ed_nome = st.text_input("Nome de Exibição", value=dados.get('nome'))
-                ed_cat = st.selectbox("Sua Categoria", CATEGORIAS_OFICIAIS, index=CATEGORIAS_OFICIAIS.index(dados.get('area')) if dados.get('area') in CATEGORIAS_OFICIAIS else 0)
+                
+                # Lógica de Categoria Dinâmica
+                cat_atual = dados.get('area')
+                index_cat = CATEGORIAS_OFICIAIS.index(cat_atual) if cat_atual in CATEGORIAS_OFICIAIS else (len(CATEGORIAS_OFICIAIS)-1)
+                
+                ed_cat_sel = st.selectbox("Sua Categoria", CATEGORIAS_OFICIAIS, index=index_cat)
+                
+                # Campo extra aparece apenas se selecionar "Outro"
+                ed_cat_custom = ""
+                if ed_cat_sel == "Outro (Personalizado)":
+                    ed_cat_custom = st.text_input("Escreva sua categoria personalizada", value=cat_atual if cat_atual not in CATEGORIAS_OFICIAIS else "")
+                
                 ed_desc = st.text_area("Descrição do Perfil", value=dados.get('descricao'), height=150)
                 ed_loc = st.text_input("Bairro/Cidade", value=dados.get('localizacao'))
                 
                 up_foto = st.file_uploader("Trocar Foto de Perfil", type=['jpg','png','jpeg'])
                 
                 if st.form_submit_button("SALVAR TODAS AS ALTERAÇÕES"):
-                    upd_payload = {
-                        "nome": ed_nome, "area": ed_cat, "descricao": ed_desc, 
-                        "localizacao": ed_loc, "ultima_att": datetime.datetime.now()
-                    }
-                    if up_foto: upd_payload["foto_url"] = f"data:image/png;base64,{converter_img_b64(up_foto)}"
+                    # Define qual categoria salvar
+                    categoria_final = ed_cat_custom if ed_cat_sel == "Outro (Personalizado)" else ed_cat_sel
                     
-                    db.collection("profissionais").document(uid).update(upd_payload)
-                    st.success("✅ Perfil atualizado com sucesso!")
-                    time.sleep(1)
-                    st.rerun()
+                    if ed_cat_sel == "Outro (Personalizado)" and not ed_cat_custom:
+                        st.error("⚠️ Por favor, digite o nome da sua categoria personalizada.")
+                    else:
+                        upd_payload = {
+                            "nome": ed_nome, 
+                            "area": categoria_final, 
+                            "descricao": ed_desc, 
+                            "localizacao": ed_loc, 
+                            "ultima_att": datetime.datetime.now()
+                        }
+                        if up_foto: upd_payload["foto_url"] = f"data:image/png;base64,{converter_img_b64(up_foto)}"
+                        
+                        db.collection("profissionais").document(uid).update(upd_payload)
+                        st.success("✅ Perfil atualizado com sucesso!")
+                        time.sleep(1)
+                        st.rerun()
 
         # Botao de Logout
         if st.button("SAIR DA CONTA", type="secondary"):
@@ -352,6 +376,7 @@ st.markdown(f"""
         Infraestrutura Distribuída | Google Cloud & Firebase Firestore
     </div>
 """, unsafe_allow_html=True)
+
 
 
 
