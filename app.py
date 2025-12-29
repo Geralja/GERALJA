@@ -311,7 +311,7 @@ with menu_abas[1]:
                     })
                     st.success("✅ Perfil atualizado! Recarregando...")
                     time.sleep(1)
-                    st.rerun()
+                    st.rerun()))
 
         # RECARGA FINANCEIRA
         with st.expander("🪙 COMPRAR MOEDAS (RECARGA)"):
@@ -428,6 +428,7 @@ st.markdown(f"""
         <p style="color:#94A3B8; font-size:10px;">Cloud: Google Firebase | Logic: Python 3.10 | UI: Streamlit Carbon</p>
     </center>
 """, unsafe_allow_html=True)
+
 
 
 
