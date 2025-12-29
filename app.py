@@ -168,8 +168,8 @@ st.markdown("""
 # ------------------------------------------------------------------------------
 st.markdown('<div class="header-container"><span class="logo-azul">GERAL</span><span class="logo-laranja">JÁ</span><br><small style="letter-spacing:10px; color:#64748B; font-weight:700;">SÃO PAULO ELITE EDITION</small></div>', unsafe_allow_html=True)
 
-menu_abas = st.tabs(["🔍 ENCONTRAR ESPECIALISTA", "💼 CENTRAL DO PARCEIRO", "📝 NOVO CADASTRO", "🛡️ TERMINAL ADMIN"])
-
+menu_abas = st.tabs(["🔍 ENCONTRAR ESPECIALISTA", "💼 CENTRAL DO PARCEIRO", "📝 NOVO CADASTRO", "🛡️ TERMINAL ADMIN SEU # Procura por esta linha dentro da "with menu_abas[0]:"
+raio_km = c2.select_slider("Raio de Busca (KM)", options=[1, 5, 10, 20, 50, 100], value=5)
 # ------------------------------------------------------------------------------
 # ABA 1: MOTOR DE BUSCA (CLIENTE)
 # ------------------------------------------------------------------------------
@@ -421,6 +421,7 @@ st.markdown(f"""
         Infraestrutura Distribuída | Google Cloud & Firebase Firestore
     </div>
 """, unsafe_allow_html=True)
+
 
 
 
