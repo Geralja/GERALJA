@@ -183,7 +183,8 @@ menu_abas = st.tabs([
 with menu_abas[0]:
     st.markdown("### 🏙️ Qual problema resolveremos agora?")
     c1, c2 = st.columns([3, 1])
-    termo_busca = c1.text_input("Ex: 'Cano estourado', 'Instalar ventilador'", key="search_main")
+    # Na Aba 1 (Busca do Cliente)
+termo_busca = c1.text_input("Ex: 'Cano estourado', 'Instalar ventilador'", key="search_client_unique")
     
     # CORREÇÃO AQUI: O valor padrão (value) agora é 5
     raio_km = c2.select_slider("Raio de Busca (KM)", options=[1, 5, 10, 20, 50, 100], value=5)
@@ -334,7 +335,7 @@ with menu_abas[1]:
 # ABA 3: CADASTRO DE NOVOS PARCEIROS (COM CATEGORIA PERSONALIZADA)
 # ------------------------------------------------------------------------------
 with menu_abas[2]:
-    st.markdown("### 🚀 Junte-se à elite dos profissionais de SP")
+    st.markdown("### 🚀 Junte-se à elite dos profissionais")
     st.info("Preencha seus dados abaixo. Você pode escolher uma categoria existente ou criar uma nova!")
 
     with st.form("cadastro_form_v2"):
@@ -401,35 +402,81 @@ with menu_abas[2]:
                     st.warning("📍 Seu perfil está em análise. Assim que o administrador aprovar, você aparecerá nas buscas!")
                     st.balloons()
 # ------------------------------------------------------------------------------
-# ABA 4: TERMINAL ADMIN (GESTOR)
+# ABA 4: TERMINAL ADMIN (GESTOR + FEEDBACKS INTEGRADOS)
 # ------------------------------------------------------------------------------
 with menu_abas[3]:
-    access_adm = st.text_input("Senha Master", type="password")
+    # 'key' única para evitar o erro de DuplicateElementKey
+    access_adm = st.text_input("Senha Master", type="password", key="master_adm_auth")
+    
     if access_adm == CHAVE_ADMIN:
-        st.subheader("🛡️ Gestão de Ecossistema")
-        busca_adm = st.text_input("Procurar por Nome ou WhatsApp")
+        st.markdown("## 🛡️ Central de Comando GeralJá")
         
-        profs_all = db.collection("profissionais").stream()
-        for p_doc in profs_all:
-            p, pid = p_doc.to_dict(), p_doc.id
-            if not busca_adm or busca_adm.lower() in p.get('nome','').lower() or busca_adm in pid:
-                status_txt = "🟢 ATIVO" if p.get('aprovado') else "🟡 PENDENTE"
-                with st.expander(f"{status_txt} | {p.get('nome')} | ID: {pid}"):
-                    st.write(f"**Área:** {p.get('area')} | **Saldo:** {p.get('saldo')} 🪙")
-                    
-                    ca1, ca2, ca3 = st.columns(3)
-                    if ca1.button("APROVAR", key=f"ap_{pid}"):
-                        db.collection("profissionais").document(pid).update({"aprovado": True})
-                        st.rerun()
-                    
-                    val_add = ca2.number_input("Adicionar Moedas", 1, 500, 10, key=f"val_{pid}")
-                    if ca2.button("CREDITAR", key=f"cr_{pid}"):
-                        db.collection("profissionais").document(pid).update({"saldo": firestore.Increment(val_add)})
-                        st.rerun()
+        # Sub-abas para separar Gestão de Profissionais dos Feedbacks
+        sub_tab_pro, sub_tab_feed = st.tabs(["👥 GESTÃO DE PARCEIROS", "📩 FEEDBACKS E RESPOSTAS"])
+        
+        # --- PARTE 1: GESTÃO DE PROFISSIONAIS ---
+        with sub_tab_pro:
+            st.subheader("Controle de Profissionais")
+            busca_adm = st.text_input("Procurar por Nome ou WhatsApp", key="filter_adm_pro")
+            
+            profs_all = db.collection("profissionais").stream()
+            for p_doc in profs_all:
+                p, pid = p_doc.to_dict(), p_doc.id
+                if not busca_adm or busca_adm.lower() in p.get('nome','').lower() or busca_adm in pid:
+                    status_txt = "🟢 ATIVO" if p.get('aprovado') else "🟡 PENDENTE"
+                    with st.expander(f"{status_txt} | {p.get('nome')} | ID: {pid}"):
+                        st.write(f"**Área:** {p.get('area')} | **Saldo:** {p.get('saldo')} 🪙")
                         
-                    if ca3.button("REMOVER CONTA", key=f"del_{pid}"):
-                        db.collection("profissionais").document(pid).delete()
-                        st.rerun()
+                        ca1, ca2, ca3 = st.columns(3)
+                        # Botão Aprovar
+                        if ca1.button("APROVAR", key=f"ap_sys_{pid}"):
+                            db.collection("profissionais").document(pid).update({"aprovado": True})
+                            st.success(f"{p.get('nome')} aprovado!")
+                            time.sleep(0.5)
+                            st.rerun()
+                        
+                        # Adicionar Moedas
+                        val_add = ca2.number_input("Adicionar Moedas", 1, 500, 10, key=f"val_sys_{pid}")
+                        if ca2.button("CREDITAR", key=f"cr_sys_{pid}"):
+                            db.collection("profissionais").document(pid).update({"saldo": firestore.Increment(val_add)})
+                            st.success(f"Creditado {val_add} moedas!")
+                            time.sleep(0.5)
+                            st.rerun()
+                            
+                        # Remover Conta
+                        if ca3.button("REMOVER CONTA", key=f"del_sys_{pid}"):
+                            db.collection("profissionais").document(pid).delete()
+                            st.warning("Conta removida.")
+                            time.sleep(0.5)
+                            st.rerun()
+
+        # --- PARTE 2: RESPOSTAS DIRECIONADAS (FEEDBACKS) ---
+        with sub_tab_feed:
+            st.subheader("📩 Mensagens dos Usuários")
+            feedbacks = db.collection("feedbacks").order_by("data", direction="DESCENDING").stream()
+            
+            count_fb = 0
+            for f_doc in feedbacks:
+                count_fb += 1
+                f = f_doc.to_dict()
+                fid = f_doc.id
+                is_lido = f.get('lido', False)
+                
+                status_icon = "🆕" if not is_lido else "✅"
+                with st.expander(f"{status_icon} {f.get('tipo')} - {f.get('nome')}"):
+                    st.markdown(f"**Mensagem:** {f.get('mensagem')}")
+                    st.markdown(f"**Contato:** {f.get('contato', 'Não informado')}")
+                    st.caption(f"Data: {f.get('data').strftime('%d/%m/%Y %H:%M')}")
+                    
+                    if not is_lido:
+                        if st.button("Marcar como Lido", key=f"read_fb_{fid}"):
+                            db.collection("feedbacks").document(fid).update({"lido": True})
+                            st.rerun()
+            
+            if count_fb == 0:
+                st.info("Nenhum feedback recebido ainda.")
+
+# ------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
 # RODAPÉ
@@ -440,6 +487,7 @@ st.markdown(f"""
         Infraestrutura Distribuída | Google Cloud & Firebase Firestore
     </div>
 """, unsafe_allow_html=True)
+
 
 
 
