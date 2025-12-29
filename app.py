@@ -8,6 +8,8 @@ from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from fuzzywuzzy import fuzz
+from gtts import gTTS
+import io
 import json
 import base64
 import re
@@ -16,236 +18,229 @@ import datetime
 import random
 
 # ==============================================================================
-# 1. ARQUITETURA DE SISTEMA E SETUP DE IA
+# 1. SETUP DE AMBIENTE E IA
 # ==============================================================================
-st.set_page_config(
-    page_title="GeralJá | Profissionais de São Paulo",
-    page_icon="🛠️",
-    layout="centered",
-    initial_sidebar_state="collapsed"
-)
+st.set_page_config(page_title="GeralJá SP Gold", page_icon="🏆", layout="centered")
 
 @st.cache_resource
-def setup_nltk():
-    try:
-        nltk.download('punkt')
-        nltk.download('stopwords')
-        nltk.download('wordnet')
-        nltk.download('omw-1.4')
-        nltk.download('punkt_tab')
-    except:
-        pass
-
-setup_nltk()
+def setup_ia_core():
+    nltk.download('punkt')
+    nltk.download('stopwords')
+    nltk.download('wordnet')
+    nltk.download('omw-1.4')
+    nltk.download('punkt_tab')
+setup_ia_core()
 
 # ==============================================================================
-# 2. CAMADA DE PERSISTÊNCIA: CONEXÃO FIREBASE
+# 2. CONEXÃO FIREBASE (BLINDADA)
 # ==============================================================================
 @st.cache_resource
-def inicializar_infraestrutura_dados():
+def connect_db():
     if not firebase_admin._apps:
         try:
             b64_key = st.secrets["FIREBASE_BASE64"]
             decoded_json = base64.b64decode(b64_key).decode("utf-8")
             cred_dict = json.loads(decoded_json)
-            credenciais = credentials.Certificate(cred_dict)
-            firebase_admin.initialize_app(credenciais)
+            cred = credentials.Certificate(cred_dict)
+            firebase_admin.initialize_app(cred)
         except Exception as e:
-            st.error(f"⚠️ Erro de Infraestrutura: {e}")
+            st.error(f"Erro Crítico de Conexão: {e}")
             st.stop()
     return firestore.Client.from_service_account_info(json.loads(base64.b64decode(st.secrets["FIREBASE_BASE64"]).decode("utf-8")))
 
-db = inicializar_infraestrutura_dados()
+db = connect_db()
 
 # ==============================================================================
-# 3. CONSTANTES E REGRAS DE NEGÓCIO
+# 3. CONSTANTES E NOVAS REGRAS
 # ==============================================================================
 PIX_OFICIAL = "11991853488"
 ZAP_ADMIN = "5511991853488"
 CHAVE_ACESSO_ADMIN = "mumias"
 TAXA_CONTATO = 1
 BONUS_WELCOME = 5
-LAT_SP_REF = -23.5505
-LON_SP_REF = -46.6333
+LAT_SP_REF, LON_SP_REF = -23.5505, -46.6333
+
+CATEGORIAS_RAPIDAS = ["Encanador", "Eletricista", "Diarista", "Pintor", "Mecânico", "Pedreiro", "Manicure", "Montador"]
 
 # ==============================================================================
-# 4. MOTOR DE INTELIGÊNCIA ARTIFICIAL E GEOLOCALIZAÇÃO
+# 4. NOVAS FUNÇÕES EXCLUSIVAS
 # ==============================================================================
+
+def gerar_audio_convite(nome_pro):
+    """Nova Função: Gera áudio para aumentar conversão"""
+    texto = f"Olá! Eu sou o {nome_pro}. Clique no botão abaixo para falar comigo agora pelo WhatsApp!"
+    tts = gTTS(text=texto, lang='pt', tld='com.br')
+    fp = io.BytesIO()
+    tts.write_to_fp(fp)
+    return fp
+
+def obter_selo_vibrante(p_data):
+    """Nova Função: Sistema de Gamificação e Selos"""
+    saldo = p_data.get('saldo', 0)
+    rating = p_data.get('rating', 5.0)
+    if saldo > 50 and rating >= 4.8:
+        return '<span style="background:linear-gradient(90deg, #FFD700, #FFA500); color:black; padding:2px 8px; border-radius:5px; font-size:10px; font-weight:900;">🏆 ELITE SP</span>'
+    if p_data.get('aprovado'):
+        return '<span style="background:#0047AB; color:white; padding:2px 8px; border-radius:5px; font-size:10px; font-weight:900;">✅ VERIFICADO</span>'
+    return ""
+
 def calcular_km_sp(lat1, lon1, lat2, lon2):
     R = 6371 
     dlat, dlon = math.radians(lat2-lat1), math.radians(lon2-lon1)
     a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
     return round(R * (2 * math.atan2(math.sqrt(a), math.sqrt(1-a))), 1)
 
-CONCEITOS_SERVICOS = {
-    "vazamento": "Encanador", "cano": "Encanador", "chuveiro": "Eletricista",
-    "fio": "Eletricista", "pintar": "Pintor", "reforma": "Pedreiro",
-    "faxina": "Diarista", "móvel": "Montador", "unha": "Manicure", "carro": "Mecânico"
-}
-
-def processar_servico_ia(texto):
-    if not texto: return "Ajudante Geral"
-    t = texto.lower()
-    for k, v in CONCEITOS_SERVICOS.items():
-        if k in t: return v
-    return "Especialista"
-
-def busca_inteligente_robusta(busca, profissionais_stream):
+def busca_inteligente_robusta(busca, stream):
     if not busca: return []
-    lista_profs = list(profissionais_stream)
+    lista = list(stream)
     tokens = word_tokenize(busca.lower())
-    stop_words = set(stopwords.words('portuguese'))
-    lemmatizer = WordNetLemmatizer()
-    termos = [lemmatizer.lemmatize(t) for t in tokens if t not in stop_words]
+    stop = set(stopwords.words('portuguese'))
+    lem = WordNetLemmatizer()
+    termos = [lem.lemmatize(t) for t in tokens if t not in stop]
     
-    res = []
-    for p in lista_profs:
-        d = p.to_dict()
-        d['doc_id'] = p.id
+    resultados = []
+    for doc in lista:
+        d = doc.to_dict()
+        d['doc_id'] = doc.id
         score = 0
-        area, nome = str(d.get('area','')).lower(), str(d.get('nome','')).lower()
+        txt_total = f"{d.get('area','')} {d.get('nome','')} {d.get('localizacao','')}".lower()
         for t in termos:
-            score += fuzz.partial_ratio(t, area) * 3
-            score += fuzz.partial_ratio(t, nome) * 1
-        score += min(d.get('saldo', 0) / 2, 30) # Boost por saldo
-        if score > 50: res.append({'profissional': d, 'score': score})
-    return sorted(res, key=lambda x: x['score'], reverse=True)
+            score += fuzz.partial_ratio(t, txt_total) * 2
+        score += min(d.get('saldo', 0), 20)
+        if score > 40: resultados.append({'pro': d, 'score': score})
+    return sorted(resultados, key=lambda x: x['score'], reverse=True)
 
 # ==============================================================================
-# 5. DESIGN CSS CUSTOMIZADO
+# 5. ESTILO E INTERFACE
 # ==============================================================================
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
     * { font-family: 'Montserrat', sans-serif; }
-    .txt-azul { color: #0047AB; font-size: 50px; font-weight: 900; }
-    .txt-laranja { color: #FF8C00; font-size: 50px; font-weight: 900; }
-    .card-vazado { 
-        background: white; border-radius: 20px; padding: 20px; margin-bottom: 15px;
-        border-left: 10px solid #0047AB; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        display: flex; align-items: center;
-    }
-    .avatar-pro { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; margin-right: 20px; }
-    .btn-wpp { 
-        background: #25D366; color: white !important; padding: 10px; 
-        border-radius: 10px; text-decoration: none; display: block; text-align: center; font-weight: bold;
-    }
+    .card-vazado { background: white; border-radius: 20px; padding: 15px; margin-bottom: 12px; border-left: 8px solid #FF8C00; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+    .btn-wpp { background: #25D366; color: white !important; padding: 12px; border-radius: 12px; text-decoration: none; display: block; text-align: center; font-weight: 900; margin-top: 10px; }
+    .avatar-pro { width: 70px; height: 70px; border-radius: 50%; object-fit: cover; border: 3px solid #eee; }
     </style>
 """, unsafe_allow_html=True)
 
-# ==============================================================================
-# 6. INTERFACE PRINCIPAL (ABAS)
-# ==============================================================================
-st.markdown('<center><span class="txt-azul">GERAL</span><span class="txt-laranja">JÁ</span><p style="margin-top:-20px; letter-spacing:5px;">SÃO PAULO</p></center>', unsafe_allow_html=True)
+st.markdown('<center><h1 style="color:#0047AB; margin-bottom:0;">GERAL<span style="color:#FF8C00;">JÁ</span></h1><p style="letter-spacing:5px;">SÃO PAULO CAPITAL</p></center>', unsafe_allow_html=True)
 
-UI_ABAS = st.tabs(["🔍 BUSCAR", "👤 MINHA CONTA", "📝 CADASTRAR", "🔑 ADMIN"])
+UI_ABAS = st.tabs(["🔎 BUSCAR", "🚀 CATEGORIAS", "👤 MINHA CONTA", "📝 CADASTRAR", "🔑 ADMIN"])
 
-# ABA 1: BUSCA
+# ------------------------------------------------------------------------------
+# ABA 1: BUSCA INTELIGENTE
+# ------------------------------------------------------------------------------
 with UI_ABAS[0]:
-    busca = st.text_input("O que você precisa hoje?", placeholder="Ex: Encanador para pia")
-    if busca:
+    termo = st.text_input("O que você busca em SP?", placeholder="Ex: Preciso de alguém para consertar meu cano", key="main_search")
+    if termo:
         query = db.collection("profissionais").where("aprovado", "==", True).stream()
-        resultados = busca_inteligente_robusta(busca, query)
-        
-        if not resultados:
-            st.warning("Nenhum profissional encontrado para este termo.")
+        res = busca_inteligente_robusta(termo, query)
+        if not res: st.info("Nenhum profissional exato encontrado. Tente a aba Categorias!")
         else:
-            for r in resultados:
-                p = r['profissional']
+            for item in res:
+                p = item['pro']
                 dist = calcular_km_sp(LAT_SP_REF, LON_SP_REF, p.get('lat', LAT_SP_REF), p.get('lon', LON_SP_REF))
-                img = p.get('foto_url') or "https://via.placeholder.com/100"
+                selo = obter_selo_vibrante(p)
                 
                 st.markdown(f"""
                 <div class="card-vazado">
-                    <img src="{img}" class="avatar-pro">
-                    <div style="flex-grow:1">
-                        <small>📍 {dist}km de distância</small>
-                        <h4 style="margin:0">{p['nome']}</h4>
-                        <p style="margin:0; color:#666;"><b>{p['area']}</b> - {p.get('localizacao', 'SP')}</p>
+                    <div style="display:flex; align-items:center;">
+                        <img src="{p.get('foto_url') or 'https://via.placeholder.com/100'}" class="avatar-pro">
+                        <div style="margin-left:15px;">
+                            {selo} <br>
+                            <b style="font-size:18px;">{p.get('nome','').upper()}</b><br>
+                            <small>📍 {dist}km do Centro | ⭐ {p.get('rating', 5.0)}</small>
+                        </div>
                     </div>
+                    <p style="margin-top:10px; font-size:14px; color:#444;"><b>Área:</b> {p.get('area','Serviços')}</p>
                 </div>
                 """, unsafe_allow_html=True)
                 
                 if p.get('saldo', 0) >= TAXA_CONTATO:
-                    if st.button(f"CONTATAR {p['nome'].split()[0].upper()}", key=f"c_{p['doc_id']}"):
-                        db.collection("profissionais").document(p['doc_id']).update({
-                            "saldo": firestore.Increment(-TAXA_CONTATO),
-                            "cliques": firestore.Increment(1)
-                        })
-                        st.markdown(f'<a href="https://wa.me/55{p["whatsapp"]}?text=Vi você no GeralJá" class="btn-wpp">ABRIR WHATSAPP</a>', unsafe_allow_html=True)
+                    if st.button(f"FALAR COM {p.get('nome','').split()[0]}", key=f"btn_{p['doc_id']}"):
+                        db.collection("profissionais").document(p['doc_id']).update({"saldo": firestore.Increment(-TAXA_CONTATO), "cliques": firestore.Increment(1)})
+                        st.audio(gerar_audio_convite(p.get('nome','')), format="audio/mp3")
+                        st.markdown(f'<a href="https://wa.me/55{p.get("whatsapp")}?text=Vi seu perfil no GeralJá!" class="btn-wpp">ABRIR WHATSAPP</a>', unsafe_allow_html=True)
 
-# ABA 2: LOGIN PROFISSIONAL
+# ------------------------------------------------------------------------------
+# ABA 2: CATEGORIAS RÁPIDAS (NOVA FUNÇÃO)
+# ------------------------------------------------------------------------------
 with UI_ABAS[1]:
-    st.subheader("Acesso do Parceiro")
-    col1, col2 = st.columns(2)
-    z_log = col1.text_input("WhatsApp", key="l_z")
-    p_log = col2.text_input("Senha", type="password", key="l_p")
-    
+    st.subheader("Explore por Categoria")
+    cols = st.columns(2)
+    for i, cat in enumerate(CATEGORIAS_RAPIDAS):
+        if cols[i % 2].button(f"🛠️ {cat}", use_container_width=True):
+            st.session_state.main_search = cat # Tenta injetar na busca
+
+# ------------------------------------------------------------------------------
+# ABA 3: PERFIL DO PROFISSIONAL
+# ------------------------------------------------------------------------------
+with UI_ABAS[2]:
+    st.subheader("Login do Parceiro")
+    col_a, col_b = st.columns(2)
+    z_log = col_a.text_input("WhatsApp", key="log_z")
+    p_log = col_b.text_input("Senha", type="password", key="log_p")
     if z_log and p_log:
         doc = db.collection("profissionais").document(z_log).get()
-        if doc.exists and doc.to_dict()['senha'] == p_log:
+        if doc.exists and doc.to_dict().get('senha') == p_log:
             d = doc.to_dict()
-            st.success(f"Bem-vindo, {d['nome']}!")
-            st.metric("Seu Saldo", f"{d.get('saldo', 0)} moedas")
+            st.success(f"Logado: {d.get('nome')}")
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Moedas", d.get('saldo', 0))
+            col2.metric("Cliques", d.get('cliques', 0))
+            col3.metric("Status", "Ativo" if d.get('aprovado') else "Pendente")
             
-            # Recarga PIX interna
             st.divider()
-            st.write("### 💰 Recarregar Moedas")
+            st.write("💰 **Recarga de Moedas via PIX**")
             st.image(f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={PIX_OFICIAL}")
-            st.code(f"PIX: {PIX_OFICIAL}")
-            st.markdown(f'<a href="https://wa.me/{ZAP_ADMIN}?text=Fiz o PIX para {z_log}" class="btn-wpp">ENVIAR COMPROVANTE</a>', unsafe_allow_html=True)
-        else:
-            st.error("Dados incorretos")
+            st.code(f"Chave PIX: {PIX_OFICIAL}")
+            st.info("Envie o comprovante para o admin após o pagamento.")
+        else: st.error("Acesso negado.")
 
-# ABA 3: CADASTRO
-with UI_ABAS[2]:
-    with st.form("reg"):
-        n = st.text_input("Nome/Empresa")
-        w = st.text_input("WhatsApp (com DDD)")
-        s = st.text_input("Senha", type="password")
-        b = st.text_input("Bairro")
-        desc = st.text_area("Descrição dos seus serviços")
-        if st.form_submit_button("CADASTRAR"):
-            area = processar_servico_ia(desc)
-            db.collection("profissionais").document(w).set({
-                "nome": n, "whatsapp": w, "senha": s, "area": area,
-                "localizacao": b, "saldo": BONUS_WELCOME, "aprovado": False,
-                "lat": LAT_SP_REF + random.uniform(-0.05, 0.05),
-                "lon": LON_SP_REF + random.uniform(-0.05, 0.05),
-                "cliques": 0, "rating": 5.0
-            })
-            st.success("Cadastro realizado! Aguarde a aprovação do admin.")
-            st.balloons()
-
-# ABA 4: ADMIN
+# ------------------------------------------------------------------------------
+# ABA 4: CADASTRO
+# ------------------------------------------------------------------------------
 with UI_ABAS[3]:
-    adm = st.text_input("Senha Admin", type="password")
-    if adm == CHAVE_ACESSO_ADMIN:
+    st.subheader("Cadastre-se Gratuitamente")
+    with st.form("reg_form"):
+        f_nome = st.text_input("Nome/Empresa")
+        f_zap = st.text_input("WhatsApp (Ex: 11999998888)")
+        f_pass = st.text_input("Crie uma Senha", type="password")
+        f_desc = st.text_area("Descreva seu serviço")
+        if st.form_submit_button("CRIAR CONTA"):
+            if len(f_zap) >= 11:
+                # Classificação automática por IA simples (regex)
+                area_ia = "Especialista"
+                for k in ["pintar", "cano", "limpeza", "unha"]: 
+                    if k in f_desc.lower(): area_ia = k.capitalize()
+                
+                db.collection("profissionais").document(f_zap).set({
+                    "nome": f_nome, "whatsapp": f_zap, "senha": f_pass, "area": area_ia,
+                    "saldo": BONUS_WELCOME, "aprovado": False, "cliques": 0, "rating": 5.0,
+                    "lat": LAT_SP_REF + random.uniform(-0.05, 0.05), "lon": LON_SP_REF + random.uniform(-0.05, 0.05)
+                })
+                st.success("Cadastro enviado! Notifique o Admin.")
+                st.markdown(f'<a href="https://wa.me/{ZAP_ADMIN}?text=Quero ser aprovado no GeralJá: {f_nome}">AVISAR ADMIN</a>', unsafe_allow_html=True)
+
+# ------------------------------------------------------------------------------
+# ABA 5: ADMIN MASTER
+# ------------------------------------------------------------------------------
+with UI_ABAS[4]:
+    senha_adm = st.text_input("Senha Master", type="password")
+    if senha_adm == CHAVE_ACESSO_ADMIN:
         profs = db.collection("profissionais").stream()
-        for p in profs:
-            d = p.to_dict()
-            with st.expander(f"{d['nome']} ({'✅' if d['aprovado'] else '⏳'})"):
-                st.write(f"Zap: {d['whatsapp']} | Saldo: {d['saldo']}")
-                if not d['aprovado']:
-                    if st.button("APROVAR", key=f"ap_{p.id}"):
-                        db.collection("profissionais").document(p.id).update({"aprovado": True})
-                        st.rerun()
-                if st.button("EXCLUIR", key=f"ex_{p.id}"):
-                    db.collection("profissionais").document(p.id).delete()
+        for p_doc in profs:
+            d = p_doc.to_dict()
+            with st.expander(f"{d.get('nome')} | {d.get('area')} | 💰{d.get('saldo')}"):
+                st.write(f"ZAP: {d.get('whatsapp')}")
+                if st.button("APROVAR ✅", key=f"ok_{p_doc.id}"):
+                    db.collection("profissionais").document(p_doc.id).update({"aprovado": True})
+                    st.rerun()
+                if st.button("DELETAR 🗑️", key=f"del_{p_doc.id}"):
+                    db.collection("profissionais").document(p_doc.id).delete()
                     st.rerun()
 
-st.markdown("<br><center><small>GeralJá SP v10.0 | 2025</small></center>", unsafe_allow_html=True)
-
-
-
-
-
-
-
-
-
-
-
+st.markdown("<br><hr><center><small>GeralJá SP v10.5 | Built with ❤️ for São Paulo Professionals</small></center>", unsafe_allow_html=True)
 
 
 
