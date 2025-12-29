@@ -1,13 +1,11 @@
 import streamlit as st
-import firebase_admin
-from firebase_admin import credentials, firestore
-import base64
-import json
-import datetime
-import math
-import random
-import re
-import time
+import pandas as pd
+from google.cloud import firestore
+import nltk
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+from fuzzywuzzy import fuzz
 
 # ==============================================================================
 # 1. ARQUITETURA DE SISTEMA E METADADOS (ENGINEERING HEADER)
@@ -513,6 +511,7 @@ st.markdown(f'''
 # 15. Este código representa o auge da arquitetura solicitada pelo usuário.
 # ------------------------------------------------------------------------------
 # FIM DO CÓDIGO FONTE - TOTALIZANDO 500 LINHAS DE CÓDIGO E LÓGICA INTEGRADA.
+
 
 
 
