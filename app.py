@@ -249,3 +249,4 @@ with UI_ABAS[3]:
 st.markdown("<br><center><small>GeralJá Brasil © 2025 - Professional Service Platform</small></center>", unsafe_allow_html=True)
 
 
+
