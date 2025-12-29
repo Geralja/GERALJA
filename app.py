@@ -291,11 +291,27 @@ st.markdown(f"""
     * {{ font-family: 'Inter', sans-serif; }}
     .stApp {{ background-color: #F8FAFC; }}
     
+    st.markdown(r"""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+    * { font-family: 'Inter', sans-serif; }
+    .stApp { background-color: #F8FAFC; }
     /* Header Estilizado */
-    .header-container {{ background: white; padding: 40px; border-radius: 0 0 60px 60px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border-bottom: 8px solid #FF8C00; }}
-    .logo-azul {{ color: #0047AB; font-weight: 900; font-size: 60px; letter-spacing: -2px; }}
-    .logo-laranja {{ color: #FF8C00; font-weight: 900; font-size: 60px; letter-spacing: -2px; }}
-    
+    .header-container { background: white; padding: 40px; border-radius: 0 0 60px 60px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border-bottom: 8px solid #FF8C00; }
+    .logo-azul { color: #0047AB; font-weight: 900; font-size: 60px; letter-spacing: -2px; }
+    .logo-laranja { color: #FF8C00; font-weight: 900; font-size: 60px; letter-spacing: -2px; }
+    /* Cards de Profissionais */
+    .pro-card { background: white; border-radius: 30px; padding: 25px; margin-bottom: 20px; border-left: 15px solid #0047AB; box-shadow: 0 10px 20px rgba(0,0,0,0.03); display: flex; align-items: center; transition: 0.3s; }
+    .pro-card:hover { transform: translateY(-5px); box-shadow: 0 15px 35px rgba(0,0,0,0.08); }
+    .pro-img { width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 4px solid #F1F5F9; margin-right: 25px; }
+    /* Badges e Botões */
+    .badge-dist { background: #DBEAFE; color: #1E40AF; padding: 6px 14px; border-radius: 12px; font-weight: 900; font-size: 11px; text-transform: uppercase; }
+    .badge-area { background: #FFEDD5; color: #9A3412; padding: 6px 14px; border-radius: 12px; font-weight: 900; font-size: 11px; text-transform: uppercase; margin-left: 5px; }
+    .btn-zap { background: #22C55E; color: white !important; padding: 16px; border-radius: 18px; text-decoration: none; font-weight: 900; display: block; text-align: center; font-size: 16px; margin-top: 10px; }
+    /* Painel de Métricas */
+    .metric-box { background: #1E293B; color: white; padding: 25px; border-radius: 25px; text-align: center; border-bottom: 5px solid #FF8C00; }
+</style>
+""", unsafe_allow_html=True)
     /* Cards de Profissionais */
     .pro-card {{ background: white; border-radius: 30px; padding: 25px; margin-bottom: 20px; border-left: 15px solid #0047AB; box-shadow: 0 10px 20px rgba(0,0,0,0.03); display: flex; align-items: center; transition: 0.3s; }}
     .pro-card:hover {{ transform: translateY(-5px); box-shadow: 0 15px 35px rgba(0,0,0,0.08); }}
@@ -605,6 +621,7 @@ st.markdown(f"""
         <p style="color:#94A3B8; font-size:10px;">Cloud: Google Firebase | Logic: Python 3.10 | UI: Streamlit Carbon</p>
     </center>
 """, unsafe_allow_html=True)
+
 
 
 
