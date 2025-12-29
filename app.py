@@ -285,18 +285,32 @@ with menu_abas[0]:
     
     # ... (O restante do código da busca continua abaixo daqui)
 # ------------------------------------------------------------------------------
-# ABA 1: MOTOR DE BUSCA (CLIENTE)
+# ABA 1: MOTOR DE BUSCA (REVISADA E ALINHADA)
 # ------------------------------------------------------------------------------
 with menu_abas[0]:
     st.markdown("### 🏙️ Qual problema resolveremos agora?")
     c1, c2 = st.columns([3, 1])
-    termo_busca = c1.text_input("Ex: 'Cano estourado', 'Instalar ventilador', 'Pintar portão'", key="search_main")
-    raio_km = c2.select_slider("Raio de Busca (KM)", options=[1, 5, 10, 20, 50, 100], value=20)
+    
+    # Campo de busca com chave única para evitar erro de duplicidade
+    termo_busca = c1.text_input(
+        "Ex: 'Cano estourado', 'Instalar ventilador'", 
+        key="main_search_input_unique"
+    )
+    
+    # ESTA LINHA ABAIXO ESTAVA CAUSANDO O ERRO NO SEU LINK:
+    # Ela deve ter exatamente o mesmo recuo (espaço) que a linha de cima.
+    raio_km = c2.select_slider(
+        "Raio de Busca (KM)", 
+        options=[1, 5, 10, 20, 50, 100], 
+        value=5, 
+        key="main_slider_raio_unique"
+    )
     
     if termo_busca:
         cat_ia = processar_ia_avancada(termo_busca)
-        st.info(f"✨ **Análise da IA:** Filtrando os melhores profissionais em **{cat_ia}** próximo a você.")
+        st.info(f"✨ **Análise da IA:** Filtrando profissionais em **{cat_ia}**.")
         
+        # Filtro de busca no banco de dados
         profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
         lista_ranking = []
         
@@ -311,33 +325,30 @@ with menu_abas[0]:
         lista_ranking.sort(key=lambda x: x['dist'])
         
         if not lista_ranking:
-            st.warning("📍 Nenhum profissional desta categoria atende neste raio no momento.")
+            st.warning("📍 Nenhum profissional encontrado neste raio de 5km.")
         else:
             for pro in lista_ranking:
                 with st.container():
+                    # Card visual do profissional
                     st.markdown(f"""
                     <div class="pro-card">
                         <img src="{pro.get('foto_url') or 'https://api.dicebear.com/7.x/avataaars/svg?seed='+pro['id']}" class="pro-img">
                         <div style="flex-grow:1;">
-                            <span class="badge-dist">📍 {pro['dist']} KM DE VOCÊ</span>
+                            <span class="badge-dist">📍 {pro['dist']} KM</span>
                             <span class="badge-area">💎 {pro['area']}</span>
                             <h2 style="margin:15px 0; color:#1E293B;">{pro.get('nome', 'Profissional').upper()}</h2>
-                            <p style="color:#475569; font-size:15px; line-height:1.6;">{pro.get('descricao', 'Especialista em serviços gerais pronto para te atender.')}</p>
-                            <p style="color:#64748B; font-size:13px;">⭐ {pro.get('rating', 5.0)} | 🏙️ {pro.get('localizacao', 'São Paulo - SP')}</p>
+                            <p style="font-size:14px; color:#475569;">{pro.get('descricao', 'Especialista disponível.')}</p>
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
                     
                     if pro.get('saldo', 0) >= TAXA_CONTATO:
-                        if st.button(f"FALAR COM {pro['nome'].split()[0].upper()}", key=f"btn_{pro['id']}"):
+                        if st.button(f"CONTATAR {pro['nome'].split()[0].upper()}", key=f"call_{pro['id']}"):
                             db.collection("profissionais").document(pro['id']).update({
                                 "saldo": firestore.Increment(-TAXA_CONTATO),
                                 "cliques": firestore.Increment(1)
                             })
-                            st.balloons()
-                            st.markdown(f'<a href="https://wa.me/55{pro["whatsapp"]}?text=Olá {pro["nome"]}, vi seu anúncio no GeralJá!" class="btn-zap">ABRIR CONVERSA NO WHATSAPP</a>', unsafe_allow_html=True)
-                    else:
-                        st.error("⏳ Este profissional está com a agenda lotada (sem saldo).")
+                            st.markdown(f'<a href="https://wa.me/55{pro["whatsapp"]}" class="btn-zap">ABRIR WHATSAPP</a>', unsafe_allow_html=True)
 
 # --- ADICIONE "Outro" NAS CATEGORIAS OFICIAIS NO TOPO DO CODIGO ---
 if "Outro (Personalizado)" not in CATEGORIAS_OFICIAIS:
@@ -581,6 +592,7 @@ st.markdown(f"""
         Infraestrutura Distribuída | Google Cloud & Firebase Firestore
     </div>
 """, unsafe_allow_html=True)
+
 
 
 
