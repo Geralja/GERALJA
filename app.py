@@ -238,14 +238,83 @@ with menu_abas[1]:
 
         st.divider()
         
-        # EDIÇÃO DE PERFIL (SOLICITADO)
-        with st.expander("📝 ATUALIZAR MEUS DADOS E PERFIL"):
-            with st.form("edit_form"):
-                ed_nome = st.text_input("Nome Profissional", value=dados.get('nome'))
-                ed_desc = st.text_area("Descrição dos seus Serviços", value=dados.get('descricao'))
-                ed_zap = st.text_input("WhatsApp (Visualização)", value=dados.get('whatsapp'))
-                ed_foto = st.text_input("URL da Foto de Perfil", value=dados.get('foto_url'))
-                ed_bairro = st.text_input("Bairro/Cidade Principal", value=dados.get('localizacao'))
+      # --- BLOCO DE EDIÇÃO AVANÇADO v22.0 ---
+        with st.expander("📝 CONFIGURAÇÕES AVANÇADAS DO PERFIL"):
+            with st.form("edit_form_ultra"):
+                st.markdown("### 🛠️ Informações Básicas")
+                col_e1, col_e2 = st.columns(2)
+                
+                with col_e1:
+                    ed_nome = st.text_input("Nome Comercial/Profissional", value=dados.get('nome'))
+                    # SELETOR DE CATEGORIA (Nova funcionalidade)
+                    ed_cat = st.selectbox(
+                        "Sua Categoria Principal", 
+                        CATEGORIAS_OFICIAIS, 
+                        index=CATEGORIAS_OFICIAIS.index(dados.get('area', 'Ajudante Geral')) if dados.get('area') in CATEGORIAS_OFICIAIS else 0
+                    )
+                
+                with col_e2:
+                    ed_zap = st.text_input("WhatsApp de Contato", value=dados.get('whatsapp'), help="Apenas números com DDD")
+                    ed_bairro = st.text_input("Bairro/Região de Atendimento", value=dados.get('localizacao'))
+
+                st.divider()
+                st.markdown("### 📸 Identidade Visual e Portfólio")
+                
+                # UPLOAD DE FOTO DE PERFIL (Nova funcionalidade)
+                c_f1, c_f2 = st.columns([1, 2])
+                with c_f1:
+                    if dados.get('foto_url'):
+                        st.image(dados['foto_url'], caption="Foto Atual", width=120)
+                with c_f2:
+                    new_foto_file = st.file_uploader("Trocar Foto de Perfil", type=['jpg', 'jpeg', 'png'])
+
+                # GALERIA DE TRABALHOS (Nova funcionalidade)
+                st.write("**Galeria de Serviços (Suba até 3 fotos de seus trabalhos)**")
+                galeria_files = st.file_uploader("Fotos do Portfólio", type=['jpg', 'png'], accept_multiple_files=True)
+
+                st.divider()
+                st.markdown("### 📄 Detalhes do Serviço")
+                ed_desc = st.text_area("Bio Profissional (O que você faz de melhor?)", value=dados.get('descricao'), height=150)
+                
+                # STATUS DE DISPONIBILIDADE (Nova funcionalidade)
+                ed_status = st.toggle("Estou disponível para chamadas agora?", value=dados.get('online', True))
+                
+                st.divider()
+                
+                # BOTÃO DE SALVAMENTO COM LÓGICA DE PROCESSAMENTO
+                if st.form_submit_button("🚀 SALVAR E ATUALIZAR PERFIL"):
+                    with st.spinner("Otimizando imagens e salvando..."):
+                        # 1. Limpeza do WhatsApp
+                        zap_limpo = "".join(filter(str.isdigit, ed_zap))
+                        
+                        # 2. Objeto de atualização
+                        update_payload = {
+                            "nome": ed_nome,
+                            "area": ed_cat,
+                            "whatsapp": zap_limpo,
+                            "localizacao": ed_bairro,
+                            "descricao": ed_desc,
+                            "online": ed_status,
+                            "ultima_atualizacao": datetime.datetime.now()
+                        }
+
+                        # 3. Processar Foto de Perfil se houver nova
+                        if new_foto_file:
+                            update_payload["foto_url"] = converter_img_b64(new_foto_file)
+
+                        # 4. Processar Galeria se houver novas fotos
+                        if galeria_files:
+                            fotos_base64 = []
+                            for f in galeria_files[:3]: # Limite de 3 fotos
+                                fotos_base64.append(converter_img_b64(f))
+                            update_payload["galeria"] = fotos_base64
+
+                        # 5. Enviar para o Firebase
+                        db.collection("profissionais").document(uid).update(update_payload)
+                        
+                        st.success("✅ Perfil atualizado com sucesso!")
+                        time.sleep(1.5)
+                        st.rerun()))
                 
                 st.write("📍 **Ajustar Minha Localização (GPS)**")
                 c_gps1, c_gps2 = st.columns(2)
@@ -379,3 +448,4 @@ st.markdown(f"""
         <p style="color:#94A3B8; font-size:10px;">Cloud: Google Firebase | Logic: Python 3.10 | UI: Streamlit Carbon</p>
     </center>
 """, unsafe_allow_html=True)
+
