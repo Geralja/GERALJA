@@ -14,7 +14,6 @@ import random
 import re
 import time
 import io
-from gtts import gTTS
 
 # ------------------------------------------------------------------------------
 # 1. NÚCLEO DE CONFIGURAÇÃO (SPA)
@@ -266,3 +265,4 @@ with ABAS[3]:
                         st.success("Senha alterada com sucesso!")
 
 st.markdown("<br><hr><center><small>GeralJá v16.0 | Engine de Alta Performance 2025</small></center>", unsafe_allow_html=True)
+
