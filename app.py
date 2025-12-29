@@ -16,7 +16,7 @@ import time
 # 1. ARQUITETURA DE SISTEMA E METADADOS (ENGINEERING HEADER)
 # ==============================================================================
 st.set_page_config(
-    page_title="GeralJá | Ecossistema Profissional Brasil",
+    page_title="GeralJá | Ecossistema Profissional do Brasil",
     page_icon="🏙️",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -240,34 +240,27 @@ with UI_ABAS[1]:
             st.session_state.auth = False
             st.rerun()
 
-# --- ABA 3: CADASTRO ---
-with UI_ABAS[2]:
-    st.subheader("🚀 Junte-se ao GeralJá Brasil")
-    with st.form("form_reg_br", clear_on_submit=True):
-        f_nome = st.text_input("Nome/Empresa")
-        f_zap = st.text_input("WhatsApp (DDD + Número)")
-        f_pass = st.text_input("Senha", type="password")
-        col_c, col_u = st.columns(2)
-        f_cidade = col_c.text_input("Cidade")
-        f_uf = col_u.selectbox("UF", LISTA_ESTADOS)
-        f_desc = st.text_area("Descreva seus serviços (Nossa IA vai te categorizar)")
+# --- ABA 3: CADASTRO (EXPANDIDO BRASIL) ---
+with menu_abas[2]:
+    st.markdown("### 🚀 Cadastro Nacional de Profissionais")
+    with st.form("cad_f"):
+        # ... (campos de nome, zap, senha que você já tem) ...
         
-        if st.form_submit_button("CADASTRAR MEU PERFIL"):
-            if f_nome and f_zap and f_pass:
-                cat_ia = processar_servico_ia(f_desc)
-                db.collection("profissionais").document(f_zap).set({
-                    "nome": f_nome, "whatsapp": f_zap, "senha": f_pass,
-                    "cidade": f_cidade, "uf": f_uf, "area": cat_ia,
-                    "descricao": f_desc, "saldo": BONUS_WELCOME, "cliques": 0,
-                    "rating": 5.0, "aprovado": False, "foto_url": "",
-                    "lat": LAT_SP_REF + random.uniform(-0.1, 0.1),
-                    "lon": LON_SP_REF + random.uniform(-0.1, 0.1),
-                    "timestamp": datetime.datetime.now()
-                })
-                st.balloons()
-                st.success(f"Perfil criado! Categoria: {cat_ia}. Aguarde aprovação.")
-                st.markdown(f'<a href="https://wa.me/{ZAP_ADMIN}?text=Fiz o cadastro: {f_nome}" class="btn-zap">AVISAR ADMIN PARA LIBERAR</a>', unsafe_allow_html=True)
-
+        col_loc1, col_loc2 = st.columns(2)
+        r_cidade = col_loc1.text_input("Cidade", placeholder="Ex: Curitiba")
+        r_uf = col_loc2.selectbox("Estado", ["AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"])
+        
+        # Campo oculto ou IA para converter cidade em Lat/Lon 
+        # (Para simplicidade agora, usaremos a cidade como texto)
+        
+        if st.form_submit_button("CADASTRAR"):
+            db.collection("profissionais").document(r_zap).set({
+                "nome": r_nome,
+                "cidade": r_cidade.strip().title(),
+                "uf": r_uf,
+                "localizacao_string": f"{r_cidade} - {r_uf}",
+                # ... (restante dos dados) ...
+            })
 # --- ABA 4: ADMIN MASTER ---
 with UI_ABAS[3]:
     adm_pass = st.text_input("Senha Master", type="password")
@@ -308,4 +301,5 @@ st.markdown(f'''
         <a href="https://wa.me/?text=Precisa de serviços? Use o GeralJá! {URL_APLICATIVO}" style="text-decoration:none; color:#0047AB; font-weight:bold;">📲 COMPARTILHAR</a>
     </center>
 ''', unsafe_allow_html=True)
+
 
