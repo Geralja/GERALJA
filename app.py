@@ -312,30 +312,75 @@ with menu_abas[1]:
             st.rerun()
 
 # ------------------------------------------------------------------------------
-# ABA 3: CADASTRO DE NOVOS PARCEIROS
+# ABA 3: CADASTRO DE NOVOS PARCEIROS (COM CATEGORIA PERSONALIZADA)
 # ------------------------------------------------------------------------------
 with menu_abas[2]:
     st.markdown("### 🚀 Junte-se à elite dos profissionais de SP")
-    with st.form("cadastro_form"):
-        reg_nome = st.text_input("Nome ou Empresa")
-        reg_zap = st.text_input("WhatsApp (Apenas números)")
-        reg_pw = st.text_input("Senha para acesso", type="password")
-        reg_desc = st.text_area("O que você faz? (Nossa IA vai te classificar)")
-        
-        if st.form_submit_button("CRIAR MEU PERFIL AGORA"):
-            if len(reg_zap) < 10 or not reg_nome:
-                st.error("⚠️ Preencha os dados corretamente.")
-            else:
-                detect_area = processar_ia_avancada(reg_desc)
-                db.collection("profissionais").document(reg_zap).set({
-                    "nome": reg_nome, "whatsapp": reg_zap, "senha": reg_pw,
-                    "descricao": reg_desc, "area": detect_area, "saldo": BONUS_WELCOME,
-                    "cliques": 0, "rating": 5.0, "aprovado": False, "foto_url": "",
-                    "lat": LAT_REF_SP, "lon": LON_REF_SP, "data_registro": datetime.datetime.now()
-                })
-                st.success(f"✅ Sucesso! Você foi classificado como **{detect_area}**. Aguarde a ativação pelo Admin.")
-                st.balloons()
+    st.info("Preencha seus dados abaixo. Você pode escolher uma categoria existente ou criar uma nova!")
 
+    with st.form("cadastro_form_v2"):
+        col_reg1, col_reg2 = st.columns(2)
+        reg_nome = col_reg1.text_input("Nome Completo ou Nome Fantasia")
+        reg_zap = col_reg1.text_input("WhatsApp (Ex: 11999998888)")
+        reg_pw = col_reg2.text_input("Crie uma Senha de Acesso", type="password")
+        reg_loc = col_reg2.text_input("Bairro/Região de Atendimento", placeholder="Ex: Santana, ZN")
+        
+        st.divider()
+        
+        # Sistema de Categoria Manual
+        st.write("**Selecione sua Especialidade:**")
+        if "Outra (Escrever Manualmente)" not in CATEGORIAS_OFICIAIS:
+            CATEGORIAS_OFICIAIS.append("Outra (Escrever Manualmente)")
+            
+        reg_cat_sel = st.selectbox("Categoria Principal", CATEGORIAS_OFICIAIS)
+        
+        reg_cat_custom = ""
+        if reg_cat_sel == "Outra (Escrever Manualmente)":
+            reg_cat_custom = st.text_input("Digite sua profissão/especialidade:", placeholder="Ex: Instalador de Câmeras, Tapeceiro, etc.")
+        
+        reg_desc = st.text_area("Descrição dos seus serviços (O que você faz de melhor?)", height=100)
+        
+        # Upload de Foto opcional no cadastro
+        reg_foto = st.file_uploader("Sua Foto Profissional (Opcional)", type=['jpg', 'png', 'jpeg'])
+
+        enviar_cad = st.form_submit_button("CRIAR MEU PERFIL AGORA")
+
+        if enviar_cad:
+            # Validação da Categoria
+            categoria_final = reg_cat_custom if reg_cat_sel == "Outra (Escrever Manualmente)" else reg_cat_sel
+            
+            if not reg_nome or not reg_zap or not reg_pw:
+                st.error("⚠️ Nome, WhatsApp e Senha são obrigatórios!")
+            elif reg_cat_sel == "Outra (Escrever Manualmente)" and not reg_cat_custom:
+                st.error("⚠️ Por favor, digite o nome da sua categoria personalizada.")
+            else:
+                with st.spinner("Processando seu cadastro..."):
+                    # Processamento de Imagem se houver
+                    foto_b64 = ""
+                    if reg_foto:
+                        foto_b64 = f"data:image/png;base64,{converter_img_b64(reg_foto)}"
+                    
+                    # Salva no Firebase
+                    db.collection("profissionais").document(reg_zap).set({
+                        "nome": reg_nome,
+                        "whatsapp": reg_zap,
+                        "senha": reg_pw,
+                        "descricao": reg_desc,
+                        "area": categoria_final,
+                        "localizacao": reg_loc,
+                        "saldo": BONUS_WELCOME, # Ganha bônus ao entrar
+                        "cliques": 0,
+                        "rating": 5.0,
+                        "aprovado": False, # Aguarda admin liberar
+                        "foto_url": foto_b64,
+                        "lat": LAT_REF_SP,
+                        "lon": LON_REF_SP,
+                        "data_registro": datetime.datetime.now()
+                    })
+                    
+                    st.success(f"✅ Cadastro realizado! Você foi registrado como **{categoria_final}**.")
+                    st.warning("📍 Seu perfil está em análise. Assim que o administrador aprovar, você aparecerá nas buscas!")
+                    st.balloons()
 # ------------------------------------------------------------------------------
 # ABA 4: TERMINAL ADMIN (GESTOR)
 # ------------------------------------------------------------------------------
@@ -376,6 +421,7 @@ st.markdown(f"""
         Infraestrutura Distribuída | Google Cloud & Firebase Firestore
     </div>
 """, unsafe_allow_html=True)
+
 
 
 
