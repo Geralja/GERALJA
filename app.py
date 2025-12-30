@@ -452,20 +452,30 @@ with menu_abas[3]:
     if access_adm == CHAVE_ADMIN:
         st.markdown("### 👑 Painel de Controle Supremo")
         
-        # Dentro da Aba Admin, você pode listar os feedbacks:
-feedbacks = list(db.collection("feedbacks").order_by("data", direction="DESCENDING").limit(10).stream())
-for f in feedbacks:
-    st.write(f"**{f.to_dict()['nota']}**: {f.to_dict()['mensagem']}")
-    
-        # 1. MÉTRICAS TOTAIS (SOMANDO INTELIGÊNCIA)
+        # --- BLOCO DE FEEDBACKS (ALINHADO) ---
+        st.markdown("#### 📩 Últimos Feedbacks dos Clientes")
+        feedbacks = list(db.collection("feedbacks").order_by("data", direction="DESCENDING").limit(5).stream())
+        
+        if feedbacks:
+            for f in feedbacks:
+                dados = f.to_dict()
+                st.info(f"⭐ **{dados.get('nota')}**: {dados.get('mensagem')}")
+        else:
+            st.write("Nenhum feedback recebido ainda.")
+            
+        st.divider()
+
+        # --- 1. MÉTRICAS TOTAIS (ALINHADO) ---
         all_profs_lista = list(db.collection("profissionais").stream())
         total_moedas = sum([p.to_dict().get('saldo', 0) for p in all_profs_lista])
         
-        c_fin1, c_fin2, c_fin3 = st.columns(3)
-        c_fin1.metric("💰 Moedas no Ecossistema", f"{total_moedas} 🪙")
-        c_fin2.metric("📈 Valor Previsto", f"R$ {total_moedas:,.2f}")
-        c_fin3.metric("🤝 Parceiros Cadastrados", len(all_profs_lista))
-        st.divider()
+        c1, c2, c3 = st.columns(3)
+        c1.metric("💰 Moedas", f"{total_moedas} 🪙")
+        c2.metric("🤝 Parceiros", len(all_profs_lista))
+        c3.metric("📈 Valor Real", f"R$ {total_moedas:,.2f}")
+
+        # O restante das suas abas de gestão (t_geral, t_seg) deve vir aqui embaixo, 
+        # mantendo este mesmo alinhamento (8 espaços da margem esquerda).
 
         # 2. ABAS DE COMANDO (ALINHAMENTO PRECISO)
         t_geral, t_seg, t_feed = st.tabs(["👥 GESTÃO DE PERFIS", "🛡️ IA SEGURANÇA", "📩 MENSAGENS"])
@@ -590,6 +600,7 @@ if len(menu_abas) > 5:
 # RODAPÉ ÚNICO (Final do Arquivo)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
 
 
