@@ -53,8 +53,7 @@ ZAP_ADMIN = "5511991853488"
 CHAVE_ADMIN = "mumias"
 TAXA_CONTATO = 1
 BONUS_WELCOME = 5
-LAT_REF_SP = -23.5505
-LON_REF_SP = -46.6333
+
 
 # Lista de Estados para o Cadastro Nacional
 LISTA_ESTADOS = ["AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"]
@@ -256,4 +255,5 @@ with menu_abas[3]:
 # RODAPÉ (PRESERVADO)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:30px; color:#94A3B8; font-size:11px;">GERALJÁ BRASIL v19.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
