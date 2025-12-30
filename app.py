@@ -511,10 +511,42 @@ with menu_abas[4]:
             st.error("🚫 Chave Mestra Incorreta. Tentativa registrada.")
     else:
         st.warning("⚠️ Esta área é restrita. Identifique-se primeiro na aba ADMIN.")
+
+        # --- ABA 6: FEEDBACK (A VOZ DO CLIENTE) ---
+with menu_abas[5]:
+    st.markdown("### ⭐ Sua opinião é fundamental")
+    st.write("Como foi sua experiência com o GeralJá hoje?")
+    
+    with st.form("form_feedback"):
+        nota = st.select_slider("Dê uma nota para o nosso serviço:", 
+                               options=["Péssimo", "Ruim", "Regular", "Bom", "Excelente"], 
+                               value="Excelente")
+        
+        comentario = st.text_area("O que podemos melhorar?", placeholder="Escreva aqui seu elogio ou sugestão...")
+        
+        btn_enviar = st.form_submit_button("ENVIAR FEEDBACK", use_container_width=True)
+        
+        if btn_enviar:
+            if comentario.strip() != "":
+                # Salvando no banco de dados para o Admin ver depois
+                db.collection("feedbacks").add({
+                    "data": datetime.datetime.now(),
+                    "nota": nota,
+                    "comentario": comentario,
+                    "status": "novo"
+                })
+                st.success("🙏 Obrigado! Seu feedback foi enviado com sucesso.")
+                st.balloons()
+            else:
+                st.warning("Por favor, escreva um comentário antes de enviar.")
+
+    st.divider()
+    st.info("💡 Sabia? Suas sugestões ajudam o GeralJá a selecionar os melhores profissionais para você.")
 # ------------------------------------------------------------------------------
 # RODAPÉ ÚNICO (Final do Arquivo)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
 
 
