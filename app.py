@@ -73,31 +73,62 @@ CONCEITOS_EXPANDIDOS = {
     "piscina": "Piscineiro", "computador": "TI", "wifi": "TI", "ar": "Refrigeração"
 }
 
-# ------------------------------------------------------------------------------
-# 4. MOTOR DE LÓGICA (IA, MATH E IMAGEM)
-# ------------------------------------------------------------------------------
+import re
+import unicodedata
+import math
+import base64
+
+# --- 1. MOTOR DE INTELIGÊNCIA AVANÇADA ---
+def normalizar_para_ia(texto):
+    """Padroniza o texto removendo acentos para a busca não falhar."""
+    if not texto: return ""
+    return "".join(c for c in unicodedata.normalize('NFD', texto) 
+                  if unicodedata.category(c) != 'Mn').lower().strip()
+
 def processar_ia_avancada(texto):
+    """Analisa a necessidade do cliente e define a categoria."""
     if not texto: return "Ajudante Geral"
-    t_clean = texto.lower().strip()
+    
+    # Normalizamos a entrada do cliente e as chaves do dicionário
+    t_clean = normalizar_para_ia(texto)
+    
+    # CONCEITOS_EXPANDIDOS deve estar definido no seu código
     for chave, categoria in CONCEITOS_EXPANDIDOS.items():
-        if re.search(rf"\b{chave}\b", t_clean): return categoria
+        chave_norm = normalizar_para_ia(chave)
+        # O \b garante que procuremos a palavra exata (evita confundir 'ar' com 'armário')
+        if re.search(rf"\b{chave_norm}\b", t_clean):
+            return categoria
+            
     return "Ajudante Geral"
 
+# --- 2. MOTOR DE GEOLOCALIZAÇÃO (Fórmula de Haversine) ---
+
 def calcular_distancia_real(lat1, lon1, lat2, lon2):
+    """Calcula a distância em KM entre dois pontos no globo."""
     try:
+        # Se as coordenadas forem nulas, joga o profissional para o fim da lista (999km)
         if None in [lat1, lon1, lat2, lon2]: return 999.0
+        
         R = 6371 # Raio da Terra em KM
         dlat = math.radians(lat2 - lat1)
         dlon = math.radians(lon2 - lon1)
-        a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
+        
+        a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * \
+            math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
+        
         c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
         return round(R * c, 1)
-    except: return 999.0
+    except: 
+        return 999.0
 
+# --- 3. MOTOR DE MÍDIA (PORTFÓLIO) ---
 def converter_img_b64(file):
+    """Converte arquivo de imagem para string base64 para salvar no banco."""
     if file is None: return ""
-    return base64.b64encode(file.read()).decode()
-
+    try:
+        return base64.b64encode(file.read()).decode()
+    except:
+        return ""
 # ------------------------------------------------------------------------------
 # 5. DESIGN SYSTEM - CSS CUSTOMIZADO
 # ------------------------------------------------------------------------------
@@ -282,3 +313,4 @@ with menu_abas[3]:
 # RODAPÉ ÚNICO
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:40px; color:#94A3B8; font-size:12px;">GERALJÁ BRASIL v19.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
