@@ -206,7 +206,7 @@ with menu_abas[0]:
     st.markdown("### 🏙️ O que você precisa?")
     c1, c2 = st.columns([3, 1])
     termo_busca = c1.text_input("Ex: 'Cano estourado'", key="main_search")
-    raio_km = c2.select_slider("Raio (KM)", options=[1, 5, 10, 20, 50, 100, 500], value=3)
+    raio_km = c2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 20, 50, 100, 500], value=3)
     
     if termo_busca:
         cat_ia = processar_ia_avancada(termo_busca)
@@ -463,6 +463,7 @@ with menu_abas[3]:
 # RODAPÉ ÚNICO (Final do Arquivo)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
 
 
