@@ -178,7 +178,8 @@ with menu_abas[0]:
                     <div style="flex-grow:1;">
                         <small>📍 {pro['dist']} KM | 💎 {pro['area']}</small>
                         <h3 style="margin:5px 0;">{pro.get('nome').upper()}</h3>
-                        <p style="font-size:14px; color:#475569;">{pro.get('descricao')[:150]}...</p>
+          desc_segura = (pro.get('descricao') or "Profissional qualificado GeralJá")[:150]
+st.markdown(f'<p style="font-size:14px; color:#475569;">{desc_segura}...</p>', unsafe_allow_html=True)
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -260,4 +261,5 @@ with menu_abas[3]:
 # RODAPÉ ÚNICO (Final do Arquivo)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
