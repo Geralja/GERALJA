@@ -124,7 +124,61 @@ def converter_img_b64(file):
     if file is None: return ""
     try: return base64.b64encode(file.read()).decode()
     except: return ""
+# ==============================================================================
+# SISTEMA GUARDIAO - IA DE AUTORRECUPERAÇÃO E SEGURANÇA
+# ==============================================================================
 
+def guardia_escanear_e_corrigir():
+    """Varre o banco de dados em busca de erros de estrutura e corrige na hora."""
+    status_log = []
+    try:
+        profs = db.collection("profissionais").stream()
+        for p_doc in profs:
+            dados = p_doc.to_dict()
+            id_pro = p_doc.id
+            correcoes = {}
+
+            # 1. Verifica campos nulos que causam travamentos
+            if not dados.get('area') or dados.get('area') not in CATEGORIAS_OFICIAIS:
+                correcoes['area'] = "Ajudante Geral"
+            
+            if not dados.get('descricao'):
+                correcoes['descricao'] = "Profissional parceiro do ecossistema GeralJá Brasil."
+            
+            if dados.get('saldo') is None:
+                correcoes['saldo'] = 0
+            
+            if dados.get('lat') is None or dados.get('lon') is None:
+                correcoes['lat'] = LAT_REF
+                correcoes['lon'] = LON_REF
+
+            # 2. Se houver algo errado, aplica a cura automática
+            if correcoes:
+                db.collection("profissionais").document(id_pro).update(correcoes)
+                status_log.append(f"✅ Corrigido: {id_pro}")
+        
+        return status_log if status_log else ["SISTEMA ÍNTEGRO: Nenhum erro encontrado."]
+    except Exception as e:
+        return [f"❌ Erro no Scanner: {e}"]
+
+def scan_virus_e_scripts():
+    """Detecta se há tentativas de injeção de scripts maliciosos nos campos de texto."""
+    alertas = []
+    profs = db.collection("profissionais").stream()
+    # Padrões comuns de ataque XSS e Injeção
+    padroes_perigosos = [r"<script>", r"javascript:", r"DROP TABLE", r"OR 1=1"]
+    
+    for p_doc in profs:
+        dados = p_doc.to_dict()
+        conteudo = str(dados.get('nome', '')) + str(dados.get('descricao', ''))
+        
+        for padrao in padroes_perigosos:
+            if re.search(padrao, conteudo, re.IGNORECASE):
+                alertas.append(f"⚠️ PERIGO: Conteúdo suspeito no ID {p_doc.id}")
+                # Bloqueia o profissional preventivamente
+                db.collection("profissionais").document(p_doc.id).update({"aprovado": False})
+    
+    return alertas if alertas else ["LIMPO: Nenhum script malicioso detectado."]
 # ------------------------------------------------------------------------------
 # 5. DESIGN SYSTEM
 # ------------------------------------------------------------------------------
@@ -261,5 +315,6 @@ with menu_abas[3]:
 # RODAPÉ ÚNICO (Final do Arquivo)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
 
