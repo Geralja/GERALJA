@@ -17,7 +17,7 @@ import unicodedata
 # 1. CONFIGURAÇÃO DE AMBIENTE E PERFORMANCE
 # ------------------------------------------------------------------------------
 st.set_page_config(
-    page_title="GeralJá | Ecossistema Profissional Brasil",
+    page_title="GeralJá | Criando Soluções",
     page_icon="🇧🇷",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -559,6 +559,7 @@ if len(menu_abas) > 5:
 # RODAPÉ ÚNICO (Final do Arquivo)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
 
 
