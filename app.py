@@ -222,27 +222,52 @@ with menu_abas[0]:
                 p['dist'] = dist
                 lista_ranking.append(p)
         
-        lista_ranking.sort(key=lambda x: x['dist'])
-        
+      # --- LOGICA DE RANKING PREMIUM (SOMA DE PODER) ---
+        try:
+            # Ordena por: 1º Mais perto, 2º Mais saldo (quem investe mais), 3º Melhor nota
+            lista_ranking.sort(key=lambda x: (x['dist'], -x.get('saldo', 0), -x.get('rating', 5.0)))
+        except:
+            lista_ranking.sort(key=lambda x: x['dist'])
+
+        # --- LOOP DE EXIBIÇÃO DOS CARDS ---
         for pro in lista_ranking:
             with st.container():
+                # Preparação segura dos dados para não travar o HTML
+                foto_fix = pro.get('foto_url') or f"https://api.dicebear.com/7.x/avataaars/svg?seed={pro['id']}"
+                desc_fix = (pro.get('descricao') or "Especialista parceiro GeralJá Brasil.")[:150]
+                nome_fix = pro.get('nome', 'Profissional').upper()
+
+                # Card HTML Clean & Professional
                 st.markdown(f"""
                 <div class="pro-card">
-                    <img src="{pro.get('foto_url') or 'https://api.dicebear.com/7.x/avataaars/svg?seed='+pro['id']}" class="pro-img">
+                    <img src="{foto_fix}" class="pro-img">
                     <div style="flex-grow:1;">
                         <small>📍 {pro['dist']} KM | 💎 {pro['area']}</small>
-                        <h3 style="margin:5px 0;">{pro.get('nome').upper()}</h3>
-          desc_segura = (pro.get('descricao') or "Profissional qualificado GeralJá")[:150]
-st.markdown(f'<p style="font-size:14px; color:#475569;">{desc_segura}...</p>', unsafe_allow_html=True)
+                        <h3 style="margin:5px 0; color:#1E293B;">{nome_fix}</h3>
+                        <p style="font-size:14px; color:#475569; margin-bottom:0;">{desc_fix}...</p>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
-                if pro.get('saldo', 0) >= TAXA_CONTATO:
-                    if st.button(f"WHATSAPP - {pro['nome']}", key=f"z_{pro['id']}"):
-                        db.collection("profissionais").document(pro['id']).update({"saldo": firestore.Increment(-TAXA_CONTATO), "cliques": firestore.Increment(1)})
-                        st.markdown(f'<a href="https://wa.me/55{pro["whatsapp"]}" class="btn-zap">ABRIR CONVERSA</a>', unsafe_allow_html=True)
-                else: st.warning("Agenda temporariamente cheia.")
+                
+                # --- BLOCO DE DEPOIMENTOS (FOTOS DO PORTFÓLIO) ---
+                if pro.get('portfolio_imgs'):
+                    with st.expander("📸 Ver fotos de serviços realizados"):
+                        cols_fotos = st.columns(3)
+                        for i, img_data in enumerate(pro['portfolio_imgs'][:3]):
+                            cols_fotos[i%3].image(img_data, use_container_width=True)
 
+                # --- BOTÃO DE CONTATO COM COBRANÇA DE LEAD ---
+                if pro.get('saldo', 0) >= TAXA_CONTATO:
+                    if st.button(f"FALAR COM {nome_fix.split()[0]}", key=f"z_{pro['id']}", use_container_width=True):
+                        # Registra o clique e debita o saldo em tempo real
+                        db.collection("profissionais").document(pro['id']).update({
+                            "saldo": firestore.Increment(-TAXA_CONTATO),
+                            "cliques": firestore.Increment(1)
+                        })
+                        st.balloons()
+                        st.markdown(f'<a href="https://wa.me/55{pro["whatsapp"]}?text=Olá, vi seu perfil no GeralJá!" class="btn-zap">ABRIR WHATSAPP AGORA</a>', unsafe_allow_html=True)
+                else:
+                    st.warning("⏳ Este profissional atingiu o limite de atendimentos diários.")
 # --- ABA 2: CENTRAL PARCEIRO ---
 with menu_abas[1]:
     if 'auth' not in st.session_state: st.session_state.auth = False
@@ -299,99 +324,102 @@ with menu_abas[2]:
             })
             st.success("Enviado para aprovação!")
 
-# --- ABA 4: TERMINAL ADMIN (SUPER PODERES & SEGURANÇA IA) ---
+# --- ABA 4: TERMINAL ADMIN (VERSÃO SUPREMA SOMADA & BLINDADA) ---
 with menu_abas[3]:
     access_adm = st.text_input("Senha Master", type="password", key="adm_auth")
     
     if access_adm == CHAVE_ADMIN:
         st.markdown("### 👑 Painel de Controle Supremo")
         
-        # Criamos as subdivisões para não poluir a tela
+        # 1. SOMANDO: BLOCO FINANCEIRO (Cálculo em tempo real)
+        with st.container():
+            # Baixamos a lista uma vez para economizar recursos e somar performance
+            all_profs_lista = list(db.collection("profissionais").stream())
+            total_moedas = sum([p.to_dict().get('saldo', 0) for p in all_profs_lista])
+            valor_estimado = total_moedas * 1.0 # R$ 1,00 por moeda
+            
+            c_fin1, c_fin2, c_fin3 = st.columns(3)
+            c_fin1.metric("💰 Moedas no Sistema", f"{total_moedas} 🪙")
+            c_fin2.metric("📈 Valor Bruto", f"R$ {valor_estimado:,.2f}")
+            c_fin3.metric("🤝 Parceiros Totais", len(all_profs_lista))
+            st.divider()
+
+        # 2. SOMANDO: ABAS DE COMANDO INTEGRADO
         tab_geral, tab_seguranca, tab_feedbacks = st.tabs([
             "👥 GESTÃO DE PERFIS", "🛡️ SEGURANÇA IA", "📩 MENSAGENS"
         ])
         
         with tab_geral:
-            search_pro = st.text_input("🔍 Buscar profissional por Nome ou ID (WhatsApp)")
-            profs_all = db.collection("profissionais").stream()
+            search_pro = st.text_input("🔍 Buscar por Nome ou WhatsApp")
             
-            for p_doc in profs_all:
+            for p_doc in all_profs_lista:
                 p, pid = p_doc.to_dict(), p_doc.id
                 
-                # Filtro de busca simples
-                if search_pro.lower() in p.get('nome', '').lower() or search_pro in pid:
+                # Filtro de busca inteligente
+                if not search_pro or search_pro.lower() in p.get('nome', '').lower() or search_pro in pid:
                     status_cor = "🟢" if p.get('aprovado') else "🟡"
-                    with st.expander(f"{status_cor} {p.get('nome').upper()} | Saldo: {p.get('saldo')} 🪙"):
-                        
+                    
+                    with st.expander(f"{status_cor} {p.get('nome', 'Sem Nome').upper()} | Saldo: {p.get('saldo', 0)} 🪙"):
                         # --- LINHA 1: VISUALIZAÇÃO E EDIÇÃO ---
                         col1, col2, col3 = st.columns([2, 2, 1])
                         
                         with col1:
                             st.write(f"**Área:** {p.get('area')}")
-                            st.write(f"**WhatsApp:** {p.get('whatsapp')}")
                             st.write(f"**Cliques:** {p.get('cliques', 0)}")
+                            st.write(f"**WhatsApp:** {pid}")
                         
                         with col2:
-                            new_saldo = st.number_input("Bonificar/Ajustar Saldo", value=int(p.get('saldo', 0)), key=f"edit_s_{pid}")
-                            if st.button("SALVAR SALDO", key=f"btn_s_{pid}"):
-                                db.collection("profissionais").document(pid).update({"saldo": new_saldo})
-                                st.success("Saldo atualizado!")
+                            bonus = st.number_input("Bonificar/Ajustar Moedas", value=0, key=f"adj_{pid}")
+                            if st.button("CONFIRMAR SALDO", key=f"btn_adj_{pid}"):
+                                db.collection("profissionais").document(pid).update({"saldo": firestore.Increment(bonus)})
+                                st.success("Saldo Somado!")
+                                time.sleep(0.5)
                                 st.rerun()
 
                         with col3:
-                            # Link direto para visitar o perfil no WhatsApp (Se comunicar)
-                            st.markdown(f'[![Zap](https://img.shields.io/badge/WhatsApp-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)](https://wa.me/{p.get("whatsapp")})')
+                            st.markdown(f'[![Zap](https://img.shields.io/badge/WhatsApp-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)](https://wa.me/{pid})')
 
                         st.divider()
 
-                        # --- LINHA 2: COMANDOS DE PUNIÇÃO E EXCLUSÃO ---
-                        c_punir, c_aprovar, c_excluir = st.columns(3)
+                        # --- LINHA 2: COMANDOS DE PODER ---
+                        c_pun, c_apr, c_exc = st.columns(3)
                         
-                        if c_aprovar.button("✅ APROVAR / ATIVAR", key=f"ok_{pid}", use_container_width=True):
-                            db.collection("profissionais").document(pid).update({"aprovado": True})
-                            st.rerun()
+                        if c_apr.button("✅ APROVAR", key=f"ok_{pid}", use_container_width=True):
+                            db.collection("profissionais").document(pid).update({"aprovado": True}); st.rerun()
 
-                        if c_punir.button("⚠️ PUNIR / BLOQUEAR", key=f"pun_{pid}", use_container_width=True):
-                            db.collection("profissionais").document(pid).update({"aprovado": False})
-                            st.warning(f"Perfil {pid} foi suspenso.")
-                            st.rerun()
+                        if c_pun.button("⚠️ SUSPENDER", key=f"pun_{pid}", use_container_width=True):
+                            db.collection("profissionais").document(pid).update({"aprovado": False}); st.rerun()
 
-                        if c_excluir.button("🗑️ EXCLUIR PERFIL", key=f"del_{pid}", use_container_width=True):
-                            if st.warning(f"Tem certeza que deseja apagar {p.get('nome')}?"):
-                                db.collection("profissionais").document(pid).delete()
-                                st.error("Perfil removido permanentemente.")
-                                time.sleep(1)
-                                st.rerun()
+                        if c_exc.button("🗑️ EXCLUIR", key=f"del_{pid}", use_container_width=True):
+                            db.collection("profissionais").document(pid).delete(); st.rerun()
 
         with tab_seguranca:
-            st.markdown("#### 🛡️ Inteligência de Auto-Recuperação")
-            st.info("A IA monitora o banco de dados para evitar que o site trave por erros de cadastro ou ataques.")
+            st.markdown("#### 🛡️ Central Guardião GeralJá")
+            st.info("A IA monitora e corrige o banco de dados automaticamente.")
             
             s_col1, s_col2 = st.columns(2)
             
             if s_col1.button("🔍 ESCANEAR VÍRUS & INJEÇÕES", use_container_width=True):
-                with st.spinner("Analisando códigos maliciosos..."):
-                    alertas = scan_virus_e_scripts() # Chamando a função do Bloco 4
-                    for a in alertas:
-                        st.error(a) if "PERIGO" in a else st.success(a)
+                with st.spinner("Analisando..."):
+                    alertas = scan_virus_e_scripts()
+                    for a in alertas: st.error(a) if "PERIGO" in a else st.success(a)
 
             if s_col2.button("🛠️ REPARAR TODOS OS DOCS", use_container_width=True):
-                with st.spinner("IA corrigindo campos vazios..."):
-                    reparos = guardia_escanear_e_corrigir() # Chamando a função do Bloco 4
-                    for rep in reparos:
-                        st.write(rep)
+                with st.spinner("IA Reparando..."):
+                    reparos = guardia_escanear_e_corrigir()
+                    for rep in reparos: st.write(rep)
                 st.balloons()
-                st.success("Base de dados higienizada e pronta!")
 
         with tab_feedbacks:
-            st.write("Feedbacks de clientes aparecerão aqui.")
+            st.info("Os feedbacks dos clientes aparecerão aqui em tempo real.")
 
     elif access_adm != "":
-        st.error("Acesso negado. Senha incorreta.")
+        st.error("🚫 Acesso negado. Senha incorreta.")
 # ------------------------------------------------------------------------------
 # RODAPÉ ÚNICO (Final do Arquivo)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
 
 
