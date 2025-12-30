@@ -88,13 +88,31 @@ def exibir_foto(b64):
 # ------------------------------------------------------------------------------
 # 4. DESIGN (CSS)
 # ------------------------------------------------------------------------------
+# --- DESIGN SYSTEM ---
 st.markdown("""
     <style>
-    .card-pro { background: white; border-radius: 15px; padding: 20px; border-left: 10px solid #0047AB; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-    .btn-zap { background: #25D366; color: white !important; padding: 12px; border-radius: 10px; text-decoration: none; display: block; text-align: center; font-weight: bold; margin-top: 10px; }
+    .stApp { background-color: #f0f2f6; }
+    .card-pro { background: white; padding: 20px; border-radius: 15px; border-left: 10px solid #0047AB; margin-bottom: 10px; }
     </style>
 """, unsafe_allow_html=True)
 
+def main():
+    st.title("GeralJá | Ecossistema Seguro")
+    
+    # Exemplo de uso da busca protegida
+    profissoes_disponiveis = ["Eletricista", "Encanador", "Pintor", "Diarista"]
+    
+    busca = st.text_input("O que você precisa hoje?")
+    resultado = processar_busca_protegida(busca, profissoes_disponiveis)
+    
+    if resultado:
+        st.success(f"IA detectou serviço de: {resultado}")
+        # Aqui viria a lógica de consulta ao DB
+    elif busca:
+        st.info("Continue digitando para a IA identificar o serviço...")
+
+if __name__ == "__main__":
+    main()
 # ------------------------------------------------------------------------------
 # 5. INTERFACE PRINCIPAL
 # ------------------------------------------------------------------------------
@@ -240,3 +258,4 @@ with UI_ABAS[3]:
         if st.button("RECARREGAR"):
             db.collection("profissionais").document(target).update({"saldo": firestore.Increment(valor)})
             st.success("Recarregado!")
+
