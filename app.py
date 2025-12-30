@@ -127,27 +127,33 @@ UI_ABAS = st.tabs(["🔍 BUSCAR", "💼 CARTEIRA", "📝 CADASTRAR", "🛡️ AD
 # --- ABA 1: CLIENTE (BUSCA) ---
 with UI_ABAS[0]:
     col_c, col_t = st.columns([1, 2])
-    cidade_filtro = col_c.text_input("📍 Localização", placeholder="Cidade ou bairro")
-    termo_busca = col_t.text_input("🛠️ O que você precisa?", placeholder="Ex: Meu cano quebrou ou Preciso de Pintor")
+    
+    # Adicionamos KEY para estabilidade
+    cidade_filtro = col_c.text_input("📍 Localização", placeholder="Cidade ou bairro", key="cidade_input")
+    termo_busca = col_t.text_input("🛠️ O que você precisa?", placeholder="Ex: Meu cano quebrou", key="busca_input")
     
     if termo_busca:
         cat_detectada = processar_servico_ia(termo_busca)
         st.info(f"✨ **IA GeralJá:** Buscando por especialistas em **{cat_detectada}**")
         
+        # Chamada ao banco
         query = db.collection("profissionais").where("area", "==", cat_detectada).where("aprovado", "==", True).stream()
         
         encontrados = 0
         for d in query:
             p = d.to_dict()
-            # Filtro de cidade (opcional)
-            if not cidade_filtro or cidade_filtro.lower() in p.get('cidade', '').lower() or cidade_filtro.lower() in p.get('localizacao', '').lower():
+            
+            # Filtro de cidade
+            match_cidade = not cidade_filtro or cidade_filtro.lower() in p.get('cidade', '').lower()
+            
+            if match_cidade:
                 encontrados += 1
                 st.markdown(f'''
                     <div class="card-pro">
                         <div style="display: flex; justify-content: space-between; align-items: start;">
                             <div>
                                 <h3 style="margin:0; color:#1E293B;">{p['nome'].upper()}</h3>
-                                <p style="color:#64748B; margin: 4px 0;">📍 {p.get('cidade', 'Região não informada')} - {p.get('uf', 'SP')}</p>
+                                <p style="color:#64748B; margin: 4px 0;">📍 {p.get('cidade', 'Região não informada')}</p>
                                 <p style="font-size: 14px;">{p.get('descricao', '')}</p>
                             </div>
                             <span class="coin-badge">⭐ {p.get('rating', 5.0)}</span>
@@ -155,16 +161,25 @@ with UI_ABAS[0]:
                     </div>
                 ''', unsafe_allow_html=True)
                 
-                # Só mostra botão se tiver saldo
                 if p.get('saldo', 0) >= TAXA_CONTATO:
+                    # Chave única combinando ID e Categoria
                     if st.button(f"VER WHATSAPP DE {p['nome'].split()[0].upper()}", key=f"btn_{d.id}"):
+                        # Executa a cobrança no Firebase
                         db.collection("profissionais").document(d.id).update({
                             "saldo": firestore.Increment(-TAXA_CONTATO),
                             "cliques": firestore.Increment(1)
                         })
-                        st.markdown(f'<a href="https://wa.me/55{p["whatsapp"]}?text=Olá, vi seu perfil no GeralJá!" class="btn-zap">CHAMAR NO WHATSAPP AGORA</a>', unsafe_allow_html=True)
+                        
+                        # Link direto e chamativo
+                        st.success(f"✅ Saldo de {p['nome']} atualizado!")
+                        st.markdown(f'''
+                            <a href="https://wa.me/55{p["whatsapp"]}?text=Olá, vi seu perfil no GeralJá!" target="_blank" 
+                               style="text-decoration:none; display:block; background:#25D366; color:white; text-align:center; padding:15px; border-radius:10px; font-weight:bold; margin-top:10px;">
+                                📱 CHAMAR NO WHATSAPP AGORA
+                            </a>
+                        ''', unsafe_allow_html=True)
                 else:
-                    st.warning("Profissional temporariamente offline (aguardando recarga).")
+                    st.warning("Profissional temporariamente offline.")
 
         if encontrados == 0:
             st.warning("Nenhum profissional encontrado para esta categoria nesta região.")
@@ -273,3 +288,4 @@ with UI_ABAS[3]:
 
 # --- RODAPÉ ---
 st.markdown("<br><hr><center><p style='color:#64748B; font-size:12px;'>GeralJá Brasil v3.000 © 2025 | Sistema de Alta Performance Profissional</p></center>", unsafe_allow_html=True)
+
