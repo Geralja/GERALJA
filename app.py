@@ -445,74 +445,91 @@ with menu_abas[2]:
                 except Exception as e:
                     st.error(f"Erro ao cadastrar: {e}")
 
-# --- ABA 4: TERMINAL ADMIN (REALINHADA & COMPLETA) ---
+# --- ABA 4: ADMIN SUPREMO (TUDO SOMADO E ALINHADO) ---
 with menu_abas[3]:
-    access_adm = st.text_input("Senha Master", type="password", key="adm_auth_final")
+    access_adm = st.text_input("Senha Master", type="password", key="adm_master_final")
     
     if access_adm == CHAVE_ADMIN:
-        st.markdown("### 👑 Painel de Controle Supremo")
-        
-        # 📩 BLOCO DE FEEDBACKS (AGORA ALINHADO CORRETAMENTE)
-        st.markdown("#### 📩 Feedbacks dos Clientes")
-        feedbacks = list(db.collection("feedbacks").order_by("data", direction="DESCENDING").limit(10).stream())
-        if feedbacks:
-            for f in feedbacks:
-                dados_f = f.to_dict()
-                st.info(f"**{dados_f.get('nota')}**: {dados_f.get('mensagem')}")
-        else:
-            st.write("Nenhum feedback recebido.")
-        
+        st.markdown("### 👑 Painel de Gestão GeralJá")
+
+        # --- 1. BLOCO DE FEEDBACKS ---
+        with st.expander("📩 Feedbacks Recebidos", expanded=False):
+            feedbacks = list(db.collection("feedbacks").order_by("data", direction="DESCENDING").limit(10).stream())
+            if feedbacks:
+                for f in feedbacks:
+                    df = f.to_dict()
+                    st.info(f"⭐ **{df.get('nota')}**: {df.get('mensagem')}")
+            else:
+                st.write("Sem novos feedbacks.")
+
         st.divider()
 
-        # 📊 1. MÉTRICAS TOTAIS (REALINHADO)
-        all_profs_lista = list(db.collection("profissionais").stream())
-        total_moedas = sum([p.to_dict().get('saldo', 0) for p in all_profs_lista])
+        # --- 2. MÉTRICAS FINANCEIRAS ---
+        all_profs = list(db.collection("profissionais").stream())
+        moedas_totais = sum([p.to_dict().get('saldo', 0) for p in all_profs])
+        vendas_reais = sum([p.to_dict().get('total_comprado', 0) for p in all_profs])
         
-        c1, c2, c3 = st.columns(3)
-        c1.metric("💰 Moedas Totais", f"{total_moedas} 🪙")
-        c2.metric("🤝 Parceiros", len(all_profs_lista))
-        c3.metric("📈 Valor Previsto", f"R$ {total_moedas:,.2f}")
-        
+        col1, col2, col3 = st.columns(3)
+        col1.metric("🪙 Saldo em Circulação", f"{moedas_totais} moedas")
+        col2.metric("💰 Faturamento Bruto", f"R$ {vendas_reais:,.2f}")
+        col3.metric("👥 Total Parceiros", len(all_profs))
+
         st.divider()
 
-        # 👥 2. GESTÃO DOS PARCEIROS (O CADASTRO PODEROSO)
-        # Aqui somamos a lógica de aprovação e visualização que você já tinha
-        busca_adm = st.text_input("🔍 Localizar Parceiro (Nome ou WhatsApp)")
-        
-        for p_doc in all_profs_lista:
+        # --- 3. GESTÃO DE PARCEIROS E PORTFÓLIO ---
+        st.markdown("#### 👥 Gerenciar Profissionais")
+        busca_p = st.text_input("🔍 Buscar por Nome ou Celular")
+
+        for p_doc in all_profs:
             p, pid = p_doc.to_dict(), p_doc.id
-            if not busca_adm or busca_adm.lower() in p.get('nome', '').lower() or busca_adm in pid:
+            if not busca_p or busca_p.lower() in p.get('nome', '').lower() or busca_p in pid:
                 with st.container(border=True):
-                    col_info, col_botoes = st.columns([2, 1])
+                    c_img, c_txt, c_btns = st.columns([1, 2, 1.5])
                     
-                    with col_info:
-                        status = "🟢" if p.get('aprovado') else "🟡"
-                        st.markdown(f"**{status} {p.get('nome', 'Sem Nome').upper()}**")
-                        st.caption(f"ID: {pid} | Saldo: {p.get('saldo', 0)} 🪙")
+                    with c_img:
+                        # Foto de perfil ou Avatar padrão
+                        foto = p.get('foto_url') or "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"
+                        st.image(foto, width=80)
+                    
+                    with c_txt:
+                        status = "🟢 ATIVO" if p.get('aprovado') else "🟡 PENDENTE"
+                        st.markdown(f"**{p.get('nome', 'Sem Nome').upper()}**")
+                        st.caption(f"{status} | 📱 {pid}")
+                        st.write(f"Especialidade: {p.get('area')}")
+                        st.write(f"Saldo: **{p.get('saldo', 0)} 🪙**")
                         
-                        # Se houver portfólio, mostra aqui
+                        # Ver Portfólio
                         if p.get('portfolio_imgs'):
-                            with st.expander("🖼️ Ver Portfólio"):
-                                st.image(p['portfolio_imgs'], width=100)
-                    
-                    with col_botoes:
+                            with st.expander("📸 Ver Fotos do Trabalho"):
+                                st.image(p['portfolio_imgs'], use_container_width=True)
+
+                    with c_btns:
+                        # Ações de Aprovação
                         if not p.get('aprovado'):
-                            if st.button("✅ APROVAR", key=f"ok_{pid}"):
+                            if st.button("✅ APROVAR", key=f"ap_{pid}", use_container_width=True):
                                 db.collection("profissionais").document(pid).update({"aprovado": True})
                                 st.rerun()
+                        else:
+                            if st.button("⚠️ SUSPENDER", key=f"sp_{pid}", use_container_width=True):
+                                db.collection("profissionais").document(pid).update({"aprovado": False})
+                                st.rerun()
                         
-                        if st.button("🗑️ EXCLUIR", key=f"del_{pid}"):
+                        # Venda de Créditos / Bônus
+                        qtd = st.number_input("Moedas", 0, 500, key=f"num_{pid}")
+                        if st.button("➕ ADICIONAR", key=f"add_{pid}", use_container_width=True):
+                            # Aqui diferenciamos se é venda ou bônus (somando ao contador)
+                            db.collection("profissionais").document(pid).update({
+                                "saldo": firestore.Increment(qtd),
+                                "total_comprado": firestore.Increment(qtd) # Somando como venda real
+                            })
+                            st.success(f"{qtd} moedas creditadas!"); st.rerun()
+
+                        if st.button("🗑️ EXCLUIR", key=f"del_{pid}", use_container_width=True):
                             db.collection("profissionais").document(pid).delete()
                             st.rerun()
-                            
-                        # Soma de créditos rápida
-                        valor_add = st.number_input("Adicionar 🪙", 0, 1000, key=f"add_{pid}")
-                        if st.button("➕ CREDITAR", key=f"btn_{pid}"):
-                            db.collection("profissionais").document(pid).update({"saldo": firestore.Increment(valor_add)})
-                            st.success("Moedas somadas!"); st.rerun()
 
     elif access_adm != "":
-        st.error("🚫 Senha incorreta.")
+        st.error("Chave Master Incorreta.")
         
        # --- ABA: FEEDBACK (A VOZ DO CLIENTE) ---
 # Se o Financeiro estiver invisível, esta é a aba [4]. 
@@ -587,6 +604,7 @@ if len(menu_abas) > 5:
 # RODAPÉ ÚNICO (Final do Arquivo)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
 
 
