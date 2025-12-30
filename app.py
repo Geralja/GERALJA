@@ -363,7 +363,7 @@ with menu_abas[1]:
             st.rerun()
 
 # --- ABA 3: CADASTRO (VERSÃO SOMAR) ---
-with menu_abas[3]:
+with menu_abas[2]:
     st.header("🚀 Seja um Parceiro GeralJá")
     st.write("Preencha seus dados para começar a receber serviços na sua região.")
     
@@ -408,7 +408,7 @@ with menu_abas[3]:
                     st.error(f"Erro ao cadastrar: {e}")
 
 # --- ABA 4: TERMINAL ADMIN (VERSÃO RECUPERADA & ALINHADA) ---
-with menu_abas[4]:
+with menu_abas[3]:
     access_adm = st.text_input("Senha Master", type="password", key="adm_auth_final")
     
     if access_adm == CHAVE_ADMIN:
@@ -490,7 +490,7 @@ with menu_abas[4]:
        # --- ABA: FEEDBACK (A VOZ DO CLIENTE) ---
 # Se o Financeiro estiver invisível, esta é a aba [4]. 
 # Se o Financeiro aparecer, ela continua sendo acessada corretamente pelo índice.
-with menu_abas[5]:
+with menu_abas[4]:
     st.markdown("### ⭐ Sua opinião é fundamental")
     st.write("Conte-nos como foi a sua experiência com o GeralJá.")
     
@@ -535,7 +535,7 @@ with menu_abas[5]:
 # --- ABA 6: FINANCEIRO (SÓ APARECE SOB COMANDO) ---
 # Este 'if' evita o IndexError: ele só executa se a aba financeira existir
 if len(menu_abas) > 5:
-    with menu_abas[6]:
+    with menu_abas[5]:
         st.markdown("### 📊 Gestão de Capital GeralJá")
         
         # Chave de segurança extra para abrir o cofre
@@ -560,6 +560,7 @@ if len(menu_abas) > 5:
 # RODAPÉ ÚNICO (Final do Arquivo)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
 
 
