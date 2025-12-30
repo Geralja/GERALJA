@@ -299,39 +299,100 @@ with menu_abas[2]:
             })
             st.success("Enviado para aprovação!")
 
-# --- ABA 4: ADMIN ---
+# --- ABA 4: TERMINAL ADMIN (SUPER PODERES & SEGURANÇA IA) ---
 with menu_abas[3]:
-    if st.text_input("Acesso Admin", type="password") == CHAVE_ADMIN:
-        ps = db.collection("profissionais").stream()
-        for p_doc in ps:
-            p, pid = p_doc.to_dict(), p_doc.id
-            with st.expander(f"{p.get('nome')} ({pid})"):
-                c1, c2 = st.columns(2)
-                if c1.button("APROVAR", key=f"ap_{pid}"): db.collection("profissionais").document(pid).update({"aprovado": True}); st.rerun()
-                if c2.button("CREDITAR +50", key=f"cr_{pid}"): db.collection("profissionais").document(pid).update({"saldo": firestore.Increment(50)}); st.success("+50!"); time.sleep(1); st.rerun()
-                if st.button("EXCLUIR", key=f"ex_{pid}"): db.collection("profissionais").document(pid).delete(); st.rerun()
-                # No final da Aba 4 (ADMIN), dentro do acesso liberado pela CHAVE_ADMIN: # No final da Aba 4 (ADMIN), dentro do acesso liberado pela CHAVE_ADMIN:
-st.divider()
-st.subheader("🛡️ CENTRAL DE SEGURANÇA IA")
-col_ia1, col_ia2 = st.columns(2)
+    access_adm = st.text_input("Senha Master", type="password", key="adm_auth")
+    
+    if access_adm == CHAVE_ADMIN:
+        st.markdown("### 👑 Painel de Controle Supremo")
+        
+        # Criamos as subdivisões para não poluir a tela
+        tab_geral, tab_seguranca, tab_feedbacks = st.tabs([
+            "👥 GESTÃO DE PERFIS", "🛡️ SEGURANÇA IA", "📩 MENSAGENS"
+        ])
+        
+        with tab_geral:
+            search_pro = st.text_input("🔍 Buscar profissional por Nome ou ID (WhatsApp)")
+            profs_all = db.collection("profissionais").stream()
+            
+            for p_doc in profs_all:
+                p, pid = p_doc.to_dict(), p_doc.id
+                
+                # Filtro de busca simples
+                if search_pro.lower() in p.get('nome', '').lower() or search_pro in pid:
+                    status_cor = "🟢" if p.get('aprovado') else "🟡"
+                    with st.expander(f"{status_cor} {p.get('nome').upper()} | Saldo: {p.get('saldo')} 🪙"):
+                        
+                        # --- LINHA 1: VISUALIZAÇÃO E EDIÇÃO ---
+                        col1, col2, col3 = st.columns([2, 2, 1])
+                        
+                        with col1:
+                            st.write(f"**Área:** {p.get('area')}")
+                            st.write(f"**WhatsApp:** {p.get('whatsapp')}")
+                            st.write(f"**Cliques:** {p.get('cliques', 0)}")
+                        
+                        with col2:
+                            new_saldo = st.number_input("Bonificar/Ajustar Saldo", value=int(p.get('saldo', 0)), key=f"edit_s_{pid}")
+                            if st.button("SALVAR SALDO", key=f"btn_s_{pid}"):
+                                db.collection("profissionais").document(pid).update({"saldo": new_saldo})
+                                st.success("Saldo atualizado!")
+                                st.rerun()
 
-if col_ia1.button("🔍 ESCANEAR VÍRUS & SCRIPTS"):
-    with st.spinner("Analisando integridade dos dados..."):
-        resultados = scan_virus_e_scripts()
-        for r in resultados:
-            st.warning(r) if "PERIGO" in r else st.success(r)
+                        with col3:
+                            # Link direto para visitar o perfil no WhatsApp (Se comunicar)
+                            st.markdown(f'[![Zap](https://img.shields.io/badge/WhatsApp-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)](https://wa.me/{p.get("whatsapp")})')
 
-if col_ia2.button("🛠️ CORRIGIR ERROS DE DOCS"):
-    with st.spinner("IA reparando inconsistências no banco..."):
-        reparos = guardia_escanear_e_corrigir()
-        for rep in reparos:
-            st.write(rep)
-    st.balloons()
+                        st.divider()
 
+                        # --- LINHA 2: COMANDOS DE PUNIÇÃO E EXCLUSÃO ---
+                        c_punir, c_aprovar, c_excluir = st.columns(3)
+                        
+                        if c_aprovar.button("✅ APROVAR / ATIVAR", key=f"ok_{pid}", use_container_width=True):
+                            db.collection("profissionais").document(pid).update({"aprovado": True})
+                            st.rerun()
+
+                        if c_punir.button("⚠️ PUNIR / BLOQUEAR", key=f"pun_{pid}", use_container_width=True):
+                            db.collection("profissionais").document(pid).update({"aprovado": False})
+                            st.warning(f"Perfil {pid} foi suspenso.")
+                            st.rerun()
+
+                        if c_excluir.button("🗑️ EXCLUIR PERFIL", key=f"del_{pid}", use_container_width=True):
+                            if st.warning(f"Tem certeza que deseja apagar {p.get('nome')}?"):
+                                db.collection("profissionais").document(pid).delete()
+                                st.error("Perfil removido permanentemente.")
+                                time.sleep(1)
+                                st.rerun()
+
+        with tab_seguranca:
+            st.markdown("#### 🛡️ Inteligência de Auto-Recuperação")
+            st.info("A IA monitora o banco de dados para evitar que o site trave por erros de cadastro ou ataques.")
+            
+            s_col1, s_col2 = st.columns(2)
+            
+            if s_col1.button("🔍 ESCANEAR VÍRUS & INJEÇÕES", use_container_width=True):
+                with st.spinner("Analisando códigos maliciosos..."):
+                    alertas = scan_virus_e_scripts() # Chamando a função do Bloco 4
+                    for a in alertas:
+                        st.error(a) if "PERIGO" in a else st.success(a)
+
+            if s_col2.button("🛠️ REPARAR TODOS OS DOCS", use_container_width=True):
+                with st.spinner("IA corrigindo campos vazios..."):
+                    reparos = guardia_escanear_e_corrigir() # Chamando a função do Bloco 4
+                    for rep in reparos:
+                        st.write(rep)
+                st.balloons()
+                st.success("Base de dados higienizada e pronta!")
+
+        with tab_feedbacks:
+            st.write("Feedbacks de clientes aparecerão aqui.")
+
+    elif access_adm != "":
+        st.error("Acesso negado. Senha incorreta.")
 # ------------------------------------------------------------------------------
 # RODAPÉ ÚNICO (Final do Arquivo)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
 
 
