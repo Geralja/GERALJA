@@ -280,7 +280,7 @@ with menu_abas[0]:
                 else:
                     st.warning("⏳ Este profissional atingiu o limite de atendimentos diários.")
 # --- ABA 2: CENTRAL PARCEIRO (VERSÃO PORTFÓLIO & BLINDADA) ---
-with menu_abas[1]:
+with menu_abas[2]:
     if 'auth' not in st.session_state: st.session_state.auth = False
     
     if not st.session_state.auth:
@@ -363,7 +363,7 @@ with menu_abas[1]:
             st.rerun()
 
 # --- ABA 3: CADASTRO (VERSÃO SOMAR) ---
-with menu_abas[2]:
+with menu_abas[1]:
     st.header("🚀 Seja um Parceiro GeralJá")
     st.write("Preencha seus dados para começar a receber serviços na sua região.")
     
@@ -560,6 +560,7 @@ if len(menu_abas) > 5:
 # RODAPÉ ÚNICO (Final do Arquivo)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
 
 
