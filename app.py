@@ -471,115 +471,40 @@ with menu_abas[3]:
     elif access_adm != "":
         st.error("🚫 Acesso negado. Senha incorreta.")
         
-        # --- ABA 5: COFRE FINANCEIRO (ACESSO RESTRITO AO DONO) ---
+        # --- ABA 5: FEEDBACK (A VOZ DO CLIENTE) ---
 with menu_abas[4]:
-    # Primeira camada de segurança: Só aparece se estiver logado como Admin na aba anterior
-    if access_adm == CHAVE_ADMIN:
-        st.markdown("### 🔒 Cofre Financeiro GeralJá")
-        
-        # Segunda camada: Chave Mestra Única
-        chave_mestra = st.text_input("Digite a Chave de Acesso ao Faturamento", type="password", key="master_fin")
-        
-        # DEFINA SUA CHAVE SECRETA AQUI (Exemplo: 'riqueza2025')
-        if chave_mestra == "riqueza2025": 
-            st.success("✅ Acesso Autorizado. Bem-vindo, Diretor.")
-            
-            # Buscando dados reais para o contador
-            all_p = list(db.collection("profissionais").stream())
-            vendas_reais = sum([p.to_dict().get('total_comprado', 0) for p in all_p])
-            total_cortesias = sum([p.to_dict().get('total_bonus', 0) for p in all_p])
-            
-            # Painel Visual de Faturamento
-            st.markdown("---")
-            c1, c2 = st.columns(2)
-            with c1:
-                st.metric("💰 FATURAMENTO BRUTO (Vendas)", f"R$ {vendas_reais:,.2f}")
-            with c2:
-                st.metric("🎁 CUSTO DE MARKETING (Bônus)", f"{total_cortesias} 🪙")
-            
-            st.divider()
-            
-            # Tabela de Auditoria Oculta
-            with st.expander("📄 Ver Relatório Detalhado por Profissional"):
-                contabil = []
-                for p_doc in all_p:
-                    d = p_doc.to_dict()
-                    contabil.append({
-                        "Parceiro": d.get('nome'),
-                        "WhatsApp": p_doc.id,
-                        "Entrada Real (R$)": d.get('total_comprado', 0),
-                        "Cortesias (Bônus)": d.get('total_bonus', 0)
-                    })
-                st.dataframe(contabil, use_container_width=True)
-                
-            # Gráfico de Saúde do Ecossistema
-            st.info(f"O ecossistema possui hoje {sum([p.to_dict().get('saldo', 0) for p in all_p])} moedas ativas na mão dos parceiros.")
-            
-        elif chave_mestra != "":
-            st.error("🚫 Chave Mestra Incorreta. Tentativa registrada.")
-    else:
-        st.warning("⚠️ Esta área é restrita. Identifique-se primeiro na aba ADMIN.")
-
-        # --- ABA 6: FEEDBACK (A VOZ DO CLIENTE) ---
-with menu_abas[5]:
     st.markdown("### ⭐ Sua opinião é fundamental")
-    st.write("Como foi sua experiência com o GeralJá hoje?")
-    
-    with st.form("form_feedback"):
-        nota = st.select_slider("Dê uma nota para o nosso serviço:", 
-                               options=["Péssimo", "Ruim", "Regular", "Bom", "Excelente"], 
-                               value="Excelente")
-        
-        comentario = st.text_area("O que podemos melhorar?", placeholder="Escreva aqui seu elogio ou sugestão...")
-        
-        btn_enviar = st.form_submit_button("ENVIAR FEEDBACK", use_container_width=True)
-        
-        if btn_enviar:
-            if comentario.strip() != "":
-                # Salvando no banco de dados para o Admin ver depois
-                db.collection("feedbacks").add({
-                    "data": datetime.datetime.now(),
-                    "nota": nota,
-                    "comentario": comentario,
-                    "status": "novo"
-                })
-                st.success("🙏 Obrigado! Seu feedback foi enviado com sucesso.")
-                st.balloons()
-            else:
-                st.warning("Por favor, escreva um comentário antes de enviar.")
+    # ... (mantenha seu código de feedback aqui) ...
 
-    st.divider()
-    st.info("💡 Sabia? Suas sugestões ajudam o GeralJá a selecionar os melhores profissionais para você.")
-
-    # --- ABA FINANCEIRA (SÓ EXISTE SOB COMANDO) ---
+# --- ABA 6: FINANCEIRO (SÓ APARECE SOB COMANDO) ---
+# Este 'if' evita o IndexError: ele só executa se a aba financeira existir
 if len(menu_abas) > 5:
     with menu_abas[5]:
         st.markdown("### 📊 Gestão de Capital GeralJá")
         
         # Chave de segurança extra para abrir o cofre
-        if st.text_input("Chave do Cofre", type="password", key="cofre_v3") == "riqueza2025":
+        senha_cofre = st.text_input("Chave do Cofre", type="password", key="cofre_vFinal")
+        
+        if senha_cofre == "riqueza2025":
             all_p = list(db.collection("profissionais").stream())
-            
-            # Cálculos de Somatória (Sem remover dados)
             vendas = sum([p.to_dict().get('total_comprado', 0) for p in all_p])
-            bonus = sum([p.to_dict().get('total_bonus', 0) for p in all_p])
             
-            # Painel Executivo
-            c1, c2, c3 = st.columns(3)
-            c1.metric("💰 DINHEIRO EM CAIXA", f"R$ {vendas:,.2f}")
-            c2.metric("🎁 INVESTIMENTO BÔNUS", f"{bonus} 🪙")
-            c3.metric("📈 VALOR DO APP", f"R$ {vendas + (bonus * 0.10):,.2f}")
+            c1, c2 = st.columns(2)
+            c1.metric("💰 FATURAMENTO REAL", f"R$ {vendas:,.2f}")
+            c2.metric("🤝 TOTAL PARCEIROS", len(all_p))
             
             st.divider()
-            st.write("**Relatório de Auditoria:**")
-            contabil = [{"Nome": p.to_dict().get('nome'), "Receita": p.to_dict().get('total_comprado', 0)} for p in all_p]
-            st.table(contabil)
+            # Tabela de conferência
+            st.write("**Histórico de Vendas:**")
+            tabela = [{"Profissional": p.to_dict().get('nome'), "Total Pago": p.to_dict().get('total_comprado', 0)} for p in all_p]
+            st.dataframe(tabela, use_container_width=True)
         else:
-            st.info("Aguardando chave do cofre...")
+            st.info("Aguardando chave mestra para exibir dados sensíveis.")
 # ------------------------------------------------------------------------------
 # RODAPÉ ÚNICO (Final do Arquivo)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
 
 
