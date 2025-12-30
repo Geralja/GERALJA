@@ -445,87 +445,74 @@ with menu_abas[2]:
                 except Exception as e:
                     st.error(f"Erro ao cadastrar: {e}")
 
-# --- ABA 4: TERMINAL ADMIN (VERSÃO SOMAR & ALINHADA) ---
+# --- ABA 4: TERMINAL ADMIN (REALINHADA & COMPLETA) ---
 with menu_abas[3]:
     access_adm = st.text_input("Senha Master", type="password", key="adm_auth_final")
     
     if access_adm == CHAVE_ADMIN:
         st.markdown("### 👑 Painel de Controle Supremo")
         
-        # --- BLOCO DE FEEDBACKS (ALINHADO) ---
-        st.markdown("#### 📩 Últimos Feedbacks dos Clientes")
-        feedbacks = list(db.collection("feedbacks").order_by("data", direction="DESCENDING").limit(5).stream())
-        
+        # 📩 BLOCO DE FEEDBACKS (AGORA ALINHADO CORRETAMENTE)
+        st.markdown("#### 📩 Feedbacks dos Clientes")
+        feedbacks = list(db.collection("feedbacks").order_by("data", direction="DESCENDING").limit(10).stream())
         if feedbacks:
             for f in feedbacks:
-                dados = f.to_dict()
-                st.info(f"⭐ **{dados.get('nota')}**: {dados.get('mensagem')}")
+                dados_f = f.to_dict()
+                st.info(f"**{dados_f.get('nota')}**: {dados_f.get('mensagem')}")
         else:
-            st.write("Nenhum feedback recebido ainda.")
-            
+            st.write("Nenhum feedback recebido.")
+        
         st.divider()
 
-        # --- 1. MÉTRICAS TOTAIS (ALINHADO) ---
+        # 📊 1. MÉTRICAS TOTAIS (REALINHADO)
         all_profs_lista = list(db.collection("profissionais").stream())
         total_moedas = sum([p.to_dict().get('saldo', 0) for p in all_profs_lista])
         
         c1, c2, c3 = st.columns(3)
-        c1.metric("💰 Moedas", f"{total_moedas} 🪙")
+        c1.metric("💰 Moedas Totais", f"{total_moedas} 🪙")
         c2.metric("🤝 Parceiros", len(all_profs_lista))
-        c3.metric("📈 Valor Real", f"R$ {total_moedas:,.2f}")
-
-        # O restante das suas abas de gestão (t_geral, t_seg) deve vir aqui embaixo, 
-        # mantendo este mesmo alinhamento (8 espaços da margem esquerda).
-
-        # 2. ABAS DE COMANDO (ALINHAMENTO PRECISO)
-        t_geral, t_seg, t_feed = st.tabs(["👥 GESTÃO DE PERFIS", "🛡️ IA SEGURANÇA", "📩 MENSAGENS"])
+        c3.metric("📈 Valor Previsto", f"R$ {total_moedas:,.2f}")
         
-        with t_geral:
-            search_pro = st.text_input("🔍 Buscar por Nome ou WhatsApp")
-            for p_doc in all_profs_lista:
-                p, pid = p_doc.to_dict(), p_doc.id
-                if not search_pro or search_pro.lower() in p.get('nome', '').lower() or search_pro in pid:
-                    status_emoji = "🟢" if p.get('aprovado') else "🟡"
-                    with st.expander(f"{status_emoji} {p.get('nome', 'Sem Nome').upper()} | {p.get('saldo', 0)} 🪙"):
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            st.write(f"**Área:** {p.get('area')}")
-                            st.write(f"**WhatsApp:** {pid}")
-                            bonus = st.number_input("Adicionar Moedas", value=0, key=f"add_{pid}")
-                            if st.button("CREDITAR", key=f"btn_c_{pid}"):
-                                db.collection("profissionais").document(pid).update({"saldo": firestore.Increment(bonus)})
+        st.divider()
+
+        # 👥 2. GESTÃO DOS PARCEIROS (O CADASTRO PODEROSO)
+        # Aqui somamos a lógica de aprovação e visualização que você já tinha
+        busca_adm = st.text_input("🔍 Localizar Parceiro (Nome ou WhatsApp)")
+        
+        for p_doc in all_profs_lista:
+            p, pid = p_doc.to_dict(), p_doc.id
+            if not busca_adm or busca_adm.lower() in p.get('nome', '').lower() or busca_adm in pid:
+                with st.container(border=True):
+                    col_info, col_botoes = st.columns([2, 1])
+                    
+                    with col_info:
+                        status = "🟢" if p.get('aprovado') else "🟡"
+                        st.markdown(f"**{status} {p.get('nome', 'Sem Nome').upper()}**")
+                        st.caption(f"ID: {pid} | Saldo: {p.get('saldo', 0)} 🪙")
+                        
+                        # Se houver portfólio, mostra aqui
+                        if p.get('portfolio_imgs'):
+                            with st.expander("🖼️ Ver Portfólio"):
+                                st.image(p['portfolio_imgs'], width=100)
+                    
+                    with col_botoes:
+                        if not p.get('aprovado'):
+                            if st.button("✅ APROVAR", key=f"ok_{pid}"):
+                                db.collection("profissionais").document(pid).update({"aprovado": True})
                                 st.rerun()
                         
-                        with col2:
-                            st.write("**Ações Rápidas:**")
-                            if st.button("✅ APROVAR AGORA", key=f"ok_{pid}", use_container_width=True):
-                                db.collection("profissionais").document(pid).update({"aprovado": True}); st.rerun()
-                            if st.button("⚠️ SUSPENDER", key=f"sus_{pid}", use_container_width=True):
-                                db.collection("profissionais").document(pid).update({"aprovado": False}); st.rerun()
-                            if st.button("🗑️ REMOVER", key=f"del_{pid}", use_container_width=True):
-                                db.collection("profissionais").document(pid).delete(); st.rerun()
-
-        with t_seg:
-            st.markdown("#### 🛡️ Central de Proteção IA")
-            s_col1, s_col2 = st.columns(2)
-            if s_col1.button("🔍 ESCANEAR BANCO", use_container_width=True):
-                with st.spinner("Buscando ameaças..."):
-                    alertas = scan_virus_e_scripts()
-                    for a in alertas:
-                        if "⚠️" in str(a): st.error(str(a))
-                        else: st.success(str(a))
-            
-            if s_col2.button("🛠️ REPARAR ESTRUTURAS", use_container_width=True):
-                with st.spinner("IA Corrigindo..."):
-                    reparos = guardia_escanear_e_corrigir()
-                    for r in reparos: st.write(str(r))
-                st.balloons()
-
-        with t_feed:
-            st.info("📩 Central de Feedbacks vazia. Os comentários dos clientes aparecerão aqui.")
+                        if st.button("🗑️ EXCLUIR", key=f"del_{pid}"):
+                            db.collection("profissionais").document(pid).delete()
+                            st.rerun()
+                            
+                        # Soma de créditos rápida
+                        valor_add = st.number_input("Adicionar 🪙", 0, 1000, key=f"add_{pid}")
+                        if st.button("➕ CREDITAR", key=f"btn_{pid}"):
+                            db.collection("profissionais").document(pid).update({"saldo": firestore.Increment(valor_add)})
+                            st.success("Moedas somadas!"); st.rerun()
 
     elif access_adm != "":
-        st.error("🚫 Acesso negado. Senha incorreta.")
+        st.error("🚫 Senha incorreta.")
         
        # --- ABA: FEEDBACK (A VOZ DO CLIENTE) ---
 # Se o Financeiro estiver invisível, esta é a aba [4]. 
@@ -600,6 +587,7 @@ if len(menu_abas) > 5:
 # RODAPÉ ÚNICO (Final do Arquivo)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
 
 
