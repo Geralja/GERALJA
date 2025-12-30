@@ -175,5 +175,52 @@ with TABS[2]:
                 if st.button("Banir 🗑️", key=f"del_{d.id}"):
                     db.collection("profissionais").document(d.id).delete()
 
+                    # --- ABA 3: CADASTRO ---
+with UI_ABAS[2]:
+    st.subheader("📝 Cadastro Nacional de Profissionais")
+    with st.form("reg_form"):
+        f_n = st.text_input("Nome/Empresa")
+        f_z = st.text_input("WhatsApp (Somente números)")
+        f_s = st.text_input("Senha", type="password")
+        f_a = st.selectbox("Sua Especialidade", LISTA_AREAS_DROP)
+        f_c = st.text_input("Cidade")
+        f_u = st.selectbox("Estado", LISTA_ESTADOS, index=24)
+        f_d = st.text_area("O que você faz?")
+        if st.form_submit_button("CADASTRAR E RECEBER 5 MOEDAS"):
+            if f_n and f_z and f_s:
+                db.collection("profissionais").document(f_z).set({
+                    "nome": f_n, "whatsapp": f_z, "senha": f_s, "cidade": f_c, "uf": f_u,
+                    "area": f_a, "descricao": f_d, "saldo": BONUS_WELCOME, "cliques": 0,
+                    "rating": 5.0, "aprovado": False, "timestamp": datetime.datetime.now(),
+                    "lat": LAT_SP_REF, "lon": LON_SP_REF
+                })
+                st.success("Cadastro realizado! Aguarde aprovação.")
+                st.markdown(f'<a href="https://wa.me/{ZAP_ADMIN}?text=Aprovar meu cadastro: {f_n}" class="btn-wpp">AVISAR ADMIN</a>', unsafe_allow_html=True)
+
+# --- ABA 4: ADMIN MASTER ---
+with UI_ABAS[3]:
+    adm_p = st.text_input("Acesso Admin", type="password")
+    if adm_p == CHAVE_ACESSO_ADMIN:
+        st.subheader("🛡️ Gestão de Ecossistema")
+        if st.button("🚀 VARREDURA E LIMPEZA IA"):
+            docs = db.collection("profissionais").stream()
+            for doc in docs:
+                d = doc.to_dict()
+                if "saldo" not in d: db.collection("profissionais").document(doc.id).update({"saldo": 5})
+            st.success("Banco de dados sanitizado!")
+        
+        profs = db.collection("profissionais").stream()
+        for p_doc in profs:
+            p, pid = p_doc.to_dict(), p_doc.id
+            with st.expander(f"{'✅' if p.get('aprovado') else '⏳'} {p['nome'].upper()} | {p.get('area')}"):
+                c1, c2, c3 = st.columns(3)
+                if c1.button("APROVAR", key=f"ap_{pid}"): db.collection("profissionais").document(pid).update({"aprovado": True}); st.rerun()
+                if c2.button("DAR +10 MOEDAS", key=f"moe_{pid}"): db.collection("profissionais").document(pid).update({"saldo": firestore.Increment(10)}); st.rerun()
+                if c3.button("EXCLUIR", key=f"del_{pid}"): db.collection("profissionais").document(pid).delete(); st.rerun()
+                st.write(f"ZAP: {p.get('whatsapp')} | Senha: {p.get('senha')}")
+
+st.markdown("<br><hr><center><p style='color:#64748B; font-size:12px;'>GeralJá Brasil v2.000 © 2025 | Sistema de Alta Performance</p></center>", unsafe_allow_html=True)
+
 st.markdown("<br><hr><center><small>GeralJá v14.0 | Geolocalização Ativa</small></center>", unsafe_allow_html=True)
+
 
