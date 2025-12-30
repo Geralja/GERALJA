@@ -414,6 +414,11 @@ with menu_abas[3]:
     if access_adm == CHAVE_ADMIN:
         st.markdown("### 👑 Painel de Controle Supremo")
         
+        # Dentro da Aba Admin, você pode listar os feedbacks:
+feedbacks = list(db.collection("feedbacks").order_by("data", direction="DESCENDING").limit(10).stream())
+for f in feedbacks:
+    st.write(f"**{f.to_dict()['nota']}**: {f.to_dict()['mensagem']}")
+    
         # 1. MÉTRICAS TOTAIS (SOMANDO INTELIGÊNCIA)
         all_profs_lista = list(db.collection("profissionais").stream())
         total_moedas = sum([p.to_dict().get('saldo', 0) for p in all_profs_lista])
@@ -547,6 +552,7 @@ if len(menu_abas) > 5:
 # RODAPÉ ÚNICO (Final do Arquivo)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
 
 
