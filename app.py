@@ -351,22 +351,50 @@ with menu_abas[1]:
             st.session_state.auth = False
             st.rerun()
 
-# --- ABA 3: CADASTRO ---
+# --- ABA 3: CADASTRO (VERSÃO SOMAR) ---
 with menu_abas[2]:
-    st.header("Seja um Parceiro")
+    st.header("🚀 Seja um Parceiro GeralJá")
+    st.write("Preencha seus dados para começar a receber serviços na sua região.")
+    
     with st.form("reg"):
-        r_n = st.text_input("Nome")
-        r_z = st.text_input("WhatsApp")
-        r_s = st.text_input("Senha", type="password")
-        r_a = st.selectbox("Sua Especialidade", CATEGORIAS_OFICIAIS)
-        r_d = st.text_area("O que você faz?")
-        if st.form_submit_button("CADASTRAR"):
-            db.collection("profissionais").document(r_z).set({
-                "nome": r_n, "whatsapp": r_z, "senha": r_s, "area": r_a, "descricao": r_d,
-                "saldo": BONUS_WELCOME, "cliques": 0, "aprovado": False, "lat": LAT_REF, "lon": LON_REF,
-                "foto_url": "", "data_registro": datetime.datetime.now()
-            })
-            st.success("Enviado para aprovação!")
+        col_c1, col_c2 = st.columns(2)
+        r_n = col_c1.text_input("Nome Completo")
+        r_z = col_c2.text_input("WhatsApp (Apenas números)", help="Ex: 11999999999")
+        
+        col_c3, col_c4 = st.columns(2)
+        r_s = col_c3.text_input("Crie uma Senha", type="password")
+        r_a = col_c4.selectbox("Sua Especialidade Principal", CATEGORIAS_OFICIAIS)
+        
+        r_d = st.text_area("Descreva seus serviços (Isso atrai clientes!)")
+        
+        st.info("📌 Ao se cadastrar, você ganha um bônus inicial para testar a plataforma!")
+        
+        if st.form_submit_button("FINALIZAR MEU CADASTRO", use_container_width=True):
+            if len(r_z) < 10 or len(r_n) < 3:
+                st.error("⚠️ Por favor, preencha Nome e WhatsApp corretamente.")
+            else:
+                # Criando o documento com a estrutura SOMAR (Tudo o que precisamos)
+                try:
+                    db.collection("profissionais").document(r_z).set({
+                        "nome": r_n,
+                        "whatsapp": r_z,
+                        "senha": r_s,
+                        "area": r_a,
+                        "descricao": r_d,
+                        "saldo": BONUS_WELCOME, # Bônus de entrada
+                        "cliques": 0,
+                        "rating": 5.0,         # Começa com nota máxima
+                        "aprovado": False,      # Aguarda sua aprovação no Admin
+                        "lat": LAT_REF,         # Localização padrão inicial
+                        "lon": LON_REF,
+                        "foto_url": "",         # Ele poderá subir no painel dele
+                        "portfolio_imgs": [],    # Lista de fotos vazia inicial
+                        "data_registro": datetime.datetime.now()
+                    })
+                    st.success("✅ Cadastro enviado com sucesso! Aguarde a aprovação do administrador para aparecer nas buscas.")
+                    st.balloons()
+                except Exception as e:
+                    st.error(f"Erro ao cadastrar: {e}")
 
 # --- ABA 4: TERMINAL ADMIN (VERSÃO SUPREMA SOMADA & BLINDADA) ---
 with menu_abas[3]:
@@ -443,12 +471,19 @@ with menu_abas[3]:
             
             s_col1, s_col2 = st.columns(2)
             
-            if s_col1.button("🔍 ESCANEAR VÍRUS & INJEÇÕES", use_container_width=True):
-                with st.spinner("Analisando..."):
+           if s_col1.button("🔍 ESCANEAR VÍRUS & INJEÇÕES", use_container_width=True):
+                with st.spinner("Analisando códigos maliciosos..."):
                     alertas = scan_virus_e_scripts()
-                    for a in alertas: st.error(a) if "PERIGO" in a else st.success(a)
-
-            if s_col2.button("🛠️ REPARAR TODOS OS DOCS", use_container_width=True):
+                    # Correção blindada para exibição de alertas
+                    if alertas:
+                        for a in alertas:
+                            if "PERIGO" in a or "⚠️" in a:
+                                st.error(str(a))
+                            else:
+                                st.success(str(a))
+                    else:
+                        st.info("Nenhum registro encontrado para análise.")
+            if s_col2.button("🛠️ REPARAR TODOS OS DOCS E COD. COM ERROS", use_container_width=True):
                 with st.spinner("IA Reparando..."):
                     reparos = guardia_escanear_e_corrigir()
                     for rep in reparos: st.write(rep)
@@ -463,6 +498,7 @@ with menu_abas[3]:
 # RODAPÉ ÚNICO (Final do Arquivo)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
 
 
