@@ -310,7 +310,7 @@ with menu_abas[3]:
                 if c1.button("APROVAR", key=f"ap_{pid}"): db.collection("profissionais").document(pid).update({"aprovado": True}); st.rerun()
                 if c2.button("CREDITAR +50", key=f"cr_{pid}"): db.collection("profissionais").document(pid).update({"saldo": firestore.Increment(50)}); st.success("+50!"); time.sleep(1); st.rerun()
                 if st.button("EXCLUIR", key=f"ex_{pid}"): db.collection("profissionais").document(pid).delete(); st.rerun()
-                # No final da Aba 4 (ADMIN), dentro do acesso liberado pela CHAVE_ADMIN:
+                # No final da Aba 4 (ADMIN), dentro do acesso liberado pela CHAVE_ADMIN: # No final da Aba 4 (ADMIN), dentro do acesso liberado pela CHAVE_ADMIN:
 st.divider()
 st.subheader("🛡️ CENTRAL DE SEGURANÇA IA")
 col_ia1, col_ia2 = st.columns(2)
@@ -332,6 +332,7 @@ if col_ia2.button("🛠️ CORRIGIR ERROS DE DOCS"):
 # RODAPÉ ÚNICO (Final do Arquivo)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
 
 
