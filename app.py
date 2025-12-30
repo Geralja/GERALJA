@@ -199,7 +199,15 @@ st.markdown("""
 
 st.markdown('<div class="header-container"><span class="logo-azul">GERAL</span><span class="logo-laranja">JÁ</span><br><small style="color:#64748B; font-weight:700;">BRASIL ELITE EDITION</small></div>', unsafe_allow_html=True)
 
-menu_abas = st.tabs(["🔍 BUSCAR", "🚀 CADASTRAR", "👤 MEU PERFIL", "👑 ADMIN",  "⭐ FEEDBACK"  "📊 FINANCEIRO",])
+# --- SISTEMA DE ABAS DINÂMICO ---
+lista_abas = ["🔍 BUSCAR", "🚀 CADASTRAR", "👤 MEU PERFIL", "👑 ADMIN", "⭐ FEEDBACK"]
+
+# Verificação do Comando Secreto (Digite isso em qualquer campo de busca ou no Admin)
+if st.sidebar.text_input("Comando", type="password", key="cmd_secreto") == "abracadabra":
+    lista_abas.append("📊 FINANCEIRO")
+    st.sidebar.success("Modo Diretor Ativado")
+
+menu_abas = st.tabs(lista_abas)
 
 # --- ABA 1: BUSCA ---
 with menu_abas[0]:
@@ -546,6 +554,7 @@ with menu_abas[5]:
 # RODAPÉ ÚNICO (Final do Arquivo)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
 
 
