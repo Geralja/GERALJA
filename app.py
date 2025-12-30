@@ -1,7 +1,6 @@
 # ==============================================================================
-# GERALJÁ BRASIL - ENTERPRISE EDITION v20.0 (FULL & UNIFIED)
+# GERALJÁ: CRIANDO SOLUÇÕES
 # ==============================================================================
-
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, firestore
@@ -560,6 +559,7 @@ if len(menu_abas) > 5:
 # RODAPÉ ÚNICO (Final do Arquivo)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
 
 
