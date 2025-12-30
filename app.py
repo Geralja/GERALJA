@@ -23,7 +23,79 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed"
 )
+# --- DESIGN SISTEMA PODEROSO (CSS CUSTOMIZADO) ---
+st.markdown("""
+<style>
+    /* Estilo dos Cards de Profissionais */
+    .pro-card {
+        background-color: #ffffff;
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 15px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        transition: transform 0.2s;
+    }
+    .pro-card:hover {
+        transform: scale(1.02);
+        border-color: #3b82f6;
+    }
+    
+    /* Foto do Profissional */
+    .pro-img {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid #3b82f6;
+    }
 
+    /* Botão do WhatsApp Estilizado */
+    .btn-zap {
+        display: block;
+        width: 100%;
+        background-color: #25D366;
+        color: white !important;
+        text-align: center;
+        padding: 12px;
+        border-radius: 10px;
+        text-decoration: none;
+        font-weight: bold;
+        margin-top: 10px;
+        box-shadow: 0 4px 10px rgba(37, 211, 102, 0.3);
+    }
+    .btn-zap:hover {
+        background-color: #1eb954;
+        text-decoration: none;
+    }
+
+    /* Box de Métricas do Parceiro (Aba 2) */
+    .metric-box {
+        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+        color: #f8fafc;
+        padding: 15px;
+        border-radius: 12px;
+        text-align: center;
+        font-weight: bold;
+        font-size: 18px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    /* Ajuste para Mobile */
+    @media (max-width: 640px) {
+        .pro-card {
+            flex-direction: column;
+            text-align: center;
+        }
+        .pro-img {
+            margin: 0 auto;
+        }
+    }
+</style>
+""", unsafe_allow_html=True)
 # ------------------------------------------------------------------------------
 # 2. CAMADA DE PERSISTÊNCIA (FIREBASE)
 # ------------------------------------------------------------------------------
@@ -262,156 +334,72 @@ if comando == "abracadabra":
 # 4. Cria as abas no Streamlit
 menu_abas = st.tabs(lista_abas)
 
-# --- ABA 1: BUSCA ---
+# --- ABA 1: BUSCA INTELIGENTE (MOTOR DE SINÔNIMOS) ---
 with menu_abas[0]:
-    st.markdown("### 🏙️ O que você precisa?")
+    st.markdown("### 🏙️ O que você precisa hoje?")
+    
+    # 1. MAPA DE SINÔNIMOS (O Cérebro da Busca)
+    # Isso faz com que termos populares levem às categorias oficiais
+    DICIONARIO_SINONIMOS = {
+        "cano": "Encanador", "vazamento": "Encanador", "torneira": "Encanador", "esgoto": "Encanador",
+        "fio": "Eletricista", "luz": "Eletricista", "tomada": "Eletricista", "disjuntor": "Eletricista",
+        "parede": "Pedreiro", "reforma": "Pedreiro", "tijolo": "Pedreiro", "obra": "Pedreiro",
+        "grama": "Jardineiro", "poda": "Jardineiro", "árvore": "Jardineiro",
+        "computador": "Técnico de Informática (TI)", "notebook": "Técnico de Informática (TI)", "wifi": "Técnico de Informática (TI)",
+        "geladeira": "Técnico de Geladeira/Freezer", "ar": "Instalador de Ar Condicionado", "clima": "Instalador de Ar Condicionado",
+        "festa": "Garçom e Garçonete", "churrasco": "Churrasqueiro Profissional", "casamento": "Fotógrafo de Casamento",
+        "unha": "Manicure e Pedicure", "cabelo": "Cabeleireiro Especialista", "barba": "Barbeiro Visagista",
+        "mudança": "Carreto e Mudanças", "frete": "Carreto e Mudanças", "entrega": "Entregador Motoboy"
+    }
+
     c1, c2 = st.columns([3, 1])
-    termo_busca = c1.text_input("Ex: 'Cano estourado'", key="main_search")
-    raio_km = c2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 20, 50, 100, 500], value=3)
     
+    # Campo de busca livre
+    termo_busca = c1.text_input("Ex: 'Cano estourado' ou 'Eletricista'", key="main_search", placeholder="O que quebrou?")
+    raio_km = c2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 20, 50, 100, 500], value=50)
+
+    # LÓGICA DE FILTRAGEM
     if termo_busca:
-        cat_ia = processar_ia_avancada(termo_busca)
-        st.info(f"✨ IA: Buscando por **{cat_ia}**")
-        profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
-        
-        lista_ranking = []
-        for p_doc in profs:
-            p = p_doc.to_dict()
-            p['id'] = p_doc.id
-            dist = calcular_distancia_real(LAT_REF, LON_REF, p.get('lat', LAT_REF), p.get('lon', LON_REF))
-            if dist <= raio_km:
-                p['dist'] = dist
-                lista_ranking.append(p)
-        
-      # --- LOGICA DE RANKING PREMIUM (SOMA DE PODER) ---
-        try:
-            # Ordena por: 1º Mais perto, 2º Mais saldo (quem investe mais), 3º Melhor nota
-            lista_ranking.sort(key=lambda x: (x['dist'], -x.get('saldo', 0), -x.get('rating', 5.0)))
-        except:
-            lista_ranking.sort(key=lambda x: x['dist'])
+        # 2. Processamento do Termo (Transforma 'Cano' em 'Encanador' se existir no dicionário)
+        termo_processado = termo_busca.lower().strip()
+        categoria_alvo = DICIONARIO_SINONIMOS.get(termo_processado, termo_busca)
 
-        # --- LOOP DE EXIBIÇÃO DOS CARDS ---
-        for pro in lista_ranking:
-            with st.container():
-                # Preparação segura dos dados para não travar o HTML
-                foto_fix = pro.get('foto_url') or f"https://api.dicebear.com/7.x/avataaars/svg?seed={pro['id']}"
-                desc_fix = (pro.get('descricao') or "Especialista parceiro GeralJá Brasil.")[:150]
-                nome_fix = pro.get('nome', 'Profissional').upper()
+        with st.spinner(f"Buscando especialistas em {categoria_alvo}..."):
+            # Busca no Firebase (Somando filtros de Categoria e Aprovação)
+            profs_ref = db.collection("profissionais").where("aprovado", "==", True)
+            todos_profs = profs_ref.stream()
+            
+            encontrados = []
+            for doc in todos_profs:
+                p = doc.to_dict()
+                # Busca por categoria oficial ou pelo nome do profissional
+                if (categoria_alvo.lower() in p.get('area', '').lower()) or \
+                   (termo_processado in p.get('nome', '').lower()):
+                    encontrados.append(p)
 
-                # Card HTML Clean & Professional
-                st.markdown(f"""
-                <div class="pro-card">
-                    <img src="{foto_fix}" class="pro-img">
-                    <div style="flex-grow:1;">
-                        <small>📍 {pro['dist']} KM | 💎 {pro['area']}</small>
-                        <h3 style="margin:5px 0; color:#1E293B;">{nome_fix}</h3>
-                        <p style="font-size:14px; color:#475569; margin-bottom:0;">{desc_fix}...</p>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+            if encontrados:
+                st.success(f"🎉 Encontramos {len(encontrados)} profissionais próximos a você!")
                 
-                # --- BLOCO DE DEPOIMENTOS (FOTOS DO PORTFÓLIO) ---
-                if pro.get('portfolio_imgs'):
-                    with st.expander("📸 Ver fotos de serviços realizados"):
-                        cols_fotos = st.columns(3)
-                        for i, img_data in enumerate(pro['portfolio_imgs'][:3]):
-                            cols_fotos[i%3].image(img_data, use_container_width=True)
-
-                # --- BOTÃO DE CONTATO COM COBRANÇA DE LEAD ---
-                if pro.get('saldo', 0) >= TAXA_CONTATO:
-                    if st.button(f"FALAR COM {nome_fix.split()[0]}", key=f"z_{pro['id']}", use_container_width=True):
-                        # Registra o clique e debita o saldo em tempo real
-                        db.collection("profissionais").document(pro['id']).update({
-                            "saldo": firestore.Increment(-TAXA_CONTATO),
-                            "cliques": firestore.Increment(1)
-                        })
-                        st.balloons()
-                        st.markdown(f'<a href="https://wa.me/55{pro["whatsapp"]}?text=Olá, vi seu perfil no GeralJá!" class="btn-zap">ABRIR WHATSAPP AGORA</a>', unsafe_allow_html=True)
-                else:
-                    st.warning("⏳ Este profissional atingiu o limite de atendimentos diários.")
-# --- ABA 2: CENTRAL PARCEIRO (VERSÃO PORTFÓLIO & BLINDADA) ---
-with menu_abas[1]:
-    if 'auth' not in st.session_state: st.session_state.auth = False
-    
-    if not st.session_state.auth:
-        st.subheader("🚀 Acesso ao Painel do Parceiro")
-        col1, col2 = st.columns(2)
-        l_zap = col1.text_input("WhatsApp (Somente números)")
-        l_pw = col2.text_input("Senha", type="password")
-        
-        if st.button("ENTRAR NO PAINEL", use_container_width=True):
-            u = db.collection("profissionais").document(l_zap).get()
-            if u.exists and u.to_dict().get('senha') == l_pw:
-                st.session_state.auth, st.session_state.user_id = True, l_zap
-                st.rerun()
+                # Exibição em Cards Modernos
+                for p in encontrados:
+                    with st.container(border=True):
+                        col_foto, col_info = st.columns([1, 3])
+                        with col_foto:
+                            st.image("https://cdn-icons-png.flaticon.com/512/3135/3135715.png", width=80)
+                        with col_info:
+                            st.subheader(p.get('nome', 'Profissional').upper())
+                            st.caption(f"📍 {p.get('cidade', 'Sua Região')} | ⭐⭐⭐⭐⭐")
+                            st.write(f"**Especialidade:** {p.get('area')}")
+                            
+                            # Botão do WhatsApp com Mensagem Pronta
+                            link_zap = f"https://wa.me/{doc.id}?text=Olá%20{p.get('nome')},%20vi%20seu%20perfil%20no%20GeralJá%20e%20preciso%20de%20um%20orçamento!"
+                            st.markdown(f'''<a href="{link_zap}" target="_blank">
+                                <button style="width:100%; background-color:#25D366; color:white; border:none; padding:10px; border-radius:5px; font-weight:bold; cursor:pointer;">
+                                ✅ CHAMAR NO WHATSAPP</button></a>''', unsafe_allow_html=True)
             else:
-                st.error("❌ Dados incorretos. Tente novamente.")
+                st.warning(f"Ainda não temos '{termo_busca}' nesta região. Tente termos como 'Pedreiro' ou 'Eletricista'.")
     else:
-        # Puxamos os dados atualizados
-        doc_ref = db.collection("profissionais").document(st.session_state.user_id)
-        d = doc_ref.get().to_dict()
-        
-        # --- CABEÇALHO DE MÉTRICAS ---
-        m1, m2, m3 = st.columns(3)
-        m1.markdown(f'<div class="metric-box">SALDO: {d.get("saldo", 0)} 🪙</div>', unsafe_allow_html=True)
-        m2.markdown(f'<div class="metric-box">CLIQUES: {d.get("cliques", 0)} 🚀</div>', unsafe_allow_html=True)
-        m3.markdown(f'<div class="metric-box">STATUS: {"🟢 ATIVO" if d.get("aprovado") else "🟡 PENDENTE"}</div>', unsafe_allow_html=True)
-        
-        st.divider()
-        
-        # --- FORMULÁRIO DE EDIÇÃO + PORTFÓLIO ---
-        with st.expander("📝 MEU PERFIL & PORTFÓLIO", expanded=True):
-            with st.form("ed"):
-                col_f1, col_f2 = st.columns(2)
-                n_nome = col_f1.text_input("Nome Profissional", d.get('nome'))
-                
-                try:
-                    idx_at = CATEGORIAS_OFICIAIS.index(d.get('area', 'Ajudante Geral'))
-                except:
-                    idx_at = 0
-                
-                n_area = col_f2.selectbox("Sua Especialidade", CATEGORIAS_OFICIAIS, index=idx_at)
-                n_desc = st.text_area("Descrição (Conte sua experiência)", d.get('descricao', ''), help="Dica: Clientes preferem descrições detalhadas.")
-                
-                col_f3, col_f4 = st.columns(2)
-                n_foto = col_f3.file_uploader("Trocar Foto de Perfil", type=['jpg', 'png', 'jpeg'])
-                
-                # --- SOMANDO: UPLOAD DE PORTFÓLIO ---
-                n_portfolio = col_f4.file_uploader("Portfólio (Até 3 fotos de serviços)", type=['jpg', 'png', 'jpeg'], accept_multiple_files=True)
-                
-                st.info("💡 Fotos de alta qualidade aumentam suas chances de fechamento em 70%!")
-
-                if st.form_submit_button("SALVAR TODAS AS ALTERAÇÕES", use_container_width=True):
-                    up = {
-                        "nome": n_nome,
-                        "area": n_area,
-                        "descricao": n_desc
-                    }
-                    
-                    # Processa Foto de Perfil
-                    if n_foto:
-                        up["foto_url"] = f"data:image/png;base64,{converter_img_b64(n_foto)}"
-                    
-                    # Processa Fotos do Portfólio (Soma até 3)
-                    if n_portfolio:
-                        lista_b64 = []
-                        for foto in n_portfolio[:3]:
-                            img_b64 = converter_img_b64(foto)
-                            if img_b64:
-                                lista_b64.append(f"data:image/png;base64,{img_b64}")
-                        up["portfolio_imgs"] = lista_b64
-                    
-                    # Gravação Blindada
-                    doc_ref.update(up)
-                    st.success("✅ Perfil e Portfólio atualizados com sucesso!")
-                    time.sleep(1)
-                    st.rerun()
-
-        # Botão de Logoff
-        if st.button("SAIR DO PAINEL", use_container_width=True):
-            st.session_state.auth = False
-            st.rerun()
-
+        st.info("👋 Digite o que você precisa acima para ver os melhores profissionais da sua região.")
 # --- ABA 3: CADASTRO (VERSÃO SOMAR) ---
 with menu_abas[2]:
     st.header("🚀 Seja um Parceiro GeralJá")
@@ -602,6 +590,7 @@ if len(menu_abas) > 5:
 # RODAPÉ ÚNICO (Final do Arquivo)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
 
 
