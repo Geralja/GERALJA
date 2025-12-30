@@ -58,13 +58,63 @@ BONUS_WELCOME = 5
 LAT_REF = -23.5505
 LON_REF = -46.6333
 
-CATEGORIAS_OFICIAIS = [
-    "Encanador", "Eletricista", "Pintor", "Pedreiro", "Gesseiro",
-    "Telhadista", "Mecânico", "Borracheiro", "Guincho 24h", "Diarista",
-    "Jardineiro", "Piscineiro", "TI", "Refrigeração", "Serralheiro",
-    "Montador", "Freteiro", "Chaveiro", "Técnico de Fogão", "Técnico de Lavadora",
-    "Ajudante Geral", "Outro (Personalizado)"
-]
+# --- EXPANSÃO MASSIVA DE CATEGORIAS GERALJÁ (MULTIPLICADOR DE BUSCAS) ---
+CATEGORIAS_OFICIAIS = sorted([
+    # 🏠 CONSTRUÇÃO, ESTRUTURA E REFORMAS
+    "Ajudante de Pedreiro", "Azulejista", "Armador de Ferragens", "Arquitetura e Urbanismo",
+    "Bombeiro Civil", "Calceteiro", "Carpinteiro de Formas", "Colocador de Pisos",
+    "Demolidor", "Eletricista Predial", "Eletricista Industrial", "Encanador Hidráulico",
+    "Engenheiro Civil", "Gesseiro Acartonado", "Gesseiro Revestidor", "Impermeabilizador de Lajes",
+    "Instalador de Drywall", "Ladrilheiro", "Marmorista", "Mestre de Obras",
+    "Montador de Estrutura Metálica", "Pedreiro de Alvenaria", "Pedreiro de Acabamento",
+    "Pintor Residencial", "Pintor de Letreiros", "Pintor Industrial", "Serralheiro de Alumínio",
+    "Serralheiro de Ferro", "Telhadista", "Vidraceiro de Sacadas",
+
+    # 🛠️ MANUTENÇÃO, INSTALAÇÃO E MARIDO DE ALUGUEL
+    "Afiador de Ferramentas", "Chaveiro Residencial", "Chaveiro Automotivo", "Desentupidor de Esgoto",
+    "Instalador de Ar Condicionado", "Instalador de Papel de Parede", "Instalador de Redes de Proteção",
+    "Instalador de Ventilador de Teto", "Instalador de Câmeras/CFTV", "Instalador de Alarme",
+    "Limpeza de Caixa d'Água", "Limpeza de Calhas", "Marido de Aluguel", "Montador de Móveis",
+    "Refrigeração Comercial", "Reparo de Micro-ondas", "Técnico de Fogão a Gás",
+    "Técnico de Máquina de Lavar", "Técnico de Geladeira/Freezer", "Técnico de TV",
+
+    # 🧹 SERVIÇOS DOMÉSTICOS E CUIDADOS
+    "Babá (Folguista)", "Babá (Mensalista)", "Banhista de Pets", "Cozinheira Particular",
+    "Cuidador de Idosos", "Cuidador de Pessoas com Deficiência", "Diarista", "Dog Walker",
+    "Faxineira de Pós-Obra", "Faxineira Residencial", "Gardener (Paisagista)", "Governança",
+    "Jardineiro", "Lavadeira", "Limpador de Vidros", "Passadeira", "Piscineiro",
+    "Personal Organizer", "Pet Sitter",
+
+    # 🚗 SETOR AUTOMOTIVO E TRANSPORTE
+    "Auto Elétrico", "Borracheiro 24h", "Carreto e Mudanças", "Entregador Motoboy",
+    "Funileiro", "Guincho Leve", "Guincho Pesado", "Instalador de Insulfilm",
+    "Lava Jato a Seco", "Martelinho de Ouro", "Mecânico de Motos", "Mecânico de Suspensão",
+    "Mecânico Diesel", "Motorista Particular", "Pintor Automotivo", "Tapeceiro Automotivo",
+
+    # 💻 TECNOLOGIA, DESIGN E ESCRITÓRIO
+    "Analista de Redes", "Assistência Técnica de Celular", "Assistência Técnica de Tablet",
+    "Designer de Logotipos", "Desenvolvedor Mobile", "Desenvolvedor Web", "Editor de Vídeos",
+    "Gestor de Tráfego Pago", "Gestor de Redes Sociais", "Programador Python",
+    "Suporte de TI Remoto", "Técnico de Impressoras", "Técnico de Notebooks",
+
+    # 💇 BELEZA, ESTÉTICA E BEM-ESTAR
+    "Barbeiro Visagista", "Cabeleireiro Especialista", "Designer de Sobrancelhas",
+    "Depiladora a Laser", "Esteticista Facial", "Esteticista Corporal", "Extensionista de Cílios",
+    "Maquiadora Social", "Manicure e Pedicure", "Massagista Terapêutico", "Nail Designer (Unhas de Gel)",
+    "Penteadista", "Podóloga", "Tatuador", "Piercer",
+
+    # 🎤 EVENTOS, GASTRONOMIA E LAZER
+    "Animador de Festas", "Buffet Completo", "Barman/Bartender", "Churrasqueiro Profissional",
+    "Confeiteira de Bolos Artísticos", "DJ para Eventos", "Fotógrafo de Casamento",
+    "Fotógrafo de Produtos", "Garçom e Garçonete", "Recepcionista de Eventos",
+    "Segurança Particular", "Salgadeira",
+
+    # 🔧 OUTROS SERVIÇOS ESPECIALIZADOS
+    "Ajudante Geral", "Alfaiate/Costureira", "Adestrador de Cães", "Consultor Jurídico",
+    "Detetive Particular", "Investigador Particular", "Professor de Reforço Escolar",
+    "Professor de Música", "Sapateiro", "Tapeceiro de Móveis", "Tradutor/Intérprete",
+    "Outro (Personalizado)"
+])
 
 # DICIONÁRIO EXPANDIDO (Soma de inteligência)
 CONCEITOS_EXPANDIDOS = {
@@ -552,6 +602,7 @@ if len(menu_abas) > 5:
 # RODAPÉ ÚNICO (Final do Arquivo)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
 
 
