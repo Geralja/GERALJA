@@ -464,29 +464,29 @@ with menu_abas[3]:
 
                         if c_exc.button("🗑️ EXCLUIR", key=f"del_{pid}", use_container_width=True):
                             db.collection("profissionais").document(pid).delete(); st.rerun()
-
-        with tab_seguranca:
+with tab_seguranca:
             st.markdown("#### 🛡️ Central Guardião GeralJá")
             st.info("A IA monitora e corrige o banco de dados automaticamente.")
             
             s_col1, s_col2 = st.columns(2)
             
-           if s_col1.button("🔍 ESCANEAR VÍRUS & INJEÇÕES", use_container_width=True):
+            if s_col1.button("🔍 ESCANEAR VÍRUS & INJEÇÕES", use_container_width=True):
                 with st.spinner("Analisando códigos maliciosos..."):
                     alertas = scan_virus_e_scripts()
-                    # Correção blindada para exibição de alertas
                     if alertas:
                         for a in alertas:
-                            if "PERIGO" in a or "⚠️" in a:
+                            if "⚠️" in str(a):
                                 st.error(str(a))
                             else:
                                 st.success(str(a))
                     else:
-                        st.info("Nenhum registro encontrado para análise.")
-            if s_col2.button("🛠️ REPARAR TODOS OS DOCS E COD. COM ERROS", use_container_width=True):
+                        st.info("Nenhum registro encontrado.")
+
+            if s_col2.button("🛠️ REPARAR TODOS OS DOCS", use_container_width=True):
                 with st.spinner("IA Reparando..."):
                     reparos = guardia_escanear_e_corrigir()
-                    for rep in reparos: st.write(rep)
+                    for rep in reparos: 
+                        st.write(str(rep))
                 st.balloons()
 
         with tab_feedbacks:
@@ -498,6 +498,7 @@ with menu_abas[3]:
 # RODAPÉ ÚNICO (Final do Arquivo)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
 
 
