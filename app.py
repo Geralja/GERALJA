@@ -474,11 +474,51 @@ with menu_abas[3]:
     elif access_adm != "":
         st.error("🚫 Acesso negado. Senha incorreta.")
         
-        # --- ABA 5: FEEDBACK (A VOZ DO CLIENTE) ---
+       # --- ABA: FEEDBACK (A VOZ DO CLIENTE) ---
+# Se o Financeiro estiver invisível, esta é a aba [4]. 
+# Se o Financeiro aparecer, ela continua sendo acessada corretamente pelo índice.
 with menu_abas[4]:
     st.markdown("### ⭐ Sua opinião é fundamental")
-    # ... (mantenha seu código de feedback aqui) ...
+    st.write("Conte-nos como foi a sua experiência com o GeralJá.")
+    
+    # Criamos um formulário para organizar o envio
+    with st.form("feedback_form", clear_on_submit=True):
+        # 1. Escala de Satisfação
+        nota = st.select_slider(
+            "Qual a sua satisfação geral?",
+            options=["Muito Insatisfeito", "Insatisfeito", "Regular", "Satisfeito", "Muito Satisfeito"],
+            value="Muito Satisfeito"
+        )
+        
+        # 2. CAIXA DE TEXTO (O que você pediu)
+        comentario = st.text_area(
+            "Descreva a sua experiência ou deixe uma sugestão:",
+            placeholder="Ex: O profissional foi muito atencioso, mas o app poderia carregar mais rápido...",
+            height=150
+        )
+        
+        # Botão de envio
+        btn_enviar = st.form_submit_button("ENVIAR AVALIAÇÃO", use_container_width=True)
+        
+        if btn_enviar:
+            if comentario.strip() != "":
+                try:
+                    # Somando o feedback ao banco de dados
+                    db.collection("feedbacks").add({
+                        "data": datetime.datetime.now(),
+                        "nota": nota,
+                        "mensagem": comentario,
+                        "lido": False
+                    })
+                    st.success("🙏 Muito obrigado! A sua mensagem foi enviada diretamente para a nossa equipa.")
+                    st.balloons()
+                except Exception as e:
+                    st.error(f"Erro ao enviar: {e}")
+            else:
+                st.warning("⚠️ Por favor, escreva algo na caixa de texto antes de enviar.")
 
+    st.divider()
+    st.caption("O GeralJá utiliza os seus feedbacks para melhorar a segurança e a qualidade dos prestadores de serviço.")
 # --- ABA 6: FINANCEIRO (SÓ APARECE SOB COMANDO) ---
 # Este 'if' evita o IndexError: ele só executa se a aba financeira existir
 if len(menu_abas) > 5:
@@ -507,6 +547,7 @@ if len(menu_abas) > 5:
 # RODAPÉ ÚNICO (Final do Arquivo)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
 
 
