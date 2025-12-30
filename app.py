@@ -206,7 +206,7 @@ with menu_abas[0]:
     st.markdown("### 🏙️ O que você precisa?")
     c1, c2 = st.columns([3, 1])
     termo_busca = c1.text_input("Ex: 'Cano estourado'", key="main_search")
-    raio_km = c2.select_slider("Raio (KM)", options=[1, 5, 10, 20, 50, 100, 500], value=10)
+    raio_km = c2.select_slider("Raio (KM)", options=[1, 5, 10, 20, 50, 100, 500], value=3)
     
     if termo_busca:
         cat_ia = processar_ia_avancada(termo_busca)
@@ -268,44 +268,88 @@ with menu_abas[0]:
                         st.markdown(f'<a href="https://wa.me/55{pro["whatsapp"]}?text=Olá, vi seu perfil no GeralJá!" class="btn-zap">ABRIR WHATSAPP AGORA</a>', unsafe_allow_html=True)
                 else:
                     st.warning("⏳ Este profissional atingiu o limite de atendimentos diários.")
-# --- ABA 2: CENTRAL PARCEIRO ---
+# --- ABA 2: CENTRAL PARCEIRO (VERSÃO PORTFÓLIO & BLINDADA) ---
 with menu_abas[1]:
     if 'auth' not in st.session_state: st.session_state.auth = False
+    
     if not st.session_state.auth:
+        st.subheader("🚀 Acesso ao Painel do Parceiro")
         col1, col2 = st.columns(2)
-        l_zap = col1.text_input("WhatsApp")
+        l_zap = col1.text_input("WhatsApp (Somente números)")
         l_pw = col2.text_input("Senha", type="password")
-        if st.button("ENTRAR"):
+        
+        if st.button("ENTRAR NO PAINEL", use_container_width=True):
             u = db.collection("profissionais").document(l_zap).get()
             if u.exists and u.to_dict().get('senha') == l_pw:
                 st.session_state.auth, st.session_state.user_id = True, l_zap
                 st.rerun()
+            else:
+                st.error("❌ Dados incorretos. Tente novamente.")
     else:
-        d = db.collection("profissionais").document(st.session_state.user_id).get().to_dict()
-        m1, m2, m3 = st.columns(3)
-        m1.markdown(f'<div class="metric-box">SALDO: {d.get("saldo")} 🪙</div>', unsafe_allow_html=True)
-        m2.markdown(f'<div class="metric-box">CLIQUES: {d.get("cliques")} 🚀</div>', unsafe_allow_html=True)
-        m3.markdown(f'<div class="metric-box">STATUS: {"ATIVO" if d.get("aprovado") else "PENDENTE"}</div>', unsafe_allow_html=True)
+        # Puxamos os dados atualizados
+        doc_ref = db.collection("profissionais").document(st.session_state.user_id)
+        d = doc_ref.get().to_dict()
         
-        with st.expander("📝 EDITAR PERFIL"):
+        # --- CABEÇALHO DE MÉTRICAS ---
+        m1, m2, m3 = st.columns(3)
+        m1.markdown(f'<div class="metric-box">SALDO: {d.get("saldo", 0)} 🪙</div>', unsafe_allow_html=True)
+        m2.markdown(f'<div class="metric-box">CLIQUES: {d.get("cliques", 0)} 🚀</div>', unsafe_allow_html=True)
+        m3.markdown(f'<div class="metric-box">STATUS: {"🟢 ATIVO" if d.get("aprovado") else "🟡 PENDENTE"}</div>', unsafe_allow_html=True)
+        
+        st.divider()
+        
+        # --- FORMULÁRIO DE EDIÇÃO + PORTFÓLIO ---
+        with st.expander("📝 MEU PERFIL & PORTFÓLIO", expanded=True):
             with st.form("ed"):
-                n_nome = st.text_input("Nome", d.get('nome'))
-                # PROTEÇÃO CONTRA VALUE ERROR NO SELECTBOX
+                col_f1, col_f2 = st.columns(2)
+                n_nome = col_f1.text_input("Nome Profissional", d.get('nome'))
+                
                 try:
                     idx_at = CATEGORIAS_OFICIAIS.index(d.get('area', 'Ajudante Geral'))
                 except:
-                    idx_at = CATEGORIAS_OFICIAIS.index("Ajudante Geral")
+                    idx_at = 0
                 
-                n_area = st.selectbox("Área", CATEGORIAS_OFICIAIS, index=idx_at)
-                n_desc = st.text_area("Descrição", d.get('descricao'))
-                n_foto = st.file_uploader("Nova Foto")
-                if st.form_submit_button("SALVAR"):
-                    up = {"nome": n_nome, "area": n_area, "descricao": n_desc}
-                    if n_foto: up["foto_url"] = f"data:image/png;base64,{converter_img_b64(n_foto)}"
-                    db.collection("profissionais").document(st.session_state.user_id).update(up)
-                    st.success("Atualizado!")
+                n_area = col_f2.selectbox("Sua Especialidade", CATEGORIAS_OFICIAIS, index=idx_at)
+                n_desc = st.text_area("Descrição (Conte sua experiência)", d.get('descricao', ''), help="Dica: Clientes preferem descrições detalhadas.")
+                
+                col_f3, col_f4 = st.columns(2)
+                n_foto = col_f3.file_uploader("Trocar Foto de Perfil", type=['jpg', 'png', 'jpeg'])
+                
+                # --- SOMANDO: UPLOAD DE PORTFÓLIO ---
+                n_portfolio = col_f4.file_uploader("Portfólio (Até 3 fotos de serviços)", type=['jpg', 'png', 'jpeg'], accept_multiple_files=True)
+                
+                st.info("💡 Fotos de alta qualidade aumentam suas chances de fechamento em 70%!")
+
+                if st.form_submit_button("SALVAR TODAS AS ALTERAÇÕES", use_container_width=True):
+                    up = {
+                        "nome": n_nome,
+                        "area": n_area,
+                        "descricao": n_desc
+                    }
+                    
+                    # Processa Foto de Perfil
+                    if n_foto:
+                        up["foto_url"] = f"data:image/png;base64,{converter_img_b64(n_foto)}"
+                    
+                    # Processa Fotos do Portfólio (Soma até 3)
+                    if n_portfolio:
+                        lista_b64 = []
+                        for foto in n_portfolio[:3]:
+                            img_b64 = converter_img_b64(foto)
+                            if img_b64:
+                                lista_b64.append(f"data:image/png;base64,{img_b64}")
+                        up["portfolio_imgs"] = lista_b64
+                    
+                    # Gravação Blindada
+                    doc_ref.update(up)
+                    st.success("✅ Perfil e Portfólio atualizados com sucesso!")
+                    time.sleep(1)
                     st.rerun()
-        if st.button("SAIR"): st.session_state.auth = False; st.rerun()
+
+        # Botão de Logoff
+        if st.button("SAIR DO PAINEL", use_container_width=True):
+            st.session_state.auth = False
+            st.rerun()
 
 # --- ABA 3: CADASTRO ---
 with menu_abas[2]:
@@ -419,6 +463,7 @@ with menu_abas[3]:
 # RODAPÉ ÚNICO (Final do Arquivo)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
 
 
