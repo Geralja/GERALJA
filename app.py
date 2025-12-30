@@ -176,3 +176,4 @@ with TABS[2]:
                     db.collection("profissionais").document(d.id).delete()
 
 st.markdown("<br><hr><center><small>GeralJá v14.0 | Geolocalização Ativa</small></center>", unsafe_allow_html=True)
+
