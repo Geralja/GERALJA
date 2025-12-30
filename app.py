@@ -321,17 +321,15 @@ st.markdown("""
 
 st.markdown('<div class="header-container"><span class="logo-azul">GERAL</span><span class="logo-laranja">JÁ</span><br><small style="color:#64748B; font-weight:700;">BRASIL ELITE EDITION</small></div>', unsafe_allow_html=True)
 
-# 1. Defina a lista básica
+# --- LISTA DE ABAS ---
+# O Financeiro não aparece aqui, ele é somado depois pelo comando secreto
 lista_abas = ["🔍 BUSCAR", "🚀 CADASTRAR", "👤 MEU PERFIL", "👑 ADMIN", "⭐ FEEDBACK"]
 
-# 2. Verifique o comando secreto na barra lateral
-comando = st.sidebar.text_input("Comando Secreto", type="password")
-
-# 3. Se o comando estiver certo, soma a aba financeira
-if comando == "abracadabra":
+# Comando Secreto para revelar o Financeiro em último
+comando_secreto = st.sidebar.text_input("Comando de Diretor", type="password")
+if comando_secreto == "abracadabra":
     lista_abas.append("📊 FINANCEIRO")
 
-# 4. Cria as abas no Streamlit
 menu_abas = st.tabs(lista_abas)
 
 # --- ABA 1: BUSCA INTELIGENTE (MOTOR DE SINÔNIMOS) ---
@@ -604,6 +602,7 @@ if len(menu_abas) > 5:
 # RODAPÉ ÚNICO (Final do Arquivo)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
 
 
