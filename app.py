@@ -550,10 +550,37 @@ with menu_abas[5]:
 
     st.divider()
     st.info("💡 Sabia? Suas sugestões ajudam o GeralJá a selecionar os melhores profissionais para você.")
+
+    # --- ABA FINANCEIRA (SÓ EXISTE SOB COMANDO) ---
+if len(menu_abas) > 5:
+    with menu_abas[5]:
+        st.markdown("### 📊 Gestão de Capital GeralJá")
+        
+        # Chave de segurança extra para abrir o cofre
+        if st.text_input("Chave do Cofre", type="password", key="cofre_v3") == "riqueza2025":
+            all_p = list(db.collection("profissionais").stream())
+            
+            # Cálculos de Somatória (Sem remover dados)
+            vendas = sum([p.to_dict().get('total_comprado', 0) for p in all_p])
+            bonus = sum([p.to_dict().get('total_bonus', 0) for p in all_p])
+            
+            # Painel Executivo
+            c1, c2, c3 = st.columns(3)
+            c1.metric("💰 DINHEIRO EM CAIXA", f"R$ {vendas:,.2f}")
+            c2.metric("🎁 INVESTIMENTO BÔNUS", f"{bonus} 🪙")
+            c3.metric("📈 VALOR DO APP", f"R$ {vendas + (bonus * 0.10):,.2f}")
+            
+            st.divider()
+            st.write("**Relatório de Auditoria:**")
+            contabil = [{"Nome": p.to_dict().get('nome'), "Receita": p.to_dict().get('total_comprado', 0)} for p in all_p]
+            st.table(contabil)
+        else:
+            st.info("Aguardando chave do cofre...")
 # ------------------------------------------------------------------------------
 # RODAPÉ ÚNICO (Final do Arquivo)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
 
 
