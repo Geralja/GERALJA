@@ -396,101 +396,69 @@ with menu_abas[2]:
                 except Exception as e:
                     st.error(f"Erro ao cadastrar: {e}")
 
-# --- ABA 4: TERMINAL ADMIN (VERSÃO SUPREMA SOMADA & BLINDADA) ---
+# --- ABA 4: TERMINAL ADMIN (VERSÃO SOMAR & ALINHADA) ---
 with menu_abas[3]:
-    access_adm = st.text_input("Senha Master", type="password", key="adm_auth")
+    access_adm = st.text_input("Senha Master", type="password", key="adm_auth_final")
     
     if access_adm == CHAVE_ADMIN:
         st.markdown("### 👑 Painel de Controle Supremo")
         
-        # 1. SOMANDO: BLOCO FINANCEIRO (Cálculo em tempo real)
-        with st.container():
-            # Baixamos a lista uma vez para economizar recursos e somar performance
-            all_profs_lista = list(db.collection("profissionais").stream())
-            total_moedas = sum([p.to_dict().get('saldo', 0) for p in all_profs_lista])
-            valor_estimado = total_moedas * 1.0 # R$ 1,00 por moeda
-            
-            c_fin1, c_fin2, c_fin3 = st.columns(3)
-            c_fin1.metric("💰 Moedas no Sistema", f"{total_moedas} 🪙")
-            c_fin2.metric("📈 Valor Bruto", f"R$ {valor_estimado:,.2f}")
-            c_fin3.metric("🤝 Parceiros Totais", len(all_profs_lista))
-            st.divider()
-
-        # 2. SOMANDO: ABAS DE COMANDO INTEGRADO
-        tab_geral, tab_seguranca, tab_feedbacks = st.tabs([
-            "👥 GESTÃO DE PERFIS", "🛡️ SEGURANÇA IA", "📩 MENSAGENS"
-        ])
+        # 1. MÉTRICAS TOTAIS (SOMANDO INTELIGÊNCIA)
+        all_profs_lista = list(db.collection("profissionais").stream())
+        total_moedas = sum([p.to_dict().get('saldo', 0) for p in all_profs_lista])
         
-        with tab_geral:
+        c_fin1, c_fin2, c_fin3 = st.columns(3)
+        c_fin1.metric("💰 Moedas no Ecossistema", f"{total_moedas} 🪙")
+        c_fin2.metric("📈 Valor Previsto", f"R$ {total_moedas:,.2f}")
+        c_fin3.metric("🤝 Parceiros Cadastrados", len(all_profs_lista))
+        st.divider()
+
+        # 2. ABAS DE COMANDO (ALINHAMENTO PRECISO)
+        t_geral, t_seg, t_feed = st.tabs(["👥 GESTÃO DE PERFIS", "🛡️ IA SEGURANÇA", "📩 MENSAGENS"])
+        
+        with t_geral:
             search_pro = st.text_input("🔍 Buscar por Nome ou WhatsApp")
-            
             for p_doc in all_profs_lista:
                 p, pid = p_doc.to_dict(), p_doc.id
-                
-                # Filtro de busca inteligente
                 if not search_pro or search_pro.lower() in p.get('nome', '').lower() or search_pro in pid:
-                    status_cor = "🟢" if p.get('aprovado') else "🟡"
-                    
-                    with st.expander(f"{status_cor} {p.get('nome', 'Sem Nome').upper()} | Saldo: {p.get('saldo', 0)} 🪙"):
-                        # --- LINHA 1: VISUALIZAÇÃO E EDIÇÃO ---
-                        col1, col2, col3 = st.columns([2, 2, 1])
-                        
+                    status_emoji = "🟢" if p.get('aprovado') else "🟡"
+                    with st.expander(f"{status_emoji} {p.get('nome', 'Sem Nome').upper()} | {p.get('saldo', 0)} 🪙"):
+                        col1, col2 = st.columns(2)
                         with col1:
                             st.write(f"**Área:** {p.get('area')}")
-                            st.write(f"**Cliques:** {p.get('cliques', 0)}")
                             st.write(f"**WhatsApp:** {pid}")
+                            bonus = st.number_input("Adicionar Moedas", value=0, key=f"add_{pid}")
+                            if st.button("CREDITAR", key=f"btn_c_{pid}"):
+                                db.collection("profissionais").document(pid).update({"saldo": firestore.Increment(bonus)})
+                                st.rerun()
                         
                         with col2:
-                            bonus = st.number_input("Bonificar/Ajustar Moedas", value=0, key=f"adj_{pid}")
-                            if st.button("CONFIRMAR SALDO", key=f"btn_adj_{pid}"):
-                                db.collection("profissionais").document(pid).update({"saldo": firestore.Increment(bonus)})
-                                st.success("Saldo Somado!")
-                                time.sleep(0.5)
-                                st.rerun()
+                            st.write("**Ações Rápidas:**")
+                            if st.button("✅ APROVAR AGORA", key=f"ok_{pid}", use_container_width=True):
+                                db.collection("profissionais").document(pid).update({"aprovado": True}); st.rerun()
+                            if st.button("⚠️ SUSPENDER", key=f"sus_{pid}", use_container_width=True):
+                                db.collection("profissionais").document(pid).update({"aprovado": False}); st.rerun()
+                            if st.button("🗑️ REMOVER", key=f"del_{pid}", use_container_width=True):
+                                db.collection("profissionais").document(pid).delete(); st.rerun()
 
-                        with col3:
-                            st.markdown(f'[![Zap](https://img.shields.io/badge/WhatsApp-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)](https://wa.me/{pid})')
-
-                        st.divider()
-
-                        # --- LINHA 2: COMANDOS DE PODER ---
-                        c_pun, c_apr, c_exc = st.columns(3)
-                        
-                        if c_apr.button("✅ APROVAR", key=f"ok_{pid}", use_container_width=True):
-                            db.collection("profissionais").document(pid).update({"aprovado": True}); st.rerun()
-
-                        if c_pun.button("⚠️ SUSPENDER", key=f"pun_{pid}", use_container_width=True):
-                            db.collection("profissionais").document(pid).update({"aprovado": False}); st.rerun()
-
-                        if c_exc.button("🗑️ EXCLUIR", key=f"del_{pid}", use_container_width=True):
-                            db.collection("profissionais").document(pid).delete(); st.rerun()
-with tab_seguranca:
-            st.markdown("#### 🛡️ Central Guardião GeralJá")
-            st.info("A IA monitora e corrige o banco de dados automaticamente.")
-            
+        with t_seg:
+            st.markdown("#### 🛡️ Central de Proteção IA")
             s_col1, s_col2 = st.columns(2)
-            
-            if s_col1.button("🔍 ESCANEAR VÍRUS & INJEÇÕES", use_container_width=True):
-                with st.spinner("Analisando códigos maliciosos..."):
+            if s_col1.button("🔍 ESCANEAR BANCO", use_container_width=True):
+                with st.spinner("Buscando ameaças..."):
                     alertas = scan_virus_e_scripts()
-                    if alertas:
-                        for a in alertas:
-                            if "⚠️" in str(a):
-                                st.error(str(a))
-                            else:
-                                st.success(str(a))
-                    else:
-                        st.info("Nenhum registro encontrado.")
-
-            if s_col2.button("🛠️ REPARAR TODOS OS DOCS", use_container_width=True):
-                with st.spinner("IA Reparando..."):
+                    for a in alertas:
+                        if "⚠️" in str(a): st.error(str(a))
+                        else: st.success(str(a))
+            
+            if s_col2.button("🛠️ REPARAR ESTRUTURAS", use_container_width=True):
+                with st.spinner("IA Corrigindo..."):
                     reparos = guardia_escanear_e_corrigir()
-                    for rep in reparos: 
-                        st.write(str(rep))
+                    for r in reparos: st.write(str(r))
                 st.balloons()
 
-        with tab_feedbacks:
-            st.info("Os feedbacks dos clientes aparecerão aqui em tempo real.")
+        with t_feed:
+            st.info("📩 Central de Feedbacks vazia. Os comentários dos clientes aparecerão aqui.")
 
     elif access_adm != "":
         st.error("🚫 Acesso negado. Senha incorreta.")
@@ -498,6 +466,7 @@ with tab_seguranca:
 # RODAPÉ ÚNICO (Final do Arquivo)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
 
 
