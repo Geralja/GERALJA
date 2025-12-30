@@ -462,10 +462,60 @@ with menu_abas[3]:
 
     elif access_adm != "":
         st.error("🚫 Acesso negado. Senha incorreta.")
+        
+        # --- ABA 5: COFRE FINANCEIRO (ACESSO RESTRITO AO DONO) ---
+with menu_abas[4]:
+    # Primeira camada de segurança: Só aparece se estiver logado como Admin na aba anterior
+    if access_adm == CHAVE_ADMIN:
+        st.markdown("### 🔒 Cofre Financeiro GeralJá")
+        
+        # Segunda camada: Chave Mestra Única
+        chave_mestra = st.text_input("Digite a Chave de Acesso ao Faturamento", type="password", key="master_fin")
+        
+        # DEFINA SUA CHAVE SECRETA AQUI (Exemplo: 'riqueza2025')
+        if chave_mestra == "riqueza2025": 
+            st.success("✅ Acesso Autorizado. Bem-vindo, Diretor.")
+            
+            # Buscando dados reais para o contador
+            all_p = list(db.collection("profissionais").stream())
+            vendas_reais = sum([p.to_dict().get('total_comprado', 0) for p in all_p])
+            total_cortesias = sum([p.to_dict().get('total_bonus', 0) for p in all_p])
+            
+            # Painel Visual de Faturamento
+            st.markdown("---")
+            c1, c2 = st.columns(2)
+            with c1:
+                st.metric("💰 FATURAMENTO BRUTO (Vendas)", f"R$ {vendas_reais:,.2f}")
+            with c2:
+                st.metric("🎁 CUSTO DE MARKETING (Bônus)", f"{total_cortesias} 🪙")
+            
+            st.divider()
+            
+            # Tabela de Auditoria Oculta
+            with st.expander("📄 Ver Relatório Detalhado por Profissional"):
+                contabil = []
+                for p_doc in all_p:
+                    d = p_doc.to_dict()
+                    contabil.append({
+                        "Parceiro": d.get('nome'),
+                        "WhatsApp": p_doc.id,
+                        "Entrada Real (R$)": d.get('total_comprado', 0),
+                        "Cortesias (Bônus)": d.get('total_bonus', 0)
+                    })
+                st.dataframe(contabil, use_container_width=True)
+                
+            # Gráfico de Saúde do Ecossistema
+            st.info(f"O ecossistema possui hoje {sum([p.to_dict().get('saldo', 0) for p in all_p])} moedas ativas na mão dos parceiros.")
+            
+        elif chave_mestra != "":
+            st.error("🚫 Chave Mestra Incorreta. Tentativa registrada.")
+    else:
+        st.warning("⚠️ Esta área é restrita. Identifique-se primeiro na aba ADMIN.")
 # ------------------------------------------------------------------------------
 # RODAPÉ ÚNICO (Final do Arquivo)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
 
 
