@@ -126,7 +126,7 @@ with menu_abas[0]:
     c_city, c_term, c_raio = st.columns([1, 2, 1])
     busca_cidade = c_city.text_input("Sua Cidade", placeholder="Ex: Rio de Janeiro")
     termo_busca = c_term.text_input("Ex: 'Cano estourado', 'Pintar casa'", key="main_search")
-    raio_km = c_raio.select_slider("Raio (KM)", options=[1, 5, 10, 20, 50, 100, "Brasil"], value=50, key="main_raio")
+    raio_km = c_raio.select_slider("Raio (KM)", options=[1, 5, 10, 20, 50, 100, "Brasil"], value=5, key="main_raio")
     
     if termo_busca:
         cat_ia = processar_ia_avancada(termo_busca)
@@ -255,5 +255,6 @@ with menu_abas[3]:
 # RODAPÉ (PRESERVADO)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:30px; color:#94A3B8; font-size:11px;">GERALJÁ BRASIL v19.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
 
