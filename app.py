@@ -263,38 +263,91 @@ with menu_abas[0]:
         st.info(f"✨ IA: Buscando por **{cat_ia}**")
         profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
         
+        # --- PROCESSAMENTO DOS RESULTADOS ---
         lista_ranking = []
         for p_doc in profs:
             p = p_doc.to_dict()
             p['id'] = p_doc.id
-            # MANTIDO: Cálculo de distância real
+            # Cálculo de distância real
             dist = calcular_distancia_real(LAT_REF, LON_REF, p.get('lat', LAT_REF), p.get('lon', LON_REF))
             if dist <= raio_km:
                 p['dist'] = dist
+                
+                # --- MOTOR DE SCORE DE ELITE ---
+                score = 0
+                score += 500 if p.get('verificado', False) else 0  # Selo vale muito
+                score += (p.get('saldo', 0) * 10)                  # Moedas dão destaque
+                score += (p.get('rating', 5) * 20)                 # Avaliação conta
+                p['score_elite'] = score
+                
                 lista_ranking.append(p)
-        
-        # MANTIDO: Ordenação por Distância e Saldo
-       # --- NOVO BLOCO DE ORDENAÇÃO DE ELITE (Substitua o try/except por este) ---
-        for p_rank in lista_ranking:
-            score = 0
-            score += 500 if p_rank.get('verificado', False) else 0  # Selo vale muito
-            score += (p_rank.get('saldo', 0) * 10)                 # Moedas dão destaque
-            score += (p_rank.get('rating', 5) * 20)                # Avaliação conta
-            p_rank['score_elite'] = score
 
-        # Ordena: 1º Score (Quem paga/verificado), 2º Distância (Mais perto)
-        # --- BLOCO ÚNICO DE EXIBIÇÃO CORRIGIDO ---
+        # Ordena: 1º Score (Destaques), 2º Distância (Mais perto)
+        lista_ranking.sort(key=lambda x: (-x['score_elite'], x['dist']))
+
+        # Lógica de Horário
         from datetime import datetime
         import pytz
         hora_atual = datetime.now(pytz.timezone('America/Sao_Paulo')).strftime('%H:%M')
 
+        # --- VALIDAÇÃO DE VAZIO (SUA FRASE PERSONALIZADA) ---
         if not lista_ranking:
-            st.warning("⚠️ Nenhum profissional encontrado neste raio de distância.")
+            st.markdown(f"""
+            <div style="background-color: #FFF4E5; padding: 20px; border-radius: 15px; border-left: 5px solid #FF8C00;">
+                <h3 style="color: #856404;">🔍 Essa profissão ainda não foi preenchida por enquanto.</h3>
+                <p style="color: #856404;">Portanto, se você <b>compartilhar o GeralJá</b>, quando você voltar, 
+                mostraremos o que já temos perto de você!</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            link_share = "https://wa.me/?text=Ei!%20Procurei%20um%20serviço%20no%20GeralJá%20e%20vi%20que%20ainda%20temos%20vagas%20para%20profissionais%20da%20nossa%20região!%20Cadastre-se:%20https://geralja.streamlit.app"
+            st.markdown(f'<a href="{link_share}" target="_blank" style="text-decoration:none;"><div style="background:#22C55E; color:white; padding:15px; border-radius:10px; text-align:center; font-weight:bold; margin-top:10px;">📲 COMPARTILHAR NO WHATSAPP</div></a>', unsafe_allow_html=True)
         
-        for p in lista_ranking:
-            pid = p['id']
-            # Se o cara for verificado e tiver saldo, ganha uma borda especial "Elite"
-            is_elite = p.get('verificado') and p.get('saldo', 0) > 0
+        else:
+            # --- LOOP DE EXIBIÇÃO ÚNICO ---
+            for p in lista_ranking:
+                pid = p['id']
+                is_elite = p.get('verificado') and p.get('saldo', 0) > 0
+                
+                with st.container():
+                    # Borda diferenciada (Destaque Elite vs Comércio vs Normal)
+                    cor_borda = "#FFD700" if is_elite else ("#FF8C00" if p.get('tipo') == "🏢 Comércio/Loja" else "#0047AB")
+                    bg_card = "#FFFDF5" if is_elite else "#FFFFFF"
+                    
+                    st.markdown(f"""
+                    <div style="border-left: 8px solid {cor_borda}; padding: 15px; background: {bg_card}; border-radius: 15px; margin-bottom: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                        <span style="font-size: 12px; color: gray; font-weight: bold;">📍 a {p['dist']:.1f} km de você {" | 🏆 DESTAQUE" if is_elite else ""}</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    col_img, col_txt = st.columns([1, 4])
+                    with col_img:
+                        foto = p.get('foto_url', 'https://via.placeholder.com/150')
+                        st.markdown(f'<img src="{foto}" style="width:75px; height:75px; border-radius:50%; object-fit:cover; border:3px solid {cor_borda}">', unsafe_allow_html=True)
+                    
+                    with col_txt:
+                        nome_exibicao = p.get('nome', '').upper()
+                        if p.get('verificado', False): nome_exibicao += " <span style='color:#1DA1F2;'>☑️</span>"
+                        
+                        status_loja = ""
+                        if p.get('tipo') == "🏢 Comércio/Loja":
+                            h_ab, h_fe = p.get('h_abre', '08:00'), p.get('h_fecha', '18:00')
+                            status_loja = " 🟢 <b style='color:green;'>ABERTO</b>" if h_ab <= hora_atual <= h_fe else " 🔴 <b style='color:red;'>FECHADO</b>"
+                        
+                        st.markdown(f"**{nome_exibicao}** {status_loja}", unsafe_allow_html=True)
+                        st.caption(f"{p.get('descricao', '')[:120]}...")
+
+                    # Botão de Contato com chave única
+                    if st.button(f"FALAR COM {p.get('nome').split()[0].upper()}", key=f"unique_btn_{pid}", use_container_width=True):
+                        if p.get('saldo', 0) > 0:
+                            db.collection("profissionais").document(pid).update({
+                                "saldo": p.get('saldo') - 1,
+                                "cliques": p.get('cliques', 0) + 1
+                            })
+                        link_zap = f"https://wa.me/55{pid}?text=Olá!%20Vi%20seu%20perfil%20no%20GeralJá."
+                        st.markdown(f'<meta http-equiv="refresh" content="0;URL={link_zap}">', unsafe_allow_html=True)
+                    
+                    st.markdown("---")
             
             with st.container():
                 # Borda diferenciada
@@ -728,6 +781,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
