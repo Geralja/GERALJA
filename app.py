@@ -64,7 +64,29 @@ CATEGORIAS_OFICIAIS = [
     "Montador", "Freteiro", "Chaveiro", "Técnico de Fogão", "Técnico de Lavadora",
     "Ajudante Geral", "Outro (Personalizado)"
 ]
+# DICIONÁRIO EXPANDIDO (Versão Comércio + Serviços)
+CONCEITOS_EXPANDIDOS = {
+    # Alimentação e Gastronomia
+    "pizza": "Pizzaria", "pizzaria": "Pizzaria", "fome": "Pizzaria",
+    "lanche": "Lanchonete", "hamburguer": "Lanchonete", "burger": "Lanchonete",
+    "marmita": "Restaurante", "comida": "Restaurante", "almoco": "Restaurante",
+    "doce": "Confeitaria", "bolo": "Confeitaria", "festa": "Confeitaria",
+    "pao": "Padaria", "padaria": "Padaria", "cafe": "Padaria",
+    
+    # Comércio e Varejo
+    "roupa": "Loja de Roupas", "vestuario": "Loja de Roupas", "moda": "Loja de Roupas",
+    "sapato": "Calçados", "tenis": "Calçados",
+    "celular": "Assistência Técnica", "iphone": "Assistência Técnica", "tela": "Assistência Técnica",
+    "mercado": "Supermercado", "compra": "Supermercado", "mercearia": "Supermercado",
+    "remedio": "Farmácia", "farmacia": "Farmácia", "drogaria": "Farmácia",
+    "pet": "Pet Shop", "racao": "Pet Shop", "cachorro": "Pet Shop", "gato": "Pet Shop",
 
+    # Hidráulica/Elétrica (Mantidos)
+    "vazamento": "Encanador", "cano": "Encanador", "torneira": "Encanador",
+    "curto": "Eletricista", "fiacao": "Eletricista", "luz": "Eletricista",
+    "pintar": "Pintor", "pintura": "Pintor", "reforma": "Pedreiro",
+    "carro": "Mecânico", "motor": "Mecânico", "pneu": "Borracheiro"
+}
 # DICIONÁRIO EXPANDIDO (Soma de inteligência)
 CONCEITOS_EXPANDIDOS = {
     # Hidráulica
@@ -706,6 +728,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
