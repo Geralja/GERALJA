@@ -58,13 +58,43 @@ LAT_REF = -23.5505
 LON_REF = -46.6333
 
 CATEGORIAS_OFICIAIS = [
+    # --- MANUTENÇÃO E REFORMAS ---
     "Encanador", "Eletricista", "Pintor", "Pedreiro", "Gesseiro", "Telhadista", 
-    "Serralheiro", "Mecânico", "Borracheiro", "Guincho 24h", "Diarista", 
-    "Jardineiro", "Piscineiro", "TI", "Refrigeração", "Técnico de Fogão", 
-    "Técnico de Lavadora", "Montador", "Freteiro", "Chaveiro", 
-    "Pizzaria", "Lanchonete", "Restaurante", "Confeitaria", "Padaria", 
-    "Loja de Roupas", "Calçados", "Assistência Técnica", "Supermercado", 
-    "Farmácia", "Pet Shop", "Ajudante Geral", "Outro (Personalizado)"
+    "Serralheiro", "Vidraceiro", "Marceneiro", "Marmoraria", "Calhas e Rufos", 
+    "Dedetização", "Desentupidora", "Piscineiro", "Jardineiro", "Limpeza de Estofados",
+
+    # --- AUTOMOTIVO ---
+    "Mecânico", "Borracheiro", "Guincho 24h", "Estética Automotiva", "Lava Jato", 
+    "Auto Elétrica", "Funilaria e Pintura", "Som e Alarme", "Moto Peças", "Auto Peças",
+
+    # --- COMERCIOS E LOJAS ---
+    "Loja de Roupas", "Calçados", "Loja de Variedades", "Relojoaria", "Joalheria", 
+    "Ótica", "Armarinho/Aviamentos", "Papelaria", "Floricultura", "Bazar", 
+    "Material de Construção", "Tintas", "Madeireira", "Móveis", "Eletrodomésticos",
+
+    # --- ALIMENTAÇÃO E BEBIDAS ---
+    "Pizzaria", "Lanchonete", "Restaurante", "Confeitaria", "Padaria", "Açaí", 
+    "Sorveteria", "Adega", "Doceria", "Hortifruti", "Açougue", "Pastelaria", 
+    "Churrascaria", "Hamburgueria", "Comida Japonesa", "Cafeteria",
+
+    # --- SAÚDE E BELEZA ---
+    "Farmácia", "Barbearia/Salão", "Manicure/Pedicure", "Estética Facial", 
+    "Tatuagem/Piercing", "Fitness", "Academia", "Fisioterapia", "Odontologia", 
+    "Clínica Médica", "Psicologia", "Nutricionista", "Ótica",
+
+    # --- TECNOLOGIA E SERVIÇOS ---
+    "TI", "Assistência Técnica", "Celulares", "Informática", "Refrigeração", 
+    "Técnico de Fogão", "Técnico de Lavadora", "Eletrônicos", "Chaveiro", 
+    "Montador", "Freteiro", "Carreto", "Motoboy/Entregas",
+
+    # --- PETS E AGRO ---
+    "Pet Shop", "Veterinário", "Banho e Tosa", "Adestrador", "Agropecuária",
+
+    # --- EDUCAÇÃO E OUTROS ---
+    "Aulas Particulares", "Escola Infantil", "Reforço Escolar", "Idiomas", 
+    "Advocacia", "Contabilidade", "Imobiliária", "Seguros", "Ajudante Geral", 
+    "Diarista", "Cuidador de Idosos", "Babá", "Outro (Personalizado)"
+]
 ]
 # ==============================================================================
 # SUPER MOTOR DE INTELIGÊNCIA GERALJÁ - VERSÃO MEGA EXPANDIDA
@@ -806,6 +836,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
