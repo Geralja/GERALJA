@@ -123,6 +123,23 @@ def converter_img_b64(file):
     if file is None: return ""
     try: return base64.b64encode(file.read()).decode()
     except: return ""
+def enviar_alerta_admin(nome_prof, categoria_prof, whatsapp_prof):
+    """
+    Gera um link de notificação para o Admin. 
+    Nota: Para automação 100% invisível, seria necessária uma API paga (como Twilio ou Z-API).
+    Esta versão gera um log e um alerta visual imediato no painel.
+    """
+    msg_alerta = f"🚀 *NOVO CADASTRO NO GERALJÁ*\n\n" \
+                 f"👤 *Nome:* {nome_prof}\n" \
+                 f"🛠️ *Área:* {categoria_prof}\n" \
+                 f"📱 *Zap:* {whatsapp_prof}\n\n" \
+                 f"Acesse o Painel Admin para aprovar!"
+    
+    # Codifica a mensagem para URL
+    msg_encoded = msg_alerta.replace('\n', '%0A').replace(' ', '%20')
+    link_zap_admin = f"https://wa.me/{ZAP_ADMIN}?text={msg_encoded}"
+    
+    return link_zap_admin
 # ==============================================================================
 # SISTEMA GUARDIAO - IA DE AUTORRECUPERAÇÃO E SEGURANÇA
 # ==============================================================================
@@ -616,6 +633,7 @@ if len(menu_abas) > 5:
 # RODAPÉ ÚNICO (Final do Arquivo)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
 
 
