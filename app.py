@@ -775,6 +775,46 @@ if len(menu_abas) > 5:
             st.dataframe(tabela, use_container_width=True)
         else:
             st.info("Aguardando chave mestra para exibir dados sensíveis.")
+            # --- ABA: FEEDBACK (A VOZ DO CLIENTE) ---
+with menu_abas[4]: # Verifique se o índice da sua aba de feedback é 4 ou 5
+    st.markdown("### ⭐ Sua opinião é fundamental")
+    st.write("Conte-nos como foi a sua experiência com o GeralJá.")
+    
+    with st.form("feedback_form", clear_on_submit=True):
+        nota = st.select_slider(
+            "Qual a sua satisfação geral?",
+            options=["Muito Insatisfeito", "Insatisfeito", "Regular", "Satisfeito", "Muito Satisfeito"],
+            value="Muito Satisfeito"
+        )
+        
+        comentario = st.text_area(
+            "Descreva a sua experiência ou deixe uma sugestão:",
+            placeholder="Ex: O profissional foi muito atencioso...",
+            height=150
+        )
+        
+        btn_enviar = st.form_submit_button("ENVIAR AVALIAÇÃO", use_container_width=True)
+        
+        if btn_enviar:
+            if comentario.strip() != "":
+                try:
+                    # Salvando com data formatada para evitar erros de leitura
+                    agora = datetime.datetime.now()
+                    data_string = agora.strftime("%Y-%m-%d %H:%M:%S")
+                    
+                    db.collection("feedbacks").add({
+                        "data": data_string, # Salva como texto padrão
+                        "nota": nota,
+                        "mensagem": comentario,
+                        "lido": False
+                    })
+                    st.success("🙏 Muito obrigado! Sua mensagem foi enviada.")
+                    st.balloons()
+                except Exception as e:
+                    st.error(f"Erro ao enviar: {e}")
+            else:
+                st.warning("⚠️ Por favor, escreva algo antes de enviar.")
+                
 # ------------------------------------------------------------------------------
 # RODAPÉ ÚNICO (Final do Arquivo)
 # ------------------------------------------------------------------------------
@@ -785,6 +825,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
