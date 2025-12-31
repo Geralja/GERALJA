@@ -330,12 +330,13 @@ with menu_abas[2]:
         
         st.divider()
         
-        # --- FORMULÁRIO DE EDIÇÃO + PORTFÓLIO ---
+      # --- FORMULÁRIO DE EDIÇÃO + PORTFÓLIO ---
         with st.expander("📝 MEU PERFIL & VITRINE", expanded=True):
             with st.form("ed"):
                 col_f1, col_f2 = st.columns(2)
-                n_nome = col_f1.text_input("Nome Profissional/Loja", d.get('nome'))
+                n_nome = col_f1.text_input("Nome Profissional/Loja", d.get('nome', ''))
                 
+                # Garante que a categoria atual seja selecionada no dropdown
                 try:
                     idx_at = CATEGORIAS_OFICIAIS.index(d.get('area', 'Ajudante Geral'))
                 except:
@@ -344,7 +345,7 @@ with menu_abas[2]:
                 n_area = col_f2.selectbox("Sua Especialidade", CATEGORIAS_OFICIAIS, index=idx_at)
                 n_desc = st.text_area("Descrição (Conte sua experiência ou sobre sua loja)", d.get('descricao', ''))
 
-                # --- CAMPOS NOVOS PARA O COMÉRCIO ---
+                # --- CAMPOS PARA COMÉRCIO ---
                 st.markdown("---")
                 col_c1, col_c2 = st.columns(2)
                 n_tipo = col_c1.selectbox("Tipo de Conta", ["👤 Profissional", "🏢 Comércio/Loja"], 
@@ -354,11 +355,11 @@ with menu_abas[2]:
                 col_h1, col_h2 = st.columns(2)
                 n_h_abre = col_h1.text_input("Horário Abre (ex: 08:00)", d.get('h_abre', '08:00'))
                 n_h_fecha = col_h2.text_input("Horário Fecha (ex: 18:00)", d.get('h_fecha', '18:00'))
-                st.markdown("---")
                 
+                st.markdown("---")
                 col_f3, col_f4 = st.columns(2)
                 n_foto = col_f3.file_uploader("Trocar Foto de Perfil", type=['jpg', 'png', 'jpeg'])
-                n_portfolio = col_f4.file_uploader("Vitrine (Até 3 fotos do seu negócio)", type=['jpg', 'png', 'jpeg'], accept_multiple_files=True)
+                n_portfolio = col_f4.file_uploader("Vitrine (Até 3 fotos)", type=['jpg', 'png', 'jpeg'], accept_multiple_files=True)
                 
                 if st.form_submit_button("SALVAR TODAS AS ALTERAÇÕES", use_container_width=True):
                     up = {
@@ -371,26 +372,29 @@ with menu_abas[2]:
                         "h_fecha": n_h_fecha
                     }
                     
+                    # Processamento da Foto de Perfil
                     if n_foto:
                         up["foto_url"] = f"data:image/png;base64,{converter_img_b64(n_foto)}"
                     
+                    # Processamento do Portfólio (limite de 3 fotos)
                     if n_portfolio:
                         lista_b64 = []
                         for foto in n_portfolio[:3]:
-                            img_b64 = converter_img_b64(foto)
-                            if img_b64:
-                                lista_b64.append(f"data:image/png;base64,{img_b64}")
+                            img_str = converter_img_b64(foto)
+                            if img_str:
+                                lista_b64.append(f"data:image/png;base64,{img_str}")
                         up["portfolio_imgs"] = lista_b64
                     
+                    # Atualização no Firestore
                     doc_ref.update(up)
                     st.success("✅ Vitrine atualizada com sucesso!")
                     time.sleep(1)
                     st.rerun()
 
+        # Botão de Sair fora do Form
         if st.button("SAIR DO PAINEL", use_container_width=True):
             st.session_state.auth = False
             st.rerun()
-
 # --- ABA 3: CADASTRO (VERSÃO SOMAR) ---
 with menu_abas[1]:
     st.header("🚀 Seja um Parceiro GeralJá")
@@ -612,6 +616,7 @@ if len(menu_abas) > 5:
 # RODAPÉ ÚNICO (Final do Arquivo)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
 
 
