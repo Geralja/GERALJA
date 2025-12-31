@@ -211,7 +211,7 @@ if comando == "abracadabra":
 # 4. Cria as abas no Streamlit
 menu_abas = st.tabs(lista_abas)
 
-# --- ABA 1: BUSCA ---
+# --- ABA 1: BUSCA (VERSÃO VITRINE & STATUS VIVO) ---
 with menu_abas[0]:
     st.markdown("### 🏙️ O que você precisa?")
     c1, c2 = st.columns([3, 1])
@@ -232,52 +232,76 @@ with menu_abas[0]:
                 p['dist'] = dist
                 lista_ranking.append(p)
         
-      # --- LOGICA DE RANKING PREMIUM (SOMA DE PODER) ---
+        # Ordenação que você já usa (Distância e Saldo)
         try:
-            # Ordena por: 1º Mais perto, 2º Mais saldo (quem investe mais), 3º Melhor nota
             lista_ranking.sort(key=lambda x: (x['dist'], -x.get('saldo', 0), -x.get('rating', 5.0)))
         except:
             lista_ranking.sort(key=lambda x: x['dist'])
 
-        # --- LOOP DE EXIBIÇÃO DOS CARDS ---
-        for pro in lista_ranking:
-            with st.container():
-                # Preparação segura dos dados para não travar o HTML
-                foto_fix = pro.get('foto_url') or f"https://api.dicebear.com/7.x/avataaars/svg?seed={pro['id']}"
-                desc_fix = (pro.get('descricao') or "Especialista parceiro GeralJá Brasil.")[:150]
-                nome_fix = pro.get('nome', 'Profissional').upper()
+        # --- EXIBIÇÃO DOS RESULTADOS (O "PULO DO GATO") ---
+        from datetime import datetime
+        import pytz
+        hora_atual = datetime.now(pytz.timezone('America/Sao_Paulo')).strftime('%H:%M')
 
-                # Card HTML Clean & Professional
+        for p in lista_ranking:
+            with st.container():
+                # Borda diferenciada se for Comércio
+                cor_borda = "#FF8C00" if p.get('tipo') == "🏢 Comércio/Loja" else "#0047AB"
+                
                 st.markdown(f"""
-                <div class="pro-card">
-                    <img src="{foto_fix}" class="pro-img">
-                    <div style="flex-grow:1;">
-                        <small>📍 {pro['dist']} KM | 💎 {pro['area']}</small>
-                        <h3 style="margin:5px 0; color:#1E293B;">{nome_fix}</h3>
-                        <p style="font-size:14px; color:#475569; margin-bottom:0;">{desc_fix}...</p>
-                    </div>
+                <div style="border-left: 5px solid {cor_borda}; padding: 15px; background: #f9f9f9; border-radius: 10px; margin-bottom: 10px;">
+                    <span style="font-size: 12px; color: gray;">📍 a {p['dist']:.1f} km de você</span>
                 </div>
                 """, unsafe_allow_html=True)
-                
-                # --- BLOCO DE DEPOIMENTOS (FOTOS DO PORTFÓLIO) ---
-                if pro.get('portfolio_imgs'):
-                    with st.expander("📸 Ver fotos de serviços realizados"):
-                        cols_fotos = st.columns(3)
-                        for i, img_data in enumerate(pro['portfolio_imgs'][:3]):
-                            cols_fotos[i%3].image(img_data, use_container_width=True)
 
-                # --- BOTÃO DE CONTATO COM COBRANÇA DE LEAD ---
-                if pro.get('saldo', 0) >= TAXA_CONTATO:
-                    if st.button(f"FALAR COM {nome_fix.split()[0]}", key=f"z_{pro['id']}", use_container_width=True):
-                        # Registra o clique e debita o saldo em tempo real
-                        db.collection("profissionais").document(pro['id']).update({
-                            "saldo": firestore.Increment(-TAXA_CONTATO),
-                            "cliques": firestore.Increment(1)
-                        })
-                        st.balloons()
-                        st.markdown(f'<a href="https://wa.me/55{pro["whatsapp"]}?text=Olá, vi seu perfil no GeralJá!" class="btn-zap">ABRIR WHATSAPP AGORA</a>', unsafe_allow_html=True)
-                else:
-                    st.warning("⏳ Este profissional atingiu o limite de atendimentos diários.")
+                col_img, col_txt = st.columns([1, 4])
+                
+                with col_img:
+                    foto = p.get('foto_url', 'https://via.placeholder.com/150')
+                    st.markdown(f'<img src="{foto}" style="width:70px; height:70px; border-radius:50%; object-fit:cover; border:2px solid {cor_borda}">', unsafe_allow_html=True)
+                
+                with col_txt:
+                    # Título e Status Aberto/Fechado
+                    status_loja = ""
+                    if p.get('tipo') == "🏢 Comércio/Loja":
+                        h_ab = p.get('h_abre', '08:00')
+                        h_fe = p.get('h_fecha', '18:00')
+                        if h_ab <= hora_atual <= h_fe:
+                            status_loja = " 🟢 <b style='color:green; font-size:12px;'>ABERTO</b>"
+                        else:
+                            status_loja = " 🔴 <b style='color:red; font-size:12px;'>FECHADO</b>"
+                    
+                    st.markdown(f"**{p['nome'].upper()}** {status_loja}", unsafe_allow_html=True)
+                    st.caption(f"{p.get('descricao')[:100]}...")
+
+                # Se tiver Vitrine de Fotos, mostra abaixo do texto
+                if p.get('portfolio_imgs'):
+                    imgs = p.get('portfolio_imgs')
+                    cols = st.columns(len(imgs) if len(imgs) <= 3 else 3)
+                    for i, img_b64 in enumerate(imgs[:3]):
+                        cols[i].image(img_b64, use_container_width=True)
+
+                # Botão de Contato
+                if st.button(f"FALAR COM {p['nome'].split()[0].upper()}", key=f"chat_{p['id']}", use_container_width=True):
+                    # Aqui você coloca sua lógica de descontar saldo/moeda
+                    link_whatsapp = f"https://wa.me/55{p['id']}?text=Olá%20{p['nome']},%20vi%20seu%20perfil%20no%20GeralJá!"
+                    st.markdown(f'<meta http-equiv="refresh" content="0;URL={link_whatsapp}">', unsafe_allow_html=True)
+                st.markdown("---")
+                # ... (fotos da vitrine apareceriam aqui em cima) ...
+
+                # --- AQUI VOCÊ SUBSTITUI PELO BOTÃO COM COBRANÇA ---
+                if st.button(f"FALAR COM {p['nome'].split()[0].upper()}", key=f"chat_{p['id']}", use_container_width=True):
+                    # 1. Tira 1 moeda do saldo de quem recebeu o clique
+                    if p.get('saldo', 0) > 0:
+                        db.collection("profissionais").document(p['id']).update({"saldo": p.get('saldo') - 1})
+                        # Opcional: registrar o clique no banco
+                        db.collection("profissionais").document(p['id']).update({"cliques": p.get('cliques', 0) + 1})
+                    
+                    # 2. Abre o WhatsApp do cliente
+                    link_whatsapp = f"https://wa.me/55{p['id']}?text=Olá%20{p['nome']},%20vi%20seu%20perfil%20no%20GeralJá!"
+                    st.markdown(f'<meta http-equiv="refresh" content="0;URL={link_whatsapp}">', unsafe_allow_html=True)
+                
+                st.markdown("---") # Linha divisória entre um profissional e outro
 # --- ABA 2: CENTRAL PARCEIRO (VERSÃO PORTFÓLIO & BLINDADA) ---
 with menu_abas[2]:
     if 'auth' not in st.session_state: st.session_state.auth = False
@@ -567,6 +591,7 @@ if len(menu_abas) > 5:
 # RODAPÉ ÚNICO (Final do Arquivo)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
 
 
