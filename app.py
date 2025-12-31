@@ -722,58 +722,32 @@ with menu_abas[3]:
             for r in reparos: st.write(r)
             st.balloons()
 
-    # --- ABA INTERNA: FEEDBACKS ---
+# --- ABA INTERNA: FEEDBACKS (DENTRO DA CENTRAL DE COMANDO) ---
     with t_feed:
-        feedbacks = list(db.collection("feedbacks").order_by("data", direction="DESCENDING").limit(20).stream())
-        if feedbacks:
-            for f in feedbacks:
-                df = f.to_dict()
-                st.write(f"📅 {df.get('data')[:10]} | ⭐ {df.get('nota')}: {df.get('mensagem')}")
-        else:
-            st.write("Sem mensagens novas.")
-        
-       # --- ABA: FEEDBACK (A VOZ DO CLIENTE) ---
-# Se o Financeiro estiver invisível, esta é a aba [4]. 
-# Se o Financeiro aparecer, ela continua sendo acessada corretamente pelo índice.
-with menu_abas[4]:
-    st.markdown("### ⭐ Sua opinião é fundamental")
-    st.write("Conte-nos como foi a sua experiência com o GeralJá.")
-    
-    # Criamos um formulário para organizar o envio
-    with st.form("feedback_form", clear_on_submit=True):
-        # 1. Escala de Satisfação
-        nota = st.select_slider(
-            "Qual a sua satisfação geral?",
-            options=["Muito Insatisfeito", "Insatisfeito", "Regular", "Satisfeito", "Muito Satisfeito"],
-            value="Muito Satisfeito"
-        )
-        
-        # 2. CAIXA DE TEXTO (O que você pediu)
-        comentario = st.text_area(
-            "Descreva a sua experiência ou deixe uma sugestão:",
-            placeholder="Ex: O profissional foi muito atencioso, mas o app poderia carregar mais rápido...",
-            height=150
-        )
-        
-        # Botão de envio
-        btn_enviar = st.form_submit_button("ENVIAR AVALIAÇÃO", use_container_width=True)
-        
-        if btn_enviar:
-            if comentario.strip() != "":
-                try:
-                    # Somando o feedback ao banco de dados
-                    db.collection("feedbacks").add({
-                        "data": datetime.datetime.now(),
-                        "nota": nota,
-                        "mensagem": comentario,
-                        "lido": False
-                    })
-                    st.success("🙏 Muito obrigado! A sua mensagem foi enviada diretamente para a nossa equipa.")
-                    st.balloons()
-                except Exception as e:
-                    st.error(f"Erro ao enviar: {e}")
+        try:
+            feedbacks = list(db.collection("feedbacks").order_by("data", direction="DESCENDING").limit(20).stream())
+            if feedbacks:
+                for f in feedbacks:
+                    df = f.to_dict()
+                    
+                    # CORREÇÃO DO ERRO: Converte para string antes de cortar os 10 caracteres
+                    data_bruta = df.get('data', 'Sem data')
+                    data_txt = str(data_bruta)[:10] 
+                    
+                    nota = df.get('nota', 'S/N')
+                    msg = df.get('mensagem', '')
+                    
+                    st.markdown(f"""
+                        <div style="background-color: #f0f2f6; padding: 10px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #0047AB;">
+                            <small>📅 {data_txt}</small><br>
+                            <b>⭐ {nota}</b><br>
+                            <p style="margin:0;">{msg}</p>
+                        </div>
+                    """, unsafe_allow_html=True)
             else:
-                st.warning("⚠️ Por favor, escreva algo na caixa de texto antes de enviar.")
+                st.info("Nenhuma nova mensagem na caixa de entrada.")
+        except Exception as e:
+            st.error(f"Erro ao carregar mensagens: {e}")
 
     st.divider()
     st.caption("O GeralJá utiliza os seus feedbacks para melhorar a segurança e a qualidade dos prestadores de serviço.")
@@ -811,6 +785,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
