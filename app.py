@@ -406,11 +406,48 @@ with menu_abas[2]:
         doc_ref = db.collection("profissionais").document(st.session_state.user_id)
         d = doc_ref.get().to_dict()
         
-        # --- CABEÇALHO DE MÉTRICAS ---
-        m1, m2, m3 = st.columns(3)
-        m1.markdown(f'<div style="background:#f0f2f6;padding:10px;border-radius:10px;text-align:center">SALDO: {d.get("saldo", 0)} 🪙</div>', unsafe_allow_html=True)
-        m2.markdown(f'<div style="background:#f0f2f6;padding:10px;border-radius:10px;text-align:center">CLIQUES: {d.get("cliques", 0)} 🚀</div>', unsafe_allow_html=True)
-        m3.markdown(f'<div style="background:#f0f2f6;padding:10px;border-radius:10px;text-align:center">STATUS: {"🟢 ATIVO" if d.get("aprovado") else "🟡 PENDENTE"}</div>', unsafe_allow_html=True)
+      # --- CABEÇALHO DE MÉTRICAS (DESIGN ATUALIZADO) ---
+        st.markdown(f"""
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px;">
+                <div style="background:#1E293B; color:white; padding:15px; border-radius:15px; text-align:center;">
+                    <small>MEU SALDO</small><br><b style="font-size:20px;">{d.get('saldo', 0)} 🪙</b>
+                </div>
+                <div style="background:#1E293B; color:white; padding:15px; border-radius:15px; text-align:center;">
+                    <small>CLIQUES</small><br><b style="font-size:20px;">{d.get('cliques', 0)} 🚀</b>
+                </div>
+                <div style="background:#1E293B; color:white; padding:15px; border-radius:15px; text-align:center;">
+                    <small>STATUS</small><br><b style="font-size:14px;">{"🟢 ATIVO" if d.get('aprovado') else "🟡 PENDENTE"}</b>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+
+        # --- VITRINE DE VENDAS (O PEIXE) ---
+        with st.expander("💎 COMPRAR MOEDAS E GANHAR DESTAQUE", expanded=True):
+            st.markdown("<p style='text-align:center; color:gray;'>Escolha um pacote para subir no ranking e receber mais chamados.</p>", unsafe_allow_html=True)
+            cv1, cv2, cv3 = st.columns(3)
+            
+            # Pacote Bronze
+            with cv1:
+                st.markdown('<div style="border:1px solid #ddd; padding:10px; border-radius:10px; text-align:center;"><b>BRONZE</b><br>10 moedas<br><b>R$ 25</b></div>', unsafe_allow_html=True)
+                if st.button("COMPRAR 🥉", key="btn_b10", use_container_width=True):
+                    msg = f"Olá! Quero o Pacote BRONZE (10 moedas) para o Zap: {st.session_state.user_id}"
+                    st.markdown(f'<meta http-equiv="refresh" content="0;URL=https://wa.me/{ZAP_ADMIN}?text={msg.replace(" ", "%20")}">', unsafe_allow_html=True)
+
+            # Pacote Prata
+            with cv2:
+                st.markdown('<div style="border:2px solid #FFD700; background:#FFFDF5; padding:10px; border-radius:10px; text-align:center;"><b>PRATA</b><br>30 moedas<br><b>R$ 60</b></div>', unsafe_allow_html=True)
+                if st.button("COMPRAR 🥈", key="btn_p30", use_container_width=True):
+                    msg = f"Olá! Quero o Pacote PRATA (30 moedas) para o Zap: {st.session_state.user_id}"
+                    st.markdown(f'<meta http-equiv="refresh" content="0;URL=https://wa.me/{ZAP_ADMIN}?text={msg.replace(" ", "%20")}">', unsafe_allow_html=True)
+
+            # Pacote Ouro
+            with cv3:
+                st.markdown('<div style="border:1px solid #ddd; padding:10px; border-radius:10px; text-align:center;"><b>OURO</b><br>100 moedas<br><b>R$ 150</b></div>', unsafe_allow_html=True)
+                if st.button("COMPRAR 🥇", key="btn_o100", use_container_width=True):
+                    msg = f"Olá! Quero o Pacote OURO (100 moedas) para o Zap: {st.session_state.user_id}"
+                    st.markdown(f'<meta http-equiv="refresh" content="0;URL=https://wa.me/{ZAP_ADMIN}?text={msg.replace(" ", "%20")}">', unsafe_allow_html=True)
+        
+        st.divider())
         
         st.divider()
         
@@ -731,6 +768,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
