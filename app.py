@@ -95,7 +95,6 @@ CATEGORIAS_OFICIAIS = [
     "Advocacia", "Contabilidade", "Imobiliária", "Seguros", "Ajudante Geral", 
     "Diarista", "Cuidador de Idosos", "Babá", "Outro (Personalizado)"
 ]
-]
 # ==============================================================================
 # SUPER MOTOR DE INTELIGÊNCIA GERALJÁ - VERSÃO MEGA EXPANDIDA
 # ==============================================================================
@@ -836,6 +835,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
