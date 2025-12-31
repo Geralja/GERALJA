@@ -261,27 +261,27 @@ with menu_abas[0]:
             p_rank['score_elite'] = score
 
         # Ordena: 1º Score (Quem paga/verificado), 2º Distância (Mais perto)
-        lista_ranking.sort(key=lambda x: (-x['score_elite'], x['dist']))
-
-        # Lógica de Horário em Tempo Real (MANTIDO)
+        # --- BLOCO ÚNICO DE EXIBIÇÃO CORRIGIDO ---
         from datetime import datetime
         import pytz
         hora_atual = datetime.now(pytz.timezone('America/Sao_Paulo')).strftime('%H:%M')
 
-        # --- LOOP DE EXIBIÇÃO (SEU DESIGN ORIGINAL MANTIDO) ---
+        if not lista_ranking:
+            st.warning("⚠️ Nenhum profissional encontrado neste raio de distância.")
+        
         for p in lista_ranking:
             pid = p['id']
             # Se o cara for verificado e tiver saldo, ganha uma borda especial "Elite"
             is_elite = p.get('verificado') and p.get('saldo', 0) > 0
             
             with st.container():
-                # Borda diferenciada (Mantendo sua lógica original + Destaque Elite)
+                # Borda diferenciada
                 cor_borda = "#FFD700" if is_elite else ("#FF8C00" if p.get('tipo') == "🏢 Comércio/Loja" else "#0047AB")
-                bg_card = "#FFFDF5" if is_elite else "#f9f9f9"
+                bg_card = "#FFFDF5" if is_elite else "#FFFFFF"
                 
                 st.markdown(f"""
-                <div style="border-left: 8px solid {cor_borda}; padding: 10px; background: {bg_card}; border-radius: 10px; margin-bottom: 5px; box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
-                    <span style="font-size: 12px; color: gray;">📍 a {p['dist']:.1f} km de você {" | 🏆 DESTAQUE" if is_elite else ""}</span>
+                <div style="border-left: 8px solid {cor_borda}; padding: 15px; background: {bg_card}; border-radius: 15px; margin-bottom: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                    <span style="font-size: 12px; color: gray; font-weight: bold;">📍 a {p['dist']:.1f} km de você {" | 🏆 DESTAQUE" if is_elite else ""}</span>
                 </div>
                 """, unsafe_allow_html=True)
 
@@ -289,7 +289,7 @@ with menu_abas[0]:
                 
                 with col_img:
                     foto = p.get('foto_url', 'https://via.placeholder.com/150')
-                    st.markdown(f'<img src="{foto}" style="width:70px; height:70px; border-radius:50%; object-fit:cover; border:3px solid {cor_borda}">', unsafe_allow_html=True)
+                    st.markdown(f'<img src="{foto}" style="width:75px; height:75px; border-radius:50%; object-fit:cover; border:3px solid {cor_borda}">', unsafe_allow_html=True)
                 
                 with col_txt:
                     nome_exibicao = p.get('nome', '').upper()
@@ -302,17 +302,18 @@ with menu_abas[0]:
                         status_loja = " 🟢 <b style='color:green;'>ABERTO</b>" if h_ab <= hora_atual <= h_fe else " 🔴 <b style='color:red;'>FECHADO</b>"
                     
                     st.markdown(f"**{nome_exibicao}** {status_loja}", unsafe_allow_html=True)
-                    st.caption(f"{p.get('descricao', '')[:100]}...")
+                    st.caption(f"{p.get('descricao', '')[:120]}...")
 
-                # MANTIDO: Vitrine de Fotos do Portfólio
+                # Vitrine de Fotos (se houver)
                 if p.get('portfolio_imgs'):
                     imgs = p.get('portfolio_imgs')
                     cols_v = st.columns(3)
                     for i, img_b64 in enumerate(imgs[:3]):
                         cols_v[i].image(img_b64, use_container_width=True)
 
-                # BOTÃO DE CONTATO (MANTIDO)
-                if st.button(f"FALAR COM {p.get('nome').split()[0].upper()}", key=f"chat_{pid}", use_container_width=True):
+                # BOTÃO DE CONTATO (COM KEY ÚNICA)
+                if st.button(f"FALAR COM {p.get('nome').split()[0].upper()}", key=f"btn_zap_{pid}", use_container_width=True):
+                    # Debita saldo se houver
                     if p.get('saldo', 0) > 0:
                         db.collection("profissionais").document(pid).update({
                             "saldo": p.get('saldo') - 1,
@@ -322,68 +323,7 @@ with menu_abas[0]:
                     link_whatsapp = f"https://wa.me/55{pid}?text=Olá%20{p['nome']},%20vi%20seu%20perfil%20no%20GeralJá!"
                     st.markdown(f'<meta http-equiv="refresh" content="0;URL={link_whatsapp}">', unsafe_allow_html=True)
                 
-                st.markdown("---")
-
-        # Lógica de Horário em Tempo Real
-        from datetime import datetime
-        import pytz
-        hora_atual = datetime.now(pytz.timezone('America/Sao_Paulo')).strftime('%H:%M')
-
-        # --- LOOP DE EXIBIÇÃO ---
-        for p in lista_ranking:
-            pid = p['id']
-            with st.container():
-                # Borda diferenciada (Comércio vs Profissional)
-                cor_borda = "#FF8C00" if p.get('tipo') == "🏢 Comércio/Loja" else "#0047AB"
-                
-                st.markdown(f"""
-                <div style="border-left: 5px solid {cor_borda}; padding: 10px; background: #f9f9f9; border-radius: 10px; margin-bottom: 5px;">
-                    <span style="font-size: 12px; color: gray;">📍 a {p['dist']:.1f} km de você</span>
-                </div>
-                """, unsafe_allow_html=True)
-
-                col_img, col_txt = st.columns([1, 4])
-                
-                with col_img:
-                    foto = p.get('foto_url', 'https://via.placeholder.com/150')
-                    st.markdown(f'<img src="{foto}" style="width:70px; height:70px; border-radius:50%; object-fit:cover; border:2px solid {cor_borda}">', unsafe_allow_html=True)
-                
-                with col_txt:
-                    # Título com Selo de Verificado
-                    nome_exibicao = p.get('nome', '').upper()
-                    if p.get('verificado', False):
-                        nome_exibicao += " <span style='color:#1DA1F2;'>☑️</span>"
-                    
-                    # Status Aberto/Fechado
-                    status_loja = ""
-                    if p.get('tipo') == "🏢 Comércio/Loja":
-                        h_ab, h_fe = p.get('h_abre', '08:00'), p.get('h_fecha', '18:00')
-                        status_loja = " 🟢 <b style='color:green;'>ABERTO</b>" if h_ab <= hora_atual <= h_fe else " 🔴 <b style='color:red;'>FECHADO</b>"
-                    
-                    st.markdown(f"**{nome_exibicao}** {status_loja}", unsafe_allow_html=True)
-                    st.caption(f"{p.get('descricao', '')[:100]}...")
-
-                # MANTIDO: Vitrine de Fotos do Portfólio
-                if p.get('portfolio_imgs'):
-                    imgs = p.get('portfolio_imgs')
-                    cols_v = st.columns(3)
-                    for i, img_b64 in enumerate(imgs[:3]):
-                        cols_v[i].image(img_b64, use_container_width=True)
-
-                # BOTÃO DE CONTATO COM COBRANÇA DE MOEDAS
-                if st.button(f"FALAR COM {p.get('nome').split()[0].upper()}", key=f"chat_{pid}", use_container_width=True):
-                    # Descontar saldo e registrar clique
-                    if p.get('saldo', 0) > 0:
-                        db.collection("profissionais").document(pid).update({
-                            "saldo": p.get('saldo') - 1,
-                            "cliques": p.get('cliques', 0) + 1
-                        })
-                    
-                    # Redirecionar para o WhatsApp
-                    link_whatsapp = f"https://wa.me/55{pid}?text=Olá%20{p['nome']},%20vi%20seu%20perfil%20no%20GeralJá!"
-                    st.markdown(f'<meta http-equiv="refresh" content="0;URL={link_whatsapp}">', unsafe_allow_html=True)
-                
-                st.markdown("---")
+                st.markdown("<br>", unsafe_allow_html=True)
 # --- ABA 2: CENTRAL PARCEIRO (VERSÃO PORTFÓLIO & BLINDADA) ---
 with menu_abas[2]:
     if 'auth' not in st.session_state: st.session_state.auth = False
@@ -766,6 +706,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
