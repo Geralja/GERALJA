@@ -447,7 +447,7 @@ with menu_abas[2]:
                     msg = f"Olá! Quero o Pacote OURO (100 moedas) para o Zap: {st.session_state.user_id}"
                     st.markdown(f'<meta http-equiv="refresh" content="0;URL=https://wa.me/{ZAP_ADMIN}?text={msg.replace(" ", "%20")}">', unsafe_allow_html=True)
         
-        st.divider())
+        st.divider()
         
       # --- FORMULÁRIO DE EDIÇÃO + PORTFÓLIO ---
         with st.expander("📝 MEU PERFIL & VITRINE", expanded=True):
@@ -766,6 +766,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
