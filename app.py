@@ -302,17 +302,17 @@ with menu_abas[2]:
         
         # --- CABEÇALHO DE MÉTRICAS ---
         m1, m2, m3 = st.columns(3)
-        m1.markdown(f'<div class="metric-box">SALDO: {d.get("saldo", 0)} 🪙</div>', unsafe_allow_html=True)
-        m2.markdown(f'<div class="metric-box">CLIQUES: {d.get("cliques", 0)} 🚀</div>', unsafe_allow_html=True)
-        m3.markdown(f'<div class="metric-box">STATUS: {"🟢 ATIVO" if d.get("aprovado") else "🟡 PENDENTE"}</div>', unsafe_allow_html=True)
+        m1.markdown(f'<div style="background:#f0f2f6;padding:10px;border-radius:10px;text-align:center">SALDO: {d.get("saldo", 0)} 🪙</div>', unsafe_allow_html=True)
+        m2.markdown(f'<div style="background:#f0f2f6;padding:10px;border-radius:10px;text-align:center">CLIQUES: {d.get("cliques", 0)} 🚀</div>', unsafe_allow_html=True)
+        m3.markdown(f'<div style="background:#f0f2f6;padding:10px;border-radius:10px;text-align:center">STATUS: {"🟢 ATIVO" if d.get("aprovado") else "🟡 PENDENTE"}</div>', unsafe_allow_html=True)
         
         st.divider()
         
         # --- FORMULÁRIO DE EDIÇÃO + PORTFÓLIO ---
-        with st.expander("📝 MEU PERFIL & PORTFÓLIO", expanded=True):
+        with st.expander("📝 MEU PERFIL & VITRINE", expanded=True):
             with st.form("ed"):
                 col_f1, col_f2 = st.columns(2)
-                n_nome = col_f1.text_input("Nome Profissional", d.get('nome'))
+                n_nome = col_f1.text_input("Nome Profissional/Loja", d.get('nome'))
                 
                 try:
                     idx_at = CATEGORIAS_OFICIAIS.index(d.get('area', 'Ajudante Geral'))
@@ -320,28 +320,38 @@ with menu_abas[2]:
                     idx_at = 0
                 
                 n_area = col_f2.selectbox("Sua Especialidade", CATEGORIAS_OFICIAIS, index=idx_at)
-                n_desc = st.text_area("Descrição (Conte sua experiência)", d.get('descricao', ''), help="Dica: Clientes preferem descrições detalhadas.")
+                n_desc = st.text_area("Descrição (Conte sua experiência ou sobre sua loja)", d.get('descricao', ''))
+
+                # --- CAMPOS NOVOS PARA O COMÉRCIO ---
+                st.markdown("---")
+                col_c1, col_c2 = st.columns(2)
+                n_tipo = col_c1.selectbox("Tipo de Conta", ["👤 Profissional", "🏢 Comércio/Loja"], 
+                                         index=0 if d.get('tipo') == "👤 Profissional" else 1)
+                n_catalogo = col_c2.text_input("Link do Catálogo/Instagram", d.get('link_catalogo', ''))
+
+                col_h1, col_h2 = st.columns(2)
+                n_h_abre = col_h1.text_input("Horário Abre (ex: 08:00)", d.get('h_abre', '08:00'))
+                n_h_fecha = col_h2.text_input("Horário Fecha (ex: 18:00)", d.get('h_fecha', '18:00'))
+                st.markdown("---")
                 
                 col_f3, col_f4 = st.columns(2)
                 n_foto = col_f3.file_uploader("Trocar Foto de Perfil", type=['jpg', 'png', 'jpeg'])
+                n_portfolio = col_f4.file_uploader("Vitrine (Até 3 fotos do seu negócio)", type=['jpg', 'png', 'jpeg'], accept_multiple_files=True)
                 
-                # --- SOMANDO: UPLOAD DE PORTFÓLIO ---
-                n_portfolio = col_f4.file_uploader("Portfólio (Até 3 fotos de serviços)", type=['jpg', 'png', 'jpeg'], accept_multiple_files=True)
-                
-                st.info("💡 Fotos de alta qualidade aumentam suas chances de fechamento em 70%!")
-
                 if st.form_submit_button("SALVAR TODAS AS ALTERAÇÕES", use_container_width=True):
                     up = {
                         "nome": n_nome,
                         "area": n_area,
-                        "descricao": n_desc
+                        "descricao": n_desc,
+                        "tipo": n_tipo,
+                        "link_catalogo": n_catalogo,
+                        "h_abre": n_h_abre,
+                        "h_fecha": n_h_fecha
                     }
                     
-                    # Processa Foto de Perfil
                     if n_foto:
                         up["foto_url"] = f"data:image/png;base64,{converter_img_b64(n_foto)}"
                     
-                    # Processa Fotos do Portfólio (Soma até 3)
                     if n_portfolio:
                         lista_b64 = []
                         for foto in n_portfolio[:3]:
@@ -350,13 +360,11 @@ with menu_abas[2]:
                                 lista_b64.append(f"data:image/png;base64,{img_b64}")
                         up["portfolio_imgs"] = lista_b64
                     
-                    # Gravação Blindada
                     doc_ref.update(up)
-                    st.success("✅ Perfil e Portfólio atualizados com sucesso!")
+                    st.success("✅ Vitrine atualizada com sucesso!")
                     time.sleep(1)
                     st.rerun()
 
-        # Botão de Logoff
         if st.button("SAIR DO PAINEL", use_container_width=True):
             st.session_state.auth = False
             st.rerun()
@@ -559,6 +567,7 @@ if len(menu_abas) > 5:
 # RODAPÉ ÚNICO (Final do Arquivo)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
 
 
