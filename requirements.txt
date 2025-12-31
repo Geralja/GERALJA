@@ -1,12 +1,9 @@
 streamlit
 firebase-admin
+google-cloud-firestore
+pytz
 gTTS
 pandas
-streamlit
-google-cloud-firestore
 nltk
 fuzzywuzzy
 python-Levenshtein
-streamlit
-google-cloud-firestore
-pytz
