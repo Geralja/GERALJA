@@ -58,61 +58,76 @@ LAT_REF = -23.5505
 LON_REF = -46.6333
 
 CATEGORIAS_OFICIAIS = [
-    "Encanador", "Eletricista", "Pintor", "Pedreiro", "Gesseiro",
-    "Telhadista", "Mecânico", "Borracheiro", "Guincho 24h", "Diarista",
-    "Jardineiro", "Piscineiro", "TI", "Refrigeração", "Serralheiro",
-    "Montador", "Freteiro", "Chaveiro", "Técnico de Fogão", "Técnico de Lavadora",
-    "Ajudante Geral", "Outro (Personalizado)"
+    "Encanador", "Eletricista", "Pintor", "Pedreiro", "Gesseiro", "Telhadista", 
+    "Serralheiro", "Mecânico", "Borracheiro", "Guincho 24h", "Diarista", 
+    "Jardineiro", "Piscineiro", "TI", "Refrigeração", "Técnico de Fogão", 
+    "Técnico de Lavadora", "Montador", "Freteiro", "Chaveiro", 
+    "Pizzaria", "Lanchonete", "Restaurante", "Confeitaria", "Padaria", 
+    "Loja de Roupas", "Calçados", "Assistência Técnica", "Supermercado", 
+    "Farmácia", "Pet Shop", "Ajudante Geral", "Outro (Personalizado)"
 ]
-# DICIONÁRIO EXPANDIDO (Versão Comércio + Serviços)
+# ==============================================================================
+# SUPER MOTOR DE INTELIGÊNCIA GERALJÁ - VERSÃO MEGA EXPANDIDA
+# ==============================================================================
 CONCEITOS_EXPANDIDOS = {
-    # Alimentação e Gastronomia
-    "pizza": "Pizzaria", "pizzaria": "Pizzaria", "fome": "Pizzaria",
-    "lanche": "Lanchonete", "hamburguer": "Lanchonete", "burger": "Lanchonete",
-    "marmita": "Restaurante", "comida": "Restaurante", "almoco": "Restaurante",
-    "doce": "Confeitaria", "bolo": "Confeitaria", "festa": "Confeitaria",
-    "pao": "Padaria", "padaria": "Padaria", "cafe": "Padaria",
-    
-    # Comércio e Varejo
-    "roupa": "Loja de Roupas", "vestuario": "Loja de Roupas", "moda": "Loja de Roupas",
-    "sapato": "Calçados", "tenis": "Calçados",
-    "celular": "Assistência Técnica", "iphone": "Assistência Técnica", "tela": "Assistência Técnica",
-    "mercado": "Supermercado", "compra": "Supermercado", "mercearia": "Supermercado",
-    "remedio": "Farmácia", "farmacia": "Farmácia", "drogaria": "Farmácia",
-    "pet": "Pet Shop", "racao": "Pet Shop", "cachorro": "Pet Shop", "gato": "Pet Shop",
+    # --- ALIMENTAÇÃO, BARES E GASTRONOMIA ---
+    "pizza": "Pizzaria", "pizzaria": "Pizzaria", "fome": "Pizzaria", "massa": "Pizzaria", "calzone": "Pizzaria",
+    "lanche": "Lanchonete", "hamburguer": "Lanchonete", "burger": "Lanchonete", "x-tudo": "Lanchonete", "hot dog": "Lanchonete", "cachorro quente": "Lanchonete", "salgado": "Lanchonete", "coxinha": "Lanchonete", "pastel": "Lanchonete",
+    "comida": "Restaurante", "almoco": "Restaurante", "marmita": "Restaurante", "jantar": "Restaurante", "restaurante": "Restaurante", "self service": "Restaurante", "churrasco": "Restaurante", "espetinho": "Restaurante",
+    "doce": "Confeitaria", "bolo": "Confeitaria", "festa": "Confeitaria", "salgadinho": "Confeitaria", "brigadeiro": "Confeitaria", "sobremesa": "Confeitaria", "aniversario": "Confeitaria",
+    "pao": "Padaria", "padaria": "Padaria", "cafe": "Padaria", "padoca": "Padaria", "leite": "Padaria", "biscoito": "Padaria",
+    "acai": "Açaí", "cupuacu": "Açaí", "sorvete": "Sorveteria", "picole": "Sorveteria", "gelateria": "Sorveteria",
+    "cerveja": "Adega", "bebida": "Adega", "gelo": "Adega", "adega": "Adega", "vinho": "Adega", "destilado": "Adega", "vodka": "Adega", "refrigerante": "Adega",
+    "churros": "Doceria", "crepe": "Doceria", "tapioca": "Lanchonete",
 
-    # Hidráulica/Elétrica (Mantidos)
-    "vazamento": "Encanador", "cano": "Encanador", "torneira": "Encanador",
-    "curto": "Eletricista", "fiacao": "Eletricista", "luz": "Eletricista",
-    "pintar": "Pintor", "pintura": "Pintor", "reforma": "Pedreiro",
-    "carro": "Mecânico", "motor": "Mecânico", "pneu": "Borracheiro"
-}
-# DICIONÁRIO EXPANDIDO (Soma de inteligência)
-CONCEITOS_EXPANDIDOS = {
-    # Hidráulica
-    "vazamento": "Encanador", "cano": "Encanador", "torneira": "Encanador", "descarga": "Encanador", 
-    "caixa dagua": "Encanador", "esgoto": "Encanador", "pia": "Encanador", "entupiu": "Encanador",
-    # Elétrica
-    "curto": "Eletricista", "fiacao": "Eletricista", "luz": "Eletricista", "chuveiro": "Eletricista", 
-    "tomada": "Eletricista", "disjuntor": "Eletricista", "energia": "Eletricista", "lampada": "Eletricista",
-    # Reforma
-    "pintar": "Pintor", "pintura": "Pintor", "reforma": "Pedreiro", "piso": "Pedreiro", "azulejo": "Pedreiro", 
-    "tijolo": "Pedreiro", "cimento": "Pedreiro", "telhado": "Telhadista", "goteira": "Telhadista",
-    "gesso": "Gesseiro", "drywall": "Gesseiro", "solda": "Serralheiro", "portao": "Serralheiro",
-    # Automotivo
-    "carro": "Mecânico", "motor": "Mecânico", "oleo": "Mecânico", "guincho": "Guincho 24h", 
-    "reboque": "Guincho 24h", "pneu": "Borracheiro", "estepe": "Borracheiro", "furou": "Borracheiro",
-    # Domésticos
-    "faxina": "Diarista", "limpeza": "Diarista", "passar": "Diarista", "jardim": "Jardineiro", 
-    "grama": "Jardineiro", "piscina": "Piscineiro", "cloro": "Piscineiro",
-    # Tecnologia/Eletros
-    "computador": "TI", "notebook": "TI", "formatar": "TI", "wifi": "TI", "internet": "TI",
-    "ar": "Refrigeração", "geladeira": "Refrigeração", "freezer": "Refrigeração",
-    "fogao": "Técnico de Fogão", "maquina de lavar": "Técnico de Lavadora",
-    # Logística/Montagem
-    "montar": "Montador", "armario": "Montador", "moveis": "Montador",
-    "frete": "Freteiro", "mudanca": "Freteiro", "carreto": "Freteiro",
-    "chave": "Chaveiro", "fechadura": "Chaveiro"
+    # --- VAREJO, MODA E PRESENTES ---
+    "roupa": "Loja de Roupas", "vestuario": "Loja de Roupas", "moda": "Loja de Roupas", "camiseta": "Loja de Roupas", "calca": "Loja de Roupas", "blusa": "Loja de Roupas", "boutique": "Loja de Roupas", "brecho": "Loja de Roupas",
+    "sapato": "Calçados", "tenis": "Calçados", "chinelo": "Calçados", "sandalia": "Calçados", "bota": "Calçados", "sapataria": "Calçados",
+    "presente": "Loja de Variedades", "brinquedo": "Loja de Variedades", "utilidades": "Loja de Variedades", "papelaria": "Loja de Variedades", "caderno": "Loja de Variedades",
+    "relogio": "Relojoaria", "joia": "Joalheria", "anel": "Joalheria", "brinco": "Joalheria",
+    "otica": "Ótica", "oculos": "Ótica", "lente": "Ótica",
+
+    # --- SAÚDE, BELEZA E BEM-ESTAR ---
+    "remedio": "Farmácia", "farmacia": "Farmácia", "drogaria": "Farmácia", "saude": "Farmácia", "medicamento": "Farmácia",
+    "cabelo": "Barbearia/Salão", "barba": "Barbearia/Salão", "corte": "Barbearia/Salão", "cabeleireiro": "Barbearia/Salão", "manicure": "Barbearia/Salão", "unha": "Barbearia/Salão", "pedicure": "Barbearia/Salão", "sobrancelha": "Barbearia/Salão", "maquiagem": "Barbearia/Salão",
+    "academia": "Fitness", "treino": "Fitness", "musculacao": "Fitness", "crossfit": "Fitness", "suplemento": "Fitness",
+    "dentista": "Odontologia", "dente": "Odontologia", "aparelho": "Odontologia",
+
+    # --- TECNOLOGIA E ELETRODOMÉSTICOS ---
+    "celular": "Assistência Técnica", "iphone": "Assistência Técnica", "tela": "Assistência Técnica", "carregador": "Assistência Técnica", "android": "Assistência Técnica", "bateria": "Assistência Técnica",
+    "computador": "TI", "notebook": "TI", "formatar": "TI", "wifi": "TI", "internet": "TI", "pc": "TI", "gamer": "TI", "impressora": "TI",
+    "geladeira": "Refrigeração", "ar condicionado": "Refrigeração", "freezer": "Refrigeração", "ar": "Refrigeração", "climatizador": "Refrigeração",
+    "fogao": "Técnico de Fogão", "forno": "Técnico de Fogão", "cooktop": "Técnico de Fogão",
+    "maquina de lavar": "Técnico de Lavadora", "lavadora": "Técnico de Lavadora", "lava e seca": "Técnico de Lavadora",
+    "tv": "Eletrônicos", "televisao": "Eletrônicos", "som": "Eletrônicos", "video game": "Eletrônicos",
+
+    # --- PETS E AGRO ---
+    "pet": "Pet Shop", "racao": "Pet Shop", "cachorro": "Pet Shop", "gato": "Pet Shop", "banho e tosa": "Pet Shop", "veterinario": "Pet Shop", "viva": "Pet Shop", "aquario": "Pet Shop",
+
+    # --- MANUTENÇÃO, REFORMA E CONSTRUÇÃO ---
+    "vazamento": "Encanador", "cano": "Encanador", "torneira": "Encanador", "desentupir": "Encanador", "caixa dagua": "Encanador", "esgoto": "Encanador", "hidraulica": "Encanador",
+    "curto": "Eletricista", "fiacao": "Eletricista", "luz": "Eletricista", "chuveiro": "Eletricista", "tomada": "Eletricista", "disjuntor": "Eletricista", "energia": "Eletricista", "fio": "Eletricista",
+    "pintar": "Pintor", "pintura": "Pintor", "parede": "Pintor", "massa corrida": "Pintor", "verniz": "Pintor",
+    "reforma": "Pedreiro", "piso": "Pedreiro", "azulejo": "Pedreiro", "obra": "Pedreiro", "tijolo": "Pedreiro", "cimento": "Pedreiro", "reboco": "Pedreiro", "alicerce": "Pedreiro",
+    "gesso": "Gesseiro", "drywall": "Gesseiro", "sanca": "Gesseiro", "forro": "Gesseiro",
+    "telhado": "Telhadista", "goteira": "Telhadista", "calha": "Telhadista",
+    "solda": "Serralheiro", "portao": "Serralheiro", "grade": "Serralheiro", "aluminio": "Serralheiro", "ferro": "Serralheiro",
+    "vidro": "Vidraceiro", "janela": "Vidraceiro", "box": "Vidraceiro", "espelho": "Vidraceiro",
+    "chave": "Chaveiro", "fechadura": "Chaveiro", "tranca": "Chaveiro", "copia": "Chaveiro", "abertura": "Chaveiro",
+
+    # --- AUTOMOTIVO ---
+    "carro": "Mecânico", "motor": "Mecânico", "oficina": "Mecânico", "freio": "Mecânico", "suspensao": "Mecânico", "cambio": "Mecânico",
+    "pneu": "Borracheiro", "estepe": "Borracheiro", "furou": "Borracheiro", "vulcanizacao": "Borracheiro", "balanceamento": "Borracheiro",
+    "guincho": "Guincho 24h", "reboque": "Guincho 24h", "plataforma": "Guincho 24h",
+    "lavajato": "Estética Automotiva", "lavagem": "Estética Automotiva", "polimento": "Estética Automotiva", "limpeza de banco": "Estética Automotiva",
+
+    # --- LOGÍSTICA E SERVIÇOS GERAIS ---
+    "frete": "Freteiro", "mudanca": "Freteiro", "carreto": "Freteiro", "transporte": "Freteiro",
+    "montar": "Montador", "armario": "Montador", "moveis": "Montador", "guarda roupa": "Montador", "cozinha": "Montador",
+    "faxina": "Diarista", "limpeza": "Diarista", "passar": "Diarista", "arrumadeira": "Diarista",
+    "jardim": "Jardineiro", "grama": "Jardineiro", "poda": "Jardineiro", "rocar": "Jardineiro",
+    "piscina": "Piscineiro", "cloro": "Piscineiro", "limpeza de piscina": "Piscineiro",
+    "ajudante": "Ajudante Geral", "braco": "Ajudante Geral", "carga": "Ajudante Geral"
 }
 
 # ------------------------------------------------------------------------------
@@ -791,6 +806,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
