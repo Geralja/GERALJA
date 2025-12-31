@@ -124,13 +124,23 @@ def normalizar_para_ia(texto):
                   if unicodedata.category(c) != 'Mn').lower().strip()
 
 def processar_ia_avancada(texto):
-    if not texto: return "Ajudante Geral"
+    if not texto: return "Vazio"
     t_clean = normalizar_para_ia(texto)
+    
+    # 1. Busca exata no dicionário de conceitos (Pizzaria, Mecânico, etc.)
     for chave, categoria in CONCEITOS_EXPANDIDOS.items():
         chave_norm = normalizar_para_ia(chave)
         if re.search(rf"\b{chave_norm}\b", t_clean):
             return categoria
-    return "Ajudante Geral"
+            
+    # 2. Verifica se o usuário digitou exatamente uma categoria oficial
+    for cat in CATEGORIAS_OFICIAIS:
+        if normalizar_para_ia(cat) in t_clean:
+            return cat
+            
+    # 3. MUDANÇA AQUI: Se não encontrar NADA, retorna um termo que force o "vazio"
+    # Isso fará com que o app mostre sua frase de compartilhamento!
+    return "NAO_ENCONTRADO"
 
 def calcular_distancia_real(lat1, lon1, lat2, lon2):
     try:
@@ -781,6 +791,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
