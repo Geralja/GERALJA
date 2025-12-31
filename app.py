@@ -449,7 +449,30 @@ with menu_abas[3]:
     
     if access_adm == CHAVE_ADMIN:
         st.markdown("### 👑 Painel de Controle Supremo")
-        
+        # --- DENTRO DO SEU LOOP DE GESTÃO NO ADMIN ---
+with st.expander(f"⚙️ GERENCIAR: {p.get('nome').upper()}"):
+    col_adm1, col_adm2 = st.columns(2)
+    
+    # Lógica do Selo de Verificado
+    if not p.get('verificado', False):
+        if col_adm1.button("🏅 ATIVAR VERIFICADO", key=f"v_{p['id']}"):
+            db.collection("profissionais").document(p['id']).update({"verificado": True})
+            st.success(f"Selo ativado para {p.get('nome')}!")
+            time.sleep(1)
+            st.rerun()
+    else:
+        if col_adm1.button("❌ REMOVER VERIFICADO", key=f"rv_{p['id']}"):
+            db.collection("profissionais").document(p['id']).update({"verificado": False})
+            st.warning("Selo removido.")
+            time.sleep(1)
+            st.rerun()
+
+    # Botão para adicionar saldo (Moedas)
+    n_moedas = col_adm2.number_input("Adicionar Moedas", min_value=1, value=10, key=f"moeda_{p['id']}")
+    if col_adm2.button("💰 CREDITAR", key=f"cred_{p['id']}"):
+        novo_saldo = p.get('saldo', 0) + n_moedas
+        db.collection("profissionais").document(p['id']).update({"saldo": novo_saldo})
+        st.success(f"Creditado! Novo saldo: {novo_saldo}")
         # 📩 1. LISTAGEM DE FEEDBACKS (RECUPERADO E ALINHADO)
         with st.expander("📩 Ver Feedbacks Recentes", expanded=False):
             feedbacks = list(db.collection("feedbacks").order_by("data", direction="DESCENDING").limit(10).stream())
@@ -596,6 +619,7 @@ if len(menu_abas) > 5:
 # RODAPÉ ÚNICO (Final do Arquivo)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
 
 
