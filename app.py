@@ -457,45 +457,70 @@ with menu_abas[1]:
                 except Exception as e:
                     st.error(f"Erro ao cadastrar: {e}")
 
-# --- ABA 4: TERMINAL ADMIN (VERSÃO RECUPERADA & ALINHADA) ---
+# --- ABA 4: TERMINAL ADMIN (CORRIGIDO E COMPLETO) ---
 with menu_abas[3]:
     access_adm = st.text_input("Senha Master", type="password", key="adm_auth_final")
     
     if access_adm == CHAVE_ADMIN:
         st.markdown("### 👑 Painel de Controle Supremo")
-        # --- DENTRO DO SEU LOOP DE GESTÃO NO ADMIN ---
-with st.expander(f"⚙️ GERENCIAR: {p.get('nome').upper()}"):
-    col_adm1, col_adm2 = st.columns(2)
-    
-    # Lógica do Selo de Verificado
-    if not p.get('verificado', False):
-        if col_adm1.button("🏅 ATIVAR VERIFICADO", key=f"v_{p['id']}"):
-            db.collection("profissionais").document(p['id']).update({"verificado": True})
-            st.success(f"Selo ativado para {p.get('nome')}!")
-            time.sleep(1)
-            st.rerun()
-    else:
-        if col_adm1.button("❌ REMOVER VERIFICADO", key=f"rv_{p['id']}"):
-            db.collection("profissionais").document(p['id']).update({"verificado": False})
-            st.warning("Selo removido.")
-            time.sleep(1)
-            st.rerun()
+        
+        # 1. BUSCA TODOS OS DADOS DO BANCO
+        all_profs_lista = list(db.collection("profissionais").stream())
+        
+        # 2. MÉTRICAS RÁPIDAS (EXCLUSIVO)
+        total_moedas = sum([p.to_dict().get('saldo', 0) for p in all_profs_lista])
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Moedas em Circulação", total_moedas)
+        c2.metric("Total de Parceiros", len(all_profs_lista))
+        c3.metric("Faturamento Estimado", f"R$ {total_moedas * 10}") # Exemplo: R$ 10 por moeda
+        
+        st.divider()
 
-    # Botão para adicionar saldo (Moedas)
-    n_moedas = col_adm2.number_input("Adicionar Moedas", min_value=1, value=10, key=f"moeda_{p['id']}")
-    if col_adm2.button("💰 CREDITAR", key=f"cred_{p['id']}"):
-        novo_saldo = p.get('saldo', 0) + n_moedas
-        db.collection("profissionais").document(p['id']).update({"saldo": novo_saldo})
-        st.success(f"Creditado! Novo saldo: {novo_saldo}")
-        # 📩 1. LISTAGEM DE FEEDBACKS (RECUPERADO E ALINHADO)
+        # 3. LOOP DE GESTÃO (Aqui o 'p' é definido corretamente)
+        for p_doc in all_profs_lista:
+            p = p_doc.to_dict()
+            p['id'] = p_doc.id
+            pid = p['id']
+
+            with st.expander(f"⚙️ GERENCIAR: {p.get('nome', 'Sem Nome').upper()}"):
+                col_adm1, col_adm2 = st.columns(2)
+                
+                # --- Lógica do Selo de Verificado ---
+                if not p.get('verificado', False):
+                    if col_adm1.button("🏅 ATIVAR VERIFICADO", key=f"v_{pid}"):
+                        db.collection("profissionais").document(pid).update({"verificado": True})
+                        st.success(f"Selo ativado!")
+                        time.sleep(0.5)
+                        st.rerun()
+                else:
+                    if col_adm1.button("❌ REMOVER VERIFICADO", key=f"rv_{pid}"):
+                        db.collection("profissionais").document(pid).update({"verificado": False})
+                        st.warning("Selo removido.")
+                        time.sleep(0.5)
+                        st.rerun()
+
+                # --- Botão para adicionar saldo (Moedas) ---
+                n_moedas = col_adm2.number_input("Adicionar Moedas", min_value=1, value=10, key=f"moeda_{pid}")
+                if col_adm2.button("💰 CREDITAR", key=f"cred_{pid}"):
+                    novo_saldo = p.get('saldo', 0) + n_moedas
+                    db.collection("profissionais").document(pid).update({"saldo": novo_saldo})
+                    st.success(f"Creditado! Novo total: {novo_saldo}")
+                    time.sleep(0.5)
+                    st.rerun()
+
+        # 4. LISTAGEM DE FEEDBACKS (FORA DO LOOP DE PROFISSIONAIS)
+        st.divider()
         with st.expander("📩 Ver Feedbacks Recentes", expanded=False):
             feedbacks = list(db.collection("feedbacks").order_by("data", direction="DESCENDING").limit(10).stream())
             if feedbacks:
                 for f in feedbacks:
-                    dados_f = f.to_dict()
-                    st.write(f"⭐ **{dados_f.get('nota')}**: {dados_f.get('mensagem')}")
+                    df = f.to_dict()
+                    st.write(f"⭐ **{df.get('nota')}**: {df.get('mensagem')}")
             else:
                 st.write("Nenhum feedback novo.")
+
+    elif access_adm != "":
+        st.error("🚫 Senha incorreta!")
 
         st.divider()
         
@@ -633,6 +658,7 @@ if len(menu_abas) > 5:
 # RODAPÉ ÚNICO (Final do Arquivo)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
 
 
