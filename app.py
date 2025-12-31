@@ -295,7 +295,7 @@ with st.expander(f"🟢 {p.get('nome').upper()}"):
             db.collection("profissionais").document(pid).update({"verificado": False})
             st.rerun()
                 # --- AQUI VOCÊ SUBSTITUI PELO BOTÃO COM COBRANÇA ---
-                if st.button(f"FALAR COM {p['nome'].split()[0].upper()}", key=f"chat_{p['id']}", use_container_width=True):
+            if st.button(f"FALAR COM {p['nome'].split()[0].upper()}", key=f"chat_{p['id']}", use_container_width=True):
                     # 1. Tira 1 moeda do saldo de quem recebeu o clique
                     if p.get('saldo', 0) > 0:
                         db.collection("profissionais").document(p['id']).update({"saldo": p.get('saldo') - 1})
@@ -619,6 +619,7 @@ if len(menu_abas) > 5:
 # RODAPÉ ÚNICO (Final do Arquivo)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
 
 
