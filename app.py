@@ -211,7 +211,7 @@ if comando == "abracadabra":
 # 4. Cria as abas no Streamlit
 menu_abas = st.tabs(lista_abas)
 
-# --- ABA 1: BUSCA (VERSÃO VITRINE & STATUS VIVO) ---
+# --- ABA 1: BUSCA (VERSÃO COMPLETA E ORGANIZADA) ---
 with menu_abas[0]:
     st.markdown("### 🏙️ O que você precisa?")
     c1, c2 = st.columns([3, 1])
@@ -219,6 +219,7 @@ with menu_abas[0]:
     raio_km = c2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 20, 50, 100, 500], value=3)
     
     if termo_busca:
+        # MANTIDO: Sua IA e Busca no Firebase
         cat_ia = processar_ia_avancada(termo_busca)
         st.info(f"✨ IA: Buscando por **{cat_ia}**")
         profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
@@ -227,29 +228,32 @@ with menu_abas[0]:
         for p_doc in profs:
             p = p_doc.to_dict()
             p['id'] = p_doc.id
+            # MANTIDO: Cálculo de distância real
             dist = calcular_distancia_real(LAT_REF, LON_REF, p.get('lat', LAT_REF), p.get('lon', LON_REF))
             if dist <= raio_km:
                 p['dist'] = dist
                 lista_ranking.append(p)
         
-        # Ordenação que você já usa (Distância e Saldo)
+        # MANTIDO: Ordenação por Distância e Saldo
         try:
             lista_ranking.sort(key=lambda x: (x['dist'], -x.get('saldo', 0), -x.get('rating', 5.0)))
         except:
             lista_ranking.sort(key=lambda x: x['dist'])
 
-        # --- EXIBIÇÃO DOS RESULTADOS (O "PULO DO GATO") ---
+        # Lógica de Horário em Tempo Real
         from datetime import datetime
         import pytz
         hora_atual = datetime.now(pytz.timezone('America/Sao_Paulo')).strftime('%H:%M')
 
+        # --- LOOP DE EXIBIÇÃO ---
         for p in lista_ranking:
+            pid = p['id']
             with st.container():
-                # Borda diferenciada se for Comércio
+                # Borda diferenciada (Comércio vs Profissional)
                 cor_borda = "#FF8C00" if p.get('tipo') == "🏢 Comércio/Loja" else "#0047AB"
                 
                 st.markdown(f"""
-                <div style="border-left: 5px solid {cor_borda}; padding: 15px; background: #f9f9f9; border-radius: 10px; margin-bottom: 10px;">
+                <div style="border-left: 5px solid {cor_borda}; padding: 10px; background: #f9f9f9; border-radius: 10px; margin-bottom: 5px;">
                     <span style="font-size: 12px; color: gray;">📍 a {p['dist']:.1f} km de você</span>
                 </div>
                 """, unsafe_allow_html=True)
@@ -261,52 +265,41 @@ with menu_abas[0]:
                     st.markdown(f'<img src="{foto}" style="width:70px; height:70px; border-radius:50%; object-fit:cover; border:2px solid {cor_borda}">', unsafe_allow_html=True)
                 
                 with col_txt:
-                    # Título e Status Aberto/Fechado
+                    # Título com Selo de Verificado
+                    nome_exibicao = p.get('nome', '').upper()
+                    if p.get('verificado', False):
+                        nome_exibicao += " <span style='color:#1DA1F2;'>☑️</span>"
+                    
+                    # Status Aberto/Fechado
                     status_loja = ""
                     if p.get('tipo') == "🏢 Comércio/Loja":
-                        h_ab = p.get('h_abre', '08:00')
-                        h_fe = p.get('h_fecha', '18:00')
-                        if h_ab <= hora_atual <= h_fe:
-                            status_loja = " 🟢 <b style='color:green; font-size:12px;'>ABERTO</b>"
-                        else:
-                            status_loja = " 🔴 <b style='color:red; font-size:12px;'>FECHADO</b>"
+                        h_ab, h_fe = p.get('h_abre', '08:00'), p.get('h_fecha', '18:00')
+                        status_loja = " 🟢 <b style='color:green;'>ABERTO</b>" if h_ab <= hora_atual <= h_fe else " 🔴 <b style='color:red;'>FECHADO</b>"
                     
-                    st.markdown(f"**{p['nome'].upper()}** {status_loja}", unsafe_allow_html=True)
-                    st.caption(f"{p.get('descricao')[:100]}...")
+                    st.markdown(f"**{nome_exibicao}** {status_loja}", unsafe_allow_html=True)
+                    st.caption(f"{p.get('descricao', '')[:100]}...")
 
-                # Se tiver Vitrine de Fotos, mostra abaixo do texto
+                # MANTIDO: Vitrine de Fotos do Portfólio
                 if p.get('portfolio_imgs'):
                     imgs = p.get('portfolio_imgs')
-                    cols = st.columns(len(imgs) if len(imgs) <= 3 else 3)
+                    cols_v = st.columns(3)
                     for i, img_b64 in enumerate(imgs[:3]):
-                        cols[i].image(img_b64, use_container_width=True)
+                        cols_v[i].image(img_b64, use_container_width=True)
 
-                # --- Dentro do seu Painel Admin, onde você lista os Ativos ---
-with st.expander(f"🟢 {p.get('nome').upper()}"):
-    # ... outros botões (Suspender, Creditar) ...
-    
-    # Novo botão para dar o Selo de Verificado
-    if not p.get('verificado', False):
-        if st.button("🏅 DAR SELO VERIFICADO", key=f"v_{pid}"):
-            db.collection("profissionais").document(pid).update({"verificado": True})
-            st.rerun()
-    else:
-        if st.button("❌ REMOVER VERIFICADO", key=f"rv_{pid}"):
-            db.collection("profissionais").document(pid).update({"verificado": False})
-            st.rerun()
-                # --- AQUI VOCÊ SUBSTITUI PELO BOTÃO COM COBRANÇA ---
-            if st.button(f"FALAR COM {p['nome'].split()[0].upper()}", key=f"chat_{p['id']}", use_container_width=True):
-                    # 1. Tira 1 moeda do saldo de quem recebeu o clique
+                # BOTÃO DE CONTATO COM COBRANÇA DE MOEDAS
+                if st.button(f"FALAR COM {p.get('nome').split()[0].upper()}", key=f"chat_{pid}", use_container_width=True):
+                    # Descontar saldo e registrar clique
                     if p.get('saldo', 0) > 0:
-                        db.collection("profissionais").document(p['id']).update({"saldo": p.get('saldo') - 1})
-                        # Opcional: registrar o clique no banco
-                        db.collection("profissionais").document(p['id']).update({"cliques": p.get('cliques', 0) + 1})
+                        db.collection("profissionais").document(pid).update({
+                            "saldo": p.get('saldo') - 1,
+                            "cliques": p.get('cliques', 0) + 1
+                        })
                     
-                    # 2. Abre o WhatsApp do cliente
-                    link_whatsapp = f"https://wa.me/55{p['id']}?text=Olá%20{p['nome']},%20vi%20seu%20perfil%20no%20GeralJá!"
+                    # Redirecionar para o WhatsApp
+                    link_whatsapp = f"https://wa.me/55{pid}?text=Olá%20{p['nome']},%20vi%20seu%20perfil%20no%20GeralJá!"
                     st.markdown(f'<meta http-equiv="refresh" content="0;URL={link_whatsapp}">', unsafe_allow_html=True)
                 
-                st.markdown("---") # Linha divisória entre um profissional e outro
+                st.markdown("---")
 # --- ABA 2: CENTRAL PARCEIRO (VERSÃO PORTFÓLIO & BLINDADA) ---
 with menu_abas[2]:
     if 'auth' not in st.session_state: st.session_state.auth = False
@@ -619,6 +612,7 @@ if len(menu_abas) > 5:
 # RODAPÉ ÚNICO (Final do Arquivo)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
 
 
