@@ -628,164 +628,109 @@ with menu_abas[1]:
                 except Exception as e:
                     st.error(f"Erro ao cadastrar: {e}")
 
-# --- ABA 4: CENTRAL DE COMANDO SUPREMA (UNIFICADA) ---
+# --- ABA 4: CENTRAL DE COMANDO SUPREMA (TOTALMENTE UNIFICADA) ---
 with menu_abas[3]:
-    # 1. Trava de Segurança usando a Chave Master Lateral ou Local
-    # Se você usa o 'comando' da barra lateral, use: if comando != CHAVE_ADMIN:
+    st.markdown("### 🔒 Terminal de Administração")
     access_adm = st.text_input("Senha Master", type="password", key="adm_auth_final")
     
-    if access_adm == CHAVE_ADMIN:
-        st.markdown("### 👑 Central de Comando GeralJá")
-        
-        # 1. BUSCA TODOS OS DADOS PARA MÉTRICAS
-        all_profs_lista = list(db.collection("profissionais").stream())
-        
-        # 2. MÉTRICAS EM TEMPO REAL
-        total_cadastros = len(all_profs_lista)
-        aguardando = len([p for p in all_profs_lista if not p.to_dict().get('aprovado', False)])
-        total_moedas = sum([p.to_dict().get('saldo', 0) for p in all_profs_lista])
-        total_cliques = sum([p.to_dict().get('cliques', 0) for p in all_profs_lista])
-        
-        m1, m2, m3, m4 = st.columns(4)
-        m1.metric("Moedas Ativas", total_moedas)
-        m2.metric("Parceiros", total_cadastros)
-        m3.metric("Cliques (ROI)", total_cliques)
-        m4.metric("Pendentes", aguardando, delta_color="inverse")
-        
-        st.divider()
-
-        # 3. FILA DE APROVAÇÃO (PROFISSIONAIS NOVOS)
-        st.subheader("🆕 Novos Cadastros Aguardando")
-        pendentes = [p for p in all_profs_lista if not p.to_dict().get('aprovado', False)]
-        
-        if not pendentes:
-            st.info("Ninguém aguardando aprovação no momento.")
+    # BLOQUEIO DE SEGURANÇA REFORÇADO
+    if access_adm != CHAVE_ADMIN:
+        if access_adm != "":
+            st.error("🚫 Acesso negado. Senha incorreta.")
         else:
-            for p_doc in pendentes:
-                p = p_doc.to_dict()
-                pid = p_doc.id
-                with st.expander(f"⚠️ APROVAR: {p.get('nome', '').upper()}"):
-                    col1, col2 = st.columns(2)
-                    col1.write(f"**Área:** {p.get('area')}")
-                    col1.write(f"**WhatsApp:** {pid}")
-                    if col2.button("✅ APROVAR E DAR BÔNUS", key=f"apr_fast_{pid}"):
-                        db.collection("profissionais").document(pid).update({
-                            "aprovado": True,
-                            "saldo": 10 # Bônus inicial
-                        })
-                        st.success("Aprovado!")
-                        st.rerun()
+            st.info("Aguardando chave master para liberar sistemas...")
+        st.stop() 
 
-        st.divider()
+    # --- DAQUI PARA BAIXO TUDO ESTÁ PROTEGIDO PELA SENHA ---
+    st.success("👑 Acesso Autorizado! Bem-vindo ao Painel Supremo.")
+    
+    # 1. BUSCA DE DADOS E TELEMETRIA
+    all_profs_lista = list(db.collection("profissionais").stream())
+    total_cadastros = len(all_profs_lista)
+    pendentes_lista = [p for p in all_profs_lista if not p.to_dict().get('aprovado', False)]
+    total_moedas = sum([p.to_dict().get('saldo', 0) for p in all_profs_lista])
+    total_cliques = sum([p.to_dict().get('cliques', 0) for p in all_profs_lista])
 
-        # 4. GESTÃO DE ELITE (QUEM JÁ ESTÁ APROVADO)
-        st.subheader("⚙️ Gestão de Parceiros Ativos")
-        aprovados = [p for p in all_profs_lista if p.to_dict().get('aprovado', True)]
-        
-        for p_doc in aprovados:
-            p = p_doc.to_dict()
-            p['id'] = p_doc.id
-            pid = p['id']
+    # Painel de Indicadores
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("💰 Moedas", f"{total_moedas} 🪙")
+    c2.metric("📈 Parceiros", total_cadastros)
+    c3.metric("🤝 Cliques", total_cliques)
+    c4.metric("🟡 Pendentes", len(pendentes_lista), delta_color="inverse")
+    
+    st.divider()
 
-            with st.expander(f"💎 {p.get('nome', 'Sem Nome').upper()} ({p.get('area')})"):
-                col_adm1, col_adm2, col_adm3 = st.columns([1.5, 1.5, 1])
-                
-                # Selo de Verificado
-                if not p.get('verificado', False):
-                    if col_adm1.button("🏅 ATIVAR SELO", key=f"v_{pid}"):
-                        db.collection("profissionais").document(pid).update({"verificado": True})
-                        st.rerun()
-                else:
-                    if col_adm1.button("❌ REMOVER SELO", key=f"rv_{pid}"):
-                        db.collection("profissionais").document(pid).update({"verificado": False})
-                        st.rerun()
+    # 2. ABAS DE COMANDO INTERNAS
+    t_gestao, t_aprova, t_seguranca, t_feed = st.tabs([
+        "👥 GESTÃO DE ATIVOS", "🆕 NOVOS (APROVAÇÃO)", "🛡️ SEGURANÇA IA", "📩 FEEDBACKS"
+    ])
 
-                # Adicionar Moedas
-                n_moedas = col_adm2.number_input("Qtd Moedas", min_value=1, value=10, key=f"moeda_{pid}")
-                if col_adm2.button("💰 CREDITAR", key=f"cred_{pid}"):
-                    novo_saldo = p.get('saldo', 0) + n_moedas
-                    db.collection("profissionais").document(pid).update({"saldo": novo_saldo})
-                    st.success(f"Saldo: {novo_saldo}")
-                    st.rerun()
-                
-                # Excluir (Caso o profissional queira sair)
-                if col_adm3.button("🗑️ BANIR", key=f"ban_{pid}"):
-                    db.collection("profissionais").document(pid).delete()
-                    st.error("Removido!")
-                    st.rerun()
+    # --- ABA INTERNA: GESTÃO DE ATIVOS (BUSCA E EDIÇÃO) ---
+    with t_gestao:
+        search_pro = st.text_input("🔍 Buscar parceiro por Nome ou WhatsApp", placeholder="Ex: João ou 11999...")
+        for p_doc in all_profs_lista:
+            p, pid = p_doc.to_dict(), p_doc.id
+            # Filtro de Busca
+            if not search_pro or search_pro.lower() in p.get('nome', '').lower() or search_pro in pid:
+                status_cor = "🟢" if p.get('aprovado') else "🟡"
+                with st.expander(f"{status_cor} {p.get('nome', 'Sem Nome').upper()} | {p.get('area')}"):
+                    col_a, col_b = st.columns(2)
+                    with col_a:
+                        st.write(f"**WhatsApp/ID:** {pid}")
+                        st.write(f"**Saldo Atual:** {p.get('saldo', 0)} moedas")
+                        
+                        # Controle de Verificado (Selo)
+                        is_verif = p.get('verificado', False)
+                        if st.toggle("Selo Verificado", value=is_verif, key=f"tgl_{pid}"):
+                            if not is_verif: db.collection("profissionais").document(pid).update({"verificado": True}); st.rerun()
+                        else:
+                            if is_verif: db.collection("profissionais").document(pid).update({"verificado": False}); st.rerun()
+                    
+                    with col_b:
+                        # Adicionar Moedas
+                        bonus = st.number_input("Adicionar Moedas", value=0, key=f"num_{pid}")
+                        if st.button("💰 CREDITAR", key=f"cbtn_{pid}", use_container_width=True):
+                            db.collection("profissionais").document(pid).update({"saldo": p.get('saldo', 0) + bonus})
+                            st.success("Creditado!"); time.sleep(0.5); st.rerun()
+                        
+                        if st.button("🗑️ BANIR/REMOVER", key=f"del_{pid}", use_container_width=True):
+                            db.collection("profissionais").document(pid).delete()
+                            st.error("Removido!"); time.sleep(0.5); st.rerun()
 
-        # 5. FEEDBACKS
-        st.divider()
-        with st.expander("📩 Ver Feedbacks Recentes"):
-            feedbacks = list(db.collection("feedbacks").order_by("data", direction="DESCENDING").limit(10).stream())
+    # --- ABA INTERNA: FILA DE APROVAÇÃO ---
+    with t_aprova:
+        if not pendentes_lista:
+            st.info("Nenhum cadastro pendente.")
+        else:
+            for p_doc in pendentes_lista:
+                p, pid = p_doc.to_dict(), p_doc.id
+                st.warning(f"SOLICITAÇÃO: {p.get('nome')} ({p.get('area')})")
+                if st.button(f"✅ APROVAR {p.get('nome').upper()}", key=f"ok_{pid}"):
+                    db.collection("profissionais").document(pid).update({"aprovado": True, "saldo": 10})
+                    st.success("Aprovado com bônus!"); time.sleep(0.5); st.rerun()
+
+    # --- ABA INTERNA: SEGURANÇA IA ---
+    with t_seguranca:
+        st.markdown("#### 🛡️ Central de Proteção e Auto-Cura")
+        s_col1, s_col2 = st.columns(2)
+        if s_col1.button("🔍 ESCANEAR AMEAÇAS", use_container_width=True):
+            alertas = scan_virus_e_scripts()
+            for a in alertas: st.write(a)
+            
+        if s_col2.button("🛠️ REPARAR BANCO", use_container_width=True):
+            reparos = guardia_escanear_e_corrigir()
+            for r in reparos: st.write(r)
+            st.balloons()
+
+    # --- ABA INTERNA: FEEDBACKS ---
+    with t_feed:
+        feedbacks = list(db.collection("feedbacks").order_by("data", direction="DESCENDING").limit(20).stream())
+        if feedbacks:
             for f in feedbacks:
                 df = f.to_dict()
-                st.write(f"⭐ **{df.get('nota')}**: {df.get('mensagem')}")
-
-    elif access_adm != "":
-        st.error("🚫 Senha incorreta!")
-        st.divider()
-        
-        # 📊 2. MÉTRICAS TOTAIS (SOMA DE INTELIGÊNCIA)
-        all_profs_lista = list(db.collection("profissionais").stream())
-        total_moedas = sum([p.to_dict().get('saldo', 0) for p in all_profs_lista])
-        
-        c_fin1, c_fin2, c_fin3 = st.columns(3)
-        c_fin1.metric("💰 Moedas no Sistema", f"{total_moedas} 🪙")
-        c_fin2.metric("📈 Valor Previsto", f"R$ {total_moedas:,.2f}")
-        c_fin3.metric("🤝 Parceiros Atuais", len(all_profs_lista))
-        
-        st.divider()
-
-        # 🛠️ 3. ABAS DE COMANDO INTERNAS
-        t_geral, t_seg, t_feed = st.tabs(["👥 GESTÃO DE PERFIS", "🛡️ IA SEGURANÇA", "📩 MENSAGENS"])
-        
-        with t_geral:
-            search_pro = st.text_input("🔍 Buscar por Nome ou WhatsApp")
-            for p_doc in all_profs_lista:
-                p, pid = p_doc.to_dict(), p_doc.id
-                if not search_pro or search_pro.lower() in p.get('nome', '').lower() or search_pro in pid:
-                    status_emoji = "🟢" if p.get('aprovado') else "🟡"
-                    with st.expander(f"{status_emoji} {p.get('nome', 'Sem Nome').upper()} | {p.get('saldo', 0)} 🪙"):
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            st.write(f"**Área:** {p.get('area')}")
-                            st.write(f"**WhatsApp:** {pid}")
-                            bonus = st.number_input("Adicionar Moedas", value=0, key=f"add_{pid}")
-                            if st.button("CREDITAR", key=f"btn_c_{pid}"):
-                                db.collection("profissionais").document(pid).update({"saldo": firestore.Increment(bonus)})
-                                st.success("Saldo atualizado!"); time.sleep(1); st.rerun()
-                        
-                        with col2:
-                            st.write("**Ações Rápidas:**")
-                            if st.button("✅ APROVAR AGORA", key=f"ok_{pid}", use_container_width=True):
-                                db.collection("profissionais").document(pid).update({"aprovado": True}); st.rerun()
-                            if st.button("⚠️ SUSPENDER", key=f"sus_{pid}", use_container_width=True):
-                                db.collection("profissionais").document(pid).update({"aprovado": False}); st.rerun()
-                            if st.button("🗑️ REMOVER", key=f"del_{pid}", use_container_width=True):
-                                db.collection("profissionais").document(pid).delete(); st.rerun()
-
-        with t_seg:
-            st.markdown("#### 🛡️ Central de Proteção IA")
-            s_col1, s_col2 = st.columns(2)
-            if s_col1.button("🔍 ESCANEAR BANCO", use_container_width=True):
-                with st.spinner("Buscando ameaças..."):
-                    alertas = scan_virus_e_scripts()
-                    for a in alertas:
-                        if "⚠️" in str(a): st.error(str(a))
-                        else: st.success(str(a))
-            
-            if s_col2.button("🛠️ REPARAR ESTRUTURAS", use_container_width=True):
-                with st.spinner("IA Corrigindo..."):
-                    reparos = guardia_escanear_e_corrigir()
-                    for r in reparos: st.write(str(r))
-                st.balloons()
-
-        with t_feed:
-            st.info("📩 Central de Mensagens: Utilize esta aba para logs do sistema.")
-
-    elif access_adm != "":
-        st.error("🚫 Acesso negado. Senha incorreta.")
+                st.write(f"📅 {df.get('data')[:10]} | ⭐ {df.get('nota')}: {df.get('mensagem')}")
+        else:
+            st.write("Sem mensagens novas.")
         
        # --- ABA: FEEDBACK (A VOZ DO CLIENTE) ---
 # Se o Financeiro estiver invisível, esta é a aba [4]. 
@@ -866,6 +811,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
