@@ -281,14 +281,19 @@ with menu_abas[0]:
                     for i, img_b64 in enumerate(imgs[:3]):
                         cols[i].image(img_b64, use_container_width=True)
 
-                # Botão de Contato
-                if st.button(f"FALAR COM {p['nome'].split()[0].upper()}", key=f"chat_{p['id']}", use_container_width=True):
-                    # Aqui você coloca sua lógica de descontar saldo/moeda
-                    link_whatsapp = f"https://wa.me/55{p['id']}?text=Olá%20{p['nome']},%20vi%20seu%20perfil%20no%20GeralJá!"
-                    st.markdown(f'<meta http-equiv="refresh" content="0;URL={link_whatsapp}">', unsafe_allow_html=True)
-                st.markdown("---")
-                # ... (fotos da vitrine apareceriam aqui em cima) ...
-
+                # --- Dentro do seu Painel Admin, onde você lista os Ativos ---
+with st.expander(f"🟢 {p.get('nome').upper()}"):
+    # ... outros botões (Suspender, Creditar) ...
+    
+    # Novo botão para dar o Selo de Verificado
+    if not p.get('verificado', False):
+        if st.button("🏅 DAR SELO VERIFICADO", key=f"v_{pid}"):
+            db.collection("profissionais").document(pid).update({"verificado": True})
+            st.rerun()
+    else:
+        if st.button("❌ REMOVER VERIFICADO", key=f"rv_{pid}"):
+            db.collection("profissionais").document(pid).update({"verificado": False})
+            st.rerun()
                 # --- AQUI VOCÊ SUBSTITUI PELO BOTÃO COM COBRANÇA ---
                 if st.button(f"FALAR COM {p['nome'].split()[0].upper()}", key=f"chat_{p['id']}", use_container_width=True):
                     # 1. Tira 1 moeda do saldo de quem recebeu o clique
@@ -591,6 +596,7 @@ if len(menu_abas) > 5:
 # RODAPÉ ÚNICO (Final do Arquivo)
 # ------------------------------------------------------------------------------
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
 
 
