@@ -515,9 +515,9 @@ with menu_abas[2]:
             </div>
         """, unsafe_allow_html=True)
          
-       # --- NOVO: BOTÃO DE ATUALIZAÇÃO DE GPS DO PARCEIRO ---
+       # --- LOCALIZAÇÃO DO PARCEIRO ---
         with st.container():
-            # Usamos a função base que é mais estável para evitar o TypeError
+            # Agora o Python vai reconhecer o streamlit_js_eval porque você importou no topo
             loc_parceiro = streamlit_js_eval(
                 js_expressions="navigator.geolocation.getCurrentPosition(success => { return success })", 
                 key='gps_parceiro_v3'
@@ -530,12 +530,10 @@ with menu_abas[2]:
                     
                     if n_lat and n_lon:
                         doc_ref.update({"lat": n_lat, "lon": n_lon})
-                        st.success("✅ Localização salva! Clientes próximos agora verão você.")
+                        st.success("✅ Localização salva com sucesso!")
                         st.balloons()
-                    else:
-                        st.warning("⚠️ Coordenadas não recebidas. Tente clicar novamente.")
                 else:
-                    st.error("❌ GPS ainda não capturado. Aguarde 2 segundos e clique novamente.")
+                    st.warning("Aguardando sinal do GPS... Clique novamente em instantes.")
                 
                 if loc_parceiro:
                     n_lat = loc_parceiro['coords']['latitude']
@@ -841,6 +839,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
