@@ -477,7 +477,7 @@ with menu_abas[0]:
                         db.collection("profissionais").document(pid).update({
                             "cliques": p.get('cliques', 0) + 1
                         })       
-# --- ABA 2: CENTRAL PARCEIRO (COM ATUALIZADOR DE GPS) ---
+# --- ABA 2: CENTRAL PARCEIRO (COM ATUALIZADOR DE GPS, MOEDAS E SENHA) ---
 with menu_abas[2]:
     if 'auth' not in st.session_state: st.session_state.auth = False
     
@@ -494,8 +494,18 @@ with menu_abas[2]:
                 st.rerun()
             else:
                 st.error("❌ Dados incorretos. Tente novamente.")
+        
+        # Opção para quem esqueceu a senha
+        st.markdown(f"""
+            <div style="text-align:center; margin-top:10px;">
+                <a href="https://wa.me/{ZAP_ADMIN}?text=Olá! Esqueci minha senha do GeralJá. Meu Zap é: " target="_blank" style="color:gray; text-decoration:none; font-size:14px;">
+                    🔑 Esqueci minha senha
+                </a>
+            </div>
+        """, unsafe_allow_html=True)
+
     else:
-        # Puxamos os dados atualizados
+        # Puxamos os dados atualizados do Firebase
         doc_ref = db.collection("profissionais").document(st.session_state.user_id)
         d = doc_ref.get().to_dict()
         
@@ -514,91 +524,39 @@ with menu_abas[2]:
             </div>
         """, unsafe_allow_html=True)
 
-        # --- NOVO: BOTÃO DE ATUALIZAÇÃO DE GPS DO PARCEIRO ---
-        with st.container():
-            if st.button("📍 ATUALIZAR MINHA LOCALIZAÇÃO DE ATENDIMENTO", use_container_width=True, help="Clique aqui quando estiver no seu local de trabalho para os clientes te acharem"):
-                loc_parceiro = get_geolocation()
-                if loc_parceiro:
-                    n_lat = loc_parceiro['coords']['latitude']
-                    n_lon = loc_parceiro['coords']['longitude']
-                    doc_ref.update({"lat": n_lat, "lon": n_lon})
-                    st.success("✅ Localização salva! Clientes próximos agora verão você.")
-                    st.balloons()
-                else:
-                    st.error("❌ GPS não detectado. Ative a localização no seu celular/navegador.")
+        # --- ATUALIZAÇÃO DE GPS ---
+        if st.button("📍 ATUALIZAR MINHA LOCALIZAÇÃO DE ATENDIMENTO", use_container_width=True):
+            loc_parceiro = get_geolocation()
+            if loc_parceiro:
+                n_lat = loc_parceiro['coords']['latitude']
+                n_lon = loc_parceiro['coords']['longitude']
+                doc_ref.update({"lat": n_lat, "lon": n_lon})
+                st.success("✅ Localização salva! Clientes próximos agora verão você.")
+                st.balloons()
+            else:
+                st.error("❌ GPS não detectado. Ative a localização no seu dispositivo.")
         
         st.divider()
 
-        # --- VITRINE DE VENDAS ---
+        # --- VITRINE DE VENDAS (MOEDAS) ---
         with st.expander("💎 COMPRAR MOEDAS E GANHAR DESTAQUE", expanded=False):
-            st.markdown("<p style='text-align:center; color:gray;'>Escolha um pacote para subir no ranking e receber mais chamados.</p>", unsafe_allow_html=True)
+            st.markdown("<p style='text-align:center; color:gray;'>O pagamento é feito via WhatsApp. Escolha um pacote:</p>", unsafe_allow_html=True)
             cv1, cv2, cv3 = st.columns(3)
             
             with cv1:
-                st.markdown('<div style="border:1px solid #ddd; padding:10px; border-radius:10px; text-align:center;"><b>BRONZE</b><br>10 moedas<br><b>R$ 25</b></div>', unsafe_allow_html=True)
-                if st.button("COMPRAR 🥉", key="btn_b10", use_container_width=True):
-                    msg = f"Olá! Quero o Pacote BRONZE (10 moedas) para o Zap: {st.session_state.user_id}"
-                    st.markdown(f'<meta http-equiv="refresh" content="0;URL=https://wa.me/{ZAP_ADMIN}?text={msg.replace(" ", "%20")}">', unsafe_allow_html=True)
+                st.markdown('<div style="border:1px solid #ddd; padding:10px; border-radius:10px; text-align:center;"><b>10 moedas</b><br>R$ 25</div>', unsafe_allow_html=True)
+                if st.button("BRONZE 🥉", key="btn_b10", use_container_width=True):
+                    msg = f"Quero o Pacote BRONZE (10 moedas) para o Zap: {st.session_state.user_id}"
+                    st.markdown(f'<meta http-equiv="refresh" content="0;URL=https://wa.me/{ZAP_ADMIN}?text={quote(msg)}">', unsafe_allow_html=True)
 
             with cv2:
-                st.markdown('<div style="border:2px solid #FFD700; background:#FFFDF5; padding:10px; border-radius:10px; text-align:center;"><b>PRATA</b><br>30 moedas<br><b>R$ 60</b></div>', unsafe_allow_html=True)
-                if st.button("COMPRAR 🥈", key="btn_p30", use_container_width=True):
-                    msg = f"Olá! Quero o Pacote PRATA (30 moedas) para o Zap: {st.session_state.user_id}"
-                    st.markdown(f'<meta http-equiv="refresh" content="0;URL=https://wa.me/{ZAP_ADMIN}?text={msg.replace(" ", "%20")}">', unsafe_allow_html=True)
+                st.markdown('<div style="border:2px solid #FFD700; background:#FFFDF5; padding:10px; border-radius:10px; text-align:center;"><b>30 moedas</b><br>R$ 60</div>', unsafe_allow_html=True)
+                if st.button("PRATA 🥈", key="btn_p30", use_container_width=True):
+                    msg = f"Quero o Pacote PRATA (30 moedas) para o Zap: {st.session_state.user_id}"
+                    st.markdown(f'<meta http-equiv="refresh" content="0;URL=https://wa.me/{ZAP_ADMIN}?text={quote(msg)}">', unsafe_allow_html=True)
 
             with cv3:
-                st.markdown('<div style="border:1px solid #ddd; padding:10px; border-radius:10px; text-align:center;"><b>OURO</b><br>100 moedas<br><b>R$ 150</b></div>', unsafe_allow_html=True)
-                if st.button("COMPRAR 🥇", key="btn_o100", use_container_width=True):
-                    msg = f"Olá! Quero o Pacote OURO (100 moedas) para o Zap: {st.session_state.user_id}"
-                    st.markdown(f'<meta http-equiv="refresh" content="0;URL=https://wa.me/{ZAP_ADMIN}?text={msg.replace(" ", "%20")}">', unsafe_allow_html=True)
-        
-        # --- FORMULÁRIO DE EDIÇÃO (MANTIDO SEU ORIGINAL) ---
-        with st.expander("📝 MEU PERFIL & VITRINE", expanded=True):
-            with st.form("ed"):
-                col_f1, col_f2 = st.columns(2)
-                n_nome = col_f1.text_input("Nome Profissional/Loja", d.get('nome', ''))
-                
-                try:
-                    idx_at = CATEGORIAS_OFICIAIS.index(d.get('area', 'Ajudante Geral'))
-                except:
-                    idx_at = 0
-                
-                n_area = col_f2.selectbox("Sua Especialidade", CATEGORIAS_OFICIAIS, index=idx_at)
-                n_desc = st.text_area("Descrição", d.get('descricao', ''))
-
-                st.markdown("---")
-                col_c1, col_c2 = st.columns(2)
-                n_tipo = col_c1.selectbox("Tipo de Conta", ["👤 Profissional", "🏢 Comércio/Loja"], 
-                                         index=0 if d.get('tipo') == "👤 Profissional" else 1)
-                n_catalogo = col_c2.text_input("Link do Catálogo/Instagram", d.get('link_catalogo', ''))
-
-                col_h1, col_h2 = st.columns(2)
-                n_h_abre = col_h1.text_input("Horário Abre", d.get('h_abre', '08:00'))
-                n_h_fecha = col_h2.text_input("Horário Fecha", d.get('h_fecha', '18:00'))
-                
-                st.markdown("---")
-                n_foto = st.file_uploader("Trocar Foto de Perfil", type=['jpg', 'png', 'jpeg'])
-                n_portfolio = st.file_uploader("Vitrine (Até 3 fotos)", type=['jpg', 'png', 'jpeg'], accept_multiple_files=True)
-                
-                if st.form_submit_button("SALVAR TODAS AS ALTERAÇÕES", use_container_width=True):
-                    up = {
-                        "nome": n_nome, "area": n_area, "descricao": n_desc,
-                        "tipo": n_tipo, "link_catalogo": n_catalogo,
-                        "h_abre": n_h_abre, "h_fecha": n_h_fecha
-                    }
-                    if n_foto: up["foto_url"] = f"data:image/png;base64,{converter_img_b64(n_foto)}"
-                    if n_portfolio:
-                        lista_b64 = [f"data:image/png;base64,{converter_img_b64(f)}" for f in n_portfolio[:3]]
-                        up["portfolio_imgs"] = lista_b64
-                    
-                    doc_ref.update(up)
-                    st.success("✅ Perfil atualizado!")
-                    time.sleep(1)
-                    st.rerun()
-
-        if st.button("SAIR DO PAINEL", use_container_width=True):
-            st.session_state.auth = False
-            st.rerun()
+                st.markdown('<div style="border:1px solid #ddd; padding:10px; border-radius:10px; text-align:center;"><b>100 moedas</b>
 # --- ABA 3: CADASTRO (VERSÃO SOMAR) ---
 with menu_abas[1]:
     st.header("🚀 Seja um Parceiro GeralJá")
@@ -841,6 +799,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
