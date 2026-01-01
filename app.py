@@ -13,6 +13,12 @@ import time
 import pandas as pd
 import unicodedata
 from streamlit_js_eval import streamlit_js_eval, get_geolocation
+import base64
+
+def converter_img_b64(file):
+    if file is not None:
+        return base64.b64encode(file.getvalue()).decode()
+    return None
 st.set_page_config(page_title="Geral Já", layout="wide")
 
 # CSS para evitar que o fundo fique preto por erro de renderização
@@ -841,6 +847,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
