@@ -420,17 +420,39 @@ with menu_abas[0]:
                         for i, img_b64 in enumerate(imgs[:3]):
                             cols_v[i].image(img_b64, use_container_width=True)
 
-                    # Botão de Contato
-                    if st.button(f"FALAR COM {p.get('nome').split()[0].upper()}", key=f"btn_zap_{pid}", use_container_width=True):
-                        if p.get('saldo', 0) > 0:
-                            db.collection("profissionais").document(pid).update({
-                                "saldo": p.get('saldo') - 1,
-                                "cliques": p.get('cliques', 0) + 1
-                            })
-                        link_whatsapp = f"https://wa.me/55{pid}?text=Olá%20{p['nome']},%20vi%20seu%20perfil%20no%20GeralJá!"
-                        st.markdown(f'<meta http-equiv="refresh" content="0;URL={link_whatsapp}">', unsafe_allow_html=True)
-                    
-                    st.markdown("<br>", unsafe_allow_html=True)
+                   # --- BOTÃO DE CONTATO (VERSÃO CORRIGIDA) ---
+nome_curto = p.get('nome', 'Profissional').split()[0].upper()
+
+if st.button(f"FALAR COM {nome_curto}", key=f"btn_zap_{pid}", use_container_width=True):
+    # 1. LIMPEZA DO NÚMERO (Remove tudo que não for número)
+    import re
+    numero_limpo = re.sub(r'\D', '', str(pid))
+    
+    # 2. GARANTE O PREFIXO 55 (Brasil)
+    if not numero_limpo.startswith('55'):
+        numero_limpo = f"55{numero_limpo}"
+    
+    # 3. REGISTRO DE CLIQUE E DÉBITO
+    if p.get('saldo', 0) > 0:
+        db.collection("profissionais").document(pid).update({
+            "saldo": p.get('saldo') - 1,
+            "cliques": p.get('cliques', 0) + 1
+        })
+    
+    # 4. LINK DO WHATSAPP COM MENSAGEM
+    texto_zap = f"Olá {p.get('nome')}, vi seu perfil no GeralJá e gostaria de um orçamento!"
+    # Formata o link corretamente para URL
+    from urllib.parse import quote
+    link_final = f"https://wa.me/{numero_limpo}?text={quote(texto_zap)}"
+    
+    # 5. REDIRECIONAMENTO (Usando HTML seguro)
+    st.markdown(f"""
+        <meta http-equiv="refresh" content="0;URL='{link_final}'">
+        <script type="text/javascript">
+            window.location.href = "{link_final}";
+        </script>
+    """, unsafe_allow_html=True)
+    st.info("Redirecionando para o WhatsApp...")
 # --- ABA 2: CENTRAL PARCEIRO (COM ATUALIZADOR DE GPS) ---
 with menu_abas[2]:
     if 'auth' not in st.session_state: st.session_state.auth = False
@@ -795,6 +817,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
