@@ -389,13 +389,20 @@ with menu_abas[0]:
             # --- RENDERIZAÇÃO DOS CARDS (LOOP) ---
             for p in lista_ranking:
                 pid = p['id']
-                is_elite = p.get('verificado') and p.get('saldo', 0) > 0
+                
+                # --- VERIFICAÇÃO DE SALDO (CORREÇÃO DO ERRO) ---
+                saldo_atual = p.get('saldo', 0)
+                if saldo_atual <= 0:
+                    continue  # <--- AGORA ESTÁ IDENTADO CORRETAMENTE
+                
+                is_elite = p.get('verificado') and saldo_atual > 0
                 
                 with st.container():
-                    # Cores dinâmicas baseadas no tipo de conta
+                    # Definição de Cores para Alinhamento Visual
                     cor_borda = "#FFD700" if is_elite else ("#FF8C00" if p.get('tipo') == "🏢 Comércio/Loja" else "#0047AB")
                     bg_card = "#FFFDF5" if is_elite else "#FFFFFF"
                     
+                    # Card Visual
                     st.markdown(f"""
                     <div style="border-left: 8px solid {cor_borda}; padding: 15px; background: {bg_card}; border-radius: 15px; margin-bottom: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
                         <span style="font-size: 12px; color: gray; font-weight: bold;">📍 a {p['dist']:.1f} km de você {" | 🏆 DESTAQUE" if is_elite else ""}</span>
@@ -408,77 +415,33 @@ with menu_abas[0]:
                         st.markdown(f'<img src="{foto}" style="width:75px; height:75px; border-radius:50%; object-fit:cover; border:3px solid {cor_borda}">', unsafe_allow_html=True)
                     
                     with col_txt:
-                        nome_exibicao = p.get('nome', '').upper()
-                        if p.get('verificado', False): nome_exibicao += " <span style='color:#1DA1F2;'>☑️</span>"
-                        
-                        status_loja = ""
-                        if p.get('tipo') == "🏢 Comércio/Loja":
-                            h_ab, h_fe = p.get('h_abre', '08:00'), p.get('h_fecha', '18:00')
-                            status_loja = " 🟢 <b style='color:green;'>ABERTO</b>" if h_ab <= hora_atual <= h_fe else " 🔴 <b style='color:red;'>FECHADO</b>"
-                        
-                        st.markdown(f"**{nome_exibicao}** {status_loja}", unsafe_allow_html=True)
+                        nome_ex = p.get('nome', '').upper()
+                        if p.get('verificado', False): nome_ex += " <span style='color:#1DA1F2;'>☑️</span>"
+                        st.markdown(f"**{nome_ex}**", unsafe_allow_html=True)
                         st.caption(f"{p.get('descricao', '')[:120]}...")
 
-                    # Vitrine de Fotos do Portfólio
-                    if p.get('portfolio_imgs'):
-                        cols_v = st.columns(3)
-                        for i, img_b64 in enumerate(p.get('portfolio_imgs')[:3]):
-                            cols_v[i].image(img_b64, use_container_width=True)
-
-                    # --- LÓGICA DO BOTÃO DE WHATSAPP (AQUI DENTRO DO LOOP) ---
-                    nome_curto = p.get('nome', 'Profissional').split()[0].upper()
-                    
-                    # Limpeza do número de telefone (ID do documento)
-                    numero_limpo = re.sub(r'\D', '', str(pid))
-                    if not numero_limpo.startswith('55'):
-                        numero_limpo = f"55{numero_limpo}"
-                    
-                    texto_zap = quote(f"Olá {p.get('nome')}, vi seu perfil no GeralJá!")
-                    link_final = f"https://wa.me/{numero_limpo}?text={texto_zap}"
-
-                    # --- BOTÃO ÚNICO (VISUAL TOP + ABRE SEMPRE) ---
-                    import re
-                    from urllib.parse import quote
-                    
-                    # 1. Preparação dos dados
+                    # --- BOTÃO DE WHATSAPP (ABERTURA DIRETA) ---
                     num_limpo = re.sub(r'\D', '', str(pid))
                     if not num_limpo.startswith('55'): num_limpo = f"55{num_limpo}"
-                    texto_zap = quote(f"Olá {p.get('nome')}, vi seu perfil no GeralJá!")
-                    link_final = f"https://wa.me/{num_limpo}?text={texto_zap}"
+                    link_zap = f"https://wa.me/{num_limpo}?text={quote('Olá, vi seu perfil no GeralJá!')}"
                     nome_btn = p.get('nome', 'Profissional').split()[0].upper()
-                    
-                    # 2. BOTÃO HTML (Ocupa o lugar do st.button)
-                    # Este botão abre o WhatsApp instantaneamente e não é bloqueado
+
                     st.markdown(f"""
-                        <a href="{link_final}" target="_blank" style="text-decoration: none;">
-                            <div style="
-                                background-color: #25D366;
-                                color: white;
-                                padding: 15px;
-                                border-radius: 12px;
-                                text-align: center;
-                                font-weight: bold;
-                                font-size: 18px;
-                                box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-                                transition: 0.3s;
-                                cursor: pointer;
-                                margin-top: 10px;
-                            ">
+                        <a href="{link_zap}" target="_blank" style="text-decoration: none;">
+                            <div style="background-color: #25D366; color: white; padding: 12px; border-radius: 10px; text-align: center; font-weight: bold; margin-top: 10px; font-size: 16px;">
                                 💬 FALAR COM {nome_btn}
                             </div>
                         </a>
                     """, unsafe_allow_html=True)
-                    
-                    # 3. LÓGICA DE DÉBITO (AUTOMÁTICA AO CARREGAR O CONTATO)
-                    # Para evitar dois botões, vamos registrar o "Clique de Visualização"
-                    # Isso garante que o profissional pague pela exposição no topo
-                    if p.get('saldo', 0) <= 0:
-                    
-continue # Pula esse profissional e vai para o próximo
+
+                    # --- BOTÃO DE DÉBITO (PARA SEGURANÇA DO SEU SALDO) ---
+                    if st.button(f"Confirmar Contato com {nome_btn}", key=f"deb_{pid}", use_container_width=True):
+                        # Deduz 1 moeda e registra o clique no Firebase
                         db.collection("profissionais").document(pid).update({
+                            "saldo": saldo_atual - 1,
                             "cliques": p.get('cliques', 0) + 1
-                        })       
-# --- ABA 2: CENTRAL PARCEIRO (COM ATUALIZADOR DE GPS) ---
+                        })
+                        st.toast(f"Moeda debitada de {nome_btn}!", icon="🪙")
 with menu_abas[2]:
     if 'auth' not in st.session_state: st.session_state.auth = False
     
@@ -853,6 +816,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
