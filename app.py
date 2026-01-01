@@ -469,15 +469,15 @@ with menu_abas[0]:
                         </a>
                     """, unsafe_allow_html=True)
                     
-                    # 3. LÓGICA DE DÉBITO (AUTOMÁTICA AO CARREGAR O CONTATO)
-                    # Para evitar dois botões, vamos registrar o "Clique de Visualização"
-                    # Isso garante que o profissional pague pela exposição no topo
-                    if p.get('saldo', 0) <= 0:
-                    continue # Pula esse profissional e vai para o próximo
-                    
+                    # 3. LÓGICA DE DÉBITO E SEGURANÇA
+                # Verifica se tem saldo antes de processar
+                if p.get('saldo', 0) <= 0:
+                    continue  # <--- AGORA ESTÁ DENTRO DO IF (4 espaços)
+
+                # Se passou pelo if acima, registra o clique/visualização
                 db.collection("profissionais").document(pid).update({
-                            "cliques": p.get('cliques', 0) + 1
-                        })       
+                    "cliques": p.get('cliques', 0) + 1
+                })
 # --- ABA 2: CENTRAL PARCEIRO (COM ATUALIZADOR DE GPS) ---
 with menu_abas[2]:
     if 'auth' not in st.session_state: st.session_state.auth = False
@@ -842,6 +842,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
