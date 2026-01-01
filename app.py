@@ -337,15 +337,20 @@ with menu_abas[0]:
     raio_km = c2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 20, 50, 100, 500, 2000], value=10)
     
     if termo_busca:
+        # Processamento via IA para identificar a categoria
         cat_ia = processar_ia_avancada(termo_busca)
         st.info(f"✨ IA: Buscando por **{cat_ia}** próximo a você")
         
-        # Lógica de Horário
+        # Lógica de Horário em tempo real
         from datetime import datetime
         import pytz
-        hora_atual = datetime.now(pytz.timezone('America/Sao_Paulo')).strftime('%H:%M')
+        import re
+        from urllib.parse import quote
+        
+        fuso = pytz.timezone('America/Sao_Paulo')
+        hora_atual = datetime.now(fuso).strftime('%H:%M')
 
-        # Busca no Firebase
+        # Busca no Firebase (Filtra apenas aprovados e da categoria certa)
         profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
         
         lista_ranking = []
@@ -353,12 +358,12 @@ with menu_abas[0]:
             p = p_doc.to_dict()
             p['id'] = p_doc.id
             
-            # CALCULA DISTÂNCIA REAL
+            # CALCULA DISTÂNCIA REAL (GPS vs Profissional)
             dist = calcular_distancia_real(minha_lat, minha_lon, p.get('lat', LAT_REF), p.get('lon', LON_REF))
             
             if dist <= raio_km:
                 p['dist'] = dist
-                # MOTOR DE SCORE ELITE
+                # MOTOR DE SCORE ELITE (Ranking)
                 score = 0
                 score += 500 if p.get('verificado', False) else 0
                 score += (p.get('saldo', 0) * 10)
@@ -366,7 +371,7 @@ with menu_abas[0]:
                 p['score_elite'] = score
                 lista_ranking.append(p)
 
-        # Ordenação
+        # Ordenação: Elite primeiro (maior score), depois os mais próximos (menor distância)
         lista_ranking.sort(key=lambda x: (-x['score_elite'], x['dist']))
 
         if not lista_ranking:
@@ -381,12 +386,13 @@ with menu_abas[0]:
             st.markdown(f'<a href="{link_share}" target="_blank" style="text-decoration:none;"><div style="background:#22C55E; color:white; padding:15px; border-radius:10px; text-align:center; font-weight:bold; margin-top:10px;">📲 COMPARTILHAR NO WHATSAPP</div></a>', unsafe_allow_html=True)
         
         else:
+            # --- RENDERIZAÇÃO DOS CARDS (LOOP) ---
             for p in lista_ranking:
                 pid = p['id']
                 is_elite = p.get('verificado') and p.get('saldo', 0) > 0
                 
                 with st.container():
-                    # Design do Card
+                    # Cores dinâmicas baseadas no tipo de conta
                     cor_borda = "#FFD700" if is_elite else ("#FF8C00" if p.get('tipo') == "🏢 Comércio/Loja" else "#0047AB")
                     bg_card = "#FFFDF5" if is_elite else "#FFFFFF"
                     
@@ -413,56 +419,48 @@ with menu_abas[0]:
                         st.markdown(f"**{nome_exibicao}** {status_loja}", unsafe_allow_html=True)
                         st.caption(f"{p.get('descricao', '')[:120]}...")
 
-                    # Vitrine de Fotos
+                    # Vitrine de Fotos do Portfólio
                     if p.get('portfolio_imgs'):
                         cols_v = st.columns(3)
                         for i, img_b64 in enumerate(p.get('portfolio_imgs')[:3]):
                             cols_v[i].image(img_b64, use_container_width=True)
 
-                   # --- BOTÃO DE CONTATO (VERSÃO BLINDADA CONTRA CONEXÃO RECUSADA) ---
-nome_curto = p.get('nome', 'Profissional').split()[0].upper()
-import re
-from urllib.parse import quote
+                    # --- LÓGICA DO BOTÃO DE WHATSAPP (AQUI DENTRO DO LOOP) ---
+                    nome_curto = p.get('nome', 'Profissional').split()[0].upper()
+                    
+                    # Limpeza do número de telefone (ID do documento)
+                    numero_limpo = re.sub(r'\D', '', str(pid))
+                    if not numero_limpo.startswith('55'):
+                        numero_limpo = f"55{numero_limpo}"
+                    
+                    texto_zap = quote(f"Olá {p.get('nome')}, vi seu perfil no GeralJá!")
+                    link_final = f"https://wa.me/{numero_limpo}?text={texto_zap}"
 
-# 1. Preparação dos dados do link
-numero_limpo = re.sub(r'\D', '', str(pid))
-if not numero_limpo.startswith('55'):
-    numero_limpo = f"55{numero_limpo}"
+                    # Botão em HTML para evitar bloqueios de redirecionamento
+                    st.markdown(f"""
+                        <a href="{link_final}" target="_blank" style="text-decoration: none;">
+                            <div style="
+                                background-color: #25D366; color: white; padding: 15px; border-radius: 12px;
+                                text-align: center; font-weight: bold; font-size: 16px; margin-top: 10px;
+                                box-shadow: 0 4px 6px rgba(0,0,0,0.1); cursor: pointer;
+                            ">
+                                💬 FALAR COM {nome_curto}
+                            </div>
+                        </a>
+                    """, unsafe_allow_html=True)
 
-texto_zap = quote(f"Olá {p.get('nome')}, vi seu perfil no GeralJá!")
-link_final = f"https://wa.me/{numero_limpo}?text={texto_zap}"
-
-# 2. Em vez de st.button, usamos um link estilizado como botão
-# Isso evita o erro de 'Conexão Recusada' porque o clique é direto do usuário
-st.markdown(f"""
-    <a href="{link_final}" target="_blank" style="text-decoration: none;">
-        <div style="
-            background-color: #25D366;
-            color: white;
-            padding: 12px;
-            border-radius: 10px;
-            text-align: center;
-            font-weight: bold;
-            font-size: 16px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            margin-bottom: 10px;
-            cursor: pointer;
-        ">
-            💬 FALAR COM {nome_curto}
-        </div>
-    </a>
-""", unsafe_allow_html=True)
-
-# 3. Lógica oculta para debitar saldo (roda quando a página recarrega ou o usuário interage)
-# Como o link acima é HTML puro, para debitar o saldo, você pode manter um botão pequeno 
-# ou registrar o clique via analytics. Para simplificar e manter o débito:
-if st.button(f"CONFIRMAR CONTATO COM {nome_curto} (Debitar 1 Moeda)", key=f"debito_{pid}"):
-    if p.get('saldo', 0) > 0:
-        db.collection("profissionais").document(pid).update({
-            "saldo": p.get('saldo') - 1,
-            "cliques": p.get('cliques', 0) + 1
-        })
-    st.success("Contato registrado!")
+                    # Botão para debitar saldo e registrar métrica
+                    if st.button(f"Confirmar Contato ({nome_curto})", key=f"btn_confirm_{pid}", use_container_width=True):
+                        if p.get('saldo', 0) > 0:
+                            db.collection("profissionais").document(pid).update({
+                                "saldo": p.get('saldo') - 1,
+                                "cliques": p.get('cliques', 0) + 1
+                            })
+                            st.success(f"Moeda debitada de {nome_curto}!")
+                        else:
+                            st.info("Contato registrado (Profissional sem moedas no momento).")
+                    
+                    st.markdown("<br>", unsafe_allow_html=True)
 # --- ABA 2: CENTRAL PARCEIRO (COM ATUALIZADOR DE GPS) ---
 with menu_abas[2]:
     if 'auth' not in st.session_state: st.session_state.auth = False
@@ -827,6 +825,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
