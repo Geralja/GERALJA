@@ -529,28 +529,39 @@ with menu_abas[2]:
         
         st.divider()
 
-        # --- VITRINE DE VENDAS ---
+       # --- VITRINE DE VENDAS COM PIX COPIA E COLA ---
         with st.expander("💎 COMPRAR MOEDAS E GANHAR DESTAQUE", expanded=False):
-            st.markdown("<p style='text-align:center; color:gray;'>Escolha um pacote para subir no ranking e receber mais chamados.</p>", unsafe_allow_html=True)
+            st.markdown("<p style='text-align:center; color:gray;'>Escolha um pacote, pague o PIX e envie o comprovante.</p>", unsafe_allow_html=True)
+            
+            # Defina suas chaves PIX aqui (Substitua pelos seus códigos reais)
+            pix_10 = "COLE_AQUI_SEU_PIX_DE_10_REAIS"
+            pix_45 = "COLE_AQUI_SEU_PIX_DE_45_REAIS"
+            pix_80 = "COLE_AQUI_SEU_PIX_DE_80_REAIS"
+
             cv1, cv2, cv3 = st.columns(3)
             
             with cv1:
-                st.markdown('<div style="border:1px solid #ddd; padding:10px; border-radius:10px; text-align:center;"><b>BRONZE</b><br>10 moedas<br><b>R$ 25</b></div>', unsafe_allow_html=True)
-                if st.button("COMPRAR 🥉", key="btn_b10", use_container_width=True):
-                    msg = f"Olá! Quero o Pacote BRONZE (10 moedas) para o Zap: {st.session_state.user_id}"
-                    st.markdown(f'<meta http-equiv="refresh" content="0;URL=https://wa.me/{ZAP_ADMIN}?text={msg.replace(" ", "%20")}">', unsafe_allow_html=True)
+                st.markdown('<div style="border:2px solid #ddd; padding:10px; border-radius:10px; text-align:center; height:150px;"><b>BRONZE</b><br>10 moedas<br><b style="font-size:20px;">R$ 10</b></div>', unsafe_allow_html=True)
+                if st.button("PIX R$ 10 🥉", key="btn_b10", use_container_width=True):
+                    st.code(pix_10)
+                    st.toast("Pix Copiado!", icon="✅")
 
             with cv2:
-                st.markdown('<div style="border:2px solid #FFD700; background:#FFFDF5; padding:10px; border-radius:10px; text-align:center;"><b>PRATA</b><br>30 moedas<br><b>R$ 60</b></div>', unsafe_allow_html=True)
-                if st.button("COMPRAR 🥈", key="btn_p30", use_container_width=True):
-                    msg = f"Olá! Quero o Pacote PRATA (30 moedas) para o Zap: {st.session_state.user_id}"
-                    st.markdown(f'<meta http-equiv="refresh" content="0;URL=https://wa.me/{ZAP_ADMIN}?text={msg.replace(" ", "%20")}">', unsafe_allow_html=True)
+                st.markdown('<div style="border:2px solid #FFD700; background:#FFFDF5; padding:10px; border-radius:10px; text-align:center; height:150px;"><b>PRATA</b><br>50 moedas<br><b style="font-size:20px;">R$ 45</b><br><small style="color:red;">🔥 10% OFF</small></div>', unsafe_allow_html=True)
+                if st.button("PIX R$ 45 🥈", key="btn_p30", use_container_width=True):
+                    st.code(pix_45)
+                    st.toast("Pix Copiado!", icon="✅")
 
             with cv3:
-                st.markdown('<div style="border:1px solid #ddd; padding:10px; border-radius:10px; text-align:center;"><b>OURO</b><br>100 moedas<br><b>R$ 150</b></div>', unsafe_allow_html=True)
-                if st.button("COMPRAR 🥇", key="btn_o100", use_container_width=True):
-                    msg = f"Olá! Quero o Pacote OURO (100 moedas) para o Zap: {st.session_state.user_id}"
-                    st.markdown(f'<meta http-equiv="refresh" content="0;URL=https://wa.me/{ZAP_ADMIN}?text={msg.replace(" ", "%20")}">', unsafe_allow_html=True)
+                st.markdown('<div style="border:2px solid #ddd; padding:10px; border-radius:10px; text-align:center; height:150px;"><b>OURO</b><br>100 moedas<br><b style="font-size:20px;">R$ 80</b><br><small style="color:red;">🚀 20% OFF</small></div>', unsafe_allow_html=True)
+                if st.button("PIX R$ 80 🥇", key="btn_o100", use_container_width=True):
+                    st.code(pix_80)
+                    st.toast("Pix Copiado!", icon="✅")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            # Botão de suporte para enviar comprovante
+            msg_pago = f"Olá! Acabei de fazer o PIX para recarga de moedas. Meu Zap é: {st.session_state.user_id}"
+            st.link_button("✅ JÁ PAGUEI! ENVIAR COMPROVANTE", f"https://wa.me/{ZAP_ADMIN}?text={msg_pago.replace(' ', '%20')}", use_container_width=True)
         
         # --- FORMULÁRIO DE EDIÇÃO (MANTIDO SEU ORIGINAL) ---
         with st.expander("📝 MEU PERFIL & VITRINE", expanded=True):
@@ -841,6 +852,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
