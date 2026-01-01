@@ -517,23 +517,25 @@ with menu_abas[2]:
          
        # --- NOVO: BOTÃO DE ATUALIZAÇÃO DE GPS DO PARCEIRO ---
         with st.container():
-            # Chamamos o GPS com uma chave única ANTES do botão para ele já estar carregado
-            loc_parceiro = get_geolocation(key='gps_parceiro') 
+            # Usamos a função base que é mais estável para evitar o TypeError
+            loc_parceiro = streamlit_js_eval(
+                js_expressions="navigator.geolocation.getCurrentPosition(success => { return success })", 
+                key='gps_parceiro_v3'
+            )
             
             if st.button("📍 ATUALIZAR MINHA LOCALIZAÇÃO DE ATENDIMENTO", use_container_width=True):
-                if loc_parceiro:
-                    # Extraímos as coordenadas com segurança
-                    n_lat = loc_parceiro.get('coords', {}).get('latitude')
-                    n_lon = loc_parceiro.get('coords', {}).get('longitude')
+                if loc_parceiro and 'coords' in loc_parceiro:
+                    n_lat = loc_parceiro['coords'].get('latitude')
+                    n_lon = loc_parceiro['coords'].get('longitude')
                     
                     if n_lat and n_lon:
                         doc_ref.update({"lat": n_lat, "lon": n_lon})
                         st.success("✅ Localização salva! Clientes próximos agora verão você.")
                         st.balloons()
                     else:
-                        st.warning("⚠️ Localização capturada, mas dados incompletos. Tente novamente.")
+                        st.warning("⚠️ Coordenadas não recebidas. Tente clicar novamente.")
                 else:
-                    st.error("❌ GPS não detectado. Verifique se o acesso à localização está permitido no navegador.")
+                    st.error("❌ GPS ainda não capturado. Aguarde 2 segundos e clique novamente.")
                 
                 if loc_parceiro:
                     n_lat = loc_parceiro['coords']['latitude']
@@ -839,6 +841,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
