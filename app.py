@@ -419,37 +419,50 @@ with menu_abas[0]:
                         for i, img_b64 in enumerate(p.get('portfolio_imgs')[:3]):
                             cols_v[i].image(img_b64, use_container_width=True)
 
-                    # --- BOTÃO DE CONTATO (DENTRO DO LOOP) ---
-                    nome_curto = p.get('nome', 'Profissional').split()[0].upper()
-                    if st.button(f"FALAR COM {nome_curto}", key=f"btn_zap_{pid}", use_container_width=True):
-                        import re
-                        from urllib.parse import quote
-                        
-                        # Limpa o número e garante o 55
-                        numero_limpo = re.sub(r'\D', '', str(pid))
-                        if not numero_limpo.startswith('55'):
-                            numero_limpo = f"55{numero_limpo}"
-                        
-                        # Débito de saldo
-                        if p.get('saldo', 0) > 0:
-                            db.collection("profissionais").document(pid).update({
-                                "saldo": p.get('saldo') - 1,
-                                "cliques": p.get('cliques', 0) + 1
-                            })
-                        
-                        texto_zap = quote(f"Olá {p.get('nome')}, vi seu perfil no GeralJá e gostaria de um orçamento!")
-                        link_final = f"https://wa.me/{numero_limpo}?text={texto_zap}"
-                        
-                        # Redirecionamento duplo para garantir funcionamento mobile
-                        st.markdown(f"""
-                            <script type="text/javascript">
-                                window.open('{link_final}', '_blank');
-                            </script>
-                            <meta http-equiv="refresh" content="0;URL='{link_final}'">
-                        """, unsafe_allow_html=True)
-                    
-                    st.divider()
+                   # --- BOTÃO DE CONTATO (VERSÃO BLINDADA CONTRA CONEXÃO RECUSADA) ---
+nome_curto = p.get('nome', 'Profissional').split()[0].upper()
+import re
+from urllib.parse import quote
 
+# 1. Preparação dos dados do link
+numero_limpo = re.sub(r'\D', '', str(pid))
+if not numero_limpo.startswith('55'):
+    numero_limpo = f"55{numero_limpo}"
+
+texto_zap = quote(f"Olá {p.get('nome')}, vi seu perfil no GeralJá!")
+link_final = f"https://wa.me/{numero_limpo}?text={texto_zap}"
+
+# 2. Em vez de st.button, usamos um link estilizado como botão
+# Isso evita o erro de 'Conexão Recusada' porque o clique é direto do usuário
+st.markdown(f"""
+    <a href="{link_final}" target="_blank" style="text-decoration: none;">
+        <div style="
+            background-color: #25D366;
+            color: white;
+            padding: 12px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 16px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 10px;
+            cursor: pointer;
+        ">
+            💬 FALAR COM {nome_curto}
+        </div>
+    </a>
+""", unsafe_allow_html=True)
+
+# 3. Lógica oculta para debitar saldo (roda quando a página recarrega ou o usuário interage)
+# Como o link acima é HTML puro, para debitar o saldo, você pode manter um botão pequeno 
+# ou registrar o clique via analytics. Para simplificar e manter o débito:
+if st.button(f"CONFIRMAR CONTATO COM {nome_curto} (Debitar 1 Moeda)", key=f"debito_{pid}"):
+    if p.get('saldo', 0) > 0:
+        db.collection("profissionais").document(pid).update({
+            "saldo": p.get('saldo') - 1,
+            "cliques": p.get('cliques', 0) + 1
+        })
+    st.success("Contato registrado!")
 # --- ABA 2: CENTRAL PARCEIRO (COM ATUALIZADOR DE GPS) ---
 with menu_abas[2]:
     if 'auth' not in st.session_state: st.session_state.auth = False
@@ -814,6 +827,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
