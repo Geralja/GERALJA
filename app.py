@@ -556,7 +556,69 @@ with menu_abas[2]:
                     st.markdown(f'<meta http-equiv="refresh" content="0;URL=https://wa.me/{ZAP_ADMIN}?text={quote(msg)}">', unsafe_allow_html=True)
 
             with cv3:
-                st.markdown('<div style="border:1px solid #ddd; padding:10px; border-radius:10px; text-align:center;"><b>100 moedas</b>
+                st.markdown('<div style="border:1px solid #ddd; padding:10px; border-radius:10px; text-align:center;"><b>100 moedas</b><br>R$ 150</div>', unsafe_allow_html=True)
+                if st.button("OURO 🥇", key="btn_o100", use_container_width=True):
+                    msg = f"Quero o Pacote OURO (100 moedas) para o Zap: {st.session_state.user_id}"
+                    st.markdown(f'<meta http-equiv="refresh" content="0;URL=https://wa.me/{ZAP_ADMIN}?text={quote(msg)}">', unsafe_allow_html=True)
+
+        # --- FORMULÁRIO DE EDIÇÃO ---
+        with st.expander("📝 MEU PERFIL & VITRINE", expanded=True):
+            with st.form("ed"):
+                col_f1, col_f2 = st.columns(2)
+                n_nome = col_f1.text_input("Nome Profissional/Loja", d.get('nome', ''))
+                
+                try:
+                    idx_at = CATEGORIAS_OFICIAIS.index(d.get('area', 'Ajudante Geral'))
+                except:
+                    idx_at = 0
+                
+                n_area = col_f2.selectbox("Sua Especialidade", CATEGORIAS_OFICIAIS, index=idx_at)
+                n_desc = st.text_area("Descrição", d.get('descricao', ''))
+
+                st.markdown("---")
+                col_c1, col_c2 = st.columns(2)
+                n_tipo = col_c1.selectbox("Tipo de Conta", ["👤 Profissional", "🏢 Comércio/Loja"], 
+                                           index=0 if d.get('tipo') == "👤 Profissional" else 1)
+                n_catalogo = col_c2.text_input("Link do Catálogo/Instagram", d.get('link_catalogo', ''))
+
+                col_h1, col_h2 = st.columns(2)
+                n_h_abre = col_h1.text_input("Horário Abre", d.get('h_abre', '08:00'))
+                n_h_fecha = col_h2.text_input("Horário Fecha", d.get('h_fecha', '18:00'))
+                
+                st.markdown("---")
+                n_foto = st.file_uploader("Trocar Foto de Perfil", type=['jpg', 'png', 'jpeg'])
+                n_portfolio = st.file_uploader("Vitrine (Até 3 fotos)", type=['jpg', 'png', 'jpeg'], accept_multiple_files=True)
+                
+                if st.form_submit_button("SALVAR TODAS AS ALTERAÇÕES", use_container_width=True):
+                    up = {
+                        "nome": n_nome, "area": n_area, "descricao": n_desc,
+                        "tipo": n_tipo, "link_catalogo": n_catalogo,
+                        "h_abre": n_h_abre, "h_fecha": n_h_fecha
+                    }
+                    if n_foto: up["foto_url"] = f"data:image/png;base64,{converter_img_b64(n_foto)}"
+                    if n_portfolio:
+                        lista_b64 = [f"data:image/png;base64,{converter_img_b64(f)}" for f in n_portfolio[:3]]
+                        up["portfolio_imgs"] = lista_b64
+                    
+                    doc_ref.update(up)
+                    st.success("✅ Perfil atualizado!")
+                    time.sleep(1)
+                    st.rerun()
+
+        # --- SEÇÃO DE SEGURANÇA (NOVO) ---
+        with st.expander("🔐 ALTERAR SENHA DE ACESSO"):
+            nv_senha = st.text_input("Nova Senha", type="password")
+            cf_senha = st.text_input("Repetir Nova Senha", type="password")
+            if st.button("CONFIRMAR NOVA SENHA"):
+                if nv_senha == cf_senha and len(nv_senha) >= 4:
+                    doc_ref.update({"senha": nv_senha})
+                    st.success("✅ Senha alterada com sucesso!")
+                else:
+                    st.error("❌ As senhas não coincidem ou são muito curtas.")
+
+        if st.button("SAIR DO PAINEL", use_container_width=True):
+            st.session_state.auth = False
+            st.rerun()
 # --- ABA 3: CADASTRO (VERSÃO SOMAR) ---
 with menu_abas[1]:
     st.header("🚀 Seja um Parceiro GeralJá")
@@ -799,6 +861,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
