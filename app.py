@@ -515,18 +515,20 @@ with menu_abas[2]:
             </div>
         """, unsafe_allow_html=True)
 
-        # --- NOVO: BOTÃO DE ATUALIZAÇÃO DE GPS DO PARCEIRO ---
-        with st.container():
-            if st.button("📍 ATUALIZAR MINHA LOCALIZAÇÃO DE ATENDIMENTO", use_container_width=True, help="Clique aqui quando estiver no seu local de trabalho para os clientes te acharem"):
-                loc_parceiro = get_geolocation()
-                if loc_parceiro:
-                    n_lat = loc_parceiro['coords']['latitude']
-                    n_lon = loc_parceiro['coords']['longitude']
-                    doc_ref.update({"lat": n_lat, "lon": n_lon})
-                    st.success("✅ Localização salva! Clientes próximos agora verão você.")
-                    st.balloons()
-                else:
-                    st.error("❌ GPS não detectado. Ative a localização no seu celular/navegador.")
+            # --- NOVO: BOTÃO DE ATUALIZAÇÃO DE GPS DO PARCEIRO ---
+            with st.container():
+                if st.button("📍 ATUALIZAR MINHA LOCALIZAÇÃO DE ATENDIMENTO", use_container_width=True):
+                    # ADICIONAMOS A KEY='gps_parceiro' PARA TIRAR O ERRO
+                    loc_parceiro = get_geolocation(key='gps_parceiro') 
+                    
+                    if loc_parceiro:
+                        n_lat = loc_parceiro['coords']['latitude']
+                        n_lon = loc_parceiro['coords']['longitude']
+                        doc_ref.update({"lat": n_lat, "lon": n_lon})
+                        st.success("✅ Localização salva! Clientes próximos agora verão você.")
+                        st.balloons()
+                    else:
+                        st.error("❌ GPS não detectado. Ative a localização no seu celular/navegador.")
         
         st.divider()
 
@@ -823,6 +825,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
