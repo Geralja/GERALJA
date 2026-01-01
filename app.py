@@ -517,10 +517,11 @@ with menu_abas[2]:
 
             # --- NOVO: BOTÃO DE ATUALIZAÇÃO DE GPS DO PARCEIRO ---
 with st.container():
-            if st.button("📍 ATUALIZAR MINHA LOCALIZAÇÃO DE ATENDIMENTO", use_container_width=True):
+         
+         f st.button("📍 ATUALIZAR MINHA LOCALIZAÇÃO DE ATENDIMENTO", use_container_width=True):
                 # ADICIONAMOS A KEY='gps_parceiro' PARA TIRAR O ERRO
                 # Tente desta forma (usando a propriedade identificadora interna da lib):
-        loc_parceiro = get_geolocation(component_key='gps_parceiro') 
+        loc_parceiro = get_geolocation(component_key='gps_parceiro')    
         
         if loc_parceiro:
             n_lat = loc_parceiro['coords']['latitude']
@@ -826,6 +827,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
