@@ -478,9 +478,11 @@ with menu_abas[0]:
                 db.collection("profissionais").document(pid).update({
                     "cliques": p.get('cliques', 0) + 1
                 })
-# --- ABA 2: PAINEL DO PARCEIRO ---
+# --- ABA 2: PAINEL DO PARCEIRO (VERSÃO COMPLETA E SOMADA) ---
 with menu_abas[2]:
-    if not st.session_state.get('auth', False):
+    if 'auth' not in st.session_state: st.session_state.auth = False
+    
+    if not st.session_state.auth:
         st.subheader("🚀 Acesso ao Painel")
         col1, col2 = st.columns(2)
         l_zap = col1.text_input("WhatsApp (números)")
@@ -495,7 +497,7 @@ with menu_abas[2]:
         doc_ref = db.collection("profissionais").document(st.session_state.user_id)
         d = doc_ref.get().to_dict()
         
-        # 1. MÉTRICAS DO TOPO (Visual Moderno)
+        # 1. MÉTRICAS (Visual Moderno)
         st.markdown(f"""
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px;">
                 <div style="background:#1E293B; color:white; padding:15px; border-radius:15px; text-align:center;">
@@ -510,60 +512,57 @@ with menu_abas[2]:
             </div>
         """, unsafe_allow_html=True)
 
-        # 2. GPS FIXO (Usando a função base para evitar erros)
-        st.write("📍 **Localização de Atendimento**")
-        loc_parceiro = streamlit_js_eval(
-            js_expressions="navigator.geolocation.getCurrentPosition(success => { return success })", 
-            key='gps_parceiro_vfinal'
-        )
-        
-        if st.button("📍 ATUALIZAR MEU GPS AGORA", use_container_width=True):
-            if loc_parceiro and 'coords' in loc_parceiro:
-                n_lat = loc_parceiro['coords']['latitude']
-                n_lon = loc_parceiro['coords']['longitude']
-                doc_ref.update({"lat": n_lat, "lon": n_lon})
-                st.success("✅ Localização salva! Clientes próximos agora verão você.")
-                st.balloons()
-            else:
-                st.warning("Aguardando sinal... Clique novamente em 2 segundos.")
+        # 2. GPS (Lógica Estável)
+        with st.container():
+            loc_parceiro = streamlit_js_eval(
+                js_expressions="navigator.geolocation.getCurrentPosition(success => { return success })", 
+                key='gps_parceiro_final'
+            )
+            if st.button("📍 ATUALIZAR MINHA LOCALIZAÇÃO AGORA", use_container_width=True):
+                if loc_parceiro and 'coords' in loc_parceiro:
+                    n_lat = loc_parceiro['coords'].get('latitude')
+                    n_lon = loc_parceiro['coords'].get('longitude')
+                    doc_ref.update({"lat": n_lat, "lon": n_lon})
+                    st.success("✅ Localização salva!")
+                    st.balloons()
+                else:
+                    st.warning("⚠️ GPS não capturado. Tente novamente em 2 segundos.")
 
         st.divider()
 
-        # 3. COMPRA DE MOEDAS (Alinhado)
+        # 3. COMPRA DE MOEDAS (Usando suas variáveis globais)
         with st.expander("💎 COMPRAR MOEDAS (PIX)", expanded=False):
             cv1, cv2, cv3 = st.columns(3)
             with cv1:
-                st.markdown('<div style="border:2px solid #ddd; padding:10px; border-radius:10px; text-align:center; height:150px;"><b>10 Moedas</b><br>R$ 10</div>', unsafe_allow_html=True)
-                if st.button("PIX R$ 10", key="px10"): st.code("CHAVE_PIX_10")
+                st.markdown(f'<div style="border:2px solid #ddd; padding:10px; border-radius:10px; text-align:center; height:155px; background:white;"><b>10 Moedas</b><br>R$ 10</div>', unsafe_allow_html=True)
+                if st.button("PIX R$ 10", key="px10", use_container_width=True): st.code(PIX_OFICIAL)
             with cv2:
-                st.markdown('<div style="border:2px solid #FFD700; background:#FFFDF5; padding:10px; border-radius:10px; text-align:center; height:150px;"><b>50 Moedas</b><br>R$ 45</div>', unsafe_allow_html=True)
-                if st.button("PIX R$ 45", key="px45"): st.code("CHAVE_PIX_45")
+                st.markdown(f'<div style="border:2px solid #FFD700; background:#FFFDF5; padding:10px; border-radius:10px; text-align:center; height:155px;"><b>50 Moedas</b><br>R$ 45<br><small style="color:red;">10% OFF</small></div>', unsafe_allow_html=True)
+                if st.button("PIX R$ 45", key="px45", use_container_width=True): st.code(PIX_OFICIAL)
             with cv3:
-                st.markdown('<div style="border:2px solid #ddd; padding:10px; border-radius:10px; text-align:center; height:150px;"><b>100 Moedas</b><br>R$ 80</div>', unsafe_allow_html=True)
-                if st.button("PIX R$ 80", key="px80"): st.code("CHAVE_PIX_80")
+                st.markdown(f'<div style="border:2px solid #ddd; padding:10px; border-radius:10px; text-align:center; height:155px; background:white;"><b>100 Moedas</b><br>R$ 80<br><small style="color:red;">20% OFF</small></div>', unsafe_allow_html=True)
+                if st.button("PIX R$ 80", key="px80", use_container_width=True): st.code(PIX_OFICIAL)
             
-            st.link_button("✅ ENVIAR COMPROVANTE", f"https://wa.me/{ZAP_ADMIN}?text=Fiz o PIX para o Zap: {st.session_state.user_id}", use_container_width=True)
+            st.link_button("🚀 ENVIAR COMPROVANTE AGORA", f"https://wa.me/{ZAP_ADMIN}?text=Fiz o PIX para o Zap: {st.session_state.user_id}", use_container_width=True)
 
-        # 4. AS MELHORIAS DE PERFIL (FOTOS, HORÁRIO, CATÁLOGO)
-        with st.expander("📝 MEU PERFIL & VITRINE", expanded=True):
+        # 4. EDIÇÃO DE PERFIL (FOTOS E DETALHES)
+        with st.expander("📝 EDITAR MEU PERFIL & VITRINE", expanded=True):
             with st.form("edicao_perfil"):
                 col_f1, col_f2 = st.columns(2)
-                n_nome = col_f1.text_input("Nome Profissional/Loja", d.get('nome', ''))
-                n_area = col_f2.selectbox("Sua Especialidade", CATEGORIAS_OFICIAIS, index=0)
-                n_desc = st.text_area("Descrição do seu serviço", d.get('descricao', ''))
+                n_nome = col_f1.text_input("Nome Profissional", d.get('nome', ''))
+                n_area = col_f2.selectbox("Especialidade", CATEGORIAS_OFICIAIS, index=0)
+                n_desc = st.text_area("Descrição", d.get('descricao', ''))
 
-                st.markdown("---")
                 col_c1, col_c2 = st.columns(2)
-                n_tipo = col_c1.selectbox("Tipo de Conta", ["👤 Profissional", "🏢 Comércio/Loja"], index=0)
-                n_catalogo = col_c2.text_input("Link do Catálogo/Instagram", d.get('link_catalogo', ''))
+                n_tipo = col_c1.selectbox("Tipo", ["👤 Profissional", "🏢 Empresa"], index=0)
+                n_catalogo = col_c2.text_input("Link Instagram/Catálogo", d.get('link_catalogo', ''))
 
                 col_h1, col_h2 = st.columns(2)
-                n_h_abre = col_h1.text_input("Horário Abre", d.get('h_abre', '08:00'))
-                n_h_fecha = col_h2.text_input("Horário Fecha", d.get('h_fecha', '18:00'))
+                n_h_abre = col_h1.text_input("Abre às", d.get('h_abre', '08:00'))
+                n_h_fecha = col_h2.text_input("Fecha às", d.get('h_fecha', '18:00'))
                 
-                st.markdown("---")
-                n_foto = st.file_uploader("Trocar Foto de Perfil", type=['jpg', 'png', 'jpeg'])
-                n_portfolio = st.file_uploader("Vitrine (Até 3 fotos)", type=['jpg', 'png', 'jpeg'], accept_multiple_files=True)
+                n_foto = st.file_uploader("Trocar Foto Perfil", type=['jpg','png','jpeg'])
+                n_portfolio = st.file_uploader("Vitrine (Até 3 fotos)", type=['jpg','png','jpeg'], accept_multiple_files=True)
                 
                 if st.form_submit_button("SALVAR ALTERAÇÕES", use_container_width=True):
                     up = {
@@ -576,9 +575,12 @@ with menu_abas[2]:
                         up["portfolio_imgs"] = [f"data:image/png;base64,{converter_img_b64(f)}" for f in n_portfolio[:3]]
                     
                     doc_ref.update(up)
-                    st.success("✅ Perfil atualizado com sucesso!")
-                    time.sleep(1)
+                    st.success("✅ Atualizado!")
                     st.rerun()
+
+        if st.button("SAIR DO PAINEL", use_container_width=True):
+            st.session_state.auth = False
+            st.rerun()
 
         if st.button("SAIR DO PAINEL", use_container_width=True):
             st.session_state.auth = False
@@ -825,6 +827,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
