@@ -497,17 +497,17 @@ with menu_abas[2]:
         doc_ref = db.collection("profissionais").document(st.session_state.user_id)
         d = doc_ref.get().to_dict()
         
-        # 1. MÉTRICAS
+        # 1. MÉTRICAS (Versão Segura para Celular)
         st.markdown(f"""
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px;">
-                <div style="background:#1E293B; color:white; padding:15px; border-radius:15px; text-align:center;">
-                    <small>SALDO</small><br><b style="font-size:20px;">{d.get('saldo', 0)} 🪙</b>
+            <div style="display: flex; justify-content: space-between; gap: 5px; margin-bottom: 20px;">
+                <div style="flex: 1; background:#f0f2f6; border: 1px solid #ddd; color:#1f77b4; padding:10px; border-radius:10px; text-align:center;">
+                    <small style="color: #555;">SALDO</small><br><b style="font-size:18px;">{d.get('saldo', 0)} 🪙</b>
                 </div>
-                <div style="background:#1E293B; color:white; padding:15px; border-radius:15px; text-align:center;">
-                    <small>CLIQUES</small><br><b style="font-size:20px;">{d.get('cliques', 0)} 🚀</b>
+                <div style="flex: 1; background:#f0f2f6; border: 1px solid #ddd; color:#1f77b4; padding:10px; border-radius:10px; text-align:center;">
+                    <small style="color: #555;">CLIQUES</small><br><b style="font-size:18px;">{d.get('cliques', 0)} 🚀</b>
                 </div>
-                <div style="background:#1E293B; color:white; padding:15px; border-radius:15px; text-align:center;">
-                    <small>STATUS</small><br><b style="font-size:14px;">{"🟢 ATIVO" if d.get('aprovado') else "🟡 PENDENTE"}</b>
+                <div style="flex: 1; background:#f0f2f6; border: 1px solid #ddd; color:#1f77b4; padding:10px; border-radius:10px; text-align:center;">
+                    <small style="color: #555;">STATUS</small><br><b style="font-size:12px;">{"🟢 ATIVO" if d.get('aprovado') else "🟡 PENDENTE"}</b>
                 </div>
             </div>
         """, unsafe_allow_html=True)
@@ -824,6 +824,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
