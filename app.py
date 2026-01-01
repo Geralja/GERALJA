@@ -530,76 +530,57 @@ with menu_abas[2]:
         
         st.divider()
 
-        # --- VITRINE DE VENDAS ---
-        with st.expander("💎 COMPRAR MOEDAS E GANHAR DESTAQUE", expanded=False):
-            st.markdown("<p style='text-align:center; color:gray;'>Escolha um pacote para subir no ranking e receber mais chamados.</p>", unsafe_allow_html=True)
+        # --- VITRINE DE VENDAS (ORGANIZADA E ALINHADA) ---
+        with st.expander("💎 COMPRAR MOEDAS (PIX)", expanded=False):
+            st.markdown("<p style='text-align:center; font-size:14px; color:gray;'>Escolha um pacote e copie o código PIX</p>", unsafe_allow_html=True)
+            
+            # Suas Chaves PIX
+            pix_10 = "SUA_CHAVE_PIX_10_REAIS"
+            pix_45 = "SUA_CHAVE_PIX_45_REAIS"
+            pix_80 = "SUA_CHAVE_PIX_80_REAIS"
+
             cv1, cv2, cv3 = st.columns(3)
             
             with cv1:
-                st.markdown('<div style="border:1px solid #ddd; padding:10px; border-radius:10px; text-align:center;"><b>BRONZE</b><br>10 moedas<br><b>R$ 25</b></div>', unsafe_allow_html=True)
-                if st.button("COMPRAR 🥉", key="btn_b10", use_container_width=True):
-                    msg = f"Olá! Quero o Pacote BRONZE (10 moedas) para o Zap: {st.session_state.user_id}"
-                    st.markdown(f'<meta http-equiv="refresh" content="0;URL=https://wa.me/{ZAP_ADMIN}?text={msg.replace(" ", "%20")}">', unsafe_allow_html=True)
+                st.markdown("""
+                    <div style="border:2px solid #ddd; padding:10px; border-radius:12px; text-align:center; height:160px; background:white;">
+                        <b style="color:#555;">BRONZE</b><br>
+                        <span style="font-size:22px;">10 🪙</span><br>
+                        <b style="font-size:18px;">R$ 10</b>
+                    </div>
+                """, unsafe_allow_html=True)
+                if st.button("COPIAR PIX", key="pix10", use_container_width=True): 
+                    st.code(pix_10)
+                    st.toast("Pix Copiado!", icon="✅")
 
             with cv2:
-                st.markdown('<div style="border:2px solid #FFD700; background:#FFFDF5; padding:10px; border-radius:10px; text-align:center;"><b>PRATA</b><br>30 moedas<br><b>R$ 60</b></div>', unsafe_allow_html=True)
-                if st.button("COMPRAR 🥈", key="btn_p30", use_container_width=True):
-                    msg = f"Olá! Quero o Pacote PRATA (30 moedas) para o Zap: {st.session_state.user_id}"
-                    st.markdown(f'<meta http-equiv="refresh" content="0;URL=https://wa.me/{ZAP_ADMIN}?text={msg.replace(" ", "%20")}">', unsafe_allow_html=True)
+                st.markdown("""
+                    <div style="border:2px solid #FFD700; padding:10px; border-radius:12px; text-align:center; height:160px; background:#FFFDF5;">
+                        <b style="color:#D4AF37;">PRATA</b><br>
+                        <span style="font-size:22px;">50 🪙</span><br>
+                        <b style="font-size:18px;">R$ 45</b><br>
+                        <small style="color:red; font-weight:bold;">10% OFF</small>
+                    </div>
+                """, unsafe_allow_html=True)
+                if st.button("COPIAR PIX", key="pix45", use_container_width=True): 
+                    st.code(pix_45)
+                    st.toast("Pix Copiado!", icon="✅")
 
             with cv3:
-                st.markdown('<div style="border:1px solid #ddd; padding:10px; border-radius:10px; text-align:center;"><b>OURO</b><br>100 moedas<br><b>R$ 150</b></div>', unsafe_allow_html=True)
-                if st.button("COMPRAR 🥇", key="btn_o100", use_container_width=True):
-                    msg = f"Olá! Quero o Pacote OURO (100 moedas) para o Zap: {st.session_state.user_id}"
-                    st.markdown(f'<meta http-equiv="refresh" content="0;URL=https://wa.me/{ZAP_ADMIN}?text={msg.replace(" ", "%20")}">', unsafe_allow_html=True)
-        
-        # --- FORMULÁRIO DE EDIÇÃO (MANTIDO SEU ORIGINAL) ---
-        with st.expander("📝 MEU PERFIL & VITRINE", expanded=True):
-            with st.form("ed"):
-                col_f1, col_f2 = st.columns(2)
-                n_nome = col_f1.text_input("Nome Profissional/Loja", d.get('nome', ''))
-                
-                try:
-                    idx_at = CATEGORIAS_OFICIAIS.index(d.get('area', 'Ajudante Geral'))
-                except:
-                    idx_at = 0
-                
-                n_area = col_f2.selectbox("Sua Especialidade", CATEGORIAS_OFICIAIS, index=idx_at)
-                n_desc = st.text_area("Descrição", d.get('descricao', ''))
-
-                st.markdown("---")
-                col_c1, col_c2 = st.columns(2)
-                n_tipo = col_c1.selectbox("Tipo de Conta", ["👤 Profissional", "🏢 Comércio/Loja"], 
-                                         index=0 if d.get('tipo') == "👤 Profissional" else 1)
-                n_catalogo = col_c2.text_input("Link do Catálogo/Instagram", d.get('link_catalogo', ''))
-
-                col_h1, col_h2 = st.columns(2)
-                n_h_abre = col_h1.text_input("Horário Abre", d.get('h_abre', '08:00'))
-                n_h_fecha = col_h2.text_input("Horário Fecha", d.get('h_fecha', '18:00'))
-                
-                st.markdown("---")
-                n_foto = st.file_uploader("Trocar Foto de Perfil", type=['jpg', 'png', 'jpeg'])
-                n_portfolio = st.file_uploader("Vitrine (Até 3 fotos)", type=['jpg', 'png', 'jpeg'], accept_multiple_files=True)
-                
-                if st.form_submit_button("SALVAR TODAS AS ALTERAÇÕES", use_container_width=True):
-                    up = {
-                        "nome": n_nome, "area": n_area, "descricao": n_desc,
-                        "tipo": n_tipo, "link_catalogo": n_catalogo,
-                        "h_abre": n_h_abre, "h_fecha": n_h_fecha
-                    }
-                    if n_foto: up["foto_url"] = f"data:image/png;base64,{converter_img_b64(n_foto)}"
-                    if n_portfolio:
-                        lista_b64 = [f"data:image/png;base64,{converter_img_b64(f)}" for f in n_portfolio[:3]]
-                        up["portfolio_imgs"] = lista_b64
-                    
-                    doc_ref.update(up)
-                    st.success("✅ Perfil atualizado!")
-                    time.sleep(1)
-                    st.rerun()
-
-        if st.button("SAIR DO PAINEL", use_container_width=True):
-            st.session_state.auth = False
-            st.rerun()
+                st.markdown("""
+                    <div style="border:2px solid #ddd; padding:10px; border-radius:12px; text-align:center; height:160px; background:white;">
+                        <b style="color:#555;">OURO</b><br>
+                        <span style="font-size:22px;">100 🪙</span><br>
+                        <b style="font-size:18px;">R$ 80</b><br>
+                        <small style="color:red; font-weight:bold;">20% OFF</small>
+                    </div>
+                """, unsafe_allow_html=True)
+                if st.button("COPIAR PIX", key="pix80", use_container_width=True): 
+                    st.code(pix_80)
+                    st.toast("Pix Copiado!", icon="✅")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.link_button("🚀 ENVIAR COMPROVANTE AGORA", f"https://wa.me/{ZAP_ADMIN}?text=Fiz%20o%20PIX%20para%20o%20Zap:%20{st.session_state.user_id}", use_container_width=True)
 # --- ABA 3: CADASTRO (VERSÃO SOMAR) ---
 with menu_abas[1]:
     st.header("🚀 Seja um Parceiro GeralJá")
@@ -842,6 +823,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
