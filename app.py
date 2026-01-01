@@ -20,6 +20,28 @@ def converter_img_b64(file):
     return None
 st.set_page_config(page_title="Geral Já", layout="wide")
 
+import streamlit as st
+# ... seus outros imports (firebase, base64, etc)
+
+st.set_page_config(page_title="Geral Já", layout="wide")
+
+# --- COLOQUE AQUI: CSS PARA CORRIGIR O MODO ESCURO E CLARO ---
+st.markdown('''
+    <style>
+        /* Força o preenchimento no topo */
+        div.block-container {padding-top:2rem;}
+        
+        /* Garante que os cards HTML se adaptem ao tema */
+        .metric-card {
+            border: 1px solid #555; 
+            border-radius: 10px; 
+            padding: 10px; 
+            text-align: center;
+            margin-bottom: 10px;
+        }
+    </style>
+''', unsafe_allow_html=True)
+
 # CSS para evitar que o fundo fique preto por erro de renderização
 st.markdown("""
     <style>
@@ -825,6 +847,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
