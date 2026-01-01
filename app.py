@@ -514,15 +514,26 @@ with menu_abas[2]:
                 </div>
             </div>
         """, unsafe_allow_html=True)
-
-            # --- NOVO: BOTÃO DE ATUALIZAÇÃO DE GPS DO PARCEIRO ---
-with st.container():
          
-        # --- NOVO: BOTÃO DE ATUALIZAÇÃO DE GPS DO PARCEIRO ---
+       # --- NOVO: BOTÃO DE ATUALIZAÇÃO DE GPS DO PARCEIRO ---
         with st.container():
+            # Chamamos o GPS com uma chave única ANTES do botão para ele já estar carregado
+            loc_parceiro = get_geolocation(key='gps_parceiro') 
+            
             if st.button("📍 ATUALIZAR MINHA LOCALIZAÇÃO DE ATENDIMENTO", use_container_width=True):
-                # O comando abaixo precisa estar recuado (identado) para estar DENTRO do botão
-                loc_parceiro = get_geolocation(key='gps_parceiro') 
+                if loc_parceiro:
+                    # Extraímos as coordenadas com segurança
+                    n_lat = loc_parceiro.get('coords', {}).get('latitude')
+                    n_lon = loc_parceiro.get('coords', {}).get('longitude')
+                    
+                    if n_lat and n_lon:
+                        doc_ref.update({"lat": n_lat, "lon": n_lon})
+                        st.success("✅ Localização salva! Clientes próximos agora verão você.")
+                        st.balloons()
+                    else:
+                        st.warning("⚠️ Localização capturada, mas dados incompletos. Tente novamente.")
+                else:
+                    st.error("❌ GPS não detectado. Verifique se o acesso à localização está permitido no navegador.")
                 
                 if loc_parceiro:
                     n_lat = loc_parceiro['coords']['latitude']
@@ -828,6 +839,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
