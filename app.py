@@ -472,7 +472,8 @@ with menu_abas[0]:
                     # 3. LÓGICA DE DÉBITO (AUTOMÁTICA AO CARREGAR O CONTATO)
                     # Para evitar dois botões, vamos registrar o "Clique de Visualização"
                     # Isso garante que o profissional pague pela exposição no topo
-                    if p.get('saldo', 0) > 0:
+                    if p.get('saldo', 0) <= 0:
+    continue # Pula esse profissional e vai para o próximo
                         db.collection("profissionais").document(pid).update({
                             "cliques": p.get('cliques', 0) + 1
                         })       
@@ -840,6 +841,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
