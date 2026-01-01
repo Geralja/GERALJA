@@ -19,6 +19,32 @@ def converter_img_b64(file):
         return base64.b64encode(file.getvalue()).decode()
     return None
 st.set_page_config(page_title="Geral Já", layout="wide")
+import streamlit as st
+# ... outros imports
+
+st.set_page_config(page_title="Geral Já", layout="wide")
+
+# ESTE BLOCO CORRIGE O VISUAL DO CELULAR (MODO ESCURO/CLARO)
+st.markdown('''
+    <style>
+        /* Ajusta o topo para não cortar o logo */
+        div.block-container {padding-top:2rem;}
+        
+        /* Cria um card que funciona em fundo branco ou preto */
+        .metric-card {
+            border: 1px solid #888; 
+            border-radius: 12px; 
+            padding: 15px; 
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        
+        /* Garante que o texto das abas seja legível */
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 10px;
+        }
+    </style>
+''', unsafe_allow_html=True)
 
 import streamlit as st
 # ... seus outros imports (firebase, base64, etc)
@@ -519,17 +545,15 @@ with menu_abas[0]:
                 db.collection("profissionais").document(pid).update({
                     "cliques": p.get('cliques', 0) + 1
                 })
-# --- ABA 2: PAINEL DO PARCEIRO (COMPATÍVEL COM MODO ESCURO/CLARO) ---
+# --- ABA 2: PAINEL DO PARCEIRO (TOTALMENTE ADAPTÁVEL) ---
 with menu_abas[2]:
     if 'auth' not in st.session_state: st.session_state.auth = False
     
     if not st.session_state.auth:
         st.subheader("🚀 Acesso ao Painel")
-        col1, col2 = st.columns(2)
-        l_zap = col1.text_input("WhatsApp (números)", key="zap_login_v5")
-        l_pw = col2.text_input("Senha", type="password", key="pw_login_v5")
-        
-        if st.button("ENTRAR NO PAINEL", use_container_width=True, key="btn_entrar_v5"):
+        l_zap = st.text_input("WhatsApp (números)", key="zap_final_v6")
+        l_pw = st.text_input("Senha", type="password", key="pw_final_v6")
+        if st.button("ENTRAR NO PAINEL", use_container_width=True, key="btn_entrar_v6"):
             u = db.collection("profissionais").document(l_zap).get()
             if u.exists and u.to_dict().get('senha') == l_pw:
                 st.session_state.auth, st.session_state.user_id = True, l_zap
@@ -539,70 +563,56 @@ with menu_abas[2]:
         doc_ref = db.collection("profissionais").document(st.session_state.user_id)
         d = doc_ref.get().to_dict()
         
-        # 1. MÉTRICAS (Sem cores fixas para não sumir no modo escuro)
-        # Usamos colunas nativas do Streamlit que se adaptam sozinhas ao tema
+        # 1. MÉTRICAS (Usando a classe 'metric-card' que criamos no CSS acima)
         m1, m2, m3 = st.columns(3)
-        with m1:
-            st.markdown(f"<div style='border:1px solid #555; border-radius:10px; padding:10px; text-align:center;'>Saldo<br><b style='font-size:20px;'>{d.get('saldo', 0)} 🪙</b></div>", unsafe_allow_html=True)
-        with m2:
-            st.markdown(f"<div style='border:1px solid #555; border-radius:10px; padding:10px; text-align:center;'>Cliques<br><b style='font-size:20px;'>{d.get('cliques', 0)} 🚀</b></div>", unsafe_allow_html=True)
-        with m3:
-            status = "🟢 ATIVO" if d.get('aprovado') else "🟡 PENDENTE"
-            st.markdown(f"<div style='border:1px solid #555; border-radius:10px; padding:10px; text-align:center;'>Status<br><b>{status}</b></div>", unsafe_allow_html=True)
+        m1.markdown(f'<div class="metric-card">Saldo<br><b style="font-size:20px;">{d.get("saldo", 0)} 🪙</b></div>', unsafe_allow_html=True)
+        m2.markdown(f'<div class="metric-card">Cliques<br><b style="font-size:20px;">{d.get("cliques", 0)} 🚀</b></div>', unsafe_allow_html=True)
+        status_color = "🟢" if d.get('aprovado') else "🟡"
+        m3.markdown(f'<div class="metric-card">Status<br><b>{status_color}</b></div>', unsafe_allow_html=True)
 
-        st.write("") # Espaçador
-
-        # 2. GPS (Botão Nativo)
-        with st.container():
-            # Removi o js_eval direto no fluxo para evitar o 'reboot' da página no celular
-            if st.button("📍 ATUALIZAR MINHA LOCALIZAÇÃO", use_container_width=True, key="btn_gps_v5"):
-                loc_parceiro = streamlit_js_eval(js_expressions="navigator.geolocation.getCurrentPosition(success => { return success })", key='gps_p_v5')
-                if loc_parceiro and 'coords' in loc_parceiro:
-                    doc_ref.update({"lat": loc_parceiro['coords'].get('latitude'), "lon": loc_parceiro['coords'].get('longitude')})
-                    st.success("✅ Localização salva!")
-                else:
-                    st.info("Aguardando sinal do GPS... Clique novamente.")
+        # 2. GPS (Fixo)
+        if st.button("📍 ATUALIZAR LOCALIZAÇÃO GPS", use_container_width=True, key="gps_v6"):
+            loc = streamlit_js_eval(js_expressions="navigator.geolocation.getCurrentPosition(s => s)", key='gps_eval_v6')
+            if loc and 'coords' in loc:
+                doc_ref.update({"lat": loc['coords']['latitude'], "lon": loc['coords']['longitude']})
+                st.success("✅ Localização salva!")
+            else: st.info("Toque novamente para confirmar o acesso ao GPS.")
 
         st.divider()
 
-        # 3. COMPRA DE MOEDAS (Expander nativo)
-        with st.expander("💎 COMPRAR MOEDAS (PIX)", expanded=False):
-            st.info(f"Chave PIX: {PIX_OFICIAL}")
-            cv1, cv2, cv3 = st.columns(3)
-            # Cards simplificados sem 'background: white'
-            with cv1:
-                if st.button("10 Moedas\nR$ 10", key="b10", use_container_width=True): st.code(PIX_OFICIAL)
-            with cv2:
-                if st.button("50 Moedas\nR$ 45", key="b45", use_container_width=True): st.code(PIX_OFICIAL)
-            with cv3:
-                if st.button("100 Moedas\nR$ 80", key="b80", use_container_width=True): st.code(PIX_OFICIAL)
-            
+        # 3. PIX E COMPRA (Removido cores fixas para não bugar no modo escuro)
+        with st.expander("💎 COMPRAR MOEDAS", expanded=False):
+            st.code(f"PIX: {PIX_OFICIAL}", language="text")
+            c1, c2, c3 = st.columns(3)
+            if c1.button("10 Moedas", key="p10_v6", use_container_width=True): st.info(f"Pague R$ 10 via PIX")
+            if c2.button("50 Moedas", key="p50_v6", use_container_width=True): st.info(f"Pague R$ 45 via PIX")
+            if c3.button("100 Moedas", key="p100_v6", use_container_width=True): st.info(f"Pague R$ 80 via PIX")
             st.link_button("🚀 ENVIAR COMPROVANTE", f"https://wa.me/{ZAP_ADMIN}?text=Fiz o PIX: {st.session_state.user_id}", use_container_width=True)
 
-        # 4. EDIÇÃO DE PERFIL (Formulário nativo - o mais seguro para celular)
-        with st.expander("📝 EDITAR MEU PERFIL", expanded=True):
-            with st.form("perfil_v5"):
-                n_nome = st.text_input("Nome Profissional", d.get('nome', ''))
-                n_area = st.selectbox("Especialidade", CATEGORIAS_OFICIAIS)
+        # 4. EDIÇÃO (FOTOS, HORÁRIOS, CATÁLOGO - TUDO AQUI)
+        with st.expander("📝 MEU PERFIL E VITRINE", expanded=True):
+            with st.form("perfil_v6"):
+                n_nome = st.text_input("Nome", d.get('nome', ''))
                 n_desc = st.text_area("Descrição", d.get('descricao', ''))
+                n_cat = st.text_input("Instagram/Link", d.get('link_catalogo', ''))
                 
-                c1, c2 = st.columns(2)
-                n_h_abre = c1.text_input("Abre às", d.get('h_abre', '08:00'))
-                n_h_fecha = c2.text_input("Fecha às", d.get('h_fecha', '18:00'))
+                h1, h2 = st.columns(2)
+                n_abre = h1.text_input("Abre", d.get('h_abre', '08:00'))
+                n_fecha = h2.text_input("Fecha", d.get('h_fecha', '18:00'))
                 
-                n_foto = st.file_uploader("Trocar Foto Perfil", type=['jpg','png','jpeg'], key="f1_v5")
-                n_portfolio = st.file_uploader("Vitrine (Até 3 fotos)", type=['jpg','png','jpeg'], accept_multiple_files=True, key="f2_v5")
+                n_foto = st.file_uploader("Foto Perfil", type=['jpg','png'], key="up_f_v6")
+                n_port = st.file_uploader("Vitrine (3 fotos)", type=['jpg','png'], accept_multiple_files=True, key="up_p_v6")
                 
-                if st.form_submit_button("SALVAR ALTERAÇÕES", use_container_width=True):
-                    up = {"nome": n_nome, "area": n_area, "descricao": n_desc, "h_abre": n_h_abre, "h_fecha": n_h_fecha}
+                if st.form_submit_button("SALVAR TUDO", use_container_width=True):
+                    up = {"nome": n_nome, "descricao": n_desc, "link_catalogo": n_cat, "h_abre": n_abre, "h_fecha": n_fecha}
                     if n_foto: up["foto_url"] = f"data:image/png;base64,{converter_img_b64(n_foto)}"
-                    if n_portfolio: up["portfolio_imgs"] = [f"data:image/png;base64,{converter_img_b64(f)}" for f in n_portfolio[:3]]
+                    if n_port: up["portfolio_imgs"] = [f"data:image/png;base64,{converter_img_b64(f)}" for f in n_port[:3]]
                     doc_ref.update(up)
                     st.success("✅ Atualizado!")
                     st.rerun()
 
         # 5. LOGOUT
-        if st.button("SAIR DO PAINEL", use_container_width=True, key="logout_v5"):
+        if st.button("SAIR DO PAINEL", key="logout_v6", use_container_width=True):
             st.session_state.auth = False
             st.rerun()
 # --- ABA 3: CADASTRO (VERSÃO SOMAR) ---
@@ -847,6 +857,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
