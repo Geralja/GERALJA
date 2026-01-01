@@ -24,28 +24,25 @@ import streamlit as st
 
 st.set_page_config(page_title="Geral Já", layout="wide")
 
-# ESTE BLOCO CORRIGE O VISUAL DO CELULAR (MODO ESCURO/CLARO)
-st.markdown('''
-    <style>
-        /* Ajusta o topo para não cortar o logo */
-        div.block-container {padding-top:2rem;}
-        
-        /* Cria um card que funciona em fundo branco ou preto */
-        .metric-card {
-            border: 1px solid #888; 
-            border-radius: 12px; 
-            padding: 15px; 
-            text-align: center;
-            margin-bottom: 10px;
-        }
-        
-        /* Garante que o texto das abas seja legível */
-        .stTabs [data-baseweb="tab-list"] {
-            gap: 10px;
-        }
-    </style>
-''', unsafe_allow_html=True)
+# --- CONFIGURAÇÃO DE TEMA MANUAL ---
+if 'tema_claro' not in st.session_state:
+    st.session_state.tema_claro = False
 
+# Interruptor no topo para o usuário consertar a tela se estiver preta
+st.session_state.tema_claro = st.toggle("☀️ FORÇAR MODO CLARO (Use se a tela estiver escura)", value=st.session_state.tema_claro)
+
+if st.session_state.tema_claro:
+    st.markdown("""
+        <style>
+            .stApp { background-color: white !important; }
+            * { color: black !important; }
+            .stMarkdown, p, span, label, div { color: black !important; }
+            iframe { background-color: white !important; }
+            .stButton button { background-color: #f0f2f6 !important; color: black !important; border: 1px solid #ccc !important; }
+            [data-testid="stExpander"] { background-color: #f9f9f9 !important; border: 1px solid #ddd !important; }
+            input { background-color: white !important; color: black !important; border: 1px solid #ccc !important; }
+        </style>
+    """, unsafe_allow_html=True)
 import streamlit as st
 # ... seus outros imports (firebase, base64, etc)
 
@@ -545,15 +542,17 @@ with menu_abas[0]:
                 db.collection("profissionais").document(pid).update({
                     "cliques": p.get('cliques', 0) + 1
                 })
-# --- ABA 2: PAINEL DO PARCEIRO (TOTALMENTE ADAPTÁVEL) ---
+# --- ABA 2: PAINEL DO PARCEIRO (VERSÃO COM TEMA MANUAL) ---
 with menu_abas[2]:
     if 'auth' not in st.session_state: st.session_state.auth = False
     
     if not st.session_state.auth:
         st.subheader("🚀 Acesso ao Painel")
-        l_zap = st.text_input("WhatsApp (números)", key="zap_final_v6")
-        l_pw = st.text_input("Senha", type="password", key="pw_final_v6")
-        if st.button("ENTRAR NO PAINEL", use_container_width=True, key="btn_entrar_v6"):
+        col1, col2 = st.columns(2)
+        l_zap = col1.text_input("WhatsApp (números)", key="login_zap_v7")
+        l_pw = col2.text_input("Senha", type="password", key="login_pw_v7")
+        
+        if st.button("ENTRAR NO PAINEL", use_container_width=True, key="btn_entrar_v7"):
             u = db.collection("profissionais").document(l_zap).get()
             if u.exists and u.to_dict().get('senha') == l_pw:
                 st.session_state.auth, st.session_state.user_id = True, l_zap
@@ -563,56 +562,58 @@ with menu_abas[2]:
         doc_ref = db.collection("profissionais").document(st.session_state.user_id)
         d = doc_ref.get().to_dict()
         
-        # 1. MÉTRICAS (Usando a classe 'metric-card' que criamos no CSS acima)
+        # 1. MÉTRICAS (Usando colunas nativas para evitar conflito de CSS)
+        st.write(f"### Olá, {d.get('nome', 'Parceiro')}!")
         m1, m2, m3 = st.columns(3)
-        m1.markdown(f'<div class="metric-card">Saldo<br><b style="font-size:20px;">{d.get("saldo", 0)} 🪙</b></div>', unsafe_allow_html=True)
-        m2.markdown(f'<div class="metric-card">Cliques<br><b style="font-size:20px;">{d.get("cliques", 0)} 🚀</b></div>', unsafe_allow_html=True)
-        status_color = "🟢" if d.get('aprovado') else "🟡"
-        m3.markdown(f'<div class="metric-card">Status<br><b>{status_color}</b></div>', unsafe_allow_html=True)
+        m1.metric("Saldo 🪙", f"{d.get('saldo', 0)}")
+        m2.metric("Cliques 🚀", f"{d.get('cliques', 0)}")
+        m3.metric("Status", "🟢 ATIVO" if d.get('aprovado') else "🟡 PENDENTE")
 
-        # 2. GPS (Fixo)
-        if st.button("📍 ATUALIZAR LOCALIZAÇÃO GPS", use_container_width=True, key="gps_v6"):
-            loc = streamlit_js_eval(js_expressions="navigator.geolocation.getCurrentPosition(s => s)", key='gps_eval_v6')
+        # 2. GPS (Função preservada)
+        if st.button("📍 ATUALIZAR LOCALIZAÇÃO GPS", use_container_width=True, key="gps_v7"):
+            loc = streamlit_js_eval(js_expressions="navigator.geolocation.getCurrentPosition(s => s)", key='gps_v7_eval')
             if loc and 'coords' in loc:
                 doc_ref.update({"lat": loc['coords']['latitude'], "lon": loc['coords']['longitude']})
                 st.success("✅ Localização salva!")
-            else: st.info("Toque novamente para confirmar o acesso ao GPS.")
+            else: st.info("Aguardando sinal... Clique novamente.")
 
         st.divider()
 
-        # 3. PIX E COMPRA (Removido cores fixas para não bugar no modo escuro)
-        with st.expander("💎 COMPRAR MOEDAS", expanded=False):
-            st.code(f"PIX: {PIX_OFICIAL}", language="text")
+        # 3. COMPRA DE MOEDAS (PIX - Variáveis oficiais preservadas)
+        with st.expander("💎 COMPRAR MOEDAS (PIX)", expanded=False):
+            st.warning(f"Chave PIX: {PIX_OFICIAL}")
             c1, c2, c3 = st.columns(3)
-            if c1.button("10 Moedas", key="p10_v6", use_container_width=True): st.info(f"Pague R$ 10 via PIX")
-            if c2.button("50 Moedas", key="p50_v6", use_container_width=True): st.info(f"Pague R$ 45 via PIX")
-            if c3.button("100 Moedas", key="p100_v6", use_container_width=True): st.info(f"Pague R$ 80 via PIX")
-            st.link_button("🚀 ENVIAR COMPROVANTE", f"https://wa.me/{ZAP_ADMIN}?text=Fiz o PIX: {st.session_state.user_id}", use_container_width=True)
+            if c1.button("10 Moedas", key="p10_v7"): st.code(PIX_OFICIAL)
+            if c2.button("50 Moedas", key="p50_v7"): st.code(PIX_OFICIAL)
+            if c3.button("100 Moedas", key="p100_v7"): st.code(PIX_OFICIAL)
+            
+            st.link_button("🚀 ENVIAR COMPROVANTE AGORA", f"https://wa.me/{ZAP_ADMIN}?text=Fiz o PIX: {st.session_state.user_id}", use_container_width=True)
 
-        # 4. EDIÇÃO (FOTOS, HORÁRIOS, CATÁLOGO - TUDO AQUI)
-        with st.expander("📝 MEU PERFIL E VITRINE", expanded=True):
-            with st.form("perfil_v6"):
-                n_nome = st.text_input("Nome", d.get('nome', ''))
+        # 4. EDIÇÃO DE PERFIL (FOTOS E HORÁRIOS - TUDO AQUI)
+        with st.expander("📝 EDITAR MEU PERFIL & VITRINE", expanded=True):
+            with st.form("perfil_v7"):
+                n_nome = st.text_input("Nome Profissional", d.get('nome', ''))
                 n_desc = st.text_area("Descrição", d.get('descricao', ''))
-                n_cat = st.text_input("Instagram/Link", d.get('link_catalogo', ''))
+                n_cat = st.text_input("Link Catálogo/Instagram", d.get('link_catalogo', ''))
                 
                 h1, h2 = st.columns(2)
-                n_abre = h1.text_input("Abre", d.get('h_abre', '08:00'))
-                n_fecha = h2.text_input("Fecha", d.get('h_fecha', '18:00'))
+                n_abre = h1.text_input("Abre às (ex: 08:00)", d.get('h_abre', '08:00'))
+                n_fecha = h2.text_input("Fecha às (ex: 18:00)", d.get('h_fecha', '18:00'))
                 
-                n_foto = st.file_uploader("Foto Perfil", type=['jpg','png'], key="up_f_v6")
-                n_port = st.file_uploader("Vitrine (3 fotos)", type=['jpg','png'], accept_multiple_files=True, key="up_p_v6")
+                n_foto = st.file_uploader("Trocar Foto Perfil", type=['jpg','png','jpeg'], key="f_v7")
+                n_portfolio = st.file_uploader("Vitrine (Até 3 fotos)", type=['jpg','png','jpeg'], accept_multiple_files=True, key="p_v7")
                 
-                if st.form_submit_button("SALVAR TUDO", use_container_width=True):
+                if st.form_submit_button("SALVAR ALTERAÇÕES", use_container_width=True):
                     up = {"nome": n_nome, "descricao": n_desc, "link_catalogo": n_cat, "h_abre": n_abre, "h_fecha": n_fecha}
                     if n_foto: up["foto_url"] = f"data:image/png;base64,{converter_img_b64(n_foto)}"
-                    if n_port: up["portfolio_imgs"] = [f"data:image/png;base64,{converter_img_b64(f)}" for f in n_port[:3]]
+                    if n_portfolio:
+                        up["portfolio_imgs"] = [f"data:image/png;base64,{converter_img_b64(f)}" for f in n_portfolio[:3]]
                     doc_ref.update(up)
-                    st.success("✅ Atualizado!")
+                    st.success("✅ Atualizado com sucesso!")
                     st.rerun()
 
-        # 5. LOGOUT
-        if st.button("SAIR DO PAINEL", key="logout_v6", use_container_width=True):
+        # 5. SAIR DO PAINEL
+        if st.button("SAIR DO PAINEL", key="logout_v7", use_container_width=True):
             st.session_state.auth = False
             st.rerun()
 # --- ABA 3: CADASTRO (VERSÃO SOMAR) ---
@@ -857,6 +858,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
