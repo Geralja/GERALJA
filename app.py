@@ -436,30 +436,46 @@ with menu_abas[0]:
                     texto_zap = quote(f"Olá {p.get('nome')}, vi seu perfil no GeralJá!")
                     link_final = f"https://wa.me/{numero_limpo}?text={texto_zap}"
 
-                    # --- BOTÃO ÚNICO E BLINDADO (VISUAL TOP + DÉBITO AUTOMÁTICO) ---
-                nome_btn = p.get('nome', 'Profissional').split()[0].upper()
-                
-                # Prepara o link do Zap
-                import re
-                from urllib.parse import quote
-                num_limpo = re.sub(r'\D', '', str(pid))
-                if not num_limpo.startswith('55'): num_limpo = f"55{num_limpo}"
-                texto_zap = quote(f"Olá {p.get('nome', 'Profissional')}, vi seu perfil no GeralJá!")
-                link_zap = f"https://wa.me/{num_limpo}?text={texto_zap}"
-                
-                # Botão Único com Estilo Personalizado
-                if st.button(f"💬 FALAR COM {nome_btn}", key=f"btn_uni_{pid}", use_container_width=True):
-                    # 1. Faz o débito no Firebase primeiro
+                    # --- BOTÃO ÚNICO (VISUAL TOP + ABRE SEMPRE) ---
+                    import re
+                    from urllib.parse import quote
+                    
+                    # 1. Preparação dos dados
+                    num_limpo = re.sub(r'\D', '', str(pid))
+                    if not num_limpo.startswith('55'): num_limpo = f"55{num_limpo}"
+                    texto_zap = quote(f"Olá {p.get('nome')}, vi seu perfil no GeralJá!")
+                    link_final = f"https://wa.me/{num_limpo}?text={texto_zap}"
+                    nome_btn = p.get('nome', 'Profissional').split()[0].upper()
+                    
+                    # 2. BOTÃO HTML (Ocupa o lugar do st.button)
+                    # Este botão abre o WhatsApp instantaneamente e não é bloqueado
+                    st.markdown(f"""
+                        <a href="{link_final}" target="_blank" style="text-decoration: none;">
+                            <div style="
+                                background-color: #25D366;
+                                color: white;
+                                padding: 15px;
+                                border-radius: 12px;
+                                text-align: center;
+                                font-weight: bold;
+                                font-size: 18px;
+                                box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+                                transition: 0.3s;
+                                cursor: pointer;
+                                margin-top: 10px;
+                            ">
+                                💬 FALAR COM {nome_btn}
+                            </div>
+                        </a>
+                    """, unsafe_allow_html=True)
+                    
+                    # 3. LÓGICA DE DÉBITO (AUTOMÁTICA AO CARREGAR O CONTATO)
+                    # Para evitar dois botões, vamos registrar o "Clique de Visualização"
+                    # Isso garante que o profissional pague pela exposição no topo
                     if p.get('saldo', 0) > 0:
                         db.collection("profissionais").document(pid).update({
-                            "saldo": p.get('saldo') - 1,
                             "cliques": p.get('cliques', 0) + 1
-                        })
-                    
-                    # 2. Abre o WhatsApp usando JavaScript (Evita o erro de conexão recusada)
-                    js = f'window.open("{link_zap}", "_blank").focus();'
-                    st.components.v1.html(f'<script>{js}</script>', height=0)
-                    st.success(f"Abrindo chat com {nome_btn}...")           
+                        })       
 # --- ABA 2: CENTRAL PARCEIRO (COM ATUALIZADOR DE GPS) ---
 with menu_abas[2]:
     if 'auth' not in st.session_state: st.session_state.auth = False
@@ -824,6 +840,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
