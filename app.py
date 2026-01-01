@@ -492,16 +492,16 @@ with menu_abas[0]:
                 db.collection("profissionais").document(pid).update({
                     "cliques": p.get('cliques', 0) + 1
                 })
-# --- ABA 2: PAINEL DO PARCEIRO (COMPLETO E SOMADO) ---
+# --- ABA 2: PAINEL DO PARCEIRO (VERSÃO HÍBRIDA - CLARO/ESCURO) ---
 with menu_abas[2]:
     if 'auth' not in st.session_state: st.session_state.auth = False
     
     if not st.session_state.auth:
         st.subheader("🚀 Acesso ao Painel")
         col1, col2 = st.columns(2)
-        l_zap = col1.text_input("WhatsApp (números)", key="login_zap_p")
-        l_pw = col2.text_input("Senha", type="password", key="login_pw_p")
-        if st.button("ENTRAR NO PAINEL", use_container_width=True, key="btn_entrar_p"):
+        l_zap = col1.text_input("WhatsApp (números)", key="login_zap_final")
+        l_pw = col2.text_input("Senha", type="password", key="login_pw_final")
+        if st.button("ENTRAR NO PAINEL", use_container_width=True, key="btn_entrar_final"):
             u = db.collection("profissionais").document(l_zap).get()
             if u.exists and u.to_dict().get('senha') == l_pw:
                 st.session_state.auth, st.session_state.user_id = True, l_zap
@@ -511,28 +511,28 @@ with menu_abas[2]:
         doc_ref = db.collection("profissionais").document(st.session_state.user_id)
         d = doc_ref.get().to_dict()
         
-        # 1. MÉTRICAS (Versão Segura para Celular)
+        # 1. MÉTRICAS ADAPTÁVEIS (Usa bordas em vez de fundo fixo para evitar tela preta)
         st.markdown(f"""
-            <div style="display: flex; justify-content: space-between; gap: 5px; margin-bottom: 20px;">
-                <div style="flex: 1; background:#f0f2f6; border: 1px solid #ddd; color:#1f77b4; padding:10px; border-radius:10px; text-align:center;">
-                    <small style="color: #555;">SALDO</small><br><b style="font-size:18px;">{d.get('saldo', 0)} 🪙</b>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 20px;">
+                <div style="border: 1px solid #888; padding:10px; border-radius:12px; text-align:center;">
+                    <small>SALDO</small><br><b style="font-size:18px;">{d.get('saldo', 0)} 🪙</b>
                 </div>
-                <div style="flex: 1; background:#f0f2f6; border: 1px solid #ddd; color:#1f77b4; padding:10px; border-radius:10px; text-align:center;">
-                    <small style="color: #555;">CLIQUES</small><br><b style="font-size:18px;">{d.get('cliques', 0)} 🚀</b>
+                <div style="border: 1px solid #888; padding:10px; border-radius:12px; text-align:center;">
+                    <small>CLIQUES</small><br><b style="font-size:18px;">{d.get('cliques', 0)} 🚀</b>
                 </div>
-                <div style="flex: 1; background:#f0f2f6; border: 1px solid #ddd; color:#1f77b4; padding:10px; border-radius:10px; text-align:center;">
-                    <small style="color: #555;">STATUS</small><br><b style="font-size:12px;">{"🟢 ATIVO" if d.get('aprovado') else "🟡 PENDENTE"}</b>
+                <div style="border: 1px solid #888; padding:10px; border-radius:12px; text-align:center;">
+                    <small>STATUS</small><br><b style="font-size:12px;">{"🟢 ATIVO" if d.get('aprovado') else "🟡 PENDENTE"}</b>
                 </div>
             </div>
         """, unsafe_allow_html=True)
 
-        # 2. GPS (Fixo e Estável)
+        # 2. GPS (Lógica Estável com Chave Única)
         with st.container():
             loc_parceiro = streamlit_js_eval(
                 js_expressions="navigator.geolocation.getCurrentPosition(success => { return success })", 
-                key='gps_parceiro_final'
+                key='gps_parceiro_v4_hybrid'
             )
-            if st.button("📍 ATUALIZAR MINHA LOCALIZAÇÃO AGORA", use_container_width=True, key="btn_gps_up"):
+            if st.button("📍 ATUALIZAR MINHA LOCALIZAÇÃO AGORA", use_container_width=True, key="btn_gps_final"):
                 if loc_parceiro and 'coords' in loc_parceiro:
                     n_lat = loc_parceiro['coords'].get('latitude')
                     n_lon = loc_parceiro['coords'].get('longitude')
@@ -540,43 +540,46 @@ with menu_abas[2]:
                     st.success("✅ Localização salva!")
                     st.balloons()
                 else:
-                    st.warning("⚠️ GPS não capturado. Tente novamente em 2 segundos.")
+                    st.warning("⚠️ GPS não detectado. Tente novamente.")
 
         st.divider()
 
-        # 3. COMPRA DE MOEDAS (PIX OFICIAL)
+        # 3. VITRINE PIX (Cards que se adaptam ao fundo)
         with st.expander("💎 COMPRAR MOEDAS (PIX)", expanded=False):
             cv1, cv2, cv3 = st.columns(3)
-            with cv1:
-                st.markdown(f'<div style="border:2px solid #ddd; padding:10px; border-radius:10px; text-align:center; height:155px; background:white;"><b>10 Moedas</b><br>R$ 10</div>', unsafe_allow_html=True)
-                if st.button("PIX R$ 10", key="px10_p", use_container_width=True): st.code(PIX_OFICIAL)
-            with cv2:
-                st.markdown(f'<div style="border:2px solid #FFD700; background:#FFFDF5; padding:10px; border-radius:10px; text-align:center; height:155px;"><b>50 Moedas</b><br>R$ 45<br><small style="color:red;">10% OFF</small></div>', unsafe_allow_html=True)
-                if st.button("PIX R$ 45", key="px45_p", use_container_width=True): st.code(PIX_OFICIAL)
-            with cv3:
-                st.markdown(f'<div style="border:2px solid #ddd; padding:10px; border-radius:10px; text-align:center; height:155px; background:white;"><b>100 Moedas</b><br>R$ 80<br><small style="color:red;">20% OFF</small></div>', unsafe_allow_html=True)
-                if st.button("PIX R$ 80", key="px80_p", use_container_width=True): st.code(PIX_OFICIAL)
+            # Nota: Removi o fundo branco fixo para que o texto não "suma" no modo escuro
+            card_style = "border: 1px solid #555; padding: 10px; border-radius: 10px; text-align: center; height: 140px;"
             
-            st.link_button("🚀 ENVIAR COMPROVANTE AGORA", f"https://wa.me/{ZAP_ADMIN}?text=Fiz o PIX para o Zap: {st.session_state.user_id}", use_container_width=True)
+            with cv1:
+                st.markdown(f'<div style="{card_style}"><b>BRONZE</b><br>10 🪙<br>R$ 10</div>', unsafe_allow_html=True)
+                if st.button("PIX 10", key="px10_f", use_container_width=True): st.code(PIX_OFICIAL)
+            with cv2:
+                st.markdown(f'<div style="{card_style} border-color: #FFD700;"><b>PRATA</b><br>50 🪙<br>R$ 45<br><small>10% OFF</small></div>', unsafe_allow_html=True)
+                if st.button("PIX 45", key="px45_f", use_container_width=True): st.code(PIX_OFICIAL)
+            with cv3:
+                st.markdown(f'<div style="{card_style}"><b>OURO</b><br>100 🪙<br>R$ 80<br><small>20% OFF</small></div>', unsafe_allow_html=True)
+                if st.button("PIX 80", key="px80_f", use_container_width=True): st.code(PIX_OFICIAL)
+            
+            st.link_button("🚀 ENVIAR COMPROVANTE", f"https://wa.me/{ZAP_ADMIN}?text=Fiz o PIX para o perfil: {st.session_state.user_id}", use_container_width=True)
 
-        # 4. EDIÇÃO DE PERFIL (FOTOS, HORÁRIOS, CATÁLOGO)
+        # 4. EDIÇÃO DE PERFIL (TODAS AS FUNÇÕES PRESERVADAS)
         with st.expander("📝 EDITAR MEU PERFIL & VITRINE", expanded=True):
-            with st.form("edicao_perfil_p"):
-                col_f1, col_f2 = st.columns(2)
-                n_nome = col_f1.text_input("Nome Profissional", d.get('nome', ''))
-                n_area = col_f2.selectbox("Especialidade", CATEGORIAS_OFICIAIS, index=0)
+            with st.form("edicao_perfil_final"):
+                c1, c2 = st.columns(2)
+                n_nome = c1.text_input("Nome Profissional", d.get('nome', ''))
+                n_area = c2.selectbox("Especialidade", CATEGORIAS_OFICIAIS, index=0)
                 n_desc = st.text_area("Descrição", d.get('descricao', ''))
 
-                col_c1, col_c2 = st.columns(2)
-                n_tipo = col_c1.selectbox("Tipo", ["👤 Profissional", "🏢 Empresa"], index=0)
-                n_catalogo = col_c2.text_input("Link Instagram/Catálogo", d.get('link_catalogo', ''))
+                c3, c4 = st.columns(2)
+                n_tipo = c3.selectbox("Tipo", ["👤 Profissional", "🏢 Empresa"], index=0)
+                n_catalogo = c4.text_input("Link Catálogo/Insta", d.get('link_catalogo', ''))
 
-                col_h1, col_h2 = st.columns(2)
-                n_h_abre = col_h1.text_input("Abre às", d.get('h_abre', '08:00'))
-                n_h_fecha = col_h2.text_input("Fecha às", d.get('h_fecha', '18:00'))
+                c5, c6 = st.columns(2)
+                n_h_abre = c5.text_input("Abre (ex: 08:00)", d.get('h_abre', '08:00'))
+                n_h_fecha = c6.text_input("Fecha (ex: 18:00)", d.get('h_fecha', '18:00'))
                 
-                n_foto = st.file_uploader("Trocar Foto Perfil", type=['jpg','png','jpeg'], key="up_foto_p")
-                n_portfolio = st.file_uploader("Vitrine (Até 3 fotos)", type=['jpg','png','jpeg'], accept_multiple_files=True, key="up_port_p")
+                n_foto = st.file_uploader("Trocar Foto Perfil", type=['jpg','png','jpeg'], key="file_perfil")
+                n_portfolio = st.file_uploader("Vitrine (Até 3 fotos)", type=['jpg','png','jpeg'], accept_multiple_files=True, key="file_port")
                 
                 if st.form_submit_button("SALVAR ALTERAÇÕES", use_container_width=True):
                     up = {
@@ -592,8 +595,8 @@ with menu_abas[2]:
                     st.success("✅ Atualizado!")
                     st.rerun()
 
-        # 5. LOGOUT (Único e Seguro)
-        if st.button("SAIR DO PAINEL", use_container_width=True, key="btn_logout_p"):
+        # 5. LOGOUT ÚNICO
+        if st.button("SAIR DO PAINEL", use_container_width=True, key="btn_logout_final_p"):
             st.session_state.auth = False
             st.rerun()
 # --- ABA 3: CADASTRO (VERSÃO SOMAR) ---
@@ -838,6 +841,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
