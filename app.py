@@ -12,6 +12,7 @@ import re
 import time
 import pandas as pd
 import unicodedata
+from streamlit_js_eval import get_geolocation
 st.set_page_config(page_title="GeralJá", layout="wide")
 
 # Remove o menu superior, o rodapé 'Made with Streamlit' e o botão de Deploy
@@ -836,6 +837,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
