@@ -353,7 +353,7 @@ with menu_abas[0]:
             p = p_doc.to_dict()
             p['id'] = p_doc.id
             
-            # CALCULA DISTÂNCIA REAL (GPS vs Profissional)
+            # CALCULA DISTÂNCIA REAL
             dist = calcular_distancia_real(minha_lat, minha_lon, p.get('lat', LAT_REF), p.get('lon', LON_REF))
             
             if dist <= raio_km:
@@ -366,7 +366,7 @@ with menu_abas[0]:
                 p['score_elite'] = score
                 lista_ranking.append(p)
 
-        # Ordenação: Elite primeiro, depois os mais próximos
+        # Ordenação
         lista_ranking.sort(key=lambda x: (-x['score_elite'], x['dist']))
 
         if not lista_ranking:
@@ -413,46 +413,43 @@ with menu_abas[0]:
                         st.markdown(f"**{nome_exibicao}** {status_loja}", unsafe_allow_html=True)
                         st.caption(f"{p.get('descricao', '')[:120]}...")
 
-                    # Vitrine de Fotos do Portfólio
+                    # Vitrine de Fotos
                     if p.get('portfolio_imgs'):
-                        imgs = p.get('portfolio_imgs')
                         cols_v = st.columns(3)
-                        for i, img_b64 in enumerate(imgs[:3]):
+                        for i, img_b64 in enumerate(p.get('portfolio_imgs')[:3]):
                             cols_v[i].image(img_b64, use_container_width=True)
 
-                   # --- BOTÃO DE CONTATO (VERSÃO CORRIGIDA) ---
-nome_curto = p.get('nome', 'Profissional').split()[0].upper()
+                    # --- BOTÃO DE CONTATO (DENTRO DO LOOP) ---
+                    nome_curto = p.get('nome', 'Profissional').split()[0].upper()
+                    if st.button(f"FALAR COM {nome_curto}", key=f"btn_zap_{pid}", use_container_width=True):
+                        import re
+                        from urllib.parse import quote
+                        
+                        # Limpa o número e garante o 55
+                        numero_limpo = re.sub(r'\D', '', str(pid))
+                        if not numero_limpo.startswith('55'):
+                            numero_limpo = f"55{numero_limpo}"
+                        
+                        # Débito de saldo
+                        if p.get('saldo', 0) > 0:
+                            db.collection("profissionais").document(pid).update({
+                                "saldo": p.get('saldo') - 1,
+                                "cliques": p.get('cliques', 0) + 1
+                            })
+                        
+                        texto_zap = quote(f"Olá {p.get('nome')}, vi seu perfil no GeralJá e gostaria de um orçamento!")
+                        link_final = f"https://wa.me/{numero_limpo}?text={texto_zap}"
+                        
+                        # Redirecionamento duplo para garantir funcionamento mobile
+                        st.markdown(f"""
+                            <script type="text/javascript">
+                                window.open('{link_final}', '_blank');
+                            </script>
+                            <meta http-equiv="refresh" content="0;URL='{link_final}'">
+                        """, unsafe_allow_html=True)
+                    
+                    st.divider()
 
-if st.button(f"FALAR COM {nome_curto}", key=f"btn_zap_{pid}", use_container_width=True):
-    # 1. LIMPEZA DO NÚMERO (Remove tudo que não for número)
-    import re
-    numero_limpo = re.sub(r'\D', '', str(pid))
-    
-    # 2. GARANTE O PREFIXO 55 (Brasil)
-    if not numero_limpo.startswith('55'):
-        numero_limpo = f"55{numero_limpo}"
-    
-    # 3. REGISTRO DE CLIQUE E DÉBITO
-    if p.get('saldo', 0) > 0:
-        db.collection("profissionais").document(pid).update({
-            "saldo": p.get('saldo') - 1,
-            "cliques": p.get('cliques', 0) + 1
-        })
-    
-    # 4. LINK DO WHATSAPP COM MENSAGEM
-    texto_zap = f"Olá {p.get('nome')}, vi seu perfil no GeralJá e gostaria de um orçamento!"
-    # Formata o link corretamente para URL
-    from urllib.parse import quote
-    link_final = f"https://wa.me/{numero_limpo}?text={quote(texto_zap)}"
-    
-    # 5. REDIRECIONAMENTO (Usando HTML seguro)
-    st.markdown(f"""
-        <meta http-equiv="refresh" content="0;URL='{link_final}'">
-        <script type="text/javascript">
-            window.location.href = "{link_final}";
-        </script>
-    """, unsafe_allow_html=True)
-    st.info("Redirecionando para o WhatsApp...")
 # --- ABA 2: CENTRAL PARCEIRO (COM ATUALIZADOR DE GPS) ---
 with menu_abas[2]:
     if 'auth' not in st.session_state: st.session_state.auth = False
@@ -817,6 +814,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
