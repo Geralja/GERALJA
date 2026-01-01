@@ -497,94 +497,90 @@ with menu_abas[0]:
                 db.collection("profissionais").document(pid).update({
                     "cliques": p.get('cliques', 0) + 1
                 })
-# --- ABA 2: PAINEL DO PARCEIRO (ESTÁVEL E COMPLETO) ---
+# --- ABA 2: PAINEL DO PARCEIRO (COMPATÍVEL COM MODO ESCURO/CLARO) ---
 with menu_abas[2]:
-    # Garante que a variável de autenticação existe
-    if 'auth' not in st.session_state: 
-        st.session_state.auth = False
+    if 'auth' not in st.session_state: st.session_state.auth = False
     
-    # --- TELA DE LOGIN ---
     if not st.session_state.auth:
-        st.markdown("### 🔐 Acesso ao Painel")
-        l_zap = st.text_input("WhatsApp (apenas números)", key="login_zap_unique")
-        l_pw = st.text_input("Senha", type="password", key="login_pw_unique")
+        st.subheader("🚀 Acesso ao Painel")
+        col1, col2 = st.columns(2)
+        l_zap = col1.text_input("WhatsApp (números)", key="zap_login_v5")
+        l_pw = col2.text_input("Senha", type="password", key="pw_login_v5")
         
-        if st.button("ENTRAR NO PAINEL", use_container_width=True, key="btn_entrar_p_final"):
-            if l_zap and l_pw:
-                u_doc = db.collection("profissionais").document(l_zap).get()
-                if u_doc.exists and u_doc.to_dict().get('senha') == l_pw:
-                    st.session_state.auth = True
-                    st.session_state.user_id = l_zap
-                    st.rerun()
-                else:
-                    st.error("❌ WhatsApp ou Senha incorretos.")
-            else:
-                st.warning("⚠️ Preencha todos os campos.")
-
-    # --- PAINEL LOGADO ---
+        if st.button("ENTRAR NO PAINEL", use_container_width=True, key="btn_entrar_v5"):
+            u = db.collection("profissionais").document(l_zap).get()
+            if u.exists and u.to_dict().get('senha') == l_pw:
+                st.session_state.auth, st.session_state.user_id = True, l_zap
+                st.rerun()
+            else: st.error("Dados incorretos.")
     else:
-        # Busca dados atualizados
         doc_ref = db.collection("profissionais").document(st.session_state.user_id)
         d = doc_ref.get().to_dict()
         
-        # 1. MÉTRICAS (Visual Simples para não dar erro em celular)
-        st.subheader(f"Bem-vindo, {d.get('nome', 'Parceiro')}!")
-        
-        col_m1, col_m2, col_m3 = st.columns(3)
-        col_m1.metric("Saldo 🪙", f"{d.get('saldo', 0)}")
-        col_m2.metric("Cliques 🚀", f"{d.get('cliques', 0)}")
-        status_txt = "ATIVO" if d.get('aprovado') else "PENDENTE"
-        col_m3.metric("Status", status_txt)
+        # 1. MÉTRICAS (Sem cores fixas para não sumir no modo escuro)
+        # Usamos colunas nativas do Streamlit que se adaptam sozinhas ao tema
+        m1, m2, m3 = st.columns(3)
+        with m1:
+            st.markdown(f"<div style='border:1px solid #555; border-radius:10px; padding:10px; text-align:center;'>Saldo<br><b style='font-size:20px;'>{d.get('saldo', 0)} 🪙</b></div>", unsafe_allow_html=True)
+        with m2:
+            st.markdown(f"<div style='border:1px solid #555; border-radius:10px; padding:10px; text-align:center;'>Cliques<br><b style='font-size:20px;'>{d.get('cliques', 0)} 🚀</b></div>", unsafe_allow_html=True)
+        with m3:
+            status = "🟢 ATIVO" if d.get('aprovado') else "🟡 PENDENTE"
+            st.markdown(f"<div style='border:1px solid #555; border-radius:10px; padding:10px; text-align:center;'>Status<br><b>{status}</b></div>", unsafe_allow_html=True)
 
-        # 2. GPS (Botão Isolado)
-        if st.button("📍 ATUALIZAR MINHA LOCALIZAÇÃO", use_container_width=True, key="btn_gps_p"):
-            loc = streamlit_js_eval(js_expressions="navigator.geolocation.getCurrentPosition(s => s)", key='gps_eval_p')
-            if loc and 'coords' in loc:
-                doc_ref.update({"lat": loc['coords']['latitude'], "lon": loc['coords']['longitude']})
-                st.success("Localização atualizada!")
-            else:
-                st.info("Clique novamente para confirmar o GPS do celular.")
+        st.write("") # Espaçador
+
+        # 2. GPS (Botão Nativo)
+        with st.container():
+            # Removi o js_eval direto no fluxo para evitar o 'reboot' da página no celular
+            if st.button("📍 ATUALIZAR MINHA LOCALIZAÇÃO", use_container_width=True, key="btn_gps_v5"):
+                loc_parceiro = streamlit_js_eval(js_expressions="navigator.geolocation.getCurrentPosition(success => { return success })", key='gps_p_v5')
+                if loc_parceiro and 'coords' in loc_parceiro:
+                    doc_ref.update({"lat": loc_parceiro['coords'].get('latitude'), "lon": loc_parceiro['coords'].get('longitude')})
+                    st.success("✅ Localização salva!")
+                else:
+                    st.info("Aguardando sinal do GPS... Clique novamente.")
 
         st.divider()
 
-        # 3. COMPRA DE MOEDAS (PIX)
-        with st.expander("💎 COMPRAR MOEDAS", expanded=False):
-            st.write(f"Sua chave PIX para pagamento: `{PIX_OFICIAL}`")
-            c_p1, c_p2, c_p3 = st.columns(3)
-            if c_p1.button("PIX R$ 10", key="k_p10"): st.code(PIX_OFICIAL)
-            if c_p2.button("PIX R$ 45", key="k_p45"): st.code(PIX_OFICIAL)
-            if c_p3.button("PIX R$ 80", key="k_p80"): st.code(PIX_OFICIAL)
+        # 3. COMPRA DE MOEDAS (Expander nativo)
+        with st.expander("💎 COMPRAR MOEDAS (PIX)", expanded=False):
+            st.info(f"Chave PIX: {PIX_OFICIAL}")
+            cv1, cv2, cv3 = st.columns(3)
+            # Cards simplificados sem 'background: white'
+            with cv1:
+                if st.button("10 Moedas\nR$ 10", key="b10", use_container_width=True): st.code(PIX_OFICIAL)
+            with cv2:
+                if st.button("50 Moedas\nR$ 45", key="b45", use_container_width=True): st.code(PIX_OFICIAL)
+            with cv3:
+                if st.button("100 Moedas\nR$ 80", key="b80", use_container_width=True): st.code(PIX_OFICIAL)
             
-            st.link_button("🚀 ENVIAR COMPROVANTE AGORA", f"https://wa.me/{ZAP_ADMIN}?text=Envio comprovante do perfil: {st.session_state.user_id}", use_container_width=True)
+            st.link_button("🚀 ENVIAR COMPROVANTE", f"https://wa.me/{ZAP_ADMIN}?text=Fiz o PIX: {st.session_state.user_id}", use_container_width=True)
 
-        # 4. EDIÇÃO DE PERFIL (FOTOS E DADOS)
+        # 4. EDIÇÃO DE PERFIL (Formulário nativo - o mais seguro para celular)
         with st.expander("📝 EDITAR MEU PERFIL", expanded=True):
-            with st.form("form_edit_p", clear_on_submit=False):
-                f_nome = st.text_input("Nome", d.get('nome', ''))
-                f_desc = st.text_area("Descrição", d.get('descricao', ''))
-                f_cat = st.text_input("Link Catálogo/Insta", d.get('link_catalogo', ''))
+            with st.form("perfil_v5"):
+                n_nome = st.text_input("Nome Profissional", d.get('nome', ''))
+                n_area = st.selectbox("Especialidade", CATEGORIAS_OFICIAIS)
+                n_desc = st.text_area("Descrição", d.get('descricao', ''))
                 
-                c_h1, c_h2 = st.columns(2)
-                f_abre = c_h1.text_input("Abre às", d.get('h_abre', '08:00'))
-                f_fecha = c_h2.text_input("Fecha às", d.get('h_fecha', '18:00'))
+                c1, c2 = st.columns(2)
+                n_h_abre = c1.text_input("Abre às", d.get('h_abre', '08:00'))
+                n_h_fecha = c2.text_input("Fecha às", d.get('h_fecha', '18:00'))
                 
-                f_foto = st.file_uploader("Foto de Perfil", type=['jpg','png'])
-                f_port = st.file_uploader("Vitrine (3 fotos)", type=['jpg','png'], accept_multiple_files=True)
+                n_foto = st.file_uploader("Trocar Foto Perfil", type=['jpg','png','jpeg'], key="f1_v5")
+                n_portfolio = st.file_uploader("Vitrine (Até 3 fotos)", type=['jpg','png','jpeg'], accept_multiple_files=True, key="f2_v5")
                 
                 if st.form_submit_button("SALVAR ALTERAÇÕES", use_container_width=True):
-                    dados_up = {
-                        "nome": f_nome, "descricao": f_desc, 
-                        "link_catalogo": f_cat, "h_abre": f_abre, "h_fecha": f_fecha
-                    }
-                    if f_foto: dados_up["foto_url"] = f"data:image/png;base64,{converter_img_b64(f_foto)}"
-                    if f_port: dados_up["portfolio_imgs"] = [f"data:image/png;base64,{converter_img_b64(img)}" for img in f_port[:3]]
-                    
-                    doc_ref.update(dados_up)
-                    st.success("Dados salvos!")
+                    up = {"nome": n_nome, "area": n_area, "descricao": n_desc, "h_abre": n_h_abre, "h_fecha": n_h_fecha}
+                    if n_foto: up["foto_url"] = f"data:image/png;base64,{converter_img_b64(n_foto)}"
+                    if n_portfolio: up["portfolio_imgs"] = [f"data:image/png;base64,{converter_img_b64(f)}" for f in n_portfolio[:3]]
+                    doc_ref.update(up)
+                    st.success("✅ Atualizado!")
                     st.rerun()
 
-        # 5. SAIR
-        if st.button("SAIR DO PAINEL", key="btn_sair_definitivo", use_container_width=True):
+        # 5. LOGOUT
+        if st.button("SAIR DO PAINEL", use_container_width=True, key="logout_v5"):
             st.session_state.auth = False
             st.rerun()
 # --- ABA 3: CADASTRO (VERSÃO SOMAR) ---
@@ -829,6 +825,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
