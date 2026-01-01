@@ -478,33 +478,28 @@ with menu_abas[0]:
                 db.collection("profissionais").document(pid).update({
                     "cliques": p.get('cliques', 0) + 1
                 })
-# --- ABA 2: CENTRAL PARCEIRO (COM ATUALIZADOR DE GPS) ---
+# --- ABA 2: PAINEL DO PARCEIRO ---
 with menu_abas[2]:
-    if 'auth' not in st.session_state: st.session_state.auth = False
-    
-    if not st.session_state.auth:
-        st.subheader("🚀 Acesso ao Painel do Parceiro")
+    if not st.session_state.get('auth', False):
+        st.subheader("🚀 Acesso ao Painel")
         col1, col2 = st.columns(2)
-        l_zap = col1.text_input("WhatsApp (Somente números)")
+        l_zap = col1.text_input("WhatsApp (números)")
         l_pw = col2.text_input("Senha", type="password")
-        
         if st.button("ENTRAR NO PAINEL", use_container_width=True):
             u = db.collection("profissionais").document(l_zap).get()
             if u.exists and u.to_dict().get('senha') == l_pw:
                 st.session_state.auth, st.session_state.user_id = True, l_zap
                 st.rerun()
-            else:
-                st.error("❌ Dados incorretos. Tente novamente.")
+            else: st.error("Dados incorretos.")
     else:
-        # Puxamos os dados atualizados
         doc_ref = db.collection("profissionais").document(st.session_state.user_id)
         d = doc_ref.get().to_dict()
         
-        # --- CABEÇALHO DE MÉTRICAS ---
+        # 1. MÉTRICAS DO TOPO (Visual Moderno)
         st.markdown(f"""
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px;">
                 <div style="background:#1E293B; color:white; padding:15px; border-radius:15px; text-align:center;">
-                    <small>MEU SALDO</small><br><b style="font-size:20px;">{d.get('saldo', 0)} 🪙</b>
+                    <small>SALDO</small><br><b style="font-size:20px;">{d.get('saldo', 0)} 🪙</b>
                 </div>
                 <div style="background:#1E293B; color:white; padding:15px; border-radius:15px; text-align:center;">
                     <small>CLIQUES</small><br><b style="font-size:20px;">{d.get('cliques', 0)} 🚀</b>
@@ -514,89 +509,80 @@ with menu_abas[2]:
                 </div>
             </div>
         """, unsafe_allow_html=True)
-         
-       # --- LOCALIZAÇÃO DO PARCEIRO ---
-        with st.container():
-            # Agora o Python vai reconhecer o streamlit_js_eval porque você importou no topo
-            loc_parceiro = streamlit_js_eval(
-                js_expressions="navigator.geolocation.getCurrentPosition(success => { return success })", 
-                key='gps_parceiro_v3'
-            )
-            
-            if st.button("📍 ATUALIZAR MINHA LOCALIZAÇÃO DE ATENDIMENTO", use_container_width=True):
-                if loc_parceiro and 'coords' in loc_parceiro:
-                    n_lat = loc_parceiro['coords'].get('latitude')
-                    n_lon = loc_parceiro['coords'].get('longitude')
-                    
-                    if n_lat and n_lon:
-                        doc_ref.update({"lat": n_lat, "lon": n_lon})
-                        st.success("✅ Localização salva com sucesso!")
-                        st.balloons()
-                else:
-                    st.warning("Aguardando sinal do GPS... Clique novamente em instantes.")
-                
-                if loc_parceiro:
-                    n_lat = loc_parceiro['coords']['latitude']
-                    n_lon = loc_parceiro['coords']['longitude']
-                    doc_ref.update({"lat": n_lat, "lon": n_lon})
-                    st.success("✅ Localização salva! Clientes próximos agora verão você.")
-                    st.balloons()
-                else:
-                    st.error("❌ GPS não detectado. Ative a localização no seu celular/navegador.")
+
+        # 2. GPS FIXO (Usando a função base para evitar erros)
+        st.write("📍 **Localização de Atendimento**")
+        loc_parceiro = streamlit_js_eval(
+            js_expressions="navigator.geolocation.getCurrentPosition(success => { return success })", 
+            key='gps_parceiro_vfinal'
+        )
         
+        if st.button("📍 ATUALIZAR MEU GPS AGORA", use_container_width=True):
+            if loc_parceiro and 'coords' in loc_parceiro:
+                n_lat = loc_parceiro['coords']['latitude']
+                n_lon = loc_parceiro['coords']['longitude']
+                doc_ref.update({"lat": n_lat, "lon": n_lon})
+                st.success("✅ Localização salva! Clientes próximos agora verão você.")
+                st.balloons()
+            else:
+                st.warning("Aguardando sinal... Clique novamente em 2 segundos.")
+
         st.divider()
 
-        # --- VITRINE DE VENDAS (ORGANIZADA E ALINHADA) ---
+        # 3. COMPRA DE MOEDAS (Alinhado)
         with st.expander("💎 COMPRAR MOEDAS (PIX)", expanded=False):
-            st.markdown("<p style='text-align:center; font-size:14px; color:gray;'>Escolha um pacote e copie o código PIX</p>", unsafe_allow_html=True)
-            
-            # Suas Chaves PIX
-            pix_10 = "SUA_CHAVE_PIX_10_REAIS"
-            pix_45 = "SUA_CHAVE_PIX_45_REAIS"
-            pix_80 = "SUA_CHAVE_PIX_80_REAIS"
-
             cv1, cv2, cv3 = st.columns(3)
-            
             with cv1:
-                st.markdown("""
-                    <div style="border:2px solid #ddd; padding:10px; border-radius:12px; text-align:center; height:160px; background:white;">
-                        <b style="color:#555;">BRONZE</b><br>
-                        <span style="font-size:22px;">10 🪙</span><br>
-                        <b style="font-size:18px;">R$ 10</b>
-                    </div>
-                """, unsafe_allow_html=True)
-                if st.button("COPIAR PIX", key="pix10", use_container_width=True): 
-                    st.code(pix_10)
-                    st.toast("Pix Copiado!", icon="✅")
-
+                st.markdown('<div style="border:2px solid #ddd; padding:10px; border-radius:10px; text-align:center; height:150px;"><b>10 Moedas</b><br>R$ 10</div>', unsafe_allow_html=True)
+                if st.button("PIX R$ 10", key="px10"): st.code("CHAVE_PIX_10")
             with cv2:
-                st.markdown("""
-                    <div style="border:2px solid #FFD700; padding:10px; border-radius:12px; text-align:center; height:160px; background:#FFFDF5;">
-                        <b style="color:#D4AF37;">PRATA</b><br>
-                        <span style="font-size:22px;">50 🪙</span><br>
-                        <b style="font-size:18px;">R$ 45</b><br>
-                        <small style="color:red; font-weight:bold;">10% OFF</small>
-                    </div>
-                """, unsafe_allow_html=True)
-                if st.button("COPIAR PIX", key="pix45", use_container_width=True): 
-                    st.code(pix_45)
-                    st.toast("Pix Copiado!", icon="✅")
-
+                st.markdown('<div style="border:2px solid #FFD700; background:#FFFDF5; padding:10px; border-radius:10px; text-align:center; height:150px;"><b>50 Moedas</b><br>R$ 45</div>', unsafe_allow_html=True)
+                if st.button("PIX R$ 45", key="px45"): st.code("CHAVE_PIX_45")
             with cv3:
-                st.markdown("""
-                    <div style="border:2px solid #ddd; padding:10px; border-radius:12px; text-align:center; height:160px; background:white;">
-                        <b style="color:#555;">OURO</b><br>
-                        <span style="font-size:22px;">100 🪙</span><br>
-                        <b style="font-size:18px;">R$ 80</b><br>
-                        <small style="color:red; font-weight:bold;">20% OFF</small>
-                    </div>
-                """, unsafe_allow_html=True)
-                if st.button("COPIAR PIX", key="pix80", use_container_width=True): 
-                    st.code(pix_80)
-                    st.toast("Pix Copiado!", icon="✅")
+                st.markdown('<div style="border:2px solid #ddd; padding:10px; border-radius:10px; text-align:center; height:150px;"><b>100 Moedas</b><br>R$ 80</div>', unsafe_allow_html=True)
+                if st.button("PIX R$ 80", key="px80"): st.code("CHAVE_PIX_80")
             
-            st.markdown("<br>", unsafe_allow_html=True)
-            st.link_button("🚀 ENVIAR COMPROVANTE AGORA", f"https://wa.me/{ZAP_ADMIN}?text=Fiz%20o%20PIX%20para%20o%20Zap:%20{st.session_state.user_id}", use_container_width=True)
+            st.link_button("✅ ENVIAR COMPROVANTE", f"https://wa.me/{ZAP_ADMIN}?text=Fiz o PIX para o Zap: {st.session_state.user_id}", use_container_width=True)
+
+        # 4. AS MELHORIAS DE PERFIL (FOTOS, HORÁRIO, CATÁLOGO)
+        with st.expander("📝 MEU PERFIL & VITRINE", expanded=True):
+            with st.form("edicao_perfil"):
+                col_f1, col_f2 = st.columns(2)
+                n_nome = col_f1.text_input("Nome Profissional/Loja", d.get('nome', ''))
+                n_area = col_f2.selectbox("Sua Especialidade", CATEGORIAS_OFICIAIS, index=0)
+                n_desc = st.text_area("Descrição do seu serviço", d.get('descricao', ''))
+
+                st.markdown("---")
+                col_c1, col_c2 = st.columns(2)
+                n_tipo = col_c1.selectbox("Tipo de Conta", ["👤 Profissional", "🏢 Comércio/Loja"], index=0)
+                n_catalogo = col_c2.text_input("Link do Catálogo/Instagram", d.get('link_catalogo', ''))
+
+                col_h1, col_h2 = st.columns(2)
+                n_h_abre = col_h1.text_input("Horário Abre", d.get('h_abre', '08:00'))
+                n_h_fecha = col_h2.text_input("Horário Fecha", d.get('h_fecha', '18:00'))
+                
+                st.markdown("---")
+                n_foto = st.file_uploader("Trocar Foto de Perfil", type=['jpg', 'png', 'jpeg'])
+                n_portfolio = st.file_uploader("Vitrine (Até 3 fotos)", type=['jpg', 'png', 'jpeg'], accept_multiple_files=True)
+                
+                if st.form_submit_button("SALVAR ALTERAÇÕES", use_container_width=True):
+                    up = {
+                        "nome": n_nome, "area": n_area, "descricao": n_desc,
+                        "tipo": n_tipo, "link_catalogo": n_catalogo,
+                        "h_abre": n_h_abre, "h_fecha": n_h_fecha
+                    }
+                    if n_foto: up["foto_url"] = f"data:image/png;base64,{converter_img_b64(n_foto)}"
+                    if n_portfolio:
+                        up["portfolio_imgs"] = [f"data:image/png;base64,{converter_img_b64(f)}" for f in n_portfolio[:3]]
+                    
+                    doc_ref.update(up)
+                    st.success("✅ Perfil atualizado com sucesso!")
+                    time.sleep(1)
+                    st.rerun()
+
+        if st.button("SAIR DO PAINEL", use_container_width=True):
+            st.session_state.auth = False
+            st.rerun()
 # --- ABA 3: CADASTRO (VERSÃO SOMAR) ---
 with menu_abas[1]:
     st.header("🚀 Seja um Parceiro GeralJá")
@@ -839,6 +825,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
