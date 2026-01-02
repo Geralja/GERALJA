@@ -616,88 +616,50 @@ with menu_abas[2]:
         if st.button("SAIR DO PAINEL", key="logout_v7", use_container_width=True):
             st.session_state.auth = False
             st.rerun()
-# --- ABA 3: ADMINISTRAÇÃO (VERSÃO MASTER COMPLETA) ---
-with menu_abas[4]:
-    st.subheader("🔑 Painel de Controle Master")
-    adm_pw = st.text_input("Senha Admin", type="password", key="pw_adm_master_final")
+# --- ABA 3: CADASTRO (VERSÃO SOMAR) ---
+with menu_abas[1]:
+    st.header("🚀 Seja um Parceiro GeralJá")
+    st.write("Preencha seus dados para começar a receber serviços na sua região.")
     
-    if adm_pw == "mumias":
-        st.success("Modo Gestor Ativado")
+    with st.form("reg"):
+        col_c1, col_c2 = st.columns(2)
+        r_n = col_c1.text_input("Nome Completo")
+        r_z = col_c2.text_input("WhatsApp (Apenas números)", help="Ex: 11999999999")
         
-        # Busca todos os profissionais
-        profs = db.collection("profissionais").stream()
-        lista_profs = [p.to_dict() | {"id": p.id} for p in profs]
-            
-        if lista_profs:
-            for p in lista_profs:
-                # Expander por profissional para não poluir a tela
-                with st.expander(f"🛠️ GERENCIAR: {p.get('nome', 'Sem Nome')} ({p['id']})"):
-                    t_view, t_edit, t_pass = st.tabs(["👁️ Visão Geral", "📝 Editar Erros", "🔐 Senha e Saldo"])
-
-                    # --- TAB 1: VISÃO GERAL ---
-                    with t_view:
-                        col_v1, col_v2 = st.columns(2)
-                        col_v1.write(f"**Status:** {'🟢 Ativo' if p.get('aprovado') else '🟡 Pendente'}")
-                        col_v1.write(f"**Cliques recebidos:** {p.get('cliques', 0)}")
-                        col_v2.write(f"**Saldo:** {p.get('saldo', 0)} 🪙")
-                        
-                        if st.button(f"VERIFICAR PERFIL NA BUSCA", key=f"v_perfil_{p['id']}"):
-                            st.info(f"O perfil de {p.get('nome')} está configurado como {p.get('area')}.")
-
-                    # --- TAB 2: EDITAR ERROS (SUPERPODER DE EDIÇÃO) ---
-                    with t_edit:
-                        with st.form(key=f"adm_edit_form_{p['id']}"):
-                            st.write("🔧 Corrija informações do parceiro aqui:")
-                            ed_nome = st.text_input("Nome", p.get('nome'))
-                            ed_area = st.selectbox("Especialidade", CATEGORIAS_OFICIAIS, index=CATEGORIAS_OFICIAIS.index(p.get('area')) if p.get('area') in CATEGORIAS_OFICIAIS else 0)
-                            ed_desc = st.text_area("Descrição", p.get('descricao'))
-                            ed_cat = st.text_input("Instagram/Link", p.get('link_catalogo', ''))
-                            
-                            if st.form_submit_button("SALVAR ALTERAÇÕES"):
-                                db.collection("profissionais").document(p['id']).update({
-                                    "nome": ed_nome, "area": ed_area, 
-                                    "descricao": ed_desc, "link_catalogo": ed_cat
-                                })
-                                st.success("✅ Informações corrigidas!")
-                                st.rerun()
-
-                    # --- TAB 3: SENHA E SALDO ---
-                    with t_pass:
-                        # Redefinição de Senha
-                        st.markdown("### 🔑 Alterar Senha")
-                        nova_senha = st.text_input("Nova Senha", key=f"reset_pw_{p['id']}")
-                        if st.button("CONFIRMAR NOVA SENHA", key=f"btn_pw_{p['id']}"):
-                            if nova_senha:
-                                db.collection("profissionais").document(p['id']).update({"senha": nova_senha})
-                                st.success(f"Senha alterada com sucesso!")
-                            else: st.warning("Digite uma senha válida.")
-
-                        st.divider()
-                        
-                        # Adicionar Saldo
-                        st.markdown("### 💰 Adicionar Moedas")
-                        qtd_moedas = st.number_input("Quantidade", min_value=0, step=1, key=f"add_moeda_{p['id']}")
-                        if st.button("ADICIONAR SALDO", key=f"btn_moeda_{p['id']}"):
-                            novo_s = int(p.get('saldo', 0)) + qtd_moedas
-                            db.collection("profissionais").document(p['id']).update({"saldo": novo_s})
-                            st.success("Saldo atualizado!")
-                            st.rerun()
-
-                    # --- AÇÕES RÁPIDAS (BLOQUEIO E EXCLUSÃO) ---
-                    st.divider()
-                    c_b1, c_b2 = st.columns(2)
-                    if c_b1.button(f"{'🔴 Bloquear' if p.get('aprovado') else '🟢 Aprovar'}", key=f"quick_ap_{p['id']}", use_container_width=True):
-                        db.collection("profissionais").document(p['id']).update({"aprovado": not p.get('aprovado')})
-                        st.rerun()
-                    
-                    if c_b2.button("🗑️ DELETAR PERFIL", key=f"quick_del_{p['id']}", use_container_width=True):
-                        db.collection("profissionais").document(p['id']).delete()
-                        st.rerun()
-        else:
-            st.info("Nenhum parceiro cadastrado ainda.")
-            
-    elif adm_pw != "":
-        st.error("Senha de administrador incorreta.")
+        col_c3, col_c4 = st.columns(2)
+        r_s = col_c3.text_input("Crie uma Senha", type="password")
+        r_a = col_c4.selectbox("Sua Especialidade Principal", CATEGORIAS_OFICIAIS)
+        
+        r_d = st.text_area("Descreva seus serviços (Isso atrai clientes!)")
+        
+        st.info("📌 Ao se cadastrar, você ganha um bônus inicial para testar a plataforma!")
+        
+        if st.form_submit_button("FINALIZAR MEU CADASTRO", use_container_width=True):
+            if len(r_z) < 10 or len(r_n) < 3:
+                st.error("⚠️ Por favor, preencha Nome e WhatsApp corretamente.")
+            else:
+                # Criando o documento com a estrutura SOMAR (Tudo o que precisamos)
+                try:
+                    db.collection("profissionais").document(r_z).set({
+                        "nome": r_n,
+                        "whatsapp": r_z,
+                        "senha": r_s,
+                        "area": r_a,
+                        "descricao": r_d,
+                        "saldo": BONUS_WELCOME, # Bônus de entrada
+                        "cliques": 0,
+                        "rating": 5.0,         # Começa com nota máxima
+                        "aprovado": False,      # Aguarda sua aprovação no Admin
+                        "lat": LAT_REF,         # Localização padrão inicial
+                        "lon": LON_REF,
+                        "foto_url": "",         # Ele poderá subir no painel dele
+                        "portfolio_imgs": [],    # Lista de fotos vazia inicial
+                        "data_registro": datetime.datetime.now()
+                    })
+                    st.success("✅ Cadastro enviado com sucesso! Aguarde a aprovação do administrador para aparecer nas buscas.")
+                    st.balloons()
+                except Exception as e:
+                    st.error(f"Erro ao cadastrar: {e}")
 
 # --- ABA 4: CENTRAL DE COMANDO SUPREMA (TOTALMENTE UNIFICADA) ---
 with menu_abas[3]:
@@ -896,40 +858,3 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
