@@ -789,7 +789,7 @@ with menu_abas[3]:
 # --- ABA 6: FINANCEIRO (SÓ APARECE SOB COMANDO) ---
 # Este 'if' evita o IndexError: ele só executa se a aba financeira existir
 if len(menu_abas) > 5:
-    with menu_abas[5]:
+    with menu_abas[4]:
         st.markdown("### 📊 Gestão de Capital GeralJá")
         
         # Chave de segurança extra para abrir o cofre
@@ -860,6 +860,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
