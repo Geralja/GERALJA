@@ -43,7 +43,7 @@ if st.session_state.tema_claro:
             input { background-color: white !important; color: black !important; border: 1px solid #ccc !important; }
         </style>
     """, unsafe_allow_html=True)
-import streamlit as st
+
 # ... seus outros imports (firebase, base64, etc)
 
 st.set_page_config(page_title="Geral Já", layout="wide")
@@ -121,7 +121,7 @@ def conectar_banco_master():
 
 app_engine = conectar_banco_master()
 db = firestore.client()
-
+ 
 # ------------------------------------------------------------------------------
 # 3. POLÍTICAS E CONSTANTES
 # ------------------------------------------------------------------------------
@@ -840,6 +840,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
