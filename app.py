@@ -543,7 +543,7 @@ with menu_abas[0]:
                     "cliques": p.get('cliques', 0) + 1
                 })
 # --- ABA 2: PAINEL DO PARCEIRO (VERSÃO COM TEMA MANUAL) ---
-with menu_abas[1]:
+with menu_abas[3]:
     if 'auth' not in st.session_state: st.session_state.auth = False
     
     if not st.session_state.auth:
@@ -896,6 +896,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
