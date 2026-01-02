@@ -187,10 +187,7 @@ CONCEITOS_EXPANDIDOS = {
     "celular": "Assistência Técnica", "iphone": "Assistência Técnica", "tela": "Assistência Técnica", "carregador": "Assistência Técnica", "android": "Assistência Técnica", "bateria": "Assistência Técnica",
     "computador": "TI", "notebook": "TI", "formatar": "TI", "wifi": "TI", "internet": "TI", "pc": "TI", "gamer": "TI", "impressora": "TI",
     "geladeira": "Refrigeração", "ar condicionado": "Refrigeração", "freezer": "Refrigeração", "ar": "Refrigeração", "climatizador": "Refrigeração",
-    "fogao": "Técnico de Fogão", "forno": "Técnico de Fogão", "cooktop": "Técnico de Fogão",
-    "maquina de lavar": "Técnico de Lavadora", "lavadora": "Técnico de Lavadora", "lava e seca": "Técnico de Lavadora",
-    "tv": "Eletrônicos", "televisao": "Eletrônicos", "som": "Eletrônicos", "video game": "Eletrônicos",
-
+  
     # --- PETS E AGRO ---
     "pet": "Pet Shop", "racao": "Pet Shop", "cachorro": "Pet Shop", "gato": "Pet Shop", "banho e tosa": "Pet Shop", "veterinario": "Pet Shop", "viva": "Pet Shop", "aquario": "Pet Shop",
 
@@ -843,6 +840,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
