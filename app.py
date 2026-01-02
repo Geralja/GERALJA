@@ -19,8 +19,6 @@ def converter_img_b64(file):
         return base64.b64encode(file.getvalue()).decode()
     return None
 st.set_page_config(page_title="Geral Já", layout="wide")
-import streamlit as st
-# ... outros imports
 
 st.set_page_config(page_title="Geral Já", layout="wide")
 
@@ -840,6 +838,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
