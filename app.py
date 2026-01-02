@@ -134,91 +134,27 @@ LAT_REF = -23.5505
 LON_REF = -46.6333
 
 CATEGORIAS_OFICIAIS = [
-    "Acompanhante de Idosos",
-    "Adestrador de Cães",
-    "Animador de Festas",
-    "Arquiteto(a)",
-    "Babá (Nanny)",
-    "Barman / Bartender",
-    "Borracheiro",
-    "Cabeleireiro(a)",
-    "Chaveiro",
-    "Confeiteiro(a)",
-    "Costureira / Alfaiate",
-    "Cozinheiro(a) Particular",
-    "Cuidador de Idosos",
-    "Dançarino(a) / Entretenimento (Gogoboy/Girl)",
-    "Decorador(a) de Festas",
-    "Destaque de Eventos",
-    "Diarista / Faxineira",
-    "Eletricista",
-    "Encanador",
-    "Esteticista",
-    "Fotógrafo(a)",
-    "Fretista / Mudanças",
-    "Garçom e garçonete",
-    "Gesseiro",
-    "Guincho 24h",
-    "Instalador de Ar-condicionado",
-    "Internet de fibra óptica",
-    "Jardineiro",
-    "Lavagem de Sofás / Estofados",
-    "Manicure e Pedicure",
-    "Maquiador(a)",
-    "Marceneiro",
-    "Marido de Aluguel",
-    "Mecânico de Autos",
-    "Montador de Móveis",
-    "Motorista Particular",
-    "Passeador de Cães (Dog Walker)",
-    "Pedreiro",
-    "Pintor",
-    "Piscineiro",
-    "Professor(a) Particular",
-    "Recepcionista de Eventos",
-    "Salgadeiro(a)",
-    "Segurança / Vigilante",
-    "Técnico de Celular",
-    "Técnico de Geladeira",
-    "Técnico de Máquina de Lavar",
-    "Técnico de Notebook/PC",
-    "Telhadista",
-    "Veterinário(a)",
-    "Web Designer"
-]   
-
-CATEGORIAS_OFICIAIS = ["Acompanhante de Idosos", "Adestrador de Cães", "Animador de Festas", "Arquiteto(a)", "Babá (Nanny)", "Barman / Bartender", "Borracheiro", "Cabeleireiro(a)", "Chaveiro", "Confeiteiro(a)", "Costureira / Alfaiate", "Cozinheiro(a) Particular", "Cuidador de Idosos", "Dançarino(a) / Entretenimento (Gogoboy/Girl)", "Decorador(a) de Festas", "Destaque de Eventos", "Diarista / Faxineira", "Eletricista", "Encanador", "Esteticista", "Fotógrafo(a)", "Fretista / Mudanças", "Garçom e garçonete", "Gesseiro", "Guincho 24h", "Instalador de Ar-condicionado", "Internet de fibra óptica", "Jardineiro", "Lavagem de Sofás / Estofados", "Manicure e Pedicure", "Maquiador(a)", "Marceneiro", "Marido de Aluguel", "Mecânico de Autos", "Montador de Móveis", "Motorista Particular", "Passeador de Cães (Dog Walker)", "Pedreiro", "Pintor", "Piscineiro", "Professor(a) Particular", "Recepcionista de Eventos", "Salgadeiro(a)", "Segurança / Vigilante", "Técnico de Celular", "Técnico de Geladeira", "Técnico de Máquina de Lavar", "Técnico de Notebook/PC", "Telhadista", "Veterinário(a)", "Web Designer"]
-    # --- AUTOMOTIVO ---
-    "Mecânico", "Borracheiro", "Guincho 24h", "Estética Automotiva", "Lava Jato", 
-    "Auto Elétrica", "Funilaria e Pintura", "Som e Alarme", "Moto Peças", "Auto Peças",
-
-    # --- COMERCIOS E LOJAS ---
-    "Loja de Roupas", "Calçados", "Loja de Variedades", "Relojoaria", "Joalheria", 
-    "Ótica", "Armarinho/Aviamentos", "Papelaria", "Floricultura", "Bazar", 
-    "Material de Construção", "Tintas", "Madeireira", "Móveis", "Eletrodomésticos",
-
-    # --- ALIMENTAÇÃO E BEBIDAS ---
-    "Pizzaria", "Lanchonete", "Restaurante", "Confeitaria", "Padaria", "Açaí", 
-    "Sorveteria", "Adega", "Doceria", "Hortifruti", "Açougue", "Pastelaria", 
-    "Churrascaria", "Hamburgueria", "Comida Japonesa", "Cafeteria",
-
-    # --- SAÚDE E BELEZA ---
-    "Farmácia", "Barbearia/Salão", "Manicure/Pedicure", "Estética Facial", 
-    "Tatuagem/Piercing", "Fitness", "Academia", "Fisioterapia", "Odontologia", 
-    "Clínica Médica", "Psicologia", "Nutricionista", "Ótica",
-
-    # --- TECNOLOGIA E SERVIÇOS ---
-    "TI", "Assistência Técnica", "Celulares", "Informática", "Refrigeração", 
-    "Técnico de Fogão", "Técnico de Lavadora", "Eletrônicos", "Chaveiro", 
-    "Montador", "Freteiro", "Carreto", "Motoboy/Entregas",
-
-    # --- PETS E AGRO ---
-    "Pet Shop", "Veterinário", "Banho e Tosa", "Adestrador", "Agropecuária",
-
-    # --- EDUCAÇÃO E OUTROS ---
-    "Aulas Particulares", "Escola Infantil", "Reforço Escolar", "Idiomas", 
-    "Advocacia", "Contabilidade", "Imobiliária", "Seguros", "Ajudante Geral", 
-    "Diarista", "Cuidador de Idosos", "Babá", "Outro (Personalizado)"
+    "Academia", "Acompanhante de Idosos", "Açougue", "Adega", "Adestrador de Cães", "Advocacia", "Agropecuária", 
+    "Ajudante Geral", "Animador de Festas", "Arquiteto(a)", "Armarinho/Aviamentos", "Assistência Técnica", 
+    "Aulas Particulares", "Auto Elétrica", "Auto Peças", "Babá (Nanny)", "Banho e Tosa", "Barbearia/Salão", 
+    "Barman / Bartender", "Bazar", "Borracheiro", "Cabeleireiro(a)", "Cafeteria", "Calçados", "Carreto", 
+    "Celulares", "Chaveiro", "Churrascaria", "Clínica Médica", "Comida Japonesa", "Confeiteiro(a)", 
+    "Contabilidade", "Costureira / Alfaiate", "Cozinheiro(a) Particular", "Cuidador de Idosos", 
+    "Dançarino(a) / Entretenimento (Gogoboy/Girl)", "Decorador(a) de Festas", "Destaque de Eventos", 
+    "Diarista / Faxineira", "Doceria", "Eletrodomésticos", "Eletricista", "Eletrônicos", "Encanador", 
+    "Escola Infantil", "Estética Automotiva", "Estética Facial", "Esteticista", "Farmácia", "Fisioterapia", 
+    "Fitness", "Floricultura", "Fotógrafo(a)", "Freteiro", "Fretista / Mudanças", "Funilaria e Pintura", 
+    "Garçom e garçonete", "Gesseiro", "Guincho 24h", "Hamburgueria", "Hortifruti", "Idiomas", "Imobiliária", 
+    "Informática", "Instalador de Ar-condicionado", "Internet de fibra óptica", "Jardineiro", "Joalheria", 
+    "Lanchonete", "Lava Jato", "Lavagem de Sofás / Estofados", "Loja de Roupas", "Loja de Variedades", 
+    "Madeireira", "Manicure e Pedicure", "Maquiador(a)", "Marceneiro", "Marido de Aluguel", "Material de Construção", 
+    "Mecânico de Autos", "Montador de Móveis", "Motoboy/Entregas", "Motorista Particular", "Móveis", 
+    "Moto Peças", "Nutricionista", "Odontologia", "Ótica", "Outro (Personalizado)", "Padaria", "Papelaria", 
+    "Passeador de Cães (Dog Walker)", "Pastelaria", "Pedreiro", "Pet Shop", "Pintor", "Piscineiro", "Pizzaria", 
+    "Professor(a) Particular", "Psicologia", "Recepcionista de Eventos", "Reforço Escolar", "Refrigeração", 
+    "Relojoaria", "Salgadeiro(a)", "Segurança / Vigilante", "Seguros", "Som e Alarme", "Sorveteria", 
+    "Tatuagem/Piercing", "Técnico de Celular", "Técnico de Fogão", "Técnico de Geladeira", "Técnico de Lavadora", 
+    "Técnico de Notebook/PC", "Telhadista", "TI (Tecnologia)", "Tintas", "Veterinário(a)", "Web Designer"
 ]
 # ==============================================================================
 # SUPER MOTOR DE INTELIGÊNCIA GERALJÁ - VERSÃO MEGA EXPANDIDA
@@ -907,6 +843,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
