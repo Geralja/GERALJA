@@ -186,6 +186,7 @@ CATEGORIAS_OFICIAIS = [
     "Veterinário(a)",
     "Web Designer"
 ]
+    
     # --- MANUTENÇÃO E REFORMAS ---
     "Encanador", "Eletricista", "Pintor", "Pedreiro", "Gesseiro", "Telhadista", 
     "Serralheiro", "Vidraceiro", "Marceneiro", "Marmoraria", "Calhas e Rufos", 
@@ -910,6 +911,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
