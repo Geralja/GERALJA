@@ -133,7 +133,7 @@ BONUS_WELCOME = 5
 LAT_REF = -23.5505
 LON_REF = -46.6333
 
-    CATEGORIAS_OFICIAIS = [
+CATEGORIAS_OFICIAIS = [
     "Acompanhante de Idosos",
     "Adestrador de Cães",
     "Animador de Festas",
@@ -907,6 +907,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
