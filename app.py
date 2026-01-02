@@ -133,7 +133,7 @@ BONUS_WELCOME = 5
 LAT_REF = -23.5505
 LON_REF = -46.6333
 
-CATEGORIAS_OFICIAIS = [
+    CATEGORIAS_OFICIAIS = [
     "Acompanhante de Idosos",
     "Adestrador de Cães",
     "Animador de Festas",
@@ -186,10 +186,8 @@ CATEGORIAS_OFICIAIS = [
     "Veterinário(a)",
     "Web Designer"
 ]   
-# --- MANUTENÇÃO E REFORMAS ---
-   CATEGORIAS_OFICIAIS = ["Acompanhante de Idosos", "Adestrador de Cães", "Animador de Festas", "Arquiteto(a)", "Babá (Nanny)", "Barman / Bartender", "Borracheiro", "Cabeleireiro(a)", "Chaveiro", "Confeiteiro(a)", "Costureira / Alfaiate", "Cozinheiro(a) Particular", "Cuidador de Idosos", "Dançarino(a) / Entretenimento (Gogoboy/Girl)", "Decorador(a) de Festas", "Destaque de Eventos", "Diarista / Faxineira", "Eletricista", "Encanador", "Esteticista", "Fotógrafo(a)", "Fretista / Mudanças", "Garçom e garçonete", "Gesseiro", "Guincho 24h", "Instalador de Ar-condicionado", "Internet de fibra óptica", "Jardineiro", "Lavagem de Sofás / Estofados", "Manicure e Pedicure", "Maquiador(a)", "Marceneiro", "Marido de Aluguel", "Mecânico de Autos", "Montador de Móveis", "Motorista Particular", "Passeador de Cães (Dog Walker)", "Pedreiro", "Pintor", "Piscineiro", "Professor(a) Particular", "Recepcionista de Eventos", "Salgadeiro(a)", "Segurança / Vigilante", "Técnico de Celular", "Técnico de Geladeira", "Técnico de Máquina de Lavar", "Técnico de Notebook/PC", "Telhadista", "Veterinário(a)", "Web Designer"]
-    "Dedetização", "Desentupidora", "Piscineiro", "Jardineiro", "Limpeza de Estofados",
 
+CATEGORIAS_OFICIAIS = ["Acompanhante de Idosos", "Adestrador de Cães", "Animador de Festas", "Arquiteto(a)", "Babá (Nanny)", "Barman / Bartender", "Borracheiro", "Cabeleireiro(a)", "Chaveiro", "Confeiteiro(a)", "Costureira / Alfaiate", "Cozinheiro(a) Particular", "Cuidador de Idosos", "Dançarino(a) / Entretenimento (Gogoboy/Girl)", "Decorador(a) de Festas", "Destaque de Eventos", "Diarista / Faxineira", "Eletricista", "Encanador", "Esteticista", "Fotógrafo(a)", "Fretista / Mudanças", "Garçom e garçonete", "Gesseiro", "Guincho 24h", "Instalador de Ar-condicionado", "Internet de fibra óptica", "Jardineiro", "Lavagem de Sofás / Estofados", "Manicure e Pedicure", "Maquiador(a)", "Marceneiro", "Marido de Aluguel", "Mecânico de Autos", "Montador de Móveis", "Motorista Particular", "Passeador de Cães (Dog Walker)", "Pedreiro", "Pintor", "Piscineiro", "Professor(a) Particular", "Recepcionista de Eventos", "Salgadeiro(a)", "Segurança / Vigilante", "Técnico de Celular", "Técnico de Geladeira", "Técnico de Máquina de Lavar", "Técnico de Notebook/PC", "Telhadista", "Veterinário(a)", "Web Designer"]
     # --- AUTOMOTIVO ---
     "Mecânico", "Borracheiro", "Guincho 24h", "Estética Automotiva", "Lava Jato", 
     "Auto Elétrica", "Funilaria e Pintura", "Som e Alarme", "Moto Peças", "Auto Peças",
@@ -909,6 +907,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
