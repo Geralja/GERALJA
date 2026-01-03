@@ -648,7 +648,7 @@ with menu_abas[1]:
                             "area": r_a,
                             "descricao": r_d,
                             "endereco_digitado": r_endereco,
-                            "endereco_oficial": endereco_real, # Endereço corrigido pelo Google
+                            "endereco_oficial": endereco_real,
                             "lat": lat,
                             "lon": lon,
                             "saldo": BONUS_WELCOME,
@@ -663,30 +663,7 @@ with menu_abas[1]:
                         st.error(f"Erro ao salvar no banco: {e}")
                 else:
                     st.error("❌ Não conseguimos validar este endereço no mapa. Tente incluir o número da casa e a cidade.")
-  # --- INÍCIO DO BLOCO DE ENDEREÇO UNIVERSAL ---
-st.markdown("### 📍 Localização de Atendimento")
-st.caption("Se o GPS falhar, digite manualmente abaixo:")
-
-# Criamos uma chave única com 'key' para evitar conflitos no Streamlit
-rua_input = st.text_input("Rua / Viela / Avenida", key="rua_geralja")
-
-col_local_1, col_local_2 = st.columns([1, 1])
-with col_local_1:
-    num_input = st.text_input("Número", key="num_geralja")
-with col_local_2:
-    bairro_input = st.text_input("Bairro", key="bairro_geralja")
-
-complemento_input = st.text_input("Ponto de Referência ou Complemento", key="comp_geralja")
-
-# A variável abaixo é a que você vai usar no seu 'INSERT' do banco de dados
-endereco_final = f"{rua_input}, {num_input} - {bairro_input} ({complemento_input})"
-
-# Validação visual rápida para o cliente
-if rua_input and num_input:
-    st.success(f"✅ Endereço confirmado: {endereco_final}")
-else:
-    st.warning("⚠️ Digite a rua e o número para habilitar o cadastro.")
-# --- FIM DO BLOCO DE ENDEREÇO UNIVERSAL ---
+  
 # --- ABA 4: CENTRAL DE COMANDO SUPREMA (TOTALMENTE UNIFICADA) ---
 with menu_abas[3]:
     st.markdown("### 🔒 Terminal de Administração")
@@ -884,6 +861,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
