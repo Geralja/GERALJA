@@ -522,7 +522,6 @@ with menu_abas[0]:
                 db.collection("profissionais").document(pid).update({
                     "cliques": p.get('cliques', 0) + 1
                 })
-              
 # --- ABA 2: PAINEL DO PARCEIRO (VERSÃO COM TEMA MANUAL) ---
 with menu_abas[2]:
     if 'auth' not in st.session_state: st.session_state.auth = False
@@ -648,7 +647,7 @@ with menu_abas[1]:
                             "area": r_a,
                             "descricao": r_d,
                             "endereco_digitado": r_endereco,
-                            "endereco_oficial": endereco_real,
+                            "endereco_oficial": endereco_real, # Endereço corrigido pelo Google
                             "lat": lat,
                             "lon": lon,
                             "saldo": BONUS_WELCOME,
@@ -663,7 +662,7 @@ with menu_abas[1]:
                         st.error(f"Erro ao salvar no banco: {e}")
                 else:
                     st.error("❌ Não conseguimos validar este endereço no mapa. Tente incluir o número da casa e a cidade.")
-  
+
 # --- ABA 4: CENTRAL DE COMANDO SUPREMA (TOTALMENTE UNIFICADA) ---
 with menu_abas[3]:
     st.markdown("### 🔒 Terminal de Administração")
@@ -861,10 +860,6 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
-
-
-
-
 
 
 
