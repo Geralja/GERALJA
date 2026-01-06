@@ -596,72 +596,50 @@ with menu_abas[2]:
         if st.button("SAIR DO PAINEL", key="logout_v7", use_container_width=True):
             st.session_state.auth = False
             st.rerun()
-# --- ABA 1: CADASTRO COM LOCALIZAÇÃO PRECISA ---
+# --- ABA 3: CADASTRO (VERSÃO SOMAR) ---
 with menu_abas[1]:
     st.header("🚀 Seja um Parceiro GeralJá")
-    st.write("Cadastre seu serviço e seja encontrado por clientes próximos!")
+    st.write("Preencha seus dados para começar a receber serviços na sua região.")
     
-    # Função interna para usar a chave que você salvou nos Secrets
-    def obter_coords_google(endereco):
-        api_key = st.secrets["GOOGLE_MAPS_API_KEY"]
-        url = f"https://maps.googleapis.com/maps/api/geocode/json?address={endereco}&key={api_key}"
-        try:
-            response = requests.get(url).json()
-            if response['status'] == 'OK':
-                loc = response['results'][0]['geometry']['location']
-                end_formatado = response['results'][0]['formatted_address']
-                return loc['lat'], loc['lng'], end_formatado
-        except:
-            pass
-        return None, None, None
-
-    with st.form("reg_preciso"):
+    with st.form("reg"):
         col_c1, col_c2 = st.columns(2)
         r_n = col_c1.text_input("Nome Completo")
         r_z = col_c2.text_input("WhatsApp (Apenas números)", help="Ex: 11999999999")
-        
-        # CAMPO CRUCIAL: O endereço que o Google vai ler
-        r_endereco = st.text_input("Endereço de Atendimento", placeholder="Rua, Número, Bairro, Cidade - Estado")
         
         col_c3, col_c4 = st.columns(2)
         r_s = col_c3.text_input("Crie uma Senha", type="password")
         r_a = col_c4.selectbox("Sua Especialidade Principal", CATEGORIAS_OFICIAIS)
         
-        r_d = st.text_area("Descreva seus serviços")
+        r_d = st.text_area("Descreva seus serviços (Isso atrai clientes!)")
         
-        st.info("📌 Sua localização será usada para mostrar seus serviços aos clientes mais próximos.")
+        st.info("📌 Ao se cadastrar, você ganha um bônus inicial para testar a plataforma!")
         
         if st.form_submit_button("FINALIZAR MEU CADASTRO", use_container_width=True):
-            if len(r_z) < 10 or not r_endereco:
-                st.error("⚠️ Nome, WhatsApp e Endereço são obrigatórios!")
+            if len(r_z) < 10 or len(r_n) < 3:
+                st.error("⚠️ Por favor, preencha Nome e WhatsApp corretamente.")
             else:
-                # MÁGICA DO GOOGLE ACONTECENDO AQUI
-                lat, lon, endereco_real = obter_coords_google(r_endereco)
-                
-                if lat and lon:
-                    try:
-                        db.collection("profissionais").document(r_z).set({
-                            "nome": r_n,
-                            "whatsapp": r_z,
-                            "senha": r_s,
-                            "area": r_a,
-                            "descricao": r_d,
-                            "endereco_digitado": r_endereco,
-                            "endereco_oficial": endereco_real, # Endereço corrigido pelo Google
-                            "lat": lat,
-                            "lon": lon,
-                            "saldo": BONUS_WELCOME,
-                            "cliques": 0,
-                            "rating": 5.0,
-                            "aprovado": False,
-                            "data_registro": datetime.datetime.now()
-                        })
-                        st.success(f"✅ Cadastro enviado! Localizamos você em: {endereco_real}")
-                        st.balloons()
-                    except Exception as e:
-                        st.error(f"Erro ao salvar no banco: {e}")
-                else:
-                    st.error("❌ Não conseguimos validar este endereço no mapa. Tente incluir o número da casa e a cidade.")
+                # Criando o documento com a estrutura SOMAR (Tudo o que precisamos)
+                try:
+                    db.collection("profissionais").document(r_z).set({
+                        "nome": r_n,
+                        "whatsapp": r_z,
+                        "senha": r_s,
+                        "area": r_a,
+                        "descricao": r_d,
+                        "saldo": BONUS_WELCOME, # Bônus de entrada
+                        "cliques": 0,
+                        "rating": 5.0,         # Começa com nota máxima
+                        "aprovado": False,      # Aguarda sua aprovação no Admin
+                        "lat": LAT_REF,         # Localização padrão inicial
+                        "lon": LON_REF,
+                        "foto_url": "",         # Ele poderá subir no painel dele
+                        "portfolio_imgs": [],    # Lista de fotos vazia inicial
+                        "data_registro": datetime.datetime.now()
+                    })
+                    st.success("✅ Cadastro enviado com sucesso! Aguarde a aprovação do administrador para aparecer nas buscas.")
+                    st.balloons()
+                except Exception as e:
+                    st.error(f"Erro ao cadastrar: {e}")
 
 # --- ABA 4: CENTRAL DE COMANDO SUPREMA (TOTALMENTE UNIFICADA) ---
 with menu_abas[3]:
@@ -789,7 +767,7 @@ with menu_abas[3]:
 # --- ABA 6: FINANCEIRO (SÓ APARECE SOB COMANDO) ---
 # Este 'if' evita o IndexError: ele só executa se a aba financeira existir
 if len(menu_abas) > 5:
-    with menu_abas[4]:
+    with menu_abas[5]:
         st.markdown("### 📊 Gestão de Capital GeralJá")
         
         # Chave de segurança extra para abrir o cofre
@@ -860,7 +838,6 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
-
 
 
 
