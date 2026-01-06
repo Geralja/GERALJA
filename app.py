@@ -14,54 +14,12 @@ import pandas as pd
 import unicodedata
 from streamlit_js_eval import streamlit_js_eval, get_geolocation
 import base64
+
 def converter_img_b64(file):
     if file is not None:
         return base64.b64encode(file.getvalue()).decode()
     return None
 st.set_page_config(page_title="Geral Já", layout="wide")
-
-st.set_page_config(page_title="Geral Já", layout="wide")
-
-# --- CONFIGURAÇÃO DE TEMA MANUAL ---
-if 'tema_claro' not in st.session_state:
-    st.session_state.tema_claro = False
-
-# Interruptor no topo para o usuário consertar a tela se estiver preta
-st.session_state.tema_claro = st.toggle("☀️ FORÇAR MODO CLARO (Use se a tela estiver escura)", value=st.session_state.tema_claro)
-
-if st.session_state.tema_claro:
-    st.markdown("""
-        <style>
-            .stApp { background-color: white !important; }
-            * { color: black !important; }
-            .stMarkdown, p, span, label, div { color: black !important; }
-            iframe { background-color: white !important; }
-            .stButton button { background-color: #f0f2f6 !important; color: black !important; border: 1px solid #ccc !important; }
-            [data-testid="stExpander"] { background-color: #f9f9f9 !important; border: 1px solid #ddd !important; }
-            input { background-color: white !important; color: black !important; border: 1px solid #ccc !important; }
-        </style>
-    """, unsafe_allow_html=True)
-
-# ... seus outros imports (firebase, base64, etc)
-
-st.set_page_config(page_title="Geral Já", layout="wide")
-
-# --- COLOQUE AQUI: CSS PARA CORRIGIR O MODO ESCURO E CLARO ---
-st.markdown('''
-    <style>
-        /* Força o preenchimento no topo */
-        div.block-container {padding-top:2rem;}
-        
-        /* Garante que os cards HTML se adaptem ao tema */
-        .metric-card {
-            border: 1px solid #555; 
-            border-radius: 10px; 
-            padding: 10px; 
-            text-align: center;
-            margin-bottom: 10px;
-        }
-    </style>
-''', unsafe_allow_html=True)
 
 # CSS para evitar que o fundo fique preto por erro de renderização
 st.markdown("""
@@ -119,7 +77,7 @@ def conectar_banco_master():
 
 app_engine = conectar_banco_master()
 db = firestore.client()
- 
+
 # ------------------------------------------------------------------------------
 # 3. POLÍTICAS E CONSTANTES
 # ------------------------------------------------------------------------------
@@ -132,27 +90,42 @@ LAT_REF = -23.5505
 LON_REF = -46.6333
 
 CATEGORIAS_OFICIAIS = [
-    "Academia", "Acompanhante de Idosos", "Açougue", "Adega", "Adestrador de Cães", "Advocacia", "Agropecuária", 
-    "Ajudante Geral", "Animador de Festas", "Arquiteto(a)", "Armarinho/Aviamentos", "Assistência Técnica", 
-    "Aulas Particulares", "Auto Elétrica", "Auto Peças", "Babá (Nanny)", "Banho e Tosa", "Barbearia/Salão", 
-    "Barman / Bartender", "Bazar", "Borracheiro", "Cabeleireiro(a)", "Cafeteria", "Calçados", "Carreto", 
-    "Celulares", "Chaveiro", "Churrascaria", "Clínica Médica", "Comida Japonesa", "Confeiteiro(a)", 
-    "Contabilidade", "Costureira / Alfaiate", "Cozinheiro(a) Particular", "Cuidador de Idosos", 
-    "Dançarino(a) / Entretenimento (Gogoboy/Girl)", "Decorador(a) de Festas", "Destaque de Eventos", 
-    "Diarista / Faxineira", "Doceria", "Eletrodomésticos", "Eletricista", "Eletrônicos", "Encanador", 
-    "Escola Infantil", "Estética Automotiva", "Estética Facial", "Esteticista", "Farmácia", "Fisioterapia", 
-    "Fitness", "Floricultura", "Fotógrafo(a)", "Freteiro", "Fretista / Mudanças", "Funilaria e Pintura", 
-    "Garçom e garçonete", "Gesseiro", "Guincho 24h", "Hamburgueria", "Hortifruti", "Idiomas", "Imobiliária", 
-    "Informática", "Instalador de Ar-condicionado", "Internet de fibra óptica", "Jardineiro", "Joalheria", 
-    "Lanchonete", "Lava Jato", "Lavagem de Sofás / Estofados", "Loja de Roupas", "Loja de Variedades", 
-    "Madeireira", "Manicure e Pedicure", "Maquiador(a)", "Marceneiro", "Marido de Aluguel", "Material de Construção", 
-    "Mecânico de Autos", "Montador de Móveis", "Motoboy/Entregas", "Motorista Particular", "Móveis", 
-    "Moto Peças", "Nutricionista", "Odontologia", "Ótica", "Outro (Personalizado)", "Padaria", "Papelaria", 
-    "Passeador de Cães (Dog Walker)", "Pastelaria", "Pedreiro", "Pet Shop", "Pintor", "Piscineiro", "Pizzaria", 
-    "Professor(a) Particular", "Psicologia", "Recepcionista de Eventos", "Reforço Escolar", "Refrigeração", 
-    "Relojoaria", "Salgadeiro(a)", "Segurança / Vigilante", "Seguros", "Som e Alarme", "Sorveteria", 
-    "Tatuagem/Piercing", "Técnico de Celular", "Técnico de Fogão", "Técnico de Geladeira", "Técnico de Lavadora", 
-    "Técnico de Notebook/PC", "Telhadista", "TI (Tecnologia)", "Tintas", "Veterinário(a)", "Web Designer"
+    # --- MANUTENÇÃO E REFORMAS ---
+    "Encanador", "Eletricista", "Pintor", "Pedreiro", "Gesseiro", "Telhadista", 
+    "Serralheiro", "Vidraceiro", "Marceneiro", "Marmoraria", "Calhas e Rufos", 
+    "Dedetização", "Desentupidora", "Piscineiro", "Jardineiro", "Limpeza de Estofados",
+
+    # --- AUTOMOTIVO ---
+    "Mecânico", "Borracheiro", "Guincho 24h", "Estética Automotiva", "Lava Jato", 
+    "Auto Elétrica", "Funilaria e Pintura", "Som e Alarme", "Moto Peças", "Auto Peças",
+
+    # --- COMERCIOS E LOJAS ---
+    "Loja de Roupas", "Calçados", "Loja de Variedades", "Relojoaria", "Joalheria", 
+    "Ótica", "Armarinho/Aviamentos", "Papelaria", "Floricultura", "Bazar", 
+    "Material de Construção", "Tintas", "Madeireira", "Móveis", "Eletrodomésticos",
+
+    # --- ALIMENTAÇÃO E BEBIDAS ---
+    "Pizzaria", "Lanchonete", "Restaurante", "Confeitaria", "Padaria", "Açaí", 
+    "Sorveteria", "Adega", "Doceria", "Hortifruti", "Açougue", "Pastelaria", 
+    "Churrascaria", "Hamburgueria", "Comida Japonesa", "Cafeteria",
+
+    # --- SAÚDE E BELEZA ---
+    "Farmácia", "Barbearia/Salão", "Manicure/Pedicure", "Estética Facial", 
+    "Tatuagem/Piercing", "Fitness", "Academia", "Fisioterapia", "Odontologia", 
+    "Clínica Médica", "Psicologia", "Nutricionista", "Ótica",
+
+    # --- TECNOLOGIA E SERVIÇOS ---
+    "TI", "Assistência Técnica", "Celulares", "Informática", "Refrigeração", 
+    "Técnico de Fogão", "Técnico de Lavadora", "Eletrônicos", "Chaveiro", 
+    "Montador", "Freteiro", "Carreto", "Motoboy/Entregas",
+
+    # --- PETS E AGRO ---
+    "Pet Shop", "Veterinário", "Banho e Tosa", "Adestrador", "Agropecuária",
+
+    # --- EDUCAÇÃO E OUTROS ---
+    "Aulas Particulares", "Escola Infantil", "Reforço Escolar", "Idiomas", 
+    "Advocacia", "Contabilidade", "Imobiliária", "Seguros", "Ajudante Geral", 
+    "Diarista", "Cuidador de Idosos", "Babá", "Outro (Personalizado)"
 ]
 # ==============================================================================
 # SUPER MOTOR DE INTELIGÊNCIA GERALJÁ - VERSÃO MEGA EXPANDIDA
@@ -185,7 +158,10 @@ CONCEITOS_EXPANDIDOS = {
     "celular": "Assistência Técnica", "iphone": "Assistência Técnica", "tela": "Assistência Técnica", "carregador": "Assistência Técnica", "android": "Assistência Técnica", "bateria": "Assistência Técnica",
     "computador": "TI", "notebook": "TI", "formatar": "TI", "wifi": "TI", "internet": "TI", "pc": "TI", "gamer": "TI", "impressora": "TI",
     "geladeira": "Refrigeração", "ar condicionado": "Refrigeração", "freezer": "Refrigeração", "ar": "Refrigeração", "climatizador": "Refrigeração",
-  
+    "fogao": "Técnico de Fogão", "forno": "Técnico de Fogão", "cooktop": "Técnico de Fogão",
+    "maquina de lavar": "Técnico de Lavadora", "lavadora": "Técnico de Lavadora", "lava e seca": "Técnico de Lavadora",
+    "tv": "Eletrônicos", "televisao": "Eletrônicos", "som": "Eletrônicos", "video game": "Eletrônicos",
+
     # --- PETS E AGRO ---
     "pet": "Pet Shop", "racao": "Pet Shop", "cachorro": "Pet Shop", "gato": "Pet Shop", "banho e tosa": "Pet Shop", "veterinario": "Pet Shop", "viva": "Pet Shop", "aquario": "Pet Shop",
 
@@ -522,17 +498,16 @@ with menu_abas[0]:
                 db.collection("profissionais").document(pid).update({
                     "cliques": p.get('cliques', 0) + 1
                 })
-# --- ABA 2: PAINEL DO PARCEIRO (VERSÃO COM TEMA MANUAL) ---
+# --- ABA 2: PAINEL DO PARCEIRO (VERSÃO HÍBRIDA - CLARO/ESCURO) ---
 with menu_abas[2]:
     if 'auth' not in st.session_state: st.session_state.auth = False
     
     if not st.session_state.auth:
         st.subheader("🚀 Acesso ao Painel")
         col1, col2 = st.columns(2)
-        l_zap = col1.text_input("WhatsApp (números)", key="login_zap_v7")
-        l_pw = col2.text_input("Senha", type="password", key="login_pw_v7")
-        
-        if st.button("ENTRAR NO PAINEL", use_container_width=True, key="btn_entrar_v7"):
+        l_zap = col1.text_input("WhatsApp (números)", key="login_zap_final")
+        l_pw = col2.text_input("Senha", type="password", key="login_pw_final")
+        if st.button("ENTRAR NO PAINEL", use_container_width=True, key="btn_entrar_final"):
             u = db.collection("profissionais").document(l_zap).get()
             if u.exists and u.to_dict().get('senha') == l_pw:
                 st.session_state.auth, st.session_state.user_id = True, l_zap
@@ -542,58 +517,92 @@ with menu_abas[2]:
         doc_ref = db.collection("profissionais").document(st.session_state.user_id)
         d = doc_ref.get().to_dict()
         
-        # 1. MÉTRICAS (Usando colunas nativas para evitar conflito de CSS)
-        st.write(f"### Olá, {d.get('nome', 'Parceiro')}!")
-        m1, m2, m3 = st.columns(3)
-        m1.metric("Saldo 🪙", f"{d.get('saldo', 0)}")
-        m2.metric("Cliques 🚀", f"{d.get('cliques', 0)}")
-        m3.metric("Status", "🟢 ATIVO" if d.get('aprovado') else "🟡 PENDENTE")
+        # 1. MÉTRICAS ADAPTÁVEIS (Usa bordas em vez de fundo fixo para evitar tela preta)
+        st.markdown(f"""
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 20px;">
+                <div style="border: 1px solid #888; padding:10px; border-radius:12px; text-align:center;">
+                    <small>SALDO</small><br><b style="font-size:18px;">{d.get('saldo', 0)} 🪙</b>
+                </div>
+                <div style="border: 1px solid #888; padding:10px; border-radius:12px; text-align:center;">
+                    <small>CLIQUES</small><br><b style="font-size:18px;">{d.get('cliques', 0)} 🚀</b>
+                </div>
+                <div style="border: 1px solid #888; padding:10px; border-radius:12px; text-align:center;">
+                    <small>STATUS</small><br><b style="font-size:12px;">{"🟢 ATIVO" if d.get('aprovado') else "🟡 PENDENTE"}</b>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
 
-        # 2. GPS (Função preservada)
-        if st.button("📍 ATUALIZAR LOCALIZAÇÃO GPS", use_container_width=True, key="gps_v7"):
-            loc = streamlit_js_eval(js_expressions="navigator.geolocation.getCurrentPosition(s => s)", key='gps_v7_eval')
-            if loc and 'coords' in loc:
-                doc_ref.update({"lat": loc['coords']['latitude'], "lon": loc['coords']['longitude']})
-                st.success("✅ Localização salva!")
-            else: st.info("Aguardando sinal... Clique novamente.")
+        # 2. GPS (Lógica Estável com Chave Única)
+        with st.container():
+            loc_parceiro = streamlit_js_eval(
+                js_expressions="navigator.geolocation.getCurrentPosition(success => { return success })", 
+                key='gps_parceiro_v4_hybrid'
+            )
+            if st.button("📍 ATUALIZAR MINHA LOCALIZAÇÃO AGORA", use_container_width=True, key="btn_gps_final"):
+                if loc_parceiro and 'coords' in loc_parceiro:
+                    n_lat = loc_parceiro['coords'].get('latitude')
+                    n_lon = loc_parceiro['coords'].get('longitude')
+                    doc_ref.update({"lat": n_lat, "lon": n_lon})
+                    st.success("✅ Localização salva!")
+                    st.balloons()
+                else:
+                    st.warning("⚠️ GPS não detectado. Tente novamente.")
 
         st.divider()
 
-        # 3. COMPRA DE MOEDAS (PIX - Variáveis oficiais preservadas)
+        # 3. VITRINE PIX (Cards que se adaptam ao fundo)
         with st.expander("💎 COMPRAR MOEDAS (PIX)", expanded=False):
-            st.warning(f"Chave PIX: {PIX_OFICIAL}")
-            c1, c2, c3 = st.columns(3)
-            if c1.button("10 Moedas", key="p10_v7"): st.code(PIX_OFICIAL)
-            if c2.button("50 Moedas", key="p50_v7"): st.code(PIX_OFICIAL)
-            if c3.button("100 Moedas", key="p100_v7"): st.code(PIX_OFICIAL)
+            cv1, cv2, cv3 = st.columns(3)
+            # Nota: Removi o fundo branco fixo para que o texto não "suma" no modo escuro
+            card_style = "border: 1px solid #555; padding: 10px; border-radius: 10px; text-align: center; height: 140px;"
             
-            st.link_button("🚀 ENVIAR COMPROVANTE AGORA", f"https://wa.me/{ZAP_ADMIN}?text=Fiz o PIX: {st.session_state.user_id}", use_container_width=True)
+            with cv1:
+                st.markdown(f'<div style="{card_style}"><b>BRONZE</b><br>10 🪙<br>R$ 10</div>', unsafe_allow_html=True)
+                if st.button("PIX 10", key="px10_f", use_container_width=True): st.code(PIX_OFICIAL)
+            with cv2:
+                st.markdown(f'<div style="{card_style} border-color: #FFD700;"><b>PRATA</b><br>50 🪙<br>R$ 45<br><small>10% OFF</small></div>', unsafe_allow_html=True)
+                if st.button("PIX 45", key="px45_f", use_container_width=True): st.code(PIX_OFICIAL)
+            with cv3:
+                st.markdown(f'<div style="{card_style}"><b>OURO</b><br>100 🪙<br>R$ 80<br><small>20% OFF</small></div>', unsafe_allow_html=True)
+                if st.button("PIX 80", key="px80_f", use_container_width=True): st.code(PIX_OFICIAL)
+            
+            st.link_button("🚀 ENVIAR COMPROVANTE", f"https://wa.me/{ZAP_ADMIN}?text=Fiz o PIX para o perfil: {st.session_state.user_id}", use_container_width=True)
 
-        # 4. EDIÇÃO DE PERFIL (FOTOS E HORÁRIOS - TUDO AQUI)
+        # 4. EDIÇÃO DE PERFIL (TODAS AS FUNÇÕES PRESERVADAS)
         with st.expander("📝 EDITAR MEU PERFIL & VITRINE", expanded=True):
-            with st.form("perfil_v7"):
-                n_nome = st.text_input("Nome Profissional", d.get('nome', ''))
+            with st.form("edicao_perfil_final"):
+                c1, c2 = st.columns(2)
+                n_nome = c1.text_input("Nome Profissional", d.get('nome', ''))
+                n_area = c2.selectbox("Especialidade", CATEGORIAS_OFICIAIS, index=0)
                 n_desc = st.text_area("Descrição", d.get('descricao', ''))
-                n_cat = st.text_input("Link Catálogo/Instagram", d.get('link_catalogo', ''))
+
+                c3, c4 = st.columns(2)
+                n_tipo = c3.selectbox("Tipo", ["👤 Profissional", "🏢 Empresa"], index=0)
+                n_catalogo = c4.text_input("Link Catálogo/Insta", d.get('link_catalogo', ''))
+
+                c5, c6 = st.columns(2)
+                n_h_abre = c5.text_input("Abre (ex: 08:00)", d.get('h_abre', '08:00'))
+                n_h_fecha = c6.text_input("Fecha (ex: 18:00)", d.get('h_fecha', '18:00'))
                 
-                h1, h2 = st.columns(2)
-                n_abre = h1.text_input("Abre às (ex: 08:00)", d.get('h_abre', '08:00'))
-                n_fecha = h2.text_input("Fecha às (ex: 18:00)", d.get('h_fecha', '18:00'))
-                
-                n_foto = st.file_uploader("Trocar Foto Perfil", type=['jpg','png','jpeg'], key="f_v7")
-                n_portfolio = st.file_uploader("Vitrine (Até 3 fotos)", type=['jpg','png','jpeg'], accept_multiple_files=True, key="p_v7")
+                n_foto = st.file_uploader("Trocar Foto Perfil", type=['jpg','png','jpeg'], key="file_perfil")
+                n_portfolio = st.file_uploader("Vitrine (Até 3 fotos)", type=['jpg','png','jpeg'], accept_multiple_files=True, key="file_port")
                 
                 if st.form_submit_button("SALVAR ALTERAÇÕES", use_container_width=True):
-                    up = {"nome": n_nome, "descricao": n_desc, "link_catalogo": n_cat, "h_abre": n_abre, "h_fecha": n_fecha}
+                    up = {
+                        "nome": n_nome, "area": n_area, "descricao": n_desc,
+                        "tipo": n_tipo, "link_catalogo": n_catalogo,
+                        "h_abre": n_h_abre, "h_fecha": n_h_fecha
+                    }
                     if n_foto: up["foto_url"] = f"data:image/png;base64,{converter_img_b64(n_foto)}"
                     if n_portfolio:
                         up["portfolio_imgs"] = [f"data:image/png;base64,{converter_img_b64(f)}" for f in n_portfolio[:3]]
+                    
                     doc_ref.update(up)
-                    st.success("✅ Atualizado com sucesso!")
+                    st.success("✅ Atualizado!")
                     st.rerun()
 
-        # 5. SAIR DO PAINEL
-        if st.button("SAIR DO PAINEL", key="logout_v7", use_container_width=True):
+        # 5. LOGOUT ÚNICO
+        if st.button("SAIR DO PAINEL", use_container_width=True, key="btn_logout_final_p"):
             st.session_state.auth = False
             st.rerun()
 # --- ABA 3: CADASTRO (VERSÃO SOMAR) ---
@@ -838,6 +847,19 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
