@@ -569,10 +569,20 @@ with menu_abas[2]:
             
             st.link_button("🚀 ENVIAR COMPROVANTE AGORA", f"https://wa.me/{ZAP_ADMIN}?text=Fiz o PIX: {st.session_state.user_id}", use_container_width=True)
 
-        # 4. EDIÇÃO DE PERFIL (FOTOS E HORÁRIOS - TUDO AQUI)
+        # 4. EDIÇÃO DE PERFIL (FOTOS, HORÁRIOS E SEGMENTO)
         with st.expander("📝 EDITAR MEU PERFIL & VITRINE", expanded=True):
             with st.form("perfil_v7"):
                 n_nome = st.text_input("Nome Profissional", d.get('nome', ''))
+                
+                # --- VOLTANDO A FUNÇÃO DE MUDAR SEGMENTO ---
+                # Procura a categoria atual na lista para deixar selecionada
+                try:
+                    index_cat = CATEGORIAS_OFICIAIS.index(d.get('area', 'Ajudante Geral'))
+                except:
+                    index_cat = 0
+                n_area = st.selectbox("Mudar meu Segmento/Área", CATEGORIAS_OFICIAIS, index=index_cat)
+                # ------------------------------------------
+
                 n_desc = st.text_area("Descrição", d.get('descricao', ''))
                 n_cat = st.text_input("Link Catálogo/Instagram", d.get('link_catalogo', ''))
                 
@@ -584,18 +594,26 @@ with menu_abas[2]:
                 n_portfolio = st.file_uploader("Vitrine (Até 3 fotos)", type=['jpg','png','jpeg'], accept_multiple_files=True, key="p_v7")
                 
                 if st.form_submit_button("SALVAR ALTERAÇÕES", use_container_width=True):
-                    up = {"nome": n_nome, "descricao": n_desc, "link_catalogo": n_cat, "h_abre": n_abre, "h_fecha": n_fecha}
-                    if n_foto: up["foto_url"] = f"data:image/png;base64,{converter_img_b64(n_foto)}"
+                    # Adicionei 'area' no dicionário de update
+                    up = {
+                        "nome": n_nome, 
+                        "area": n_area, # <--- Agora ele salva a nova categoria!
+                        "descricao": n_desc, 
+                        "link_catalogo": n_cat, 
+                        "h_abre": n_abre, 
+                        "h_fecha": n_fecha
+                    }
+                    
+                    if n_foto: 
+                        up["foto_url"] = f"data:image/png;base64,{converter_img_b64(n_foto)}"
+                    
                     if n_portfolio:
                         up["portfolio_imgs"] = [f"data:image/png;base64,{converter_img_b64(f)}" for f in n_portfolio[:3]]
+                    
                     doc_ref.update(up)
-                    st.success("✅ Atualizado com sucesso!")
+                    st.success("✅ Perfil e Segmento atualizados com sucesso!")
+                    time.sleep(1) # Pequena pausa para o usuário ver a mensagem
                     st.rerun()
-
-        # 5. SAIR DO PAINEL
-        if st.button("SAIR DO PAINEL", key="logout_v7", use_container_width=True):
-            st.session_state.auth = False
-            st.rerun()
 # --- ABA 1: CADASTRAR (SISTEMA DE ADMISSÃO DE ELITE) ---
 with menu_abas[1]:
     st.markdown("### 🚀 Cadastro de Profissional")
@@ -868,6 +886,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
