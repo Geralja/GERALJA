@@ -596,74 +596,82 @@ with menu_abas[2]:
         if st.button("SAIR DO PAINEL", key="logout_v7", use_container_width=True):
             st.session_state.auth = False
             st.rerun()
-# --- ABA 1: CADASTRO COM LOCALIZAÇÃO PRECISA ---
+# --- ABA 1: CADASTRAR (SISTEMA DE ADMISSÃO DE ELITE) ---
 with menu_abas[1]:
-    st.header("🚀 Seja um Parceiro GeralJá")
-    st.write("Cadastre seu serviço e seja encontrado por clientes próximos!")
-    
-    # Função interna para usar a chave que você salvou nos Secrets
-    def obter_coords_google(endereco):
-        api_key = st.secrets["GOOGLE_MAPS_API_KEY"]
-        url = f"https://maps.googleapis.com/maps/api/geocode/json?address={endereco}&key={api_key}"
-        try:
-            response = requests.get(url).json()
-            if response['status'] == 'OK':
-                loc = response['results'][0]['geometry']['location']
-                end_formatado = response['results'][0]['formatted_address']
-                return loc['lat'], loc['lng'], end_formatado
-        except:
-            pass
-        return None, None, None
+    st.markdown("### 🚀 Cadastro de Profissional")
+    st.info("Preencha os dados abaixo para entrar no ecossistema GeralJá.")
 
-    with st.form("reg_preciso"):
-        col_c1, col_c2 = st.columns(2)
-        r_n = col_c1.text_input("Nome Completo")
-        r_z = col_c2.text_input("WhatsApp (Apenas números)", help="Ex: 11999999999")
+    # Início do Formulário - O 'with' garante que tudo aqui dentro pertença ao botão de salvar
+    with st.form("form_novo_profissional", clear_on_submit=False):
+        col_id1, col_id2 = st.columns(2)
+        nome_input = col_id1.text_input("Nome do Profissional ou Loja", placeholder="Ex: João Mecânico")
+        zap_input = col_id2.text_input("WhatsApp (DDD + Número)", placeholder="Ex: 11991853488")
         
-        # CAMPO CRUCIAL: O endereço que o Google vai ler
-        r_endereco = st.text_input("Endereço de Atendimento", placeholder="Rua, Número, Bairro, Cidade - Estado")
+        col_id3, col_id4 = st.columns(2)
+        categoria_input = col_id3.selectbox("Sua Área Principal", CATEGORIAS_OFICIAIS)
+        senha_input = col_id4.text_input("Crie uma Senha", type="password", help="Para editar seu perfil depois")
         
-        col_c3, col_c4 = st.columns(2)
-        r_s = col_c3.text_input("Crie uma Senha", type="password")
-        r_a = col_c4.selectbox("Sua Especialidade Principal", CATEGORIAS_OFICIAIS)
+        descricao_input = st.text_area("Descrição do Serviço", placeholder="Conte o que você faz, diferenciais e experiência...")
         
-        r_d = st.text_area("Descreva seus serviços")
+        tipo_input = st.radio("Tipo de Cadastro", ["👨‍🔧 Profissional Autônomo", "🏢 Comércio/Loja"], horizontal=True)
         
-        st.info("📌 Sua localização será usada para mostrar seus serviços aos clientes mais próximos.")
-        
-        if st.form_submit_button("FINALIZAR MEU CADASTRO", use_container_width=True):
-            if len(r_z) < 10 or not r_endereco:
-                st.error("⚠️ Nome, WhatsApp e Endereço são obrigatórios!")
-            else:
-                # MÁGICA DO GOOGLE ACONTECENDO AQUI
-                lat, lon, endereco_real = obter_coords_google(r_endereco)
-                
-                if lat and lon:
-                    try:
-                        db.collection("profissionais").document(r_z).set({
-                            "nome": r_n,
-                            "whatsapp": r_z,
-                            "senha": r_s,
-                            "area": r_a,
-                            "descricao": r_d,
-                            "endereco_digitado": r_endereco,
-                            "endereco_oficial": endereco_real, # Endereço corrigido pelo Google
-                            "lat": lat,
-                            "lon": lon,
-                            "saldo": BONUS_WELCOME,
-                            "cliques": 0,
-                            "rating": 5.0,
-                            "aprovado": False,
-                            "data_registro": datetime.datetime.now()
-                        })
-                        st.success(f"✅ Cadastro enviado! Localizamos você em: {endereco_real}")
-                        st.balloons()
-                    except Exception as e:
-                        st.error(f"Erro ao salvar no banco: {e}")
-                else:
-                    st.error("❌ Não conseguimos validar este endereço no mapa. Tente incluir o número da casa e a cidade.")
+        foto_upload = st.file_uploader("Foto de Perfil ou Logo", type=['jpg', 'jpeg', 'png'])
 
-# --- ABA 4: CENTRAL DE COMANDO SUPREMA (TOTALMENTE UNIFICADA) ---
+        st.markdown("---")
+        st.caption("📍 A sua localização atual será capturada automaticamente para te mostrar nos resultados próximos aos clientes.")
+        
+        # O BOTÃO DE SALVAR PRECISA ESTAR AQUI DENTRO DO FORM
+        btn_finalizar = st.form_submit_button("✅ FINALIZAR E SALVAR CADASTRO", use_container_width=True)
+
+    # Lógica que acontece APÓS o clique no botão
+    if btn_finalizar:
+        if not nome_input or not zap_input or not senha_input:
+            st.error("⚠️ ERRO: Nome, WhatsApp e Senha são obrigatórios!")
+        else:
+            with st.spinner("Conectando ao banco de dados..."):
+                try:
+                    # 1. Processamento da Imagem
+                    foto_final = ""
+                    if foto_upload:
+                        foto_final = f"data:image/png;base64,{converter_img_b64(foto_upload)}"
+                    
+                    # 2. Garantia de Localização (Se o GPS falhar, usa a LAT_REF/LON_REF que você definiu)
+                    # Use as variáveis que o seu script já detectou no topo da página
+                    lat_salvar = minha_lat if 'minha_lat' in locals() else LAT_REF
+                    lon_salvar = minha_lon if 'minha_lon' in locals() else LON_REF
+
+                    # 3. Montagem do Objeto (Sem apagar nada do que você já usa)
+                    novo_pro = {
+                        "nome": nome_input,
+                        "area": categoria_input,
+                        "descricao": descricao_input,
+                        "senha": senha_input,
+                        "tipo": tipo_input,
+                        "whatsapp": zap_input,
+                        "foto_url": foto_final,
+                        "saldo": BONUS_WELCOME, # Dá os 5 créditos iniciais
+                        "aprovado": True,        # Já nasce ativo conforme seu fluxo
+                        "verificado": False,
+                        "cliques": 0,
+                        "rating": 5,
+                        "lat": lat_salvar,
+                        "lon": lon_salvar,
+                        "data_cadastro": datetime.datetime.now().strftime("%d/%m/%Y")
+                    }
+
+                    # 4. Envio para o Firestore usando o WhatsApp como ID (Evita duplicados)
+                    db.collection("profissionais").document(zap_input).set(novo_pro)
+                    
+                    st.balloons()
+                    st.success(f"🎊 BEM-VINDO, {nome_input.upper()}! Seu cadastro foi concluído com sucesso.")
+                    st.info("💡 DICA: Vá na aba '👤 MEU PERFIL' para fazer login e ver seu saldo de moedas.")
+                    
+                    # Alerta para o Admin (Usando sua função existente)
+                    link_admin = enviar_alerta_admin(nome_input, categoria_input, zap_input)
+                    st.markdown(f'[📢 Avisar Administração via WhatsApp]({link_admin})')
+
+                except Exception as e:
+                    st.error(f"❌ Erro técnico ao salvar: {e}")
 with menu_abas[3]:
     st.markdown("### 🔒 Terminal de Administração")
     access_adm = st.text_input("Senha Master", type="password", key="adm_auth_final")
@@ -860,6 +868,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
