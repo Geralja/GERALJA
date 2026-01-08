@@ -26,77 +26,83 @@ st.set_page_config(
 )
 
 # ------------------------------------------------------------------------------
-# 2. ESTILIZAÇÃO "TOP" (CSS AVANÇADO)
+# 2. ESTILIZAÇÃO "TOP" (VERSÃO CORRIGIDA)
 # ------------------------------------------------------------------------------
 st.markdown("""
     <style>
-        /* Removendo componentes nativos para um visual limpo */
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        header {visibility: hidden;}
-        
-        /* Fundo da aplicação */
-        .stApp { background-color: #ffffff; }
-
-        /* CABEÇALHO ESTILO GOOGLE/MODERNO */
-        .header-container {
-            background: linear-gradient(90deg, #007BFF 0%, #00d4ff 100%);
-            padding: 2.5rem;
-            border-radius: 0px 0px 30px 30px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            text-align: center;
-            margin-bottom: 2rem;
-            margin-top: -60px; /* Compensa o padding do streamlit */
+        /* 1. Reset de espaçamentos do Streamlit */
+        .block-container {
+            padding-top: 0rem !important;
+            padding-bottom: 0rem !important;
+            max-width: 100% !important;
         }
+        [data-testid="stHeader"] {display: none;} /* Remove a linha branca do topo */
         
+        /* 2. Container do Cabeçalho */
+        .header-box {
+            background: linear-gradient(135deg, #0052D4 0%, #4364F7 50%, #6FB1FC 100%);
+            padding: 60px 20px;
+            text-align: center;
+            color: white;
+            border-bottom: 5px solid #ffcc00; /* Linha de destaque amarela */
+            margin-bottom: 30px;
+        }
+
         .header-title {
-            color: white !important;
-            font-family: 'Inter', sans-serif;
-            font-size: 45px !important;
-            font-weight: 800;
-            letter-spacing: -1px;
-            margin-bottom: 0px;
-        }
-        
-        .header-subtitle {
-            color: rgba(255,255,255,0.9) !important;
-            font-size: 16px;
-            font-weight: 300;
-            text-transform: uppercase;
-            letter-spacing: 2px;
+            font-size: 55px !important;
+            font-weight: 900 !important;
+            margin: 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
         }
 
-        /* Ajuste de Cards e Expanders */
-        [data-testid="stExpander"] {
-            background-color: #ffffff !important;
-            border: 1px solid #f0f2f6;
-            border-radius: 15px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        .header-subtitle {
+            font-size: 18px !important;
+            opacity: 0.9;
+            letter-spacing: 3px;
+            text-transform: uppercase;
         }
-        
-        .metric-card {
-            border: 1px solid #eee; 
-            border-radius: 12px; 
-            padding: 15px; 
-            text-align: center;
-            background: white;
+
+        /* 3. Estilização da Barra de Busca */
+        div[data-baseweb="input"] {
+            border-radius: 25px !important;
+            border: 1px solid #dfe1e5 !important;
+            box-shadow: 0 1px 6px rgba(32,33,36,0.28) !important;
+            max-width: 600px;
+            margin: 0 auto;
         }
     </style>
-    
-    <div class="header-container">
-        <h1 class="header-title">GeralJá</h1>
-        <p class="header-subtitle">Encontre Soluções em Segundos</p>
+
+    <div class="header-box">
+        <h1 class="header-title">GERALJÁ</h1>
+        <p class="header-subtitle">A solução que você precisa, onde você estiver</p>
     </div>
 """, unsafe_allow_html=True)
 
-# --- MODO CLARO FORÇADO (Sua lógica mantida) ---
-if 'tema_claro' not in st.session_state:
-    st.session_state.tema_claro = False
-
-st.session_state.tema_claro = st.toggle("☀️ MODO CLARO", value=st.session_state.tema_claro)
+# ------------------------------------------------------------------------------
+# 3. MODO CLARO NA BARRA LATERAL (Para não poluir o centro)
+# ------------------------------------------------------------------------------
+with st.sidebar:
+    st.title("Configurações")
+    if 'tema_claro' not in st.session_state:
+        st.session_state.tema_claro = False
+    st.session_state.tema_claro = st.toggle("☀️ MODO CLARO", value=st.session_state.tema_claro)
 
 if st.session_state.tema_claro:
     st.markdown("""<style>.stApp { background-color: white !important; } * { color: black !important; }</style>""", unsafe_allow_html=True)
+
+# ------------------------------------------------------------------------------
+# 4. BARRA DE PESQUISA (ESTILO GOOGLE)
+# ------------------------------------------------------------------------------
+st.write("") # Espaço
+col_b1, col_b2, col_b3 = st.columns([1, 2, 1])
+with col_b2:
+    termo_busca = st.text_input("", placeholder="🔍 O que você procura? (ex: Eletricista, Encanador...)", label_visibility="collapsed")
+    
+    col_btn1, col_btn2 = st.columns(2)
+    with col_btn1:
+        btn_busca = st.button("Pesquisar", use_container_width=True)
+    with col_btn2:
+        st.button("Estou com Sorte", use_container_width=True)
 
 # ------------------------------------------------------------------------------
 # 3. FUNCOES AUXILIARES
@@ -897,6 +903,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
