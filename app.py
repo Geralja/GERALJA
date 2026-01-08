@@ -237,9 +237,10 @@ with menu_abas[4]:
 # ABA 5: FINANCEIRO (COFRE)
 if len(menu_abas) > 5:
     with menu_abas[5]:
-        if st.text_input("Senha do Cofre", type="password") == "riqueza2025":
+        if st.text_input("Senha do Cofre", type="password") == "riqueza2026":
             vendas = sum([p.to_dict().get('total_comprado', 0) for p in list(db.collection("profissionais").stream())])
             st.metric("💰 FATURAMENTO REAL", f"R$ {vendas:,.2f}")
 
 # RODAPÉ
 st.markdown(f'<div style="text-align:center; padding:30px; color:#94A3B8; font-size:12px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
