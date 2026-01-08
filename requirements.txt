@@ -7,4 +7,4 @@ pandas
 nltk
 fuzzywuzzy
 python-Levenshtein
-streamlit-js-eval
+streamlit-js-eval==0.1.7
