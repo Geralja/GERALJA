@@ -75,16 +75,26 @@ st.markdown("""
 """, unsafe_allow_html=True)
 st.set_page_config(page_title="GeralJá", layout="wide")
 
-# Remove o menu superior, o rodapé 'Made with Streamlit' e o botão de Deploy
+# Adicione ou substitua no seu bloco de CSS
 st.markdown("""
     <style>
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    header {display: none !important;}
+        /* Esconde o menu de opções (três tracinhos no topo) */
+        #MainMenu {visibility: hidden;}
+        
+        /* Esconde o rodapé padrão 'Made with Streamlit' */
+        footer {visibility: hidden;}
+        
+        /* Esconde o botão de 'Manage app' e decorações de deploy */
+        .stDeployButton {display:none;}
+        [data-testid="stStatusWidget"] {display:none;}
+        
+        /* Remove o espaço em branco no topo que sobra */
+        .block-container {
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+        }
     </style>
 """, unsafe_allow_html=True)
-
 # ------------------------------------------------------------------------------
 # 1. CONFIGURAÇÃO DE AMBIENTE E PERFORMANCE
 # ------------------------------------------------------------------------------
@@ -884,6 +894,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
