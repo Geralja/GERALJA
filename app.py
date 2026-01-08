@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 # ==============================================================================
-# GERALJA: CRIANDO SOLUCOES 
+# GERALJÁ: CRIANDO SOLUÇÕES
 # ==============================================================================
 import streamlit as st
 import firebase_admin
@@ -14,113 +13,97 @@ import time
 import pandas as pd
 import unicodedata
 from streamlit_js_eval import streamlit_js_eval, get_geolocation
+import base64
+def converter_img_b64(file):
+    if file is not None:
+        return base64.b64encode(file.getvalue()).decode()
+    return None
+st.set_page_config(page_title="Geral Já", layout="wide")
+
+# --- CONFIGURAÇÃO DE TEMA MANUAL ---
+if 'tema_claro' not in st.session_state:
+    st.session_state.tema_claro = False
+
+# Interruptor no topo para o usuário consertar a tela se estiver preta
+st.session_state.tema_claro = st.toggle("☀️ FORÇAR MODO CLARO (Use se a tela estiver escura)", value=st.session_state.tema_claro)
+
+if st.session_state.tema_claro:
+    st.markdown("""
+        <style>
+            .stApp { background-color: white !important; }
+            * { color: black !important; }
+            .stMarkdown, p, span, label, div { color: black !important; }
+            iframe { background-color: white !important; }
+            .stButton button { background-color: #f0f2f6 !important; color: black !important; border: 1px solid #ccc !important; }
+            [data-testid="stExpander"] { background-color: #f9f9f9 !important; border: 1px solid #ddd !important; }
+            input { background-color: white !important; color: black !important; border: 1px solid #ccc !important; }
+        </style>
+    """, unsafe_allow_html=True)
+
+# ... seus outros imports (firebase, base64, etc)
+
+st.set_page_config(page_title="Geral Já", layout="wide")
+
+# --- COLOQUE AQUI: CSS PARA CORRIGIR O MODO ESCURO E CLARO ---
+st.markdown('''
+    <style>
+        /* Força o preenchimento no topo */
+        div.block-container {padding-top:2rem;}
+        
+        /* Garante que os cards HTML se adaptem ao tema */
+        .metric-card {
+            border: 1px solid #555; 
+            border-radius: 10px; 
+            padding: 10px; 
+            text-align: center;
+            margin-bottom: 10px;
+        }
+    </style>
+''', unsafe_allow_html=True)
+
+# CSS para evitar que o fundo fique preto por erro de renderização
+st.markdown("""
+    <style>
+    .stApp {
+        background-color: white;
+    }
+    [data-testid="stExpander"] {
+        background-color: #ffffff !important;
+        border: 1px solid #f0f2f6;
+    }
+    </style>
+""", unsafe_allow_html=True)
+st.set_page_config(page_title="GeralJá", layout="wide")
+
+# Remove o menu superior, o rodapé 'Made with Streamlit' e o botão de Deploy
+st.markdown("""
+    <style>
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    header {display: none !important;}
+    </style>
+""", unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
-# 1. CONFIGURACAO DE AMBIENTE (UNICA VEZ)
+# 1. CONFIGURAÇÃO DE AMBIENTE E PERFORMANCE
 # ------------------------------------------------------------------------------
 st.set_page_config(
     page_title="GeralJá | Criando Soluções",
-    page_icon="🔍",
+    page_icon="🇧🇷",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
 # ------------------------------------------------------------------------------
-# 2. ESTILIZAÇÃO "TOP" (VERSÃO CORRIGIDA)
-# ------------------------------------------------------------------------------
-st.markdown("""
-    <style>
-        /* 1. Reset de espaçamentos do Streamlit */
-        .block-container {
-            padding-top: 0rem !important;
-            padding-bottom: 0rem !important;
-            max-width: 100% !important;
-        }
-        [data-testid="stHeader"] {display: none;} /* Remove a linha branca do topo */
-        
-        /* 2. Container do Cabeçalho */
-        .header-box {
-            background: linear-gradient(135deg, #0052D4 0%, #4364F7 50%, #6FB1FC 100%);
-            padding: 60px 20px;
-            text-align: center;
-            color: white;
-            border-bottom: 5px solid #ffcc00; /* Linha de destaque amarela */
-            margin-bottom: 30px;
-        }
-
-        .header-title {
-            font-size: 55px !important;
-            font-weight: 900 !important;
-            margin: 0;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-
-        .header-subtitle {
-            font-size: 18px !important;
-            opacity: 0.9;
-            letter-spacing: 3px;
-            text-transform: uppercase;
-        }
-
-        /* 3. Estilização da Barra de Busca */
-        div[data-baseweb="input"] {
-            border-radius: 25px !important;
-            border: 1px solid #dfe1e5 !important;
-            box-shadow: 0 1px 6px rgba(32,33,36,0.28) !important;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-    </style>
-
-    <div class="header-box">
-        <h1 class="header-title">GERALJÁ</h1>
-        <p class="header-subtitle">A solução que você precisa, onde você estiver</p>
-    </div>
-""", unsafe_allow_html=True)
-
-# ------------------------------------------------------------------------------
-# 3. MODO CLARO NA BARRA LATERAL (Para não poluir o centro)
-# ------------------------------------------------------------------------------
-with st.sidebar:
-    st.title("Configurações")
-    if 'tema_claro' not in st.session_state:
-        st.session_state.tema_claro = False
-    st.session_state.tema_claro = st.toggle("☀️ MODO CLARO", value=st.session_state.tema_claro)
-
-if st.session_state.tema_claro:
-    st.markdown("""<style>.stApp { background-color: white !important; } * { color: black !important; }</style>""", unsafe_allow_html=True)
-
-# ------------------------------------------------------------------------------
-# 4. BARRA DE PESQUISA (ESTILO GOOGLE)
-# ------------------------------------------------------------------------------
-st.write("") # Espaço
-col_b1, col_b2, col_b3 = st.columns([1, 2, 1])
-with col_b2:
-    termo_busca = st.text_input("", placeholder="🔍 O que você procura? (ex: Eletricista, Encanador...)", label_visibility="collapsed")
-    
-    col_btn1, col_btn2 = st.columns(2)
-    with col_btn1:
-        btn_busca = st.button("Pesquisar", use_container_width=True)
-    with col_btn2:
-        st.button("Estou com Sorte", use_container_width=True)
-
-# ------------------------------------------------------------------------------
-# 3. FUNCOES AUXILIARES
-# ------------------------------------------------------------------------------
-def converter_img_b64(file):
-    if file is not None:
-        return base64.b64encode(file.getvalue()).decode()
-    return None
-
-# ------------------------------------------------------------------------------
-# 4. CAMADA DE PERSISTÊNCIA (FIREBASE)
+# 2. CAMADA DE PERSISTÊNCIA (FIREBASE)
 # ------------------------------------------------------------------------------
 @st.cache_resource
 def conectar_banco_master():
     if not firebase_admin._apps:
         try:
             if "FIREBASE_BASE64" not in st.secrets:
-                st.error("🔑 Chave FIREBASE_BASE64 não configurada nos Secrets.")
+                st.error("🔑 Chave de segurança FIREBASE_BASE64 não encontrada.")
                 st.stop()
             b64_key = st.secrets["FIREBASE_BASE64"]
             decoded_json = base64.b64decode(b64_key).decode("utf-8")
@@ -128,15 +111,15 @@ def conectar_banco_master():
             cred = credentials.Certificate(cred_dict)
             return firebase_admin.initialize_app(cred)
         except Exception as e:
-            st.error(f"❌ Erro na conexão: {e}")
+            st.error(f"❌ FALHA NA INFRAESTRUTURA: {e}")
             st.stop()
     return firebase_admin.get_app()
 
 app_engine = conectar_banco_master()
 db = firestore.client()
-
+ 
 # ------------------------------------------------------------------------------
-# 5. CONSTANTES
+# 3. POLÍTICAS E CONSTANTES
 # ------------------------------------------------------------------------------
 PIX_OFICIAL = "11991853488"
 ZAP_ADMIN = "5511991853488"
@@ -146,8 +129,6 @@ BONUS_WELCOME = 5
 LAT_REF = -23.5505
 LON_REF = -46.6333
 
-# --- SEU CÓDIGO DE BUSCA E ABAS CONTINUA AQUI ---
-st.write("### O que você precisa hoje?")
 CATEGORIAS_OFICIAIS = [
     "Academia", "Acompanhante de Idosos", "Açougue", "Adega", "Adestrador de Cães", "Advocacia", "Agropecuária", 
     "Ajudante Geral", "Animador de Festas", "Arquiteto(a)", "Armarinho/Aviamentos", "Assistência Técnica", 
@@ -903,8 +884,6 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
-
-
 
 
 
