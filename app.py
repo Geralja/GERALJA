@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # ==============================================================================
 # GERALJÁ: CRIANDO SOLUÇÕES
 # ==============================================================================
@@ -28,7 +27,7 @@ if 'tema_claro' not in st.session_state:
     st.session_state.tema_claro = False
 
 # Interruptor no topo para o usuário consertar a tela se estiver preta
-st.session_state.tema_claro = st.toggle("☀️ FORÇAR MODO CLARO (Use se a tela estiver escura)", value=st.session_state.tema_claro)
+st.session_state.tema_claro = st.toggle(" FORÇAR MODO CLARO (Use se a tela estiver escura)", value=st.session_state.tema_claro)
 
 if st.session_state.tema_claro:
     st.markdown("""
@@ -93,7 +92,7 @@ st.markdown("""
 # ------------------------------------------------------------------------------
 st.set_page_config(
     page_title="GeralJá | Criando Soluções",
-    page_icon="🇧🇷",
+    page_icon="",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -106,7 +105,7 @@ def conectar_banco_master():
     if not firebase_admin._apps:
         try:
             if "FIREBASE_BASE64" not in st.secrets:
-                st.error("🔑 Chave de segurança FIREBASE_BASE64 não encontrada.")
+                st.error(" Chave de segurança FIREBASE_BASE64 não encontrada.")
                 st.stop()
             b64_key = st.secrets["FIREBASE_BASE64"]
             decoded_json = base64.b64decode(b64_key).decode("utf-8")
@@ -114,7 +113,7 @@ def conectar_banco_master():
             cred = credentials.Certificate(cred_dict)
             return firebase_admin.initialize_app(cred)
         except Exception as e:
-            st.error(f"❌ FALHA NA INFRAESTRUTURA: {e}")
+            st.error(f" FALHA NA INFRAESTRUTURA: {e}")
             st.stop()
     return firebase_admin.get_app()
 
@@ -262,10 +261,10 @@ def enviar_alerta_admin(nome_prof, categoria_prof, whatsapp_prof):
     Nota: Para automação 100% invisível, seria necessária uma API paga (como Twilio ou Z-API).
     Esta versão gera um log e um alerta visual imediato no painel.
     """
-    msg_alerta = f"🚀 *NOVO CADASTRO NO GERALJÁ*\n\n" \
-                 f"👤 *Nome:* {nome_prof}\n" \
-                 f"🛠️ *Área:* {categoria_prof}\n" \
-                 f"📱 *Zap:* {whatsapp_prof}\n\n" \
+    msg_alerta = f" *NOVO CADASTRO NO GERALJÁ*\n\n" \
+                 f" *Nome:* {nome_prof}\n" \
+                 f" *Área:* {categoria_prof}\n" \
+                 f" *Zap:* {whatsapp_prof}\n\n" \
                  f"Acesse o Painel Admin para aprovar!"
     
     # Codifica a mensagem para URL
@@ -304,11 +303,11 @@ def guardia_escanear_e_corrigir():
             # 2. Se houver algo errado, aplica a cura automática
             if correcoes:
                 db.collection("profissionais").document(id_pro).update(correcoes)
-                status_log.append(f"✅ Corrigido: {id_pro}")
+                status_log.append(f" Corrigido: {id_pro}")
         
         return status_log if status_log else ["SISTEMA ÍNTEGRO: Nenhum erro encontrado."]
     except Exception as e:
-        return [f"❌ Erro no Scanner: {e}"]
+        return [f" Erro no Scanner: {e}"]
 
 def scan_virus_e_scripts():
     """Detecta se há tentativas de injeção de scripts maliciosos nos campos de texto."""
@@ -323,7 +322,7 @@ def scan_virus_e_scripts():
         
         for padrao in padroes_perigosos:
             if re.search(padrao, conteudo, re.IGNORECASE):
-                alertas.append(f"⚠️ PERIGO: Conteúdo suspeito no ID {p_doc.id}")
+                alertas.append(f" PERIGO: Conteúdo suspeito no ID {p_doc.id}")
                 # Bloqueia o profissional preventivamente
                 db.collection("profissionais").document(p_doc.id).update({"aprovado": False})
     
@@ -349,24 +348,24 @@ st.markdown("""
 st.markdown('<div class="header-container"><span class="logo-azul">GERAL</span><span class="logo-laranja">JÁ</span><br><small style="color:#64748B; font-weight:700;">BRASIL ELITE EDITION</small></div>', unsafe_allow_html=True)
 
 # 1. Defina a lista básica
-lista_abas = ["🔍 BUSCAR", "🚀 CADASTRAR", "👤 MEU PERFIL", "👑 ADMIN", "⭐ FEEDBACK"]
+lista_abas = [" BUSCAR", " CADASTRAR", " MEU PERFIL", " ADMIN", " FEEDBACK"]
 
 # 2. Verifique o comando secreto na barra lateral
 comando = st.sidebar.text_input("Comando Secreto", type="password")
 
 # 3. Se o comando estiver certo, soma a aba financeira
 if comando == "abracadabra":
-    lista_abas.append("📊 FINANCEIRO")
+    lista_abas.append(" FINANCEIRO")
 
 # 4. Cria as abas no Streamlit
 menu_abas = st.tabs(lista_abas)
 
 # --- ABA 1: BUSCA (SISTEMA GPS + RANKING ELITE + VITRINE) ---
 with menu_abas[0]:
-    st.markdown("### 🏙️ O que você precisa?")
+    st.markdown("###  O que você precisa?")
     
     # --- MOTOR DE LOCALIZAÇÃO EM TEMPO REAL ---
-    with st.expander("📍 Sua Localização (GPS)", expanded=False):
+    with st.expander(" Sua Localização (GPS)", expanded=False):
         loc = get_geolocation()
         if loc:
             minha_lat = loc['coords']['latitude']
@@ -384,7 +383,7 @@ with menu_abas[0]:
     if termo_busca:
         # Processamento via IA para identificar a categoria
         cat_ia = processar_ia_avancada(termo_busca)
-        st.info(f"✨ IA: Buscando por **{cat_ia}** próximo a você")
+        st.info(f" IA: Buscando por **{cat_ia}** próximo a você")
         
         # Lógica de Horário em tempo real
         from datetime import datetime
@@ -422,13 +421,13 @@ with menu_abas[0]:
         if not lista_ranking:
             st.markdown(f"""
             <div style="background-color: #FFF4E5; padding: 20px; border-radius: 15px; border-left: 5px solid #FF8C00;">
-                <h3 style="color: #856404;">🔍 Essa profissão ainda não foi preenchida nesta região.</h3>
+                <h3 style="color: #856404;"> Essa profissão ainda não foi preenchida nesta região.</h3>
                 <p style="color: #856404;">Compartilhe o <b>GeralJá</b> e ajude a crescer sua rede local!</p>
             </div>
             """, unsafe_allow_html=True)
             
             link_share = "https://wa.me/?text=Ei!%20Procurei%20um%20serviço%20no%20GeralJá%20e%20vi%20que%20ainda%20temos%20vagas!%20Cadastre-se:%20https://geralja.streamlit.app"
-            st.markdown(f'<a href="{link_share}" target="_blank" style="text-decoration:none;"><div style="background:#22C55E; color:white; padding:15px; border-radius:10px; text-align:center; font-weight:bold; margin-top:10px;">📲 COMPARTILHAR NO WHATSAPP</div></a>', unsafe_allow_html=True)
+            st.markdown(f'<a href="{link_share}" target="_blank" style="text-decoration:none;"><div style="background:#22C55E; color:white; padding:15px; border-radius:10px; text-align:center; font-weight:bold; margin-top:10px;"> COMPARTILHAR NO WHATSAPP</div></a>', unsafe_allow_html=True)
         
         else:
             # --- RENDERIZAÇÃO DOS CARDS (LOOP) ---
@@ -438,12 +437,12 @@ with menu_abas[0]:
                 
                 with st.container():
                     # Cores dinâmicas baseadas no tipo de conta
-                    cor_borda = "#FFD700" if is_elite else ("#FF8C00" if p.get('tipo') == "🏢 Comércio/Loja" else "#0047AB")
+                    cor_borda = "#FFD700" if is_elite else ("#FF8C00" if p.get('tipo') == " Comércio/Loja" else "#0047AB")
                     bg_card = "#FFFDF5" if is_elite else "#FFFFFF"
                     
                     st.markdown(f"""
                     <div style="border-left: 8px solid {cor_borda}; padding: 15px; background: {bg_card}; border-radius: 15px; margin-bottom: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                        <span style="font-size: 12px; color: gray; font-weight: bold;">📍 a {p['dist']:.1f} km de você {" | 🏆 DESTAQUE" if is_elite else ""}</span>
+                        <span style="font-size: 12px; color: gray; font-weight: bold;"> a {p['dist']:.1f} km de você {" |  DESTAQUE" if is_elite else ""}</span>
                     </div>
                     """, unsafe_allow_html=True)
 
@@ -454,12 +453,12 @@ with menu_abas[0]:
                     
                     with col_txt:
                         nome_exibicao = p.get('nome', '').upper()
-                        if p.get('verificado', False): nome_exibicao += " <span style='color:#1DA1F2;'>☑️</span>"
+                        if p.get('verificado', False): nome_exibicao += " <span style='color:#1DA1F2;'></span>"
                         
                         status_loja = ""
-                        if p.get('tipo') == "🏢 Comércio/Loja":
+                        if p.get('tipo') == " Comércio/Loja":
                             h_ab, h_fe = p.get('h_abre', '08:00'), p.get('h_fecha', '18:00')
-                            status_loja = " 🟢 <b style='color:green;'>ABERTO</b>" if h_ab <= hora_atual <= h_fe else " 🔴 <b style='color:red;'>FECHADO</b>"
+                            status_loja = " 🟢 <b style='color:green;'>ABERTO</b>" if h_ab <= hora_atual <= h_fe else "  <b style='color:red;'>FECHADO</b>"
                         
                         st.markdown(f"**{nome_exibicao}** {status_loja}", unsafe_allow_html=True)
                         st.caption(f"{p.get('descricao', '')[:120]}...")
@@ -509,7 +508,7 @@ with menu_abas[0]:
                                 cursor: pointer;
                                 margin-top: 10px;
                             ">
-                                💬 FALAR COM {nome_btn}
+                                 FALAR COM {nome_btn}
                             </div>
                         </a>
                     """, unsafe_allow_html=True)
@@ -528,7 +527,7 @@ with menu_abas[2]:
     if 'auth' not in st.session_state: st.session_state.auth = False
     
     if not st.session_state.auth:
-        st.subheader("🚀 Acesso ao Painel")
+        st.subheader(" Acesso ao Painel")
         col1, col2 = st.columns(2)
         l_zap = col1.text_input("WhatsApp (números)", key="login_zap_v7")
         l_pw = col2.text_input("Senha", type="password", key="login_pw_v7")
@@ -547,31 +546,31 @@ with menu_abas[2]:
         st.write(f"### Olá, {d.get('nome', 'Parceiro')}!")
         m1, m2, m3 = st.columns(3)
         m1.metric("Saldo 🪙", f"{d.get('saldo', 0)}")
-        m2.metric("Cliques 🚀", f"{d.get('cliques', 0)}")
+        m2.metric("Cliques ", f"{d.get('cliques', 0)}")
         m3.metric("Status", "🟢 ATIVO" if d.get('aprovado') else "🟡 PENDENTE")
 
         # 2. GPS (Função preservada)
-        if st.button("📍 ATUALIZAR LOCALIZAÇÃO GPS", use_container_width=True, key="gps_v7"):
+        if st.button(" ATUALIZAR LOCALIZAÇÃO GPS", use_container_width=True, key="gps_v7"):
             loc = streamlit_js_eval(js_expressions="navigator.geolocation.getCurrentPosition(s => s)", key='gps_v7_eval')
             if loc and 'coords' in loc:
                 doc_ref.update({"lat": loc['coords']['latitude'], "lon": loc['coords']['longitude']})
-                st.success("✅ Localização salva!")
+                st.success(" Localização salva!")
             else: st.info("Aguardando sinal... Clique novamente.")
 
         st.divider()
 
         # 3. COMPRA DE MOEDAS (PIX - Variáveis oficiais preservadas)
-        with st.expander("💎 COMPRAR MOEDAS (PIX)", expanded=False):
+        with st.expander(" COMPRAR MOEDAS (PIX)", expanded=False):
             st.warning(f"Chave PIX: {PIX_OFICIAL}")
             c1, c2, c3 = st.columns(3)
             if c1.button("10 Moedas", key="p10_v7"): st.code(PIX_OFICIAL)
             if c2.button("50 Moedas", key="p50_v7"): st.code(PIX_OFICIAL)
             if c3.button("100 Moedas", key="p100_v7"): st.code(PIX_OFICIAL)
             
-            st.link_button("🚀 ENVIAR COMPROVANTE AGORA", f"https://wa.me/{ZAP_ADMIN}?text=Fiz o PIX: {st.session_state.user_id}", use_container_width=True)
+            st.link_button(" ENVIAR COMPROVANTE AGORA", f"https://wa.me/{ZAP_ADMIN}?text=Fiz o PIX: {st.session_state.user_id}", use_container_width=True)
 
         # 4. EDIÇÃO DE PERFIL (FOTOS, HORÁRIOS E SEGMENTO)
-        with st.expander("📝 EDITAR MEU PERFIL & VITRINE", expanded=True):
+        with st.expander(" EDITAR MEU PERFIL & VITRINE", expanded=True):
             with st.form("perfil_v7"):
                 n_nome = st.text_input("Nome Profissional", d.get('nome', ''))
                 
@@ -612,12 +611,12 @@ with menu_abas[2]:
                         up["portfolio_imgs"] = [f"data:image/png;base64,{converter_img_b64(f)}" for f in n_portfolio[:3]]
                     
                     doc_ref.update(up)
-                    st.success("✅ Perfil e Segmento atualizados com sucesso!")
+                    st.success(" Perfil e Segmento atualizados com sucesso!")
                     time.sleep(1) # Pequena pausa para o usuário ver a mensagem
                     st.rerun()
 # --- ABA 1: CADASTRAR (SISTEMA DE ADMISSÃO DE ELITE) ---
 with menu_abas[1]:
-    st.markdown("### 🚀 Cadastro de Profissional")
+    st.markdown("###  Cadastro de Profissional")
     st.info("Preencha os dados abaixo para entrar no ecossistema GeralJá.")
 
     # Início do Formulário - O 'with' garante que tudo aqui dentro pertença ao botão de salvar
@@ -632,20 +631,20 @@ with menu_abas[1]:
         
         descricao_input = st.text_area("Descrição do Serviço", placeholder="Conte o que você faz, diferenciais e experiência...")
         
-        tipo_input = st.radio("Tipo de Cadastro", ["👨‍🔧 Profissional Autônomo", "🏢 Comércio/Loja"], horizontal=True)
+        tipo_input = st.radio("Tipo de Cadastro", ["‍ Profissional Autônomo", " Comércio/Loja"], horizontal=True)
         
         foto_upload = st.file_uploader("Foto de Perfil ou Logo", type=['jpg', 'jpeg', 'png'])
 
         st.markdown("---")
-        st.caption("📍 A sua localização atual será capturada automaticamente para te mostrar nos resultados próximos aos clientes.")
+        st.caption(" A sua localização atual será capturada automaticamente para te mostrar nos resultados próximos aos clientes.")
         
         # O BOTÃO DE SALVAR PRECISA ESTAR AQUI DENTRO DO FORM
-        btn_finalizar = st.form_submit_button("✅ FINALIZAR E SALVAR CADASTRO", use_container_width=True)
+        btn_finalizar = st.form_submit_button(" FINALIZAR E SALVAR CADASTRO", use_container_width=True)
 
     # Lógica que acontece APÓS o clique no botão
     if btn_finalizar:
         if not nome_input or not zap_input or not senha_input:
-            st.error("⚠️ ERRO: Nome, WhatsApp e Senha são obrigatórios!")
+            st.error(" ERRO: Nome, WhatsApp e Senha são obrigatórios!")
         else:
             with st.spinner("Conectando ao banco de dados..."):
                 try:
@@ -682,29 +681,29 @@ with menu_abas[1]:
                     db.collection("profissionais").document(zap_input).set(novo_pro)
                     
                     st.balloons()
-                    st.success(f"🎊 BEM-VINDO, {nome_input.upper()}! Seu cadastro foi concluído com sucesso.")
-                    st.info("💡 DICA: Vá na aba '👤 MEU PERFIL' para fazer login e ver seu saldo de moedas.")
+                    st.success(f" BEM-VINDO, {nome_input.upper()}! Seu cadastro foi concluído com sucesso.")
+                    st.info(" DICA: Vá na aba ' MEU PERFIL' para fazer login e ver seu saldo de moedas.")
                     
                     # Alerta para o Admin (Usando sua função existente)
                     link_admin = enviar_alerta_admin(nome_input, categoria_input, zap_input)
-                    st.markdown(f'[📢 Avisar Administração via WhatsApp]({link_admin})')
+                    st.markdown(f'[ Avisar Administração via WhatsApp]({link_admin})')
 
                 except Exception as e:
-                    st.error(f"❌ Erro técnico ao salvar: {e}")
+                    st.error(f" Erro técnico ao salvar: {e}")
 with menu_abas[3]:
-    st.markdown("### 🔒 Terminal de Administração")
+    st.markdown("###  Terminal de Administração")
     access_adm = st.text_input("Senha Master", type="password", key="adm_auth_final")
     
     # BLOQUEIO DE SEGURANÇA REFORÇADO
     if access_adm != CHAVE_ADMIN:
         if access_adm != "":
-            st.error("🚫 Acesso negado. Senha incorreta.")
+            st.error(" Acesso negado. Senha incorreta.")
         else:
             st.info("Aguardando chave master para liberar sistemas...")
         st.stop() 
 
     # --- DAQUI PARA BAIXO TUDO ESTÁ PROTEGIDO PELA SENHA ---
-    st.success("👑 Acesso Autorizado! Bem-vindo ao Painel Supremo.")
+    st.success(" Acesso Autorizado! Bem-vindo ao Painel Supremo.")
     
     # 1. BUSCA DE DADOS E TELEMETRIA
     all_profs_lista = list(db.collection("profissionais").stream())
@@ -715,21 +714,21 @@ with menu_abas[3]:
 
     # Painel de Indicadores
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("💰 Moedas", f"{total_moedas} 🪙")
-    c2.metric("📈 Parceiros", total_cadastros)
-    c3.metric("🤝 Cliques", total_cliques)
+    c1.metric(" Moedas", f"{total_moedas} 🪙")
+    c2.metric(" Parceiros", total_cadastros)
+    c3.metric(" Cliques", total_cliques)
     c4.metric("🟡 Pendentes", len(pendentes_lista), delta_color="inverse")
     
     st.divider()
 
     # 2. ABAS DE COMANDO INTERNAS
     t_gestao, t_aprova, t_seguranca, t_feed = st.tabs([
-        "👥 GESTÃO DE ATIVOS", "🆕 NOVOS (APROVAÇÃO)", "🛡️ SEGURANÇA IA", "📩 FEEDBACKS"
+        " GESTÃO DE ATIVOS", " NOVOS (APROVAÇÃO)", " SEGURANÇA IA", " FEEDBACKS"
     ])
 
     # --- ABA INTERNA: GESTÃO DE ATIVOS (BUSCA E EDIÇÃO) ---
     with t_gestao:
-        search_pro = st.text_input("🔍 Buscar parceiro por Nome ou WhatsApp", placeholder="Ex: João ou 11999...")
+        search_pro = st.text_input(" Buscar parceiro por Nome ou WhatsApp", placeholder="Ex: João ou 11999...")
         for p_doc in all_profs_lista:
             p, pid = p_doc.to_dict(), p_doc.id
             # Filtro de Busca
@@ -751,11 +750,11 @@ with menu_abas[3]:
                     with col_b:
                         # Adicionar Moedas
                         bonus = st.number_input("Adicionar Moedas", value=0, key=f"num_{pid}")
-                        if st.button("💰 CREDITAR", key=f"cbtn_{pid}", use_container_width=True):
+                        if st.button(" CREDITAR", key=f"cbtn_{pid}", use_container_width=True):
                             db.collection("profissionais").document(pid).update({"saldo": p.get('saldo', 0) + bonus})
                             st.success("Creditado!"); time.sleep(0.5); st.rerun()
                         
-                        if st.button("🗑️ BANIR/REMOVER", key=f"del_{pid}", use_container_width=True):
+                        if st.button(" BANIR/REMOVER", key=f"del_{pid}", use_container_width=True):
                             db.collection("profissionais").document(pid).delete()
                             st.error("Removido!"); time.sleep(0.5); st.rerun()
 
@@ -767,19 +766,19 @@ with menu_abas[3]:
             for p_doc in pendentes_lista:
                 p, pid = p_doc.to_dict(), p_doc.id
                 st.warning(f"SOLICITAÇÃO: {p.get('nome')} ({p.get('area')})")
-                if st.button(f"✅ APROVAR {p.get('nome').upper()}", key=f"ok_{pid}"):
+                if st.button(f" APROVAR {p.get('nome').upper()}", key=f"ok_{pid}"):
                     db.collection("profissionais").document(pid).update({"aprovado": True, "saldo": 10})
                     st.success("Aprovado com bônus!"); time.sleep(0.5); st.rerun()
 
     # --- ABA INTERNA: SEGURANÇA IA ---
     with t_seguranca:
-        st.markdown("#### 🛡️ Central de Proteção e Auto-Cura")
+        st.markdown("####  Central de Proteção e Auto-Cura")
         s_col1, s_col2 = st.columns(2)
-        if s_col1.button("🔍 ESCANEAR AMEAÇAS", use_container_width=True):
+        if s_col1.button(" ESCANEAR AMEAÇAS", use_container_width=True):
             alertas = scan_virus_e_scripts()
             for a in alertas: st.write(a)
             
-        if s_col2.button("🛠️ REPARAR BANCO", use_container_width=True):
+        if s_col2.button(" REPARAR BANCO", use_container_width=True):
             reparos = guardia_escanear_e_corrigir()
             for r in reparos: st.write(r)
             st.balloons()
@@ -801,8 +800,8 @@ with menu_abas[3]:
                     
                     st.markdown(f"""
                         <div style="background-color: #f0f2f6; padding: 10px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #0047AB;">
-                            <small>📅 {data_txt}</small><br>
-                            <b>⭐ {nota}</b><br>
+                            <small> {data_txt}</small><br>
+                            <b> {nota}</b><br>
                             <p style="margin:0;">{msg}</p>
                         </div>
                     """, unsafe_allow_html=True)
@@ -817,7 +816,7 @@ with menu_abas[3]:
 # Este 'if' evita o IndexError: ele só executa se a aba financeira existir
 if len(menu_abas) > 5:
     with menu_abas[4]:
-        st.markdown("### 📊 Gestão de Capital GeralJá")
+        st.markdown("###  Gestão de Capital GeralJá")
         
         # Chave de segurança extra para abrir o cofre
         senha_cofre = st.text_input("Chave do Cofre", type="password", key="cofre_vFinal")
@@ -827,8 +826,8 @@ if len(menu_abas) > 5:
             vendas = sum([p.to_dict().get('total_comprado', 0) for p in all_p])
             
             c1, c2 = st.columns(2)
-            c1.metric("💰 FATURAMENTO REAL", f"R$ {vendas:,.2f}")
-            c2.metric("🤝 TOTAL PARCEIROS", len(all_p))
+            c1.metric(" FATURAMENTO REAL", f"R$ {vendas:,.2f}")
+            c2.metric(" TOTAL PARCEIROS", len(all_p))
             
             st.divider()
             # Tabela de conferência
@@ -839,7 +838,7 @@ if len(menu_abas) > 5:
             st.info("Aguardando chave mestra para exibir dados sensíveis.")
             # --- ABA: FEEDBACK (A VOZ DO CLIENTE) ---
 with menu_abas[4]: # Verifique se o índice da sua aba de feedback é 4 ou 5
-    st.markdown("### ⭐ Sua opinião é fundamental")
+    st.markdown("###  Sua opinião é fundamental")
     st.write("Conte-nos como foi a sua experiência com o GeralJá.")
     
     with st.form("feedback_form", clear_on_submit=True):
@@ -870,12 +869,12 @@ with menu_abas[4]: # Verifique se o índice da sua aba de feedback é 4 ou 5
                         "mensagem": comentario,
                         "lido": False
                     })
-                    st.success("🙏 Muito obrigado! Sua mensagem foi enviada.")
+                    st.success(" Muito obrigado! Sua mensagem foi enviada.")
                     st.balloons()
                 except Exception as e:
                     st.error(f"Erro ao enviar: {e}")
             else:
-                st.warning("⚠️ Por favor, escreva algo antes de enviar.")
+                st.warning(" Por favor, escreva algo antes de enviar.")
                 
 # ------------------------------------------------------------------------------
 # RODAPÉ ÚNICO (Final do Arquivo)
@@ -887,3 +886,21 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
