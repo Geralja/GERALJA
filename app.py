@@ -1,5 +1,4 @@
- GERALJ CRIANDO SOLUES
- 
+# -*- coding: utf-8 -*-
 import streamlit as st
 import firebaseadmin
 from firebaseadmin import credentials firestore
@@ -885,6 +884,7 @@ except
     anoatual  2025  Valor padro caso o mdulo falhe
 
 stmarkdownfdiv styletextaligncenter padding20px color94A3B8 fontsize10pxGERALJ v200  anoatualdiv unsafeallowhtmlTrue
+
 
 
 
