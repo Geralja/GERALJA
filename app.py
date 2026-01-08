@@ -1,5 +1,6 @@
+# -*- coding: utf-8 -*-
 # ==============================================================================
-# GERALJÁ: CRIANDO SOLUÇÕES
+# GERALJA: CRIANDO SOLUCOES (Limpando caracteres especiais do topo)
 # ==============================================================================
 import streamlit as st
 import firebase_admin
@@ -13,11 +14,19 @@ import time
 import pandas as pd
 import unicodedata
 from streamlit_js_eval import streamlit_js_eval, get_geolocation
-import base64
+
+# 1. Configuração ÚNICA da página (Deve ser a primeira função do Streamlit)
+st.set_page_config(page_title="Geral Ja", layout="wide")
+
+# 2. Função de conversão (Mantida apenas uma vez)
 def converter_img_b64(file):
     if file is not None:
-        return base64.b64encode(file.getvalue()).decode()
+        try:
+            return base64.b64encode(file.getvalue()).decode()
+        except Exception:
+            return None
     return None
+
 st.set_page_config(page_title="Geral Já", layout="wide")
 
 # --- CONFIGURAÇÃO DE TEMA MANUAL ---
@@ -884,6 +893,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
