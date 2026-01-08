@@ -27,71 +27,31 @@ if 'tema_claro' not in st.session_state:
 # Interruptor no topo para o usuário consertar a tela se estiver preta
 st.session_state.tema_claro = st.toggle("☀️ FORÇAR MODO CLARO (Use se a tela estiver escura)", value=st.session_state.tema_claro)
 
-if st.session_state.tema_claro:
-    st.markdown("""
-        <style>
-            .stApp { background-color: white !important; }
-            * { color: black !important; }
-            .stMarkdown, p, span, label, div { color: black !important; }
-            iframe { background-color: white !important; }
-            .stButton button { background-color: #f0f2f6 !important; color: black !important; border: 1px solid #ccc !important; }
-            [data-testid="stExpander"] { background-color: #f9f9f9 !important; border: 1px solid #ddd !important; }
-            input { background-color: white !important; color: black !important; border: 1px solid #ccc !important; }
-        </style>
-    """, unsafe_allow_html=True)
-
-# ... seus outros imports (firebase, base64, etc)
-
-st.set_page_config(page_title="Geral Já", layout="wide")
-
-# --- COLOQUE AQUI: CSS PARA CORRIGIR O MODO ESCURO E CLARO ---
-st.markdown('''
-    <style>
-        /* Força o preenchimento no topo */
-        div.block-container {padding-top:2rem;}
-        
-        /* Garante que os cards HTML se adaptem ao tema */
-        .metric-card {
-            border: 1px solid #555; 
-            border-radius: 10px; 
-            padding: 10px; 
-            text-align: center;
-            margin-bottom: 10px;
-        }
-    </style>
-''', unsafe_allow_html=True)
-
-# CSS para evitar que o fundo fique preto por erro de renderização
 st.markdown("""
     <style>
-    .stApp {
-        background-color: white;
-    }
-    [data-testid="stExpander"] {
-        background-color: #ffffff !important;
-        border: 1px solid #f0f2f6;
-    }
-    </style>
-""", unsafe_allow_html=True)
-st.set_page_config(page_title="GeralJá", layout="wide")
-
-# Adicione ou substitua no seu bloco de CSS
-st.markdown("""
-    <style>
-        /* Esconde o menu de opções (três tracinhos no topo) */
+        /* 1. Esconde o menu de opções (três tracinhos) e a barra de status */
         #MainMenu {visibility: hidden;}
-        
-        /* Esconde o rodapé padrão 'Made with Streamlit' */
+        header {visibility: hidden;}
         footer {visibility: hidden;}
+
+        /* 2. Esconde o botão 'Manage App' e 'Deploy' (Forçado) */
+        .stAppDeployButton {
+            display: none !important;
+        }
         
-        /* Esconde o botão de 'Manage app' e decorações de deploy */
-        .stDeployButton {display:none;}
-        [data-testid="stStatusWidget"] {display:none;}
-        
-        /* Remove o espaço em branco no topo que sobra */
+        div[data-testid="stStatusWidget"] {
+            visibility: hidden !important;
+            display: none !important;
+        }
+
+        /* 3. Remove o espaço extra no topo que a barra ocupava */
         .block-container {
-            padding-top: 1rem;
-            padding-bottom: 1rem;
+            padding-top: 0rem !important;
+        }
+
+        /* 4. Esconde o botão de 'Running' (o ícone de carregamento) */
+        #stDecoration {
+            display: none !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -894,6 +854,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
