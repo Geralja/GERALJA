@@ -25,8 +25,7 @@ not in st.session_state: st.session_state.tema_claro = False
 # Interruptor no topo para o usuário consertar a tela se estiver preta
 st.session_state.tema_claro = st.toggle("☀️ FORÇAR MODO CLARO (Use se a tela estiver escura)", value = st.session_state.tema_claro)
 if st.session_state.tema_claro: st.markdown(""
-        " <
-        style > .stApp {
+        " < style > .stApp {
             background - color: white!important;
         }*{
             color: black!important;
@@ -52,8 +51,7 @@ if st.session_state.tema_claro: st.markdown(""
         ""
         ", unsafe_allow_html=True)
         #...seus outros imports(firebase, base64, etc) st.set_page_config(page_title = "Geral Já", layout = "wide") #-- - COLOQUE AQUI: CSS PARA CORRIGIR O MODO ESCURO E CLARO-- - st.markdown(''
-            ' <
-            style >
+            ' < style >
             /* Força o preenchimento no topo */
             div.block - container {
                 padding - top: 2 rem;
@@ -68,8 +66,7 @@ if st.session_state.tema_claro: st.markdown(""
         }
     </style>
 ''', unsafe_allow_html= True) # CSS para evitar que o fundo fique preto por erro de renderização st.markdown(""
-                " <
-                style > .stApp {
+                " < style > .stApp {
                     background - color: white;
                 }
                 [data - testid = "stExpander"] {
@@ -80,8 +77,7 @@ if st.session_state.tema_claro: st.markdown(""
                 ", unsafe_allow_html=True)
                 st.set_page_config(page_title = "GeralJá", layout = "wide") # Remove o menu superior, o rodapé 'Made with Streamlit'
                 e o botão de Deploy st.markdown(""
-                    " <
-                    style > #MainMenu {
+                    " < style > #MainMenu {
                         visibility: hidden;
                     }
                     footer {
@@ -376,8 +372,7 @@ if st.session_state.tema_claro: st.markdown(""
                     if alertas
                     else ["LIMPO: Nenhum script malicioso detectado."]
                     #-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --# 5. DESIGN SYSTEM #-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --st.markdown(""
-                        " <
-                        style > @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');*{
+                        " < style > @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');*{
                             font - family: 'Inter',
                             sans - serif;
                         }.stApp {
@@ -408,9 +403,7 @@ if st.session_state.tema_claro: st.markdown(""
                         if p.get('verificado', False)
                         else 0
                         score += (p.get('saldo', 0) * 10) score += (p.get('rating', 5) * 20) p['score_elite'] = score lista_ranking.append(p) # Ordenação: Elite primeiro(maior score), depois os mais próximos(menor distância) lista_ranking.sort(key = lambda x: (-x['score_elite'], x['dist'])) if not lista_ranking: st.markdown(f ""
-                            " <
-                            div style = "background-color: #FFF4E5; padding: 20px; border-radius: 15px; border-left: 5px solid #FF8C00;" > < h3 style = "color: #856404;" > 🔍Essa profissão ainda não foi preenchida nesta região. < /h3> <
-                            p style = "color: #856404;" > Compartilhe o < b > GeralJá < /b> e ajude a crescer sua rede local!</p > < /div>
+                            " < div style = "background-color: #FFF4E5; padding: 20px; border-radius: 15px; border-left: 5px solid #FF8C00;" > < h3 style = "color: #856404;" > 🔍Essa profissão ainda não foi preenchida nesta região. < /h3> < p style = "color: #856404;" > Compartilhe o < b > GeralJá < /b> e ajude a crescer sua rede local!</p > < /div>
                             ""
                             ", unsafe_allow_html=True)
                             link_share = "https://wa.me/?text=Ei!%20Procurei%20um%20serviço%20no%20GeralJá%20e%20vi%20que%20ainda%20temos%20vagas!%20Cadastre-se:%20https://geralja.streamlit.app"
@@ -426,16 +419,15 @@ if st.session_state.tema_claro: st.markdown(""
                             if is_elite
                             else "#FFFFFF"
                             st.markdown(f ""
-                                " <
-                                div style = "border-left: 8px solid {cor_borda}; padding: 15px; background: {bg_card}; border-radius: 15px; margin-bottom: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);" > < span style = "font-size: 12px; color: gray; font-weight: bold;" > 📍a {
+                                " < div style = "border-left: 8px solid {cor_borda}; padding: 15px; background: {bg_card}; border-radius: 15px; margin-bottom: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);" > < span style = "font-size: 12px; color: gray; font-weight: bold;" > 📍a {
                                     p['dist']: .1 f
                                 }
                                 km de você {
                                     " | 🏆 DESTAQUE"
                                     if is_elite
                                     else ""
-                                } < /span> < /
-                                div > ""
+                                } < /span> < /div>
+                                ""
                                 ", unsafe_allow_html=True)
                                 col_img, col_txt = st.columns([1, 4]) with col_img: foto = p.get('foto_url', 'https://via.placeholder.com/150') st.markdown(f '<img src="{foto}" style="width:75px; height:75px; border-radius:50%; object-fit:cover; border:3px solid {cor_borda}">', unsafe_allow_html = True) with col_txt: nome_exibicao = p.get('nome', '').upper() if p.get('verificado', False): nome_exibicao += " <span style='color:#1DA1F2;'>☑️</span>"
                                 status_loja = ""
@@ -451,8 +443,7 @@ if st.session_state.tema_claro: st.markdown(""
                                 import quote # 1. Preparação dos dados num_limpo = re.sub(r '\D', '', str(pid)) if not num_limpo.startswith('55'): num_limpo = f "55{num_limpo}"
                                 texto_zap = quote(f "Olá {p.get('nome')}, vi seu perfil no GeralJá!") link_final = f "https://wa.me/{num_limpo}?text={texto_zap}"
                                 nome_btn = p.get('nome', 'Profissional').split()[0].upper() # 2. BOTÃO HTML(Ocupa o lugar do st.button) # Este botão abre o WhatsApp instantaneamente e não é bloqueado st.markdown(f ""
-                                    " <
-                                    a href = "{link_final}"
+                                    " < a href = "{link_final}"
                                     target = "_blank"
                                     style = "text-decoration: none;" > < div style = "
                                     background - color: #25D366;
@@ -501,7 +492,8 @@ if st.session_state.tema_claro: st.markdown(""
                                 if n_portfolio: up["portfolio_imgs"] = [f "data:image/png;base64,{converter_img_b64(f)}"
                                     for f in n_portfolio[: 3]
                                 ] doc_ref.update(up) st.success("✅ Perfil e Segmento atualizados com sucesso!") time.sleep(1) # Pequena pausa para o usuário ver a mensagem st.rerun() #-- - ABA 1: CADASTRAR(SISTEMA DE ADMISSÃO DE ELITE) -- - with menu_abas[1]: st.markdown("### 🚀 Cadastro de Profissional") st.info("Preencha os dados abaixo para entrar no ecossistema GeralJá.") # Início do Formulário - O 'with'
-                                garante que tudo aqui dentro pertença ao botão de salvar with st.form("form_novo_profissional", clear_on_submit = False): col_id1, col_id2 = st.columns(2) nome_input = col_id1.text_input("Nome do Profissional ou Loja", placeholder = "Ex: João Mecânico") zap_input = col_id2.text_input("WhatsApp (DDD + Número)", placeholder = "Ex: 11991853488") col_id3, col_id4 = st.columns(2) categoria_input = col_id3.selectbox("Sua Área Principal", CATEGORIAS_OFICIAIS) senha_input = col_id4.text_input("Crie uma Senha", type = "password", help = "Para editar seu perfil depois") descricao_input = st.text_area("Descrição do Serviço", placeholder = "Conte o que você faz, diferenciais e experiência...") tipo_input = st.radio("Tipo de Cadastro", ["👨‍🔧 Profissional Autônomo", "🏢 Comércio/Loja"], horizontal = True) foto_upload = st.file_uploader("Foto de Perfil ou Logo", type = ['jpg', 'jpeg', 'png']) st.markdown("---") st.caption("📍 A sua localização atual será capturada automaticamente para te mostrar nos resultados próximos aos clientes.") # O BOTÃO DE SALVAR PRECISA ESTAR AQUI DENTRO DO FORM btn_finalizar = st.form_submit_button("✅ FINALIZAR E SALVAR CADASTRO", use_container_width = True) # Lógica que acontece APÓS o clique no botão
+                                garante
+                                que tudo aqui dentro pertença ao botão de salvar with st.form("form_novo_profissional", clear_on_submit = False): col_id1, col_id2 = st.columns(2) nome_input = col_id1.text_input("Nome do Profissional ou Loja", placeholder = "Ex: João Mecânico") zap_input = col_id2.text_input("WhatsApp (DDD + Número)", placeholder = "Ex: 11991853488") col_id3, col_id4 = st.columns(2) categoria_input = col_id3.selectbox("Sua Área Principal", CATEGORIAS_OFICIAIS) senha_input = col_id4.text_input("Crie uma Senha", type = "password", help = "Para editar seu perfil depois") descricao_input = st.text_area("Descrição do Serviço", placeholder = "Conte o que você faz, diferenciais e experiência...") tipo_input = st.radio("Tipo de Cadastro", ["👨‍🔧 Profissional Autônomo", "🏢 Comércio/Loja"], horizontal = True) foto_upload = st.file_uploader("Foto de Perfil ou Logo", type = ['jpg', 'jpeg', 'png']) st.markdown("---") st.caption("📍 A sua localização atual será capturada automaticamente para te mostrar nos resultados próximos aos clientes.") # O BOTÃO DE SALVAR PRECISA ESTAR AQUI DENTRO DO FORM btn_finalizar = st.form_submit_button("✅ FINALIZAR E SALVAR CADASTRO", use_container_width = True) # Lógica que acontece APÓS o clique no botão
                                 if btn_finalizar: if not nome_input or not zap_input or not senha_input: st.error("⚠️ ERRO: Nome, WhatsApp e Senha são obrigatórios!")
                                 else: with st.spinner("Conectando ao banco de dados..."): try: # 1. Processamento da Imagem
                                 foto_final = ""
@@ -553,17 +545,14 @@ if st.session_state.tema_claro: st.markdown(""
                                     "aprovado": True,
                                     "saldo": 10
                                 }) st.success("Aprovado com bônus!"); time.sleep(0.5); st.rerun() #-- - ABA INTERNA: SEGURANÇA IA-- - with t_seguranca: st.markdown("#### 🛡️ Central de Proteção e Auto-Cura") s_col1, s_col2 = st.columns(2) if s_col1.button("🔍 ESCANEAR AMEAÇAS", use_container_width = True): alertas = scan_virus_e_scripts() for a in alertas: st.write(a) if s_col2.button("🛠️ REPARAR BANCO", use_container_width = True): reparos = guardia_escanear_e_corrigir() for r in reparos: st.write(r) st.balloons() #-- - ABA INTERNA: FEEDBACKS(DENTRO DA CENTRAL DE COMANDO) -- - with t_feed: try: feedbacks = list(db.collection("feedbacks").order_by("data", direction = "DESCENDING").limit(20).stream()) if feedbacks: for f in feedbacks: df = f.to_dict() # CORREÇÃO DO ERRO: Converte para string antes de cortar os 10 caracteres data_bruta = df.get('data', 'Sem data') data_txt = str(data_bruta)[: 10] nota = df.get('nota', 'S/N') msg = df.get('mensagem', '') st.markdown(f ""
-                                    " <
-                                    div style = "background-color: #f0f2f6; padding: 10px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #0047AB;" > < small > 📅{
+                                    " < div style = "background-color: #f0f2f6; padding: 10px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #0047AB;" > < small > 📅{
                                         data_txt
-                                    } < /small><br> <
-                                    b > ⭐{
+                                    } < /small><br> < b > ⭐{
                                         nota
-                                    } < /b><br> <
-                                    p style = "margin:0;" > {
+                                    } < /b><br> < p style = "margin:0;" > {
                                         msg
-                                    } < /p> < /
-                                    div > ""
+                                    } < /p> < /div>
+                                    ""
                                     ", unsafe_allow_html=True)
                                     else: st.info("Nenhuma nova mensagem na caixa de entrada.")
                                     except Exception as e: st.error(f "Erro ao carregar mensagens: {e}") st.divider() st.caption("O GeralJá utiliza os seus feedbacks para melhorar a segurança e a qualidade dos prestadores de serviço.") #-- - ABA 6: FINANCEIRO(SÓ APARECE SOB COMANDO) -- - # Este 'if'
