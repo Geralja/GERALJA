@@ -1,5 +1,6 @@
+# -*- coding: utf-8 -*-
 # ==============================================================================
-# GERALJÁ: CRIANDO SOLUÇÕES
+# GERALJA: CRIANDO SOLUCOES 
 # ==============================================================================
 import streamlit as st
 import firebase_admin
@@ -13,99 +14,107 @@ import time
 import pandas as pd
 import unicodedata
 from streamlit_js_eval import streamlit_js_eval, get_geolocation
-import base64
-def converter_img_b64(file):
-    if file is not None:
-        return base64.b64encode(file.getvalue()).decode()
-    return None
-st.set_page_config(page_title="Geral Já", layout="wide")
-
-st.set_page_config(page_title="Geral Já", layout="wide")
-
-# --- CONFIGURAÇÃO DE TEMA MANUAL ---
-if 'tema_claro' not in st.session_state:
-    st.session_state.tema_claro = False
-
-# Interruptor no topo para o usuário consertar a tela se estiver preta
-st.session_state.tema_claro = st.toggle("☀️ FORÇAR MODO CLARO (Use se a tela estiver escura)", value=st.session_state.tema_claro)
-
-if st.session_state.tema_claro:
-    st.markdown("""
-        <style>
-            .stApp { background-color: white !important; }
-            * { color: black !important; }
-            .stMarkdown, p, span, label, div { color: black !important; }
-            iframe { background-color: white !important; }
-            .stButton button { background-color: #f0f2f6 !important; color: black !important; border: 1px solid #ccc !important; }
-            [data-testid="stExpander"] { background-color: #f9f9f9 !important; border: 1px solid #ddd !important; }
-            input { background-color: white !important; color: black !important; border: 1px solid #ccc !important; }
-        </style>
-    """, unsafe_allow_html=True)
-
-# ... seus outros imports (firebase, base64, etc)
-
-st.set_page_config(page_title="Geral Já", layout="wide")
-
-# --- COLOQUE AQUI: CSS PARA CORRIGIR O MODO ESCURO E CLARO ---
-st.markdown('''
-    <style>
-        /* Força o preenchimento no topo */
-        div.block-container {padding-top:2rem;}
-        
-        /* Garante que os cards HTML se adaptem ao tema */
-        .metric-card {
-            border: 1px solid #555; 
-            border-radius: 10px; 
-            padding: 10px; 
-            text-align: center;
-            margin-bottom: 10px;
-        }
-    </style>
-''', unsafe_allow_html=True)
-
-# CSS para evitar que o fundo fique preto por erro de renderização
-st.markdown("""
-    <style>
-    .stApp {
-        background-color: white;
-    }
-    [data-testid="stExpander"] {
-        background-color: #ffffff !important;
-        border: 1px solid #f0f2f6;
-    }
-    </style>
-""", unsafe_allow_html=True)
-st.set_page_config(page_title="GeralJá", layout="wide")
-
-# Remove o menu superior, o rodapé 'Made with Streamlit' e o botão de Deploy
-st.markdown("""
-    <style>
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    header {display: none !important;}
-    </style>
-""", unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
-# 1. CONFIGURAÇÃO DE AMBIENTE E PERFORMANCE
+# 1. CONFIGURACAO DE AMBIENTE (UNICA VEZ)
 # ------------------------------------------------------------------------------
 st.set_page_config(
     page_title="GeralJá | Criando Soluções",
-    page_icon="🇧🇷",
+    page_icon="🔍",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
 # ------------------------------------------------------------------------------
-# 2. CAMADA DE PERSISTÊNCIA (FIREBASE)
+# 2. ESTILIZAÇÃO "TOP" (CSS AVANÇADO)
+# ------------------------------------------------------------------------------
+st.markdown("""
+    <style>
+        /* Removendo componentes nativos para um visual limpo */
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        header {visibility: hidden;}
+        
+        /* Fundo da aplicação */
+        .stApp { background-color: #ffffff; }
+
+        /* CABEÇALHO ESTILO GOOGLE/MODERNO */
+        .header-container {
+            background: linear-gradient(90deg, #007BFF 0%, #00d4ff 100%);
+            padding: 2.5rem;
+            border-radius: 0px 0px 30px 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            text-align: center;
+            margin-bottom: 2rem;
+            margin-top: -60px; /* Compensa o padding do streamlit */
+        }
+        
+        .header-title {
+            color: white !important;
+            font-family: 'Inter', sans-serif;
+            font-size: 45px !important;
+            font-weight: 800;
+            letter-spacing: -1px;
+            margin-bottom: 0px;
+        }
+        
+        .header-subtitle {
+            color: rgba(255,255,255,0.9) !important;
+            font-size: 16px;
+            font-weight: 300;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* Ajuste de Cards e Expanders */
+        [data-testid="stExpander"] {
+            background-color: #ffffff !important;
+            border: 1px solid #f0f2f6;
+            border-radius: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .metric-card {
+            border: 1px solid #eee; 
+            border-radius: 12px; 
+            padding: 15px; 
+            text-align: center;
+            background: white;
+        }
+    </style>
+    
+    <div class="header-container">
+        <h1 class="header-title">GeralJá</h1>
+        <p class="header-subtitle">Encontre Soluções em Segundos</p>
+    </div>
+""", unsafe_allow_html=True)
+
+# --- MODO CLARO FORÇADO (Sua lógica mantida) ---
+if 'tema_claro' not in st.session_state:
+    st.session_state.tema_claro = False
+
+st.session_state.tema_claro = st.toggle("☀️ MODO CLARO", value=st.session_state.tema_claro)
+
+if st.session_state.tema_claro:
+    st.markdown("""<style>.stApp { background-color: white !important; } * { color: black !important; }</style>""", unsafe_allow_html=True)
+
+# ------------------------------------------------------------------------------
+# 3. FUNCOES AUXILIARES
+# ------------------------------------------------------------------------------
+def converter_img_b64(file):
+    if file is not None:
+        return base64.b64encode(file.getvalue()).decode()
+    return None
+
+# ------------------------------------------------------------------------------
+# 4. CAMADA DE PERSISTÊNCIA (FIREBASE)
 # ------------------------------------------------------------------------------
 @st.cache_resource
 def conectar_banco_master():
     if not firebase_admin._apps:
         try:
             if "FIREBASE_BASE64" not in st.secrets:
-                st.error("🔑 Chave de segurança FIREBASE_BASE64 não encontrada.")
+                st.error("🔑 Chave FIREBASE_BASE64 não configurada nos Secrets.")
                 st.stop()
             b64_key = st.secrets["FIREBASE_BASE64"]
             decoded_json = base64.b64decode(b64_key).decode("utf-8")
@@ -113,15 +122,15 @@ def conectar_banco_master():
             cred = credentials.Certificate(cred_dict)
             return firebase_admin.initialize_app(cred)
         except Exception as e:
-            st.error(f"❌ FALHA NA INFRAESTRUTURA: {e}")
+            st.error(f"❌ Erro na conexão: {e}")
             st.stop()
     return firebase_admin.get_app()
 
 app_engine = conectar_banco_master()
 db = firestore.client()
- 
+
 # ------------------------------------------------------------------------------
-# 3. POLÍTICAS E CONSTANTES
+# 5. CONSTANTES
 # ------------------------------------------------------------------------------
 PIX_OFICIAL = "11991853488"
 ZAP_ADMIN = "5511991853488"
@@ -131,6 +140,8 @@ BONUS_WELCOME = 5
 LAT_REF = -23.5505
 LON_REF = -46.6333
 
+# --- SEU CÓDIGO DE BUSCA E ABAS CONTINUA AQUI ---
+st.write("### O que você precisa hoje?")
 CATEGORIAS_OFICIAIS = [
     "Academia", "Acompanhante de Idosos", "Açougue", "Adega", "Adestrador de Cães", "Advocacia", "Agropecuária", 
     "Ajudante Geral", "Animador de Festas", "Arquiteto(a)", "Armarinho/Aviamentos", "Assistência Técnica", 
@@ -886,6 +897,7 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
+
 
 
 
