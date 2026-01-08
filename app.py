@@ -25,8 +25,7 @@ def converter_img_b64(file):
     if file is not None:
         return base64.b64encode(file.getvalue()).decode()
     return None
-    @st.cache_resource
-def conectar_banco_master():
+    @st.cache_resourcedef conectar_banco_master():
     if not firebase_admin._apps:
         try:
             if "FIREBASE_BASE64" not in st.secrets:
@@ -259,3 +258,4 @@ if "📊 FINANCEIRO" in abas_lista:
 
 # --- RODAPÉ ---
 st.markdown(f'<div style="text-align:center; padding:50px; color:#94A3B8; font-size:12px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
