@@ -449,9 +449,9 @@ with menu_abas[0]:
             st.markdown(f'<a href="{link_share}" target="_blank" style="text-decoration:none;"><div style="background:#22C55E; color:white; padding:15px; border-radius:10px; text-align:center; font-weight:bold; margin-top:10px;">📲 COMPARTILHAR NO WHATSAPP</div></a>', unsafe_allow_html=True)
         
         else:
-            # --- RENDERIZAÇÃO DOS CARDS (LOOP) ---
+# --- RENDERIZAÇÃO DOS CARDS (LOOP) ---
             for p in lista_ranking:
-                pid = p['id']
+                pid = p.get('id', 'sem_id')
                 is_elite = p.get('verificado') and p.get('saldo', 0) > 0
                 
                 with st.container():
@@ -460,23 +460,31 @@ with menu_abas[0]:
                     bg_card = "#FFFDF5" if is_elite else "#FFFFFF"
                     
                     st.markdown(f"""
-                    <div style="border-left: 8px solid {cor_borda}; padding: 15px; background: {bg_card}; border-radius: 15px; margin-bottom: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                        <span style="font-size: 12px; color: gray; font-weight: bold;">📍 a {p['dist']:.1f} km de você {" | 🏆 DESTAQUE" if is_elite else ""}</span>
-                    </div>
-                     """, unsafe_allow_html=True)
+                        <div style="border-left: 8px solid {cor_borda}; padding: 15px; background: {bg_card}; border-radius: 15px; margin-bottom: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                            <span style="font-size: 12px; color: gray; font-weight: bold;">📍 a {p.get('dist', 0):.1f} km de você {" | 🏆 DESTAQUE" if is_elite else ""}</span>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Alinhamento corrigido aqui:
                     col_img, col_txt = st.columns([1, 4])
-                   with col_img:
+                    
+                    with col_img:
                         foto = p.get('foto_url', 'https://via.placeholder.com/150')
                         st.markdown(f'<img src="{foto}" style="width:75px; height:75px; border-radius:50%; object-fit:cover; border:3px solid {cor_borda}">', unsafe_allow_html=True)
                     
                     with col_txt:
-                        nome_exibicao = p.get('nome', '').upper()
-                        if p.get('verificado', False): nome_exibicao += " <span style='color:#1DA1F2;'>☑️</span>"
+                        nome_exibicao = str(p.get('nome', '')).upper()
+                        if p.get('verificado', False): 
+                            nome_exibicao += " <span style='color:#1DA1F2;'>☑️</span>"
                         
                         status_loja = ""
                         if p.get('tipo') == "🏢 Comércio/Loja":
                             h_ab, h_fe = p.get('h_abre', '08:00'), p.get('h_fecha', '18:00')
-                            status_loja = " 🟢 <b style='color:green;'>ABERTO</b>" if h_ab <= hora_atual <= h_fe else " 🔴 <b style='color:red;'>FECHADO</b>"
+                            # Proteção caso hora_atual não esteja definida
+                            try:
+                                status_loja = " 🟢 <b style='color:green;'>ABERTO</b>" if h_ab <= hora_atual <= h_fe else " 🔴 <b style='color:red;'>FECHADO</b>"
+                            except NameError:
+                                status_loja = ""
                         
                         st.markdown(f"**{nome_exibicao}** {status_loja}", unsafe_allow_html=True)
                         st.caption(f"{p.get('descricao', '')[:120]}...")
@@ -975,4 +983,5 @@ def finalizar_e_alinhar_layout():
 # CHAMADA FINAL - ESTA DEVE SER A ÚLTIMA LINHA DO SEU APP
 finalizar_e_alinhar_layout()
 # ------------------------------------------------------------------------------
+
 
