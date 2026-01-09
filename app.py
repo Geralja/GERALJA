@@ -463,7 +463,8 @@ with menu_abas[0]:
                     <div style="border-left: 8px solid {cor_borda}; padding: 15px; background: {bg_card}; border-radius: 15px; margin-bottom: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
                         <span style="font-size: 12px; color: gray; font-weight: bold;">📍 a {p['dist']:.1f} km de você {" | 🏆 DESTAQUE" if is_elite else ""}</span>
                     </div>
-                    """, unsafe_allow_html=True)col_img, col_txt = st.columns([1, 4])
+                   v """, unsafe_allow_html=True)col_img, col_txt = st.columns([1, 4])
+                   
                     with col_img:
                         foto = p.get('foto_url', 'https://via.placeholder.com/150')
                         st.markdown(f'<img src="{foto}" style="width:75px; height:75px; border-radius:50%; object-fit:cover; border:3px solid {cor_borda}">', unsafe_allow_html=True)
@@ -974,6 +975,7 @@ def finalizar_e_alinhar_layout():
 # CHAMADA FINAL - ESTA DEVE SER A ÚLTIMA LINHA DO SEU APP
 finalizar_e_alinhar_layout()
 # ------------------------------------------------------------------------------
+
 
 
 
