@@ -20,8 +20,6 @@ def converter_img_b64(file):
     return None
 st.set_page_config(page_title="Geral Já", layout="wide")
 
-st.set_page_config(page_title="Geral Já", layout="wide")
-
 # --- CONFIGURAÇÃO DE TEMA MANUAL ---
 if 'tema_claro' not in st.session_state:
     st.session_state.tema_claro = False
@@ -44,7 +42,6 @@ if st.session_state.tema_claro:
 
 # ... seus outros imports (firebase, base64, etc)
 
-st.set_page_config(page_title="Geral Já", layout="wide")
 
 # --- COLOQUE AQUI: CSS PARA CORRIGIR O MODO ESCURO E CLARO ---
 st.markdown('''
@@ -915,3 +912,4 @@ def finalizar_e_alinhar_layout():
 # CHAMADA FINAL - ESTA DEVE SER A ÚLTIMA LINHA DO SEU APP
 finalizar_e_alinhar_layout()
 # ------------------------------------------------------------------------------
+
