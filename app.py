@@ -20,6 +20,8 @@ def converter_img_b64(file):
     return None
 st.set_page_config(page_title="Geral Já", layout="wide")
 
+st.set_page_config(page_title="Geral Já", layout="wide")
+
 # --- CONFIGURAÇÃO DE TEMA MANUAL ---
 if 'tema_claro' not in st.session_state:
     st.session_state.tema_claro = False
@@ -42,6 +44,9 @@ if st.session_state.tema_claro:
 
 # ... seus outros imports (firebase, base64, etc)
 
+st.set_page_config(page_title="Geral Já", layout="wide")
+
+# --- COLOQUE AQUI: CSS PARA CORRIGIR O MODO ESCURO E CLARO ---
 st.markdown('''
     <style>
         /* Força o preenchimento no topo */
@@ -70,7 +75,9 @@ st.markdown("""
     }
     </style>
 """, unsafe_allow_html=True)
+st.set_page_config(page_title="GeralJá", layout="wide")
 
+# Remove o menu superior, o rodapé 'Made with Streamlit' e o botão de Deploy
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
@@ -830,7 +837,7 @@ if len(menu_abas) > 5:
         else:
             st.info("Aguardando chave mestra para exibir dados sensíveis.")
             # --- ABA: FEEDBACK (A VOZ DO CLIENTE) ---
-with menu_abas[6]: # Verifique se o índice da sua aba de feedback é 4 ou 5
+with menu_abas[4]: # Verifique se o índice da sua aba de feedback é 4 ou 5
     st.markdown("### ⭐ Sua opinião é fundamental")
     st.write("Conte-nos como foi a sua experiência com o GeralJá.")
     
