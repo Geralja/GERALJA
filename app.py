@@ -360,7 +360,126 @@ if comando == "abracadabra":
 # 4. Cria as abas no Streamlit
 menu_abas = st.tabs(lista_abas)
 
- 
+# --- ABA 1: BUSCA (SISTEMA GPS + RANKING ELITE + VITRINE) ---
+with menu_abas[0]:
+    st.markdown("### 🏙️ O que você precisa?")
+    
+    # --- MOTOR DE LOCALIZAÇÃO EM TEMPO REAL ---
+    with st.expander("📍 Sua Localização (GPS)", expanded=False):
+        loc = get_geolocation()
+        if loc:
+            minha_lat = loc['coords']['latitude']
+            minha_lon = loc['coords']['longitude']
+            st.success(f"Localização detectada!")
+        else:
+            minha_lat = LAT_REF
+            minha_lon = LON_REF
+            st.warning("GPS desativado. Usando localização padrão (SP).")
+
+    c1, c2 = st.columns([3, 1])
+    termo_busca = c1.text_input("Ex: 'Cano estourado' ou 'Pizza'", key="main_search")
+    raio_km = c2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 20, 50, 100, 500, 2000], value=10)
+    
+    if termo_busca:
+        # Processamento via IA para identificar a categoria
+        cat_ia = processar_ia_avancada(termo_busca)
+        st.info(f"✨ IA: Buscando por **{cat_ia}** próximo a você")
+        
+        # Lógica de Horário em tempo real
+        from datetime import datetime
+        import pytz
+        import re
+        from urllib.parse import quote
+        
+        fuso = pytz.timezone('America/Sao_Paulo')
+        hora_atual = datetime.now(fuso).strftime('%H:%M')
+
+        # Busca no Firebase (Filtra apenas aprovados e da categoria certa)
+        profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
+        
+        lista_ranking = []
+        for p_doc in profs:
+            p = p_doc.to_dict()
+            p['id'] = p_doc.id
+            
+            # CALCULA DISTÂNCIA REAL (GPS vs Profissional)
+            dist = calcular_distancia_real(minha_lat, minha_lon, p.get('lat', LAT_REF), p.get('lon', LON_REF))
+            
+            if dist <= raio_km:
+                p['dist'] = dist
+                # MOTOR DE SCORE ELITE (Ranking)
+                score = 0
+                score += 500 if p.get('verificado', False) else 0
+                score += (p.get('saldo', 0) * 10)
+                score += (p.get('rating', 5) * 20)
+                p['score_elite'] = score
+                lista_ranking.append(p)
+
+        # Ordenação: Elite primeiro (maior score), depois os mais próximos (menor distância)
+        lista_ranking.sort(key=lambda x: (-x['score_elite'], x['dist']))
+
+        if not lista_ranking:
+            st.markdown(f"""
+            <div style="background-color: #FFF4E5; padding: 20px; border-radius: 15px; border-left: 5px solid #FF8C00;">
+                <h3 style="color: #856404;">🔍 Essa profissão ainda não foi preenchida nesta região.</h3>
+                <p style="color: #856404;">Compartilhe o <b>GeralJá</b> e ajude a crescer sua rede local!</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            link_share = "https://wa.me/?text=Ei!%20Procurei%20um%20serviço%20no%20GeralJá%20e%20vi%20que%20ainda%20temos%20vagas!%20Cadastre-se:%20https://geralja.streamlit.app"
+            st.markdown(f'<a href="{link_share}" target="_blank" style="text-decoration:none;"><div style="background:#22C55E; color:white; padding:15px; border-radius:10px; text-align:center; font-weight:bold; margin-top:10px;">📲 COMPARTILHAR NO WHATSAPP</div></a>', unsafe_allow_html=True)
+        
+        else:
+            # --- RENDERIZAÇÃO DOS CARDS (LOOP) ---
+            for p in lista_ranking:
+                pid = p['id']
+                is_elite = p.get('verificado') and p.get('saldo', 0) > 0
+                
+                with st.container():
+                    # Cores dinâmicas baseadas no tipo de conta
+                    cor_borda = "#FFD700" if is_elite else ("#FF8C00" if p.get('tipo') == "🏢 Comércio/Loja" else "#0047AB")
+                    bg_card = "#FFFDF5" if is_elite else "#FFFFFF"
+                    
+                    st.markdown(f"""
+                    <div style="border-left: 8px solid {cor_borda}; padding: 15px; background: {bg_card}; border-radius: 15px; margin-bottom: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                        <span style="font-size: 12px; color: gray; font-weight: bold;">📍 a {p['dist']:.1f} km de você {" | 🏆 DESTAQUE" if is_elite else ""}</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    col_img, col_txt = st.columns([1, 4])
+                    with col_img:
+                        foto = p.get('foto_url', 'https://via.placeholder.com/150')
+                        st.markdown(f'<img src="{foto}" style="width:75px; height:75px; border-radius:50%; object-fit:cover; border:3px solid {cor_borda}">', unsafe_allow_html=True)
+                    
+                    with col_txt:
+                        nome_exibicao = p.get('nome', '').upper()
+                        if p.get('verificado', False): nome_exibicao += " <span style='color:#1DA1F2;'>☑️</span>"
+                        
+                        status_loja = ""
+                        if p.get('tipo') == "🏢 Comércio/Loja":
+                            h_ab, h_fe = p.get('h_abre', '08:00'), p.get('h_fecha', '18:00')
+                            status_loja = " 🟢 <b style='color:green;'>ABERTO</b>" if h_ab <= hora_atual <= h_fe else " 🔴 <b style='color:red;'>FECHADO</b>"
+                        
+                        st.markdown(f"**{nome_exibicao}** {status_loja}", unsafe_allow_html=True)
+                        st.caption(f"{p.get('descricao', '')[:120]}...")
+
+                    # Vitrine de Fotos do Portfólio
+                    if p.get('portfolio_imgs'):
+                        cols_v = st.columns(3)
+                        for i, img_b64 in enumerate(p.get('portfolio_imgs')[:3]):
+                            cols_v[i].image(img_b64, use_container_width=True)
+
+                    # --- LÓGICA DO BOTÃO DE WHATSAPP (AQUI DENTRO DO LOOP) ---
+                    nome_curto = p.get('nome', 'Profissional').split()[0].upper()
+                    
+                    # Limpeza do número de telefone (ID do documento)
+                    numero_limpo = re.sub(r'\D', '', str(pid))
+                    if not numero_limpo.startswith('55'):
+                        numero_limpo = f"55{numero_limpo}"
+                    
+                    texto_zap = quote(f"Olá {p.get('nome')}, vi seu perfil no GeralJá!")
+                    link_final = f"https://wa.me/{numero_limpo}?text={texto_zap}"
+
                     # --- BOTÃO ÚNICO (VISUAL TOP + ABRE SEMPRE) ---
                     import re
                     from urllib.parse import quote
