@@ -76,6 +76,44 @@ CATEGORIAS_OFICIAIS = [
     "Eletricista", "Encanador", "Lanchonete", "Mecânico de Autos", "Montador de Móveis", 
     "Pedreiro", "Pet Shop", "Pintor", "Pizzaria", "Técnico de Celular"
 ] # Reduzi aqui para exemplo, mas você pode manter sua lista completa.
+# ==============================================================================
+# 2. CAMADA DE PERSISTÊNCIA (FIREBASE) - VERSÃO CORREÇÃO CRÍTICA
+# ==============================================================================
+@st.cache_resource
+def conectar_banco_master():
+    if not firebase_admin._apps:
+        try:
+            # Tenta pegar dos Secrets, se não achar, avisa sem travar tudo
+            if "FIREBASE_BASE64" not in st.secrets:
+                st.error("⚠️ Configuração Incompleta: FIREBASE_BASE64 não encontrada nos Secrets.")
+                st.stop()
+            
+            b64_key = st.secrets["FIREBASE_BASE64"]
+            decoded_json = base64.b64decode(b64_key).decode("utf-8")
+            cred_dict = json.loads(decoded_json)
+            cred = credentials.Certificate(cred_dict)
+            return firebase_admin.initialize_app(cred)
+        except Exception as e:
+            st.error(f"❌ Erro de Conexão: {e}")
+            st.stop()
+    return firebase_admin.get_app()
+
+# Inicializa o banco
+try:
+    app_engine = conectar_banco_master()
+    db = firestore.client()
+except:
+    st.warning("Aguardando conexão com o banco de dados...")
+
+# --- INICIALIZAÇÃO DA GROQ (IA) ---
+try:
+    if "GROQ_API_KEY" in st.secrets:
+        ai_engine = Groq(api_key=st.secrets["GROQ_API_KEY"])
+    else:
+        ai_engine = None
+except Exception as e:
+    ai_engine = None
+    st.info("Nota: O motor de busca inteligente está em modo básico.")
 # ------------------------------------------------------------------------------
 # 4. MOTORES DE IA E GEOLOCALIZAÇÃO
 # ------------------------------------------------------------------------------
@@ -805,6 +843,7 @@ except Exception as e:
     st.write("---")
     st.caption("GeralJá 2026")
 # ------------------------------------------------------------------------------
+
 
 
 
