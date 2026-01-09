@@ -20,6 +20,8 @@ def converter_img_b64(file):
     return None
 st.set_page_config(page_title="Geral Já", layout="wide")
 
+st.set_page_config(page_title="Geral Já", layout="wide")
+
 # --- CONFIGURAÇÃO DE TEMA MANUAL ---
 if 'tema_claro' not in st.session_state:
     st.session_state.tema_claro = False
@@ -42,42 +44,7 @@ if st.session_state.tema_claro:
 
 # ... seus outros imports (firebase, base64, etc)
 
-        
-        # ----------------------------------------------------------------------
-        # TRAVA DE SIGURANȚĂ: Doar executăm dacă există rezultate (res)
-        # ----------------------------------------------------------------------
-        if len(res) > 0:
-            # Creăm DataFrame-ul (df) aici, local
-            df = pd.DataFrame(res)
-            
-            # Sortare: 1º Elite, 2º Distanță
-            df = df.sort_values(by=['ranking_elite', 'dist'], ascending=[False, True])
-            
-            # Bucla de afișare (Aici era eroarea NameError)
-            for _, prof in df.iterrows():
-                p_id = prof.get('id_doc', 'temp')
-                
-                st.markdown(f"""
-                    <div style="border: 1px solid #ddd; padding: 15px; border-radius: 12px; margin-bottom: 10px; background-color: #f9f9f9;">
-                        <h3 style="margin:0; color: #0047AB;">{prof.get('nome', 'Profissional')}</h3>
-                        <p style="color: #FF8C00; font-weight: bold; margin: 0;">{prof.get('categoria', 'Serviços')}</p>
-                        <p style="font-size: 0.8em; color: #666;">📍 Distância: {prof.get('dist', 0.0)} km</p>
-                    </div>
-                """, unsafe_allow_html=True)
-                
-                c1, c2 = st.columns(2)
-                with c1:
-                    tel = re.sub(r'\D', '', str(prof.get('whatsapp', '')))
-                    st.link_button("🟢 WHATSAPP", f"https://wa.me/55{tel}", use_container_width=True)
-                with c2:
-                    st.button("📄 PERFIL", key=f"p_{p_id}", use_container_width=True)
-        else:
-            # Dacă lista 'res' este goală, df nu este creat și eroarea nu apare
-            st.warning(f"😕 Nu am găsit rezultate pentru '{cat_alvo}'.")
-            
-    except Exception as e:
-        st.error(f"Eroare la procesarea căutării: {e}")
-# ------------------------------------------------------------------------------
+st.set_page_config(page_title="Geral Já", layout="wide")
 
 # --- COLOQUE AQUI: CSS PARA CORRIGIR O MODO ESCURO E CLARO ---
 st.markdown('''
@@ -948,6 +915,3 @@ def finalizar_e_alinhar_layout():
 # CHAMADA FINAL - ESTA DEVE SER A ÚLTIMA LINHA DO SEU APP
 finalizar_e_alinhar_layout()
 # ------------------------------------------------------------------------------
-
-
-
