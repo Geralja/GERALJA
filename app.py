@@ -14,62 +14,6 @@ import pandas as pd
 import unicodedata
 from streamlit_js_eval import streamlit_js_eval, get_geolocation
 import base64
-import streamlit as st
-import re
-import datetime
-import traceback # Importe isso também!
-# ... outros imports ...
-
-# ==============================================================================
-# 1. COLE AQUI: AS FUNÇÕES DE INTELIGÊNCIA E PROTEÇÃO (O Cérebro)
-# ==============================================================================
-
-def executor_seguro(func, *args, **kwargs):
-    """ Impede o app de travar e explica o erro em português """
-    try:
-        return func(*args, **kwargs)
-    except Exception as e:
-        erro_detalhado = traceback.format_exc()
-        st.error(f"🚨 **Ops! Ocorreu um erro técnico:** {e}")
-        with st.expander("🛠️ Ver diagnóstico para correção"):
-            st.code(erro_detalhado)
-        return None
-
-def validar_integridade_profissional(dados):
-    """ Garante que o cadastro está perfeito antes de salvar """
-    obrigatorios = ["nome", "whatsapp", "area", "senha"]
-    for campo in obrigatorios:
-        if not dados.get(campo):
-            return False, f"O campo {campo} é obrigatório!"
-    return True, "Sucesso"
-
-# ==============================================================================
-# 2. DEPOIS DISSO: VEM A LISTA DE SEGMENTOS E AS ABAS
-# ==============================================================================
-LISTA_SEGMENTOS = [...] 
-
-tabs = st.tabs(["🔍 BUSCAR", "🚀 CADASTRAR", "👤 PERFIL"])
-
-# ==============================================================================
-# 3. DENTRO DA ABA DE CADASTRO: USE A FUNÇÃO DE VALIDAÇÃO
-# ==============================================================================
-with tabs[1]:
-    # ... seu formulário aqui ...
-    if btn_salvar:
-        # Aqui você chama a inteligência que colou lá em cima:
-        sucesso, mensagem = validar_integridade_profissional(objeto_final)
-        
-        if not sucesso:
-            st.warning(mensagem)
-        else:
-            # Tenta salvar usando o executor seguro
-            executor_seguro(doc_ref.set, objeto_final)
-            st.success("Cadastro Blindado e Salvo!")
-
-# ==============================================================================
-# 4. NO FINAL DE TUDO: O FINALIZADOR DE LAYOUT
-# ==============================================================================
-finalizar_e_alinhar_layout()
 def converter_img_b64(file):
     if file is not None:
         return base64.b64encode(file.getvalue()).decode()
@@ -1097,8 +1041,6 @@ def finalizar_e_alinhar_layout():
 # CHAMADA FINAL (O ÚLTIMO ATO DO APP)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
-
-
 
 
 
