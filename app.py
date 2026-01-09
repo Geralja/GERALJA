@@ -41,26 +41,7 @@ if st.session_state.tema_claro:
     """, unsafe_allow_html=True)
 
 # ... seus outros imports (firebase, base64, etc)
-# ------------------------------------------------------------------------------
-# 13. MOTOR DE CĂUTARE V2 (BLINDAJ TOTAL ȘI REPARARE NAMEERROR)
-# ------------------------------------------------------------------------------
-if busca:
-    cat_alvo = ia_busca_consciente_v2(busca)
-    
-    try:
-        # 1. Interogare Firebase
-        profs_ref = db.collection("profissionais").where("status", "==", "ativo").stream()
-        res = []
-        
-        for p in profs_ref:
-            d = p.to_dict()
-            # Filtru logic: Categorie sau Nume
-            if remover_acentos(cat_alvo) in remover_acentos(d.get('categoria','')) or remover_acentos(busca) in remover_acentos(d.get('nome','')):
-                # Calcul distanță sigur
-                distancia = calcular_distancia(lat_c, lon_c, d.get('latitude'), d.get('longitude'))
-                d['dist'] = distancia
-                d['id_doc'] = p.id
-                res.append(d)
+
         
         # ----------------------------------------------------------------------
         # TRAVA DE SIGURANȚĂ: Doar executăm dacă există rezultate (res)
@@ -967,5 +948,6 @@ def finalizar_e_alinhar_layout():
 # CHAMADA FINAL - ESTA DEVE SER A ÚLTIMA LINHA DO SEU APP
 finalizar_e_alinhar_layout()
 # ------------------------------------------------------------------------------
+
 
 
