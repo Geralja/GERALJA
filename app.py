@@ -633,179 +633,82 @@ with menu_abas[2]:
                     st.success("✅ Perfil e Segmento atualizados com sucesso!")
                     time.sleep(1) # Pequena pausa para o usuário ver a mensagem
                     st.rerun()
-# --- LISTA EXPANDIDA DE SEGMENTOS (Exemplo de como estruturar os 500) ---
-# Dica: Você pode mover essa lista para o topo do seu código
-LISTA_SEGMENTOS = sorted([
-    "Açougue", "Adega", "Advogado", "Agência de Viagens", "Aluguel de Brinquedos",
-    "Assistência Técnica Celular", "Ar Condicionado", "Artesanato", "Auto Elétrica",
-    "Borracharia", "Barbearia", "Bazar", "Brechó", "Buffet", "Cabeleireiro",
-    "Caçambas", "Calhas", "Carpinteiro", "Chaveiro", "Clínica Veterinária",
-    "Confeitaria", "Costureira", "Cuidador de Idosos", "Dedetizadora", "Depósito de Gás",
-    "Desentupidora", "Diartista", "Doceria", "Eletricista", "Encanador", "Entregador",
-    "Escola de Idiomas", "Estética", "Farmácia", "Fisioterapeuta", "Floricultura",
-    "Fotógrafo", "Fretes e Mudanças", "Gesseiro", "Hamburgueria", "Hortifruti",
-    "Impermeabilização", "Informática", "Jardineiro", "Lanchonete", "Lavanderia",
-    "Lava Jato", "Livraria", "Loja de Doces", "Loja de Roupas", "Manicure",
-    "Marceneiro", "Mecânico", "Montador de Móveis", "Nutricionista", "Ótica",
-    "Padaria", "Pedreiro", "Pet Shop", "Pintor", "Pizzaria", "Podóloga",
-    "Professor Particular", "Psicólogo", "Serralheiro", "Sorveteria", "Tatuador",
-    "Técnico de TV", "Transporte Escolar", "Vidraçaria"
-    # Adicione quantos quiser aqui...
-])
+# --- ABA 1: CADASTRAR (SISTEMA DE ADMISSÃO DE ELITE) ---
+with menu_abas[1]:
+    st.markdown("### 🚀 Cadastro de Profissional")
+    st.info("Preencha os dados abaixo para entrar no ecossistema GeralJá.")
 
-# 1. LISTA DE SEGMENTOS EXPANDIDA (O "Cérebro" das Categorias)
-# Dica: Você pode colocar esta lista no topo do seu arquivo app.py
-LISTA_SEGMENTOS = sorted([
-    "Açougue", "Adega", "Advogado", "Agência de Viagens", "Aluguel de Brinquedos",
-    "Assistência Técnica Celular", "Ar Condicionado", "Artesanato", "Auto Elétrica",
-    "Borracharia", "Barbearia", "Bazar", "Brechó", "Buffet", "Cabeleireiro",
-    "Caçambas", "Calhas", "Carpinteiro", "Chaveiro", "Clínica Veterinária",
-    "Confeitaria", "Costureira", "Cuidador de Idosos", "Dedetizadora", "Depósito de Gás",
-    "Desentupidora", "Diarista", "Doceria", "Eletricista", "Encanador", "Entregador",
-    "Escola de Idiomas", "Estética", "Farmácia", "Fibra Óptica/Internet", "Fisioterapeuta", 
-    "Floricultura", "Fotógrafo", "Fretes e Mudanças", "Funilaria", "Gesseiro", 
-    "Hamburgueria", "Hortifruti", "Impermeabilização", "Informática", "Instalador de TV",
-    "Jardineiro", "Lanchonete", "Lavanderia", "Lava Jato", "Livraria", "Loja de Doces", 
-    "Loja de Roupas", "Loja de Material de Construção", "Loja de Variedades", "Manicure", 
-    "Marceneiro", "Mecânico", "Montador de Móveis", "Nutricionista", "Ótica", "Ourives", 
-    "Padaria", "Papelaria", "Pedreiro", "Pet Shop", "Pintor", "Pizzaria", "Podóloga", 
-    "Professor Particular", "Psicólogo", "Serralheiro", "Sorveteria", "Tatuador", 
-    "Técnico de TV", "Transporte Escolar", "Vidraçaria", "Web Designer", "Zootecnista"
-])
-
-# --- 1. SUPER LISTA DE SEGMENTOS (EXPANDIDA E COMPLETA) ---
-# Dica: Se quiser, pode mover esta lista para o topo do seu arquivo principal.
-LISTA_SEGMENTOS = sorted([
-    "Açougue", "Adega", "Advogado", "Agência de Viagens", "Aluguel de Brinquedos",
-    "Assistência Técnica Celular", "Ar Condicionado", "Artesanato", "Auto Elétrica",
-    "Borracharia", "Barbearia", "Bazar", "Brechó", "Buffet", "Cabeleireiro",
-    "Caçambas", "Calhas", "Carpinteiro", "Chaveiro", "Churrascaria", "Clínica Veterinária",
-    "Comida Japonesa / Sushi", "Confeitaria", "Costureira", "Cuidador de Idosos", 
-    "Dedetizadora", "Depósito de Gás", "Desentupidora", "Diarista", "Doceria", 
-    "Eletricista", "Encanador", "Entregador", "Escola de Idiomas", "Estética", 
-    "Farmácia", "Fibra Óptica / Internet", "Fisioterapeuta", "Floricultura", 
-    "Fotógrafo", "Fretes e Mudanças", "Funilaria", "Gesseiro", "Hamburgueria", 
-    "Hortifruti", "Impermeabilização", "Informática", "Instalador de TV",
-    "Jardineiro", "Lanchonete", "Lavanderia", "Lava Jato", "Livraria", "Loja de Doces", 
-    "Loja de Roupas", "Loja de Variedades", "Marmitaria", "Manicure", "Marceneiro", 
-    "Mecânico", "Montador de Móveis", "Nutricionista", "Ótica", "Padaria", "Pedreiro", 
-    "Pet Shop", "Pintor", "Pizzaria", "Podóloga", "Professor Particular", 
-    "Psicólogo", "Restaurante", "Serralheiro", "Sorveteria", "Tatuador", 
-    "Técnico de TV", "Transporte Escolar", "Vidraçaria", "Web Designer"
-])
-
-# --- 2. ABA 1: CADASTRAR (SISTEMA PROFISSIONAL UNIFICADO) ---
- 
-with tabs[1]: 
-    st.markdown("""
-        <div style='text-align: center; background-color: #0047AB; padding: 10px; border-radius: 10px; color: white;'>
-            <h2 style='margin:0;'>🚀 Portal do Empreendedor Grajaú</h2>
-            <p style='margin:0;'>Cadastre sua Loja ou Serviço no maior radar da região!</p>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("---")
-
-    # Formulário Único com Identidade Visual
-    with st.form("form_master_geralja", clear_on_submit=False):
-        st.subheader("📋 Dados de Identificação")
-        col_nome, col_zap = st.columns(2)
-        nome_in = col_nome.text_input("Nome do Negócio / Profissional", placeholder="Ex: Churrascaria do Gaúcho")
-        zap_in = col_zap.text_input("WhatsApp (DDD + Número)", placeholder="Ex: 99988776655")
+    # Início do Formulário - O 'with' garante que tudo aqui dentro pertença ao botão de salvar
+    with st.form("form_novo_profissional", clear_on_submit=False):
+        col_id1, col_id2 = st.columns(2)
+        nome_input = col_id1.text_input("Nome do Profissional ou Loja", placeholder="Ex: João Mecânico")
+        zap_input = col_id2.text_input("WhatsApp (DDD + Número)", placeholder="Ex: 11991853488")
         
-        tipo_in = st.radio("Selecione sua categoria:", ["👨‍🔧 Profissional Autônomo", "🏢 Comércio / Loja"], horizontal=True)
+        col_id3, col_id4 = st.columns(2)
+        categoria_input = col_id3.selectbox("Sua Área Principal", CATEGORIAS_OFICIAIS)
+        senha_input = col_id4.text_input("Crie uma Senha", type="password", help="Para editar seu perfil depois")
+        
+        descricao_input = st.text_area("Descrição do Serviço", placeholder="Conte o que você faz, diferenciais e experiência...")
+        
+        tipo_input = st.radio("Tipo de Cadastro", ["👨‍🔧 Profissional Autônomo", "🏢 Comércio/Loja"], horizontal=True)
+        
+        foto_upload = st.file_uploader("Foto de Perfil ou Logo", type=['jpg', 'jpeg', 'png'])
 
         st.markdown("---")
-        st.subheader("🛠️ Especialidade e Segurança")
-        col_cat, col_pass = st.columns(2)
-        cat_in = col_cat.selectbox("Qual seu segmento principal?", LISTA_SEGMENTOS)
-        senha_in = col_pass.text_input("Crie sua Senha de Edição", type="password", help="Importante para alterar suas fotos e dados depois.")
+        st.caption("📍 A sua localização atual será capturada automaticamente para te mostrar nos resultados próximos aos clientes.")
         
-        desc_in = st.text_area("Descrição de Impacto", placeholder="Fale sobre seus serviços, cardápio, promoções ou experiência...")
+        # O BOTÃO DE SALVAR PRECISA ESTAR AQUI DENTRO DO FORM
+        btn_finalizar = st.form_submit_button("✅ FINALIZAR E SALVAR CADASTRO", use_container_width=True)
 
-        st.markdown("---")
-        st.subheader("📸 Galeria de Fotos (Destaque seu Trabalho)")
-        st.caption("A primeira foto será a sua imagem principal na busca.")
-        
-        f_col1, f_col2, f_col3 = st.columns(3)
-        foto1 = f_col1.file_uploader("Foto Principal", type=['jpg', 'jpeg', 'png'], key="up_foto1")
-        foto2 = f_col2.file_uploader("Foto 2 (Trabalho)", type=['jpg', 'jpeg', 'png'], key="up_foto2")
-        foto3 = f_col3.file_uploader("Foto 3 (Trabalho)", type=['jpg', 'jpeg', 'png'], key="up_foto3")
-
-        st.markdown("<br>", unsafe_allow_html=True)
-        btn_submit = st.form_submit_button("✅ SALVAR MEU CADASTRO AGORA", use_container_width=True)
-
-    # 3. Lógica de Processamento Blindada
-    if btn_submit:
-        if not nome_in or not zap_in or not senha_in:
-            st.error("⚠️ ERRO: Você esqueceu de preencher Nome, WhatsApp ou Senha!")
+    # Lógica que acontece APÓS o clique no botão
+    if btn_finalizar:
+        if not nome_input or not zap_input or not senha_input:
+            st.error("⚠️ ERRO: Nome, WhatsApp e Senha são obrigatórios!")
         else:
-            with st.spinner("📦 Conectando ao Banco de Dados e salvando fotos..."):
+            with st.spinner("Conectando ao banco de dados..."):
                 try:
-                    # Padroniza o ID pelo WhatsApp (limpa traços e parênteses)
-                    id_limpo = re.sub(r'\D', '', zap_in)
-                    doc_ref = db.collection("profissionais").document(id_limpo)
-                    doc_snap = doc_ref.get()
-
-                    # --- A TRAVA DE SEGURANÇA MESTRE ---
-                    cat_final = cat_in
-                    dados_originais = {}
-
-                    if doc_snap.exists:
-                        dados_originais = doc_snap.to_dict()
-                        # Se já existe, exige a senha para qualquer alteração
-                        if dados_originais.get('senha') != senha_in:
-                            st.error("🚫 ACESSO NEGADO: Este número já está cadastrado. A senha está incorreta!")
-                            st.stop()
-                        else:
-                            # SENHA CORRETA: Bloqueia a mudança de segmento para não bagunçar o banco
-                            cat_final = dados_originais.get('area', dados_originais.get('categoria', cat_in))
-                            st.info(f"♻️ Perfil reconhecido! Mantivemos seu segmento como '{cat_final}'.")
+                    # 1. Processamento da Imagem
+                    foto_final = ""
+                    if foto_upload:
+                        foto_final = f"data:image/png;base64,{converter_img_b64(foto_upload)}"
                     
-                    # --- PROCESSAMENTO DAS 3 FOTOS ---
-                    # Se não subir foto nova, tenta manter a que já existia no banco
-                    b64_1 = f"data:image/png;base64,{converter_img_b64(foto1)}" if foto1 else (dados_originais.get('foto_url', '') if doc_snap.exists else "")
-                    b64_2 = f"data:image/png;base64,{converter_img_b64(foto2)}" if foto2 else (dados_originais.get('foto2', '') if doc_snap.exists else "")
-                    b64_3 = f"data:image/png;base64,{converter_img_b64(foto3)}" if foto3 else (dados_originais.get('foto3', '') if doc_snap.exists else "")
+                    # 2. Garantia de Localização (Se o GPS falhar, usa a LAT_REF/LON_REF que você definiu)
+                    # Use as variáveis que o seu script já detectou no topo da página
+                    lat_salvar = minha_lat if 'minha_lat' in locals() else LAT_REF
+                    lon_salvar = minha_lon if 'minha_lon' in locals() else LON_REF
 
-                    # --- CAPTURA DE LOCALIZAÇÃO ---
-                    lat_final = minha_lat if 'minha_lat' in locals() else LAT_REF
-                    lon_final = minha_lon if 'minha_lon' in locals() else LON_REF
-
-                    # --- MONTAGEM DO OBJETO COMPLETO ---
-                    objeto_final = {
-                        "nome": nome_in,
-                        "area": cat_final, # Campo com Trava
-                        "whatsapp": id_limpo,
-                        "senha": senha_in,
-                        "tipo": tipo_in,
-                        "descricao": desc_in,
-                        "foto_url": b64_1,
-                        "foto2": b64_2,
-                        "foto3": b64_3,
-                        "status": "ativo",
-                        "verificado": dados_originais.get('verificado', False),
-                        "ranking_elite": dados_originais.get('ranking_elite', 0),
-                        "cliques": dados_originais.get('cliques', 0),
+                    # 3. Montagem do Objeto (Sem apagar nada do que você já usa)
+                    novo_pro = {
+                        "nome": nome_input,
+                        "area": categoria_input,
+                        "descricao": descricao_input,
+                        "senha": senha_input,
+                        "tipo": tipo_input,
+                        "whatsapp": zap_input,
+                        "foto_url": foto_final,
+                        "saldo": BONUS_WELCOME, # Dá os 5 créditos iniciais
+                        "aprovado": True,        # Já nasce ativo conforme seu fluxo
+                        "verificado": False,
+                        "cliques": 0,
                         "rating": 5,
-                        "lat": lat_final,
-                        "lon": lon_final,
-                        "data_cadastro": dados_originais.get('data_cadastro', datetime.datetime.now().strftime("%d/%m/%Y")),
-                        "ultima_atualizacao": datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
+                        "lat": lat_salvar,
+                        "lon": lon_salvar,
+                        "data_cadastro": datetime.datetime.now().strftime("%d/%m/%Y")
                     }
 
-                    # --- GRAVAÇÃO FINAL ---
-                    doc_ref.set(objeto_final)
+                    # 4. Envio para o Firestore usando o WhatsApp como ID (Evita duplicados)
+                    db.collection("profissionais").document(zap_input).set(novo_pro)
                     
                     st.balloons()
-                    st.success(f"🎊 EXCELENTE! {nome_in} agora faz parte do Ecossistema Grajaú Tem!")
+                    st.success(f"🎊 BEM-VINDO, {nome_input.upper()}! Seu cadastro foi concluído com sucesso.")
+                    st.info("💡 DICA: Vá na aba '👤 MEU PERFIL' para fazer login e ver seu saldo de moedas.")
                     
-                    # Gerar link para o seu WhatsApp Admin avisando do novo cadastro
-                    link_aviso = enviar_alerta_admin(nome_in, cat_final, id_limpo)
-                    st.markdown(f"[📢 Clique aqui para avisar o administrador via WhatsApp]({link_aviso})")
+                    # Alerta para o Admin (Usando sua função existente)
+                    link_admin = enviar_alerta_admin(nome_input, categoria_input, zap_input)
+                    st.markdown(f'[📢 Avisar Administração via WhatsApp]({link_admin})')
 
                 except Exception as e:
-                    st.error(f"❌ Erro Técnico: {e}")
+                    st.error(f"❌ Erro técnico ao salvar: {e}")
 with menu_abas[3]:
     st.markdown("### 🔒 Terminal de Administração")
     access_adm = st.text_input("Senha Master", type="password", key="adm_auth_final")
