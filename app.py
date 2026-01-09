@@ -643,6 +643,7 @@ with st.expander("📝 EDITAR MEU PERFIL & VITRINE", expanded=True):
             
         except Exception as e:
             st.error(f"❌ Erro ao atualizar: {e}")
+               
                 n_desc = st.text_area("Descrição", d.get('descricao', ''))
                 n_cat = st.text_input("Link Catálogo/Instagram", d.get('link_catalogo', ''))
                 
@@ -975,5 +976,6 @@ def finalizar_e_alinhar_layout():
 # CHAMADA FINAL - ESTA DEVE SER A ÚLTIMA LINHA DO SEU APP
 finalizar_e_alinhar_layout()
 # ------------------------------------------------------------------------------
+
 
 
