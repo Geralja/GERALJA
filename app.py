@@ -290,6 +290,35 @@ with tabs[1]:
                     st.error(f"Erro ao salvar: {e}")
             else:
                 st.warning("⚠️ Atenção: Nome, WhatsApp e GPS são obrigatórios!")
+                # ------------------------------------------------------------------------------
+# 1. IDENTIFICAÇÃO E BLINDAGEM DA VERSÃO V2
+# ------------------------------------------------------------------------------
+VERSION = "2.0.0-PRO"
+
+# Limpeza de Cache para garantir que a V2 não use lixo da V1
+if 'versao_sistema' not in st.session_state:
+    st.cache_resource.clear()
+    st.session_state.versao_sistema = VERSION
+
+# CSS de Transição Suave (Design Moderno V2)
+st.markdown("""
+    <style>
+        /* Badge de Versão no rodapé */
+        .version-badge {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            font-size: 10px;
+            background: #FF8C00;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            z-index: 9999;
+        }
+    </style>
+    <div class="version-badge">GeralJá V2</div>
+""", unsafe_allow_html=True)
+# ------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
@@ -331,3 +360,4 @@ def finalizar_e_alinhar_layout():
 # CHAMADA FINAL - ESTA DEVE SER A ÚLTIMA LINHA DO SEU APP
 finalizar_e_alinhar_layout()
 # ------------------------------------------------------------------------------
+
