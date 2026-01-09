@@ -465,8 +465,7 @@ with menu_abas[0]:
                     </div>
                    v """, unsafe_allow_html=True)
                     col_img, col_txt = st.columns([1, 4])
-                   
-                    with col_img:
+                   with col_img:
                         foto = p.get('foto_url', 'https://via.placeholder.com/150')
                         st.markdown(f'<img src="{foto}" style="width:75px; height:75px; border-radius:50%; object-fit:cover; border:3px solid {cor_borda}">', unsafe_allow_html=True)
                     
@@ -976,6 +975,7 @@ def finalizar_e_alinhar_layout():
 # CHAMADA FINAL - ESTA DEVE SER A ÚLTIMA LINHA DO SEU APP
 finalizar_e_alinhar_layout()
 # ------------------------------------------------------------------------------
+
 
 
 
