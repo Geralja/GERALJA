@@ -877,13 +877,41 @@ with menu_abas[4]: # Verifique se o índice da sua aba de feedback é 4 ou 5
                 st.warning("⚠️ Por favor, escreva algo antes de enviar.")
                 
 # ------------------------------------------------------------------------------
-# RODAPÉ ÚNICO (Final do Arquivo)
+# 16. FINALIZADOR DE LAYOUT E RODAPÉ AUTOMÁTICO (O "VARREDOR")
 # ------------------------------------------------------------------------------
-# --- RODAPÉ CORRIGIDO ---
-try:
-    ano_atual = datetime.datetime.now().year
-except:
-    ano_atual = 2025 # Valor padrão caso o módulo falhe
+def finalizar_e_alinhar_layout():
+    """
+    Esta função atua como um imã. Ela puxa todo o conteúdo anterior para 
+    o alinhamento correto e limpa distorções antes de carregar o rodapé.
+    """
+    st.write("---") # Linha de separação final
+    
+    # CSS de fechamento e centralização forçada
+    fechamento_estilo = """
+        <style>
+            /* Garante que o último elemento não cole no fundo da tela */
+            .main .block-container {
+                padding-bottom: 5rem !important;
+            }
+            
+            /* Força o alinhamento central de qualquer texto órfão no final */
+            .footer-clean {
+                text-align: center;
+                padding: 20px;
+                opacity: 0.7;
+                font-size: 0.8rem;
+                width: 100%;
+            }
+        </style>
+        
+        <div class="footer-clean">
+            <p>🎯 <b>GeralJá</b> - Sistema de Inteligência Local</p>
+            <p>Conectando quem precisa com quem sabe fazer.</p>
+            <p>v2.0 | © 2026 Todos os direitos reservados</p>
+        </div>
+    """
+    st.markdown(fechamento_estilo, unsafe_allow_html=True)
 
-st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
-
+# CHAMADA FINAL - ESTA DEVE SER A ÚLTIMA LINHA DO SEU APP
+finalizar_e_alinhar_layout()
+# ------------------------------------------------------------------------------
