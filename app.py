@@ -589,19 +589,60 @@ with menu_abas[2]:
             st.link_button("🚀 ENVIAR COMPROVANTE AGORA", f"https://wa.me/{ZAP_ADMIN}?text=Fiz o PIX: {st.session_state.user_id}", use_container_width=True)
 
         # 4. EDIÇÃO DE PERFIL (FOTOS, HORÁRIOS E SEGMENTO)
-        with st.expander("📝 EDITAR MEU PERFIL & VITRINE", expanded=True):
-            with st.form("perfil_v7"):
-                n_nome = st.text_input("Nome Profissional", d.get('nome', ''))
-                
-                # --- VOLTANDO A FUNÇÃO DE MUDAR SEGMENTO ---
-                # Procura a categoria atual na lista para deixar selecionada
-                try:
-                    index_cat = CATEGORIAS_OFICIAIS.index(d.get('area', 'Ajudante Geral'))
-                except:
-                    index_cat = 0
-                n_area = st.selectbox("Mudar meu Segmento/Área", CATEGORIAS_OFICIAIS, index=index_cat)
-                # ------------------------------------------
+with st.expander("📝 EDITAR MEU PERFIL & VITRINE", expanded=True):
+    # Criamos um formulário para os textos (evita recarregamento toda hora)
+    with st.form("perfil_v7"):
+        n_nome = st.text_input("Nome Profissional", d.get('nome', ''))
+        
+        # Seleção de Categoria
+        try:
+            index_cat = CATEGORIAS_OFICIAIS.index(d.get('area', 'Ajudante Geral'))
+        except:
+            index_cat = 0
+        n_area = st.selectbox("Mudar meu Segmento/Área", CATEGORIAS_OFICIAIS, index=index_cat)
+        
+        # Outros campos de texto (Horários, etc)
+        n_bio = st.text_area("Minha Descrição/Serviços", d.get('bio', ''))
+        
+        # Botão de salvar apenas textos
+        salvar_texto = st.form_submit_button("✅ SALVAR ALTERAÇÕES")
 
+    # --- CAMPO DE FOTOS (FORA DO FORM PARA NÃO DAR BUG) ---
+    st.markdown("### 📸 Minha Vitrine de Fotos")
+    n_fotos = st.file_uploader("Adicionar novas fotos (Máx 3)", accept_multiple_files=True, type=['png', 'jpg', 'jpeg'])
+    
+    # Lógica de Salvamento Turbinada
+    if salvar_texto:
+        try:
+            # Criamos o dicionário de atualização
+            updates = {
+                "nome": n_nome,
+                "area": n_area,
+                "bio": n_bio,
+                "ultima_edicao": datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
+            }
+            
+            # Se o usuário subiu fotos novas, processamos e adicionamos ao dicionário
+            if n_fotos:
+                lista_b64 = []
+                for foto in n_fotos:
+                    img_b64 = converter_img_b64(foto) # Sua função de conversão
+                    if img_b64:
+                        lista_b64.append(img_b64)
+                
+                if lista_b64:
+                    updates["fotos_trabalho"] = lista_b64 # Isso substitui as fotos antigas pelas novas
+
+            # O PULO DO GATO: .update() não apaga o resto do cadastro!
+            # d['id'] deve ser o seu campo identificador (ex: WhatsApp)
+            db.collection("profissionais").document(d['whatsapp']).update(updates)
+            
+            st.success("🚀 Perfil atualizado com sucesso!")
+            st.balloons() # Um efeito visual de sucesso
+            st.rerun() # Recarrega a página para mostrar os dados novos
+            
+        except Exception as e:
+            st.error(f"❌ Erro ao atualizar: {e}")
                 n_desc = st.text_area("Descrição", d.get('descricao', ''))
                 n_cat = st.text_input("Link Catálogo/Instagram", d.get('link_catalogo', ''))
                 
@@ -934,3 +975,4 @@ def finalizar_e_alinhar_layout():
 # CHAMADA FINAL - ESTA DEVE SER A ÚLTIMA LINHA DO SEU APP
 finalizar_e_alinhar_layout()
 # ------------------------------------------------------------------------------
+
