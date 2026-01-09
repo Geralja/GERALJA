@@ -8,3 +8,5 @@ nltk
 fuzzywuzzy
 python-Levenshtein
 streamlit-js-eval==0.1.7
+groq
+Pillow
