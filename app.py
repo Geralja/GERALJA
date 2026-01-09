@@ -14,12 +14,45 @@ import pandas as pd
 import unicodedata
 from streamlit_js_eval import streamlit_js_eval, get_geolocation
 import base64
+# ------------------------------------------------------------------------------
+# 11. DICIONÁRIO E IA DE TRADUÇÃO (O CÉREBRO DA BUSCA)
+# ------------------------------------------------------------------------------
+# Aqui você ensina a IA a entender o que o povo digita
+CONCEITOS_EXPANDIDOS = {
+    "vazamento": "Encanador",
+    "cano": "Encanador",
+    "fio": "Eletricista",
+    "curto": "Eletricista",
+    "luz": "Eletricista",
+    "fome": "Lanchonete / Restaurante",
+    "pizza": "Pizzaria",
+    "remedio": "Farmácia",
+    "dor": "Farmácia",
+    "celular": "Assistência Técnica",
+    "quebrou": "Assistência Técnica",
+    "frete": "Transportes",
+    "mudança": "Transportes"
+}
+
+def normalizar_para_ia(texto):
+    if not texto: return ""
+    return remover_acentos(texto).lower().strip()
+
+def ia_busca_consciente_v2(termo_usuario):
+    t_clean = normalizar_para_ia(termo_usuario)
+    
+    # O trecho que você queria:
+    for chave, categoria in CONCEITOS_EXPANDIDOS.items():
+        chave_norm = normalizar_para_ia(chave)
+        if re.search(rf"\b{chave_norm}\b", t_clean):
+            return categoria
+            
+    return termo_usuario.title()
+# ------------------------------------------------------------------------------
 def converter_img_b64(file):
     if file is not None:
         return base64.b64encode(file.getvalue()).decode()
     return None
-st.set_page_config(page_title="Geral Já", layout="wide")
-
 st.set_page_config(page_title="Geral Já", layout="wide")
 
 # --- CONFIGURAÇÃO DE TEMA MANUAL ---
@@ -915,3 +948,4 @@ def finalizar_e_alinhar_layout():
 # CHAMADA FINAL - ESTA DEVE SER A ÚLTIMA LINHA DO SEU APP
 finalizar_e_alinhar_layout()
 # ------------------------------------------------------------------------------
+
