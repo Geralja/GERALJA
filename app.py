@@ -364,43 +364,66 @@ else:
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
-# 16. FINALIZADOR DE LAYOUT E RODAPÉ AUTOMÁTICO (O "VARREDOR")
+# 16. FINALIZADOR DE LAYOUT E RODAPÉ AUTOMÁTICO (O "VARREDOR TURBINADO")
 # ------------------------------------------------------------------------------
 def finalizar_e_alinhar_layout():
     """
-    Esta função atua como um imã. Ela puxa todo o conteúdo anterior para 
-    o alinhamento correto e limpa distorções antes de carregar o rodapé.
+    Versão 2.0: Atua como um organizador de fluxo. 
+    Alinha o DOM do navegador e limpa paddings residuais do Streamlit.
     """
-    st.write("---") # Linha de separação final
+    # 1. Linha de Fechamento Visual Estilizada
+    st.markdown("<hr style='border: 1px solid #eee; margin: 2rem 0;'>", unsafe_allow_html=True)
     
-    # CSS de fechamento e centralização forçada
-    fechamento_estilo = """
+    # 2. CSS Mestre de Alinhamento e Finalização
+    # Inclui o "Respiro" inferior para o teclado do celular não cobrir o conteúdo
+    turbina_estilo = """
         <style>
-            /* Garante que o último elemento não cole no fundo da tela */
+            /* Alinhamento Automático de Blocos */
             .main .block-container {
-                padding-bottom: 5rem !important;
+                max-width: 900px !important;
+                padding-bottom: 8rem !important;
+                display: flex;
+                flex-direction: column;
+                justify-content: flex-start;
             }
-            
-            /* Força o alinhamento central de qualquer texto órfão no final */
-            .footer-clean {
-                text-align: center;
-                padding: 20px;
-                opacity: 0.7;
-                font-size: 0.8rem;
+
+            /* Centralização de Rodapé e Textos Órfãos */
+            .footer-premium {
+                position: relative;
+                bottom: 0;
                 width: 100%;
+                text-align: center;
+                padding: 40px 10px;
+                background: transparent;
+                border-top: 1px solid #f0f2f6;
+                color: #666;
+                font-family: sans-serif;
             }
+
+            .footer-premium b { color: #0047AB; }
+            .footer-premium span { color: #FF8C00; font-weight: bold; }
+
+            /* Ajuste para botões de WhatsApp não ficarem 'tortos' no fim */
+            .stButton { margin-bottom: 5px !important; }
         </style>
         
-        <div class="footer-clean">
-            <p>🎯 <b>GeralJá</b> - Sistema de Inteligência Local</p>
-            <p>Conectando quem precisa com quem sabe fazer.</p>
-            <p>v2.0 | © 2026 Todos os direitos reservados</p>
+        <div class="footer-premium">
+            <p>🎯 <b>GERAL</b><span>JÁ</span> - Sistema de Inteligência Local</p>
+            <p style="font-size: 0.9rem;">Conectando quem precisa com quem sabe fazer.</p>
+            <div style="margin-top: 10px; font-size: 0.75rem; opacity: 0.6;">
+                v2.0 PRO | Operando via Firebase Realtime<br>
+                © 2026 • Tecnologia Blindada
+            </div>
         </div>
     """
-    st.markdown(fechamento_estilo, unsafe_allow_html=True)
+    
+    st.markdown(turbina_estilo, unsafe_allow_html=True)
 
-# CHAMADA FINAL - ESTA DEVE SER A ÚLTIMA LINHA DO SEU APP
+# ------------------------------------------------------------------------------
+# CHAMADA FINAL - O ÚLTIMO COMANDO DO SEU SCRIPT
+# ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
 # ------------------------------------------------------------------------------
+
 
 
