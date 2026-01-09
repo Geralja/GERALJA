@@ -380,14 +380,7 @@ if comando == "abracadabra":
 menu_abas = st.tabs(lista_abas)
 
 # --- ABA 1: BUSCA (SISTEMA GPS + RANKING ELITE + VITRINE) ---
-with menu_abas[0]: # Exemplo de banner no topo da busca
-st.markdown(f"""
-    <div style="background-color: #0047AB; color: white; padding: 10px; border-radius: 10px; text-align: center;">
-        📢 <b>Anuncie no Grajaú Tem!</b><br>
-        A maior audiência da região na rádio e no Facebook. 
-        <a href="https://wa.me/seunumeroaqui" style="color: #FF8C00;">Clique aqui!</a>
-    </div>
-""", unsafe_allow_html=True)
+with menu_abas[0]:
     st.markdown("### 🏙️ O que você precisa?")
     
     # --- MOTOR DE LOCALIZAÇÃO EM TEMPO REAL ---
@@ -941,5 +934,3 @@ def finalizar_e_alinhar_layout():
 # CHAMADA FINAL - ESTA DEVE SER A ÚLTIMA LINHA DO SEU APP
 finalizar_e_alinhar_layout()
 # ------------------------------------------------------------------------------
-
-
