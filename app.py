@@ -693,9 +693,7 @@ LISTA_SEGMENTOS = sorted([
     "Psicólogo", "Restaurante", "Serralheiro", "Sorveteria", "Tatuador", 
     "Técnico de TV", "Transporte Escolar", "Vidraçaria", "Web Designer"
 ])
-
-# --- 2. ABA 1: CADASTRAR (SISTEMA PROFISSIONAL UNIFICADO) ---
- 
+# --- ABA 1: CADASTRAR (SISTEMA PROFISSIONAL UNIFICADO) ---
 with tabs[1]: 
     st.markdown("""
         <div style='text-align: center; background-color: #0047AB; padding: 10px; border-radius: 10px; color: white;'>
@@ -706,106 +704,82 @@ with tabs[1]:
     
     st.markdown("---")
 
-    # Formulário Único com Identidade Visual
+    # Formulário Único
     with st.form("form_master_geralja", clear_on_submit=False):
         st.subheader("📋 Dados de Identificação")
         col_nome, col_zap = st.columns(2)
         nome_in = col_nome.text_input("Nome do Negócio / Profissional", placeholder="Ex: Churrascaria do Gaúcho")
-        zap_in = col_zap.text_input("WhatsApp (DDD + Número)", placeholder="Ex: 99988776655")
+        zap_in = col_zap.text_input("WhatsApp (DDD + Número)", placeholder="Ex: 11999887766")
         
         tipo_in = st.radio("Selecione sua categoria:", ["👨‍🔧 Profissional Autônomo", "🏢 Comércio / Loja"], horizontal=True)
 
         st.markdown("---")
         st.subheader("🛠️ Especialidade e Segurança")
         col_cat, col_pass = st.columns(2)
-        cat_in = col_cat.selectbox("Qual seu segmento principal?", LISTA_SEGMENTOS)
-        senha_in = col_pass.text_input("Crie sua Senha de Edição", type="password", help="Importante para alterar suas fotos e dados depois.")
         
-        desc_in = st.text_area("Descrição de Impacto", placeholder="Fale sobre seus serviços, cardápio, promoções ou experiência...")
+        # Aqui usamos a lista que criamos com Churrascaria, Japonês, etc.
+        cat_in = col_cat.selectbox("Qual seu segmento principal?", LISTA_SEGMENTOS)
+        senha_in = col_pass.text_input("Crie sua Senha de Edição", type="password")
+        
+        desc_in = st.text_area("Descrição de Impacto (Cardápio ou Serviços)")
 
         st.markdown("---")
-        st.subheader("📸 Galeria de Fotos (Destaque seu Trabalho)")
-        st.caption("A primeira foto será a sua imagem principal na busca.")
-        
+        st.subheader("📸 Galeria de Fotos (Até 3 fotos)")
         f_col1, f_col2, f_col3 = st.columns(3)
-        foto1 = f_col1.file_uploader("Foto Principal", type=['jpg', 'jpeg', 'png'], key="up_foto1")
-        foto2 = f_col2.file_uploader("Foto 2 (Trabalho)", type=['jpg', 'jpeg', 'png'], key="up_foto2")
-        foto3 = f_col3.file_uploader("Foto 3 (Trabalho)", type=['jpg', 'jpeg', 'png'], key="up_foto3")
+        foto1 = f_col1.file_uploader("Foto 1 (Principal)", type=['jpg', 'jpeg', 'png'], key="f1")
+        foto2 = f_col2.file_uploader("Foto 2", type=['jpg', 'jpeg', 'png'], key="f2")
+        foto3 = f_col3.file_uploader("Foto 3", type=['jpg', 'jpeg', 'png'], key="f3")
 
-        st.markdown("<br>", unsafe_allow_html=True)
         btn_submit = st.form_submit_button("✅ SALVAR MEU CADASTRO AGORA", use_container_width=True)
 
-    # 3. Lógica de Processamento Blindada
+    # --- Lógica de Gravação (Abaixo do Form, mas dentro da Aba) ---
     if btn_submit:
         if not nome_in or not zap_in or not senha_in:
-            st.error("⚠️ ERRO: Você esqueceu de preencher Nome, WhatsApp ou Senha!")
+            st.error("⚠️ Preencha Nome, WhatsApp e Senha!")
         else:
-            with st.spinner("📦 Conectando ao Banco de Dados e salvando fotos..."):
-                try:
-                    # Padroniza o ID pelo WhatsApp (limpa traços e parênteses)
-                    id_limpo = re.sub(r'\D', '', zap_in)
-                    doc_ref = db.collection("profissionais").document(id_limpo)
-                    doc_snap = doc_ref.get()
+            try:
+                id_limpo = "".join(filter(str.isdigit, zap_in))
+                doc_ref = db.collection("profissionais").document(id_limpo)
+                doc_snap = doc_ref.get()
 
-                    # --- A TRAVA DE SEGURANÇA MESTRE ---
-                    cat_final = cat_in
-                    dados_originais = {}
+                # Trava de Segurança
+                cat_final = cat_in
+                dados_velhos = {}
+                if doc_snap.exists:
+                    dados_velhos = doc_snap.to_dict()
+                    if dados_velhos.get('senha') != senha_in:
+                        st.error("🚫 Senha incorreta!")
+                        st.stop()
+                    cat_final = dados_velhos.get('area', cat_in) # TRAVA: não muda segmento
 
-                    if doc_snap.exists:
-                        dados_originais = doc_snap.to_dict()
-                        # Se já existe, exige a senha para qualquer alteração
-                        if dados_originais.get('senha') != senha_in:
-                            st.error("🚫 ACESSO NEGADO: Este número já está cadastrado. A senha está incorreta!")
-                            st.stop()
-                        else:
-                            # SENHA CORRETA: Bloqueia a mudança de segmento para não bagunçar o banco
-                            cat_final = dados_originais.get('area', dados_originais.get('categoria', cat_in))
-                            st.info(f"♻️ Perfil reconhecido! Mantivemos seu segmento como '{cat_final}'.")
-                    
-                    # --- PROCESSAMENTO DAS 3 FOTOS ---
-                    # Se não subir foto nova, tenta manter a que já existia no banco
-                    b64_1 = f"data:image/png;base64,{converter_img_b64(foto1)}" if foto1 else (dados_originais.get('foto_url', '') if doc_snap.exists else "")
-                    b64_2 = f"data:image/png;base64,{converter_img_b64(foto2)}" if foto2 else (dados_originais.get('foto2', '') if doc_snap.exists else "")
-                    b64_3 = f"data:image/png;base64,{converter_img_b64(foto3)}" if foto3 else (dados_originais.get('foto3', '') if doc_snap.exists else "")
+                # Processamento das Fotos
+                img1 = f"data:image/png;base64,{converter_img_b64(foto1)}" if foto1 else dados_velhos.get('foto_url', '')
+                img2 = f"data:image/png;base64,{converter_img_b64(foto2)}" if foto2 else dados_velhos.get('foto2', '')
+                img3 = f"data:image/png;base64,{converter_img_b64(foto3)}" if foto3 else dados_velhos.get('foto3', '')
 
-                    # --- CAPTURA DE LOCALIZAÇÃO ---
-                    lat_final = minha_lat if 'minha_lat' in locals() else LAT_REF
-                    lon_final = minha_lon if 'minha_lon' in locals() else LON_REF
+                # Objeto para o Firebase
+                dados = {
+                    "nome": nome_in,
+                    "area": cat_final,
+                    "whatsapp": id_limpo,
+                    "senha": senha_in,
+                    "tipo": tipo_in,
+                    "descricao": desc_in,
+                    "foto_url": img1,
+                    "foto2": img2,
+                    "foto3": img3,
+                    "status": "ativo",
+                    "lat": minha_lat if 'minha_lat' in locals() else LAT_REF,
+                    "lon": minha_lon if 'minha_lon' in locals() else LON_REF,
+                    "data_cadastro": dados_velhos.get('data_cadastro', datetime.datetime.now().strftime("%d/%m/%Y"))
+                }
 
-                    # --- MONTAGEM DO OBJETO COMPLETO ---
-                    objeto_final = {
-                        "nome": nome_in,
-                        "area": cat_final, # Campo com Trava
-                        "whatsapp": id_limpo,
-                        "senha": senha_in,
-                        "tipo": tipo_in,
-                        "descricao": desc_in,
-                        "foto_url": b64_1,
-                        "foto2": b64_2,
-                        "foto3": b64_3,
-                        "status": "ativo",
-                        "verificado": dados_originais.get('verificado', False),
-                        "ranking_elite": dados_originais.get('ranking_elite', 0),
-                        "cliques": dados_originais.get('cliques', 0),
-                        "rating": 5,
-                        "lat": lat_final,
-                        "lon": lon_final,
-                        "data_cadastro": dados_originais.get('data_cadastro', datetime.datetime.now().strftime("%d/%m/%Y")),
-                        "ultima_atualizacao": datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
-                    }
-
-                    # --- GRAVAÇÃO FINAL ---
-                    doc_ref.set(objeto_final)
-                    
-                    st.balloons()
-                    st.success(f"🎊 EXCELENTE! {nome_in} agora faz parte do Ecossistema Grajaú Tem!")
-                    
-                    # Gerar link para o seu WhatsApp Admin avisando do novo cadastro
-                    link_aviso = enviar_alerta_admin(nome_in, cat_final, id_limpo)
-                    st.markdown(f"[📢 Clique aqui para avisar o administrador via WhatsApp]({link_aviso})")
-
-                except Exception as e:
-                    st.error(f"❌ Erro Técnico: {e}")
+                doc_ref.set(dados)
+                st.balloons()
+                st.success(f"🎊 {nome_in} cadastrado com sucesso!")
+                
+            except Exception as e:
+                st.error(f"Erro: {e}")
 with menu_abas[3]:
     st.markdown("### 🔒 Terminal de Administração")
     access_adm = st.text_input("Senha Master", type="password", key="adm_auth_final")
@@ -1031,6 +1005,7 @@ def finalizar_e_alinhar_layout():
 # CHAMADA FINAL - ESTA DEVE SER A ÚLTIMA LINHA DO SEU APP
 finalizar_e_alinhar_layout()
 # ------------------------------------------------------------------------------
+
 
 
 
