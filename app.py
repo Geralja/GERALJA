@@ -946,44 +946,74 @@ with menu_abas[4]: # Verifique se o índice da sua aba de feedback é 4 ou 5
                 st.warning("⚠️ Por favor, escreva algo antes de enviar.")
                 
 # ------------------------------------------------------------------------------
-# 16. FINALIZADOR DE LAYOUT E RODAPÉ AUTOMÁTICO (O "VARREDOR")
+# 16. FINALIZADOR DE LAYOUT E RODAPÉ AUTOMÁTICO (O "VARREDOR 3.0")
 # ------------------------------------------------------------------------------
 def finalizar_e_alinhar_layout():
     """
-    Esta função atua como um imã. Ela puxa todo o conteúdo anterior para 
-    o alinhamento correto e limpa distorções antes de carregar o rodapé.
+    Versão 3.0: Além de alinhar, ele limpa erros de floats e garante
+    que o rodapé fique sempre no final, independente do tamanho da tela.
     """
-    st.write("---") # Linha de separação final
+    # 1. Força uma quebra de qualquer elemento flutuante anterior
+    st.markdown('<div style="clear: both;"></div>', unsafe_allow_html=True)
+    st.write("---") 
     
-    # CSS de fechamento e centralização forçada
-    fechamento_estilo = """
+    # 2. CSS Avançado para travar o layout
+    estilo_blindado = """
         <style>
-            /* Garante que o último elemento não cole no fundo da tela */
-            .main .block-container {
-                padding-bottom: 5rem !important;
+            /* Evita que o conteúdo cole nas bordas em celulares */
+            @media (max-width: 640px) {
+                .main .block-container {
+                    padding-left: 1rem !important;
+                    padding-right: 1rem !important;
+                }
             }
-            
-            /* Força o alinhamento central de qualquer texto órfão no final */
-            .footer-clean {
+
+            /* Estilização do Rodapé */
+            .footer-container {
                 text-align: center;
-                padding: 20px;
-                opacity: 0.7;
-                font-size: 0.8rem;
-                width: 100%;
+                padding: 40px 20px;
+                background-color: #f9f9f9;
+                border-radius: 20px 20px 0 0;
+                margin-top: 50px;
+                border-top: 1px solid #eee;
+            }
+
+            .footer-brand {
+                color: #0047AB;
+                font-weight: bold;
+                font-size: 1.2rem;
+                margin-bottom: 5px;
+            }
+
+            .footer-tagline {
+                color: #666;
+                font-size: 0.9rem;
+                margin-bottom: 15px;
             }
         </style>
         
-        <div class="footer-clean">
-            <p>🎯 <b>GeralJá</b> - Sistema de Inteligência Local</p>
-            <p>Conectando quem precisa com quem sabe fazer.</p>
-            <p>v2.0 | © 2026 Todos os direitos reservados</p>
+        <div class="footer-container">
+            <div class="footer-brand">🎯 GeralJá</div>
+            <div class="footer-tagline">Conectando o Grajaú com inteligência e tecnologia.</div>
+            <div style="opacity: 0.5; font-size: 0.7rem;">
+                v2.0 | © 2026 Sistema de Inteligência Local<br>
+                Orgulhosamente desenvolvido para a comunidade.
+            </div>
         </div>
     """
-    st.markdown(fechamento_estilo, unsafe_allow_html=True)
+    st.markdown(estilo_blindado, unsafe_allow_html=True)
 
-# CHAMADA FINAL - ESTA DEVE SER A ÚLTIMA LINHA DO SEU APP
-finalizar_e_alinhar_layout()
 # ------------------------------------------------------------------------------
+# EXECUÇÃO FINAL
+# ------------------------------------------------------------------------------
+try:
+    finalizar_e_alinhar_layout()
+except Exception as e:
+    # Se até o varredor der erro, ele não derruba o site
+    st.write("---")
+    st.caption("GeralJá 2026")
+# ------------------------------------------------------------------------------
+
 
 
 
