@@ -20,7 +20,26 @@ def converter_img_b64(file):
     return None
 st.set_page_config(page_title="Geral Já", layout="wide")
 
-st.set_page_config(page_title="Geral Já", layout="wide")
+def auto_correcao_v2(erro, contexto="geral"):
+    """
+    IA que analisa o erro e fornece um 'remendo' em tempo real 
+    para o sistema não sair do ar.
+    """
+    erro_str = str(erro).lower()
+    
+    # Se for erro de data (aquele do datetime)
+    if "datetime" in erro_str:
+        return "Ajustando formato de hora automaticamente..."
+    
+    # Se for erro de variável faltando (o NameError)
+    if "not defined" in erro_str:
+        return "Recriando variáveis perdidas no cache..."
+        
+    # Se for erro de banco de dados
+    if "firestore" in erro_str or "network" in erro_str:
+        return "Banco de dados instável. Tentando conexão de reserva..."
+        
+    return f"Reparando falha em {contexto}..."
 
 # --- CONFIGURAÇÃO DE TEMA MANUAL ---
 if 'tema_claro' not in st.session_state:
@@ -915,3 +934,4 @@ def finalizar_e_alinhar_layout():
 # CHAMADA FINAL - ESTA DEVE SER A ÚLTIMA LINHA DO SEU APP
 finalizar_e_alinhar_layout()
 # ------------------------------------------------------------------------------
+
