@@ -393,9 +393,68 @@ if comando == "abracadabra":
 # 4. Cria as abas no Streamlit
 menu_abas = st.tabs(lista_abas)
 
-# --- ABA 1: BUSCA (SISTEMA GPS + RANKING ELITE + VITRINE) ---
-with menu_abas[0]:
-    st.markdown("### 🏙️ O que você precisa?")
+# ------------------------------------------------------------------------------
+# 13. MOTOR DE BUSCA V2: AUTO-REPARO EM TEMPO REAL (NÃO AFETA O FIRESTORE)
+# ------------------------------------------------------------------------------
+if busca:
+    termo_ia = ia_busca_consciente_v2(busca)
+    
+    try:
+        profs_ref = db.collection("profissionais").where("status", "==", "ativo").stream()
+        res = []
+        
+        for p in profs_ref:
+            d = p.to_dict()
+            
+            # --- FILTRO DE SEGURANÇA: Normaliza os dados da V1 ---
+            nome_p = remover_acentos(d.get('nome', ''))
+            cat_p = remover_acentos(d.get('categoria', ''))
+            termo_p = remover_acentos(busca)
+            termo_ia_p = remover_acentos(termo_ia)
+            
+            if termo_ia_p in cat_p or termo_p in nome_p or termo_p in cat_p:
+                # 1. TRATAMENTO DE DISTÂNCIA: Se não tiver GPS no banco, vira 0.0
+                lat_dest = d.get('latitude')
+                lon_dest = d.get('longitude')
+                d['dist'] = calcular_distancia(lat_c, lon_c, lat_dest, lon_dest)
+                
+                # 2. TRATAMENTO DE CAMPOS V2: Se não existirem, criamos variáveis temporárias
+                d['ranking_elite'] = d.get('ranking_elite', 0) # Se não tiver, assume 0
+                d['id_doc'] = p.id
+                
+                res.append(d)
+
+        # 3. VERIFICAÇÃO SE EXISTE RESULTADO
+        if len(res) > 0:
+            df = pd.DataFrame(res)
+            
+            # Ordenação segura: mesmo que os campos não existam no banco, 
+            # eles agora existem no nosso DataFrame 'df' criado acima.
+            df = df.sort_values(by=['ranking_elite', 'dist'], ascending=[False, True])
+
+            # 4. DESENHO DOS CARDS
+            for _, prof in df.iterrows():
+                st.markdown(f"""
+                    <div style="border: 1px solid #ddd; padding: 15px; border-radius: 12px; margin-bottom: 10px; background: white;">
+                        <h3 style="margin:0; color: #0047AB;">{prof.get('nome')}</h3>
+                        <p style="color: #FF8C00; font-weight: bold; margin: 0;">{prof.get('categoria')}</p>
+                        <p style="font-size: 0.8em; color: #666;">📍 Distância: {prof.get('dist')} km</p>
+                    </div>
+                """, unsafe_allow_html=True)
+                
+                c1, c2 = st.columns(2)
+                with c1:
+                    zap = re.sub(r'\D', '', str(prof.get('whatsapp', '')))
+                    st.link_button("🟢 WHATSAPP", f"https://wa.me/55{zap}", use_container_width=True)
+                with c2:
+                    # Chave única baseada no ID do documento do Firebase
+                    st.button("📄 PERFIL", key=f"v2_perfil_{prof['id_doc']}", use_container_width=True)
+        else:
+            st.warning(f"🔎 Nenhum profissional encontrado para '{busca}'.")
+
+    except Exception as e:
+        st.error(f"Erro ao processar dados: {e}")
+# ------------------------------------------------------------------------------
     
     # --- MOTOR DE LOCALIZAÇÃO EM TEMPO REAL ---
     with st.expander("📍 Sua Localização (GPS)", expanded=False):
@@ -948,4 +1007,5 @@ def finalizar_e_alinhar_layout():
 # CHAMADA FINAL - ESTA DEVE SER A ÚLTIMA LINHA DO SEU APP
 finalizar_e_alinhar_layout()
 # ------------------------------------------------------------------------------
+
 
