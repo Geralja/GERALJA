@@ -394,66 +394,78 @@ if comando == "abracadabra":
 menu_abas = st.tabs(lista_abas)
 
 # ------------------------------------------------------------------------------
-# 13. MOTOR DE BUSCA V2: AUTO-REPARO EM TEMPO REAL (NÃO AFETA O FIRESTORE)
+# 10. ABA 1: MOTOR DE BUSCA (ESTRUTURA BLINDADA V2)
 # ------------------------------------------------------------------------------
-if busca:
-    termo_ia = ia_busca_consciente_v2(busca)
+with tabs[0]:
+    st.markdown("<h2 style='text-align: center;'>🔍 Radar GeralJá</h2>", unsafe_allow_html=True)
     
-    try:
-        profs_ref = db.collection("profissionais").where("status", "==", "ativo").stream()
-        res = []
-        
-        for p in profs_ref:
-            d = p.to_dict()
-            
-            # --- FILTRO DE SEGURANÇA: Normaliza os dados da V1 ---
-            nome_p = remover_acentos(d.get('nome', ''))
-            cat_p = remover_acentos(d.get('categoria', ''))
-            termo_p = remover_acentos(busca)
-            termo_ia_p = remover_acentos(termo_ia)
-            
-            if termo_ia_p in cat_p or termo_p in nome_p or termo_p in cat_p:
-                # 1. TRATAMENTO DE DISTÂNCIA: Se não tiver GPS no banco, vira 0.0
-                lat_dest = d.get('latitude')
-                lon_dest = d.get('longitude')
-                d['dist'] = calcular_distancia(lat_c, lon_c, lat_dest, lon_dest)
-                
-                # 2. TRATAMENTO DE CAMPOS V2: Se não existirem, criamos variáveis temporárias
-                d['ranking_elite'] = d.get('ranking_elite', 0) # Se não tiver, assume 0
-                d['id_doc'] = p.id
-                
-                res.append(d)
+    # 1. Campo de Entrada (A variável 'busca' nasce aqui)
+    busca = st.text_input("O que você precisa?", placeholder="Ex: Encanador, Pizza, Mecânico...", key="input_busca_v2")
+    
+    st.write("---") # Linha de separação
 
-        # 3. VERIFICAÇÃO SE EXISTE RESULTADO
-        if len(res) > 0:
-            df = pd.DataFrame(res)
+    # 2. Processamento da Busca (Só entra aqui se 'busca' tiver texto)
+    if busca:
+        try:
+            # Chamar a IA para traduzir o termo
+            termo_ia = ia_busca_consciente_v2(busca)
             
-            # Ordenação segura: mesmo que os campos não existam no banco, 
-            # eles agora existem no nosso DataFrame 'df' criado acima.
-            df = df.sort_values(by=['ranking_elite', 'dist'], ascending=[False, True])
-
-            # 4. DESENHO DOS CARDS
-            for _, prof in df.iterrows():
-                st.markdown(f"""
-                    <div style="border: 1px solid #ddd; padding: 15px; border-radius: 12px; margin-bottom: 10px; background: white;">
-                        <h3 style="margin:0; color: #0047AB;">{prof.get('nome')}</h3>
-                        <p style="color: #FF8C00; font-weight: bold; margin: 0;">{prof.get('categoria')}</p>
-                        <p style="font-size: 0.8em; color: #666;">📍 Distância: {prof.get('dist')} km</p>
-                    </div>
-                """, unsafe_allow_html=True)
+            # Buscar no Firebase
+            profs_ref = db.collection("profissionais").where("status", "==", "ativo").stream()
+            res = []
+            
+            for p in profs_ref:
+                d = p.to_dict()
+                # Normalização para comparação
+                n_p = remover_acentos(d.get('nome', '')).lower()
+                c_p = remover_acentos(d.get('categoria', '')).lower()
+                t_user = remover_acentos(busca).lower()
+                t_ia = remover_acentos(termo_ia).lower()
                 
-                c1, c2 = st.columns(2)
-                with c1:
-                    zap = re.sub(r'\D', '', str(prof.get('whatsapp', '')))
-                    st.link_button("🟢 WHATSAPP", f"https://wa.me/55{zap}", use_container_width=True)
-                with c2:
-                    # Chave única baseada no ID do documento do Firebase
-                    st.button("📄 PERFIL", key=f"v2_perfil_{prof['id_doc']}", use_container_width=True)
-        else:
-            st.warning(f"🔎 Nenhum profissional encontrado para '{busca}'.")
+                # Filtro: Se bater com o que o usuário digitou ou com o que a IA interpretou
+                if t_user in n_p or t_user in c_p or t_ia in c_p:
+                    # Cálculo de distância (Seguro: se falhar vira 0)
+                    d['dist'] = calcular_distancia(lat_c, lon_c, d.get('latitude'), d.get('longitude'))
+                    d['ranking_elite'] = d.get('ranking_elite', 0)
+                    d['id_doc'] = p.id
+                    res.append(d)
 
-    except Exception as e:
-        st.error(f"Erro ao processar dados: {e}")
+            # 3. Exibição dos Resultados (Proteção contra NameError)
+            if len(res) > 0:
+                df_resultados = pd.DataFrame(res)
+                
+                # Ordenação: Quem é Elite primeiro, depois os mais próximos
+                df_resultados = df_resultados.sort_values(by=['ranking_elite', 'dist'], ascending=[False, True])
+                
+                st.info(f"📍 Encontramos {len(df_resultados)} opções próximas a você.")
+
+                for _, prof in df_resultados.iterrows():
+                    # Card Visual
+                    st.markdown(f"""
+                        <div style="border: 1px solid #ddd; padding: 15px; border-radius: 12px; margin-bottom: 10px; background: white;">
+                            <h3 style="margin:0; color: #0047AB;">{prof.get('nome')}</h3>
+                            <p style="color: #FF8C00; font-weight: bold; margin: 0;">{prof.get('categoria')}</p>
+                            <p style="font-size: 0.8em; color: #666;">📍 Distância: {prof.get('dist')} km</p>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Botões
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        zap = re.sub(r'\D', '', str(prof.get('whatsapp', '')))
+                        st.link_button("🟢 WHATSAPP", f"https://wa.me/55{zap}", use_container_width=True)
+                    with c2:
+                        st.button("📄 PERFIL", key=f"perfil_{prof['id_doc']}", use_container_width=True)
+            else:
+                st.warning(f"😕 Não encontramos profissionais para '{busca}'. Tente outro termo!")
+
+        except Exception as e:
+            st.error(f"Erro no processamento: {e}")
+    
+    else:
+        # Mensagem quando a barra de busca está vazia
+        st.write("Dica: Tente buscar por serviços como 'conserto de pia' ou 'lanche'.")
+
 # ------------------------------------------------------------------------------
     
     # --- MOTOR DE LOCALIZAÇÃO EM TEMPO REAL ---
@@ -1007,5 +1019,6 @@ def finalizar_e_alinhar_layout():
 # CHAMADA FINAL - ESTA DEVE SER A ÚLTIMA LINHA DO SEU APP
 finalizar_e_alinhar_layout()
 # ------------------------------------------------------------------------------
+
 
 
