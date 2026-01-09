@@ -695,7 +695,7 @@ LISTA_SEGMENTOS = sorted([
 ])
 
 # --- 2. ABA 1: CADASTRAR (SISTEMA PROFISSIONAL UNIFICADO) ---
-# Nota: Verifique se o nome da sua variável de abas é 'tabs' ou 'menu_abas'
+ 
 with tabs[1]: 
     st.markdown("""
         <div style='text-align: center; background-color: #0047AB; padding: 10px; border-radius: 10px; color: white;'>
@@ -1031,5 +1031,6 @@ def finalizar_e_alinhar_layout():
 # CHAMADA FINAL - ESTA DEVE SER A ÚLTIMA LINHA DO SEU APP
 finalizar_e_alinhar_layout()
 # ------------------------------------------------------------------------------
+
 
 
