@@ -319,7 +319,49 @@ st.markdown("""
     <div class="version-badge">GeralJá V2</div>
 """, unsafe_allow_html=True)
 # ------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# 13. MOTOR DE BUSCA V2 (BLINDAGEM CONTRA NAMEERROR)
+# ------------------------------------------------------------------------------
+if res:
+    try:
+        # Criamos o DataFrame (df) de forma segura
+        df = pd.DataFrame(res)
+        
+        # Blindagem: Se o GPS falhar, garantimos que a coluna 'dist' exista para não dar erro no Sort
+        if 'dist' not in df.columns:
+            df['dist'] = 0.0
+            
+        # Ordenação Inteligente
+        df = df.sort_values(by=['ranking_elite', 'dist'], ascending=[False, True])
 
+        # AQUI COMEÇA A REPETIÇÃO (LAPIDADA)
+        for _, prof in df.iterrows():
+            # Criamos um ID único para cada botão e card
+            p_id = prof.get('id', 'temp')
+            
+            with st.container():
+                st.markdown(f"""
+                    <div style="border: 1px solid #ddd; padding: 15px; border-radius: 12px; margin-bottom: 10px;">
+                        <h3 style="margin:0; color: #0047AB;">{prof.get('nome', 'Sem Nome')}</h3>
+                        <p style="color: #FF8C00; font-weight: bold; margin: 0;">{prof.get('categoria', 'Geral')}</p>
+                        <p style="font-size: 0.8em;">📍 Distância: {prof.get('dist', 0.0)} km</p>
+                    </div>
+                """, unsafe_allow_html=True)
+                
+                # Colunas de ação sob o card
+                ca, cb = st.columns(2)
+                with ca:
+                    tel_limpo = re.sub(r'\D', '', str(prof.get('whatsapp', '')))
+                    st.link_button("🟢 WHATSAPP", f"https://wa.me/55{tel_limpo}", use_container_width=True)
+                with cb:
+                    if st.button("📄 VER PERFIL", key=f"btn_{p_id}", use_container_width=True):
+                        st.info(f"Carregando detalhes de {prof.get('nome')}...")
+    
+    except Exception as e:
+        st.error(f"Erro ao processar dados da busca: {e}")
+else:
+    st.warning("😕 Nenhum profissional encontrado para este termo.")
+# ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 # 16. FINALIZADOR DE LAYOUT E RODAPÉ AUTOMÁTICO (O "VARREDOR")
@@ -360,4 +402,5 @@ def finalizar_e_alinhar_layout():
 # CHAMADA FINAL - ESTA DEVE SER A ÚLTIMA LINHA DO SEU APP
 finalizar_e_alinhar_layout()
 # ------------------------------------------------------------------------------
+
 
