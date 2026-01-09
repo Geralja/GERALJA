@@ -400,7 +400,7 @@ with tabs[0]:
     st.markdown("<h2 style='text-align: center;'>🔍 Radar GeralJá</h2>", unsafe_allow_html=True)
     
     # 1. Campo de Entrada (A variável 'busca' nasce aqui)
-    busca = st.text_input("O que você precisa?", placeholder="Ex: Encanador, Pizza, Mecânico...", key="input_busca_v2")
+   if busca = st.text_input("O que você precisa?", placeholder="Ex: Encanador, Pizza, Mecânico...", key="input_busca_v2")
     
     st.write("---") # Linha de separação
 
@@ -1019,6 +1019,7 @@ def finalizar_e_alinhar_layout():
 # CHAMADA FINAL - ESTA DEVE SER A ÚLTIMA LINHA DO SEU APP
 finalizar_e_alinhar_layout()
 # ------------------------------------------------------------------------------
+
 
 
 
