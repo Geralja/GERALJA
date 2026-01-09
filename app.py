@@ -1,5 +1,5 @@
 # ==============================================================================
-# GERALJÁ: SISTEMA DE INTELIGÊNCIA LOCAL (v2.0) - BLINDADO
+# GERALJÁ: CRIANDO SOLUÇÕES
 # ==============================================================================
 import streamlit as st
 import firebase_admin
@@ -13,107 +13,208 @@ import time
 import pandas as pd
 import unicodedata
 from streamlit_js_eval import streamlit_js_eval, get_geolocation
-from groq import Groq  
-from PIL import Image  
-import io
-
-# 1. CONFIGURAÇÃO ÚNICA (Deve ser a primeira linha Streamlit)
-st.set_page_config(page_title="GeralJá | Criando Soluções", page_icon="🎯", layout="wide")
-
-# 2. FUNÇÕES DE UTILIDADE (Soma de tudo que você pediu)
-def remover_acentos(texto):
-    if not texto: return ""
-    return "".join(c for c in unicodedata.normalize('NFD', texto)
-                  if unicodedata.category(c) != 'Mn').lower()
-
+import base64
 def converter_img_b64(file):
-    """Soma a PIL para reduzir fotos e base64 para o banco"""
     if file is not None:
-        try:
-            img = Image.open(file)
-            img.thumbnail((600, 600)) 
-            buffer = io.BytesIO()
-            img.save(buffer, format="JPEG", quality=80)
-            return base64.b64encode(buffer.getvalue()).decode()
-        except Exception as e:
-            st.error(f"Erro na imagem: {e}")
+        return base64.b64encode(file.getvalue()).decode()
     return None
+st.set_page_config(page_title="Geral Já", layout="wide")
 
-def injetar_estilo_visual():
-    """Soma o corretor de modo claro/escuro e limpa o layout"""
+st.set_page_config(page_title="Geral Já", layout="wide")
+
+# --- CONFIGURAÇÃO DE TEMA MANUAL ---
+if 'tema_claro' not in st.session_state:
+    st.session_state.tema_claro = False
+
+# Interruptor no topo para o usuário consertar a tela se estiver preta
+st.session_state.tema_claro = st.toggle("☀️ FORÇAR MODO CLARO (Use se a tela estiver escura)", value=st.session_state.tema_claro)
+
+if st.session_state.tema_claro:
     st.markdown("""
         <style>
-            #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {display: none !important;}
             .stApp { background-color: white !important; }
             * { color: black !important; }
-            [data-testid="stExpander"], input, textarea {
-                background-color: #ffffff !important; border: 1px solid #ddd !important; color: black !important;
-            }
+            .stMarkdown, p, span, label, div { color: black !important; }
+            iframe { background-color: white !important; }
+            .stButton button { background-color: #f0f2f6 !important; color: black !important; border: 1px solid #ccc !important; }
+            [data-testid="stExpander"] { background-color: #f9f9f9 !important; border: 1px solid #ddd !important; }
+            input { background-color: white !important; color: black !important; border: 1px solid #ccc !important; }
         </style>
     """, unsafe_allow_html=True)
 
-# 3. CONEXÕES (Soma de Firebase + Groq via Secrets)
-@st.cache_resource
-def inicializar_conexoes():
-    # Firebase
-    if not firebase_admin._apps:
-        fb_json = json.loads(base64.b64decode(st.secrets["FIREBASE_BASE64"]).decode('utf-8'))
-        firebase_admin.initialize_app(credentials.Certificate(fb_json))
-    
-    # Groq IA
-    groq_client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-    return firestore.client(), groq_client
+# ... seus outros imports (firebase, base64, etc)
 
-db, ai_engine = inicializar_conexoes()
-injetar_estilo_visual()
+st.set_page_config(page_title="Geral Já", layout="wide")
 
-# 4. POLÍTICAS E CATEGORIAS (Manteve o que é essencial)
-PIX_OFICIAL = "11991853488"
-ZAP_ADMIN = "5511991853488"
-CATEGORIAS_OFICIAIS = [
-    "Academia", "Açougue", "Adega", "Ajudante Geral", "Assistência Técnica", 
-    "Barbearia/Salão", "Carreto", "Chaveiro", "Confeiteiro(a)", "Diarista / Faxineira", 
-    "Eletricista", "Encanador", "Lanchonete", "Mecânico de Autos", "Montador de Móveis", 
-    "Pedreiro", "Pet Shop", "Pintor", "Pizzaria", "Técnico de Celular"
-] # Reduzi aqui para exemplo, mas você pode manter sua lista completa.
-# ==============================================================================
-# 2. CAMADA DE PERSISTÊNCIA (FIREBASE) - VERSÃO CORREÇÃO CRÍTICA
-# ==============================================================================
+# --- COLOQUE AQUI: CSS PARA CORRIGIR O MODO ESCURO E CLARO ---
+st.markdown('''
+    <style>
+        /* Força o preenchimento no topo */
+        div.block-container {padding-top:2rem;}
+        
+        /* Garante que os cards HTML se adaptem ao tema */
+        .metric-card {
+            border: 1px solid #555; 
+            border-radius: 10px; 
+            padding: 10px; 
+            text-align: center;
+            margin-bottom: 10px;
+        }
+    </style>
+''', unsafe_allow_html=True)
+
+# CSS para evitar que o fundo fique preto por erro de renderização
+st.markdown("""
+    <style>
+    .stApp {
+        background-color: white;
+    }
+    [data-testid="stExpander"] {
+        background-color: #ffffff !important;
+        border: 1px solid #f0f2f6;
+    }
+    </style>
+""", unsafe_allow_html=True)
+st.set_page_config(page_title="GeralJá", layout="wide")
+
+# Remove o menu superior, o rodapé 'Made with Streamlit' e o botão de Deploy
+st.markdown("""
+    <style>
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    header {display: none !important;}
+    </style>
+""", unsafe_allow_html=True)
+
+# ------------------------------------------------------------------------------
+# 1. CONFIGURAÇÃO DE AMBIENTE E PERFORMANCE
+# ------------------------------------------------------------------------------
+st.set_page_config(
+    page_title="GeralJá | Criando Soluções",
+    page_icon="🇧🇷",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+
+# ------------------------------------------------------------------------------
+# 2. CAMADA DE PERSISTÊNCIA (FIREBASE)
+# ------------------------------------------------------------------------------
 @st.cache_resource
 def conectar_banco_master():
     if not firebase_admin._apps:
         try:
-            # Tenta pegar dos Secrets, se não achar, avisa sem travar tudo
             if "FIREBASE_BASE64" not in st.secrets:
-                st.error("⚠️ Configuração Incompleta: FIREBASE_BASE64 não encontrada nos Secrets.")
+                st.error("🔑 Chave de segurança FIREBASE_BASE64 não encontrada.")
                 st.stop()
-            
             b64_key = st.secrets["FIREBASE_BASE64"]
             decoded_json = base64.b64decode(b64_key).decode("utf-8")
             cred_dict = json.loads(decoded_json)
             cred = credentials.Certificate(cred_dict)
             return firebase_admin.initialize_app(cred)
         except Exception as e:
-            st.error(f"❌ Erro de Conexão: {e}")
+            st.error(f"❌ FALHA NA INFRAESTRUTURA: {e}")
             st.stop()
     return firebase_admin.get_app()
 
-# Inicializa o banco
-try:
-    app_engine = conectar_banco_master()
-    db = firestore.client()
-except:
-    st.warning("Aguardando conexão com o banco de dados...")
+app_engine = conectar_banco_master()
+db = firestore.client()
+ 
+# ------------------------------------------------------------------------------
+# 3. POLÍTICAS E CONSTANTES
+# ------------------------------------------------------------------------------
+PIX_OFICIAL = "11991853488"
+ZAP_ADMIN = "5511991853488"
+CHAVE_ADMIN = "mumias"
+TAXA_CONTATO = 1
+BONUS_WELCOME = 5
+LAT_REF = -23.5505
+LON_REF = -46.6333
 
-# --- INICIALIZAÇÃO DA GROQ (IA) ---
-try:
-    if "GROQ_API_KEY" in st.secrets:
-        ai_engine = Groq(api_key=st.secrets["GROQ_API_KEY"])
-    else:
-        ai_engine = None
-except Exception as e:
-    ai_engine = None
-    st.info("Nota: O motor de busca inteligente está em modo básico.")
+CATEGORIAS_OFICIAIS = [
+    "Academia", "Acompanhante de Idosos", "Açougue", "Adega", "Adestrador de Cães", "Advocacia", "Agropecuária", 
+    "Ajudante Geral", "Animador de Festas", "Arquiteto(a)", "Armarinho/Aviamentos", "Assistência Técnica", 
+    "Aulas Particulares", "Auto Elétrica", "Auto Peças", "Babá (Nanny)", "Banho e Tosa", "Barbearia/Salão", 
+    "Barman / Bartender", "Bazar", "Borracheiro", "Cabeleireiro(a)", "Cafeteria", "Calçados", "Carreto", 
+    "Celulares", "Chaveiro", "Churrascaria", "Clínica Médica", "Comida Japonesa", "Confeiteiro(a)", 
+    "Contabilidade", "Costureira / Alfaiate", "Cozinheiro(a) Particular", "Cuidador de Idosos", 
+    "Dançarino(a) / Entretenimento (Gogoboy/Girl)", "Decorador(a) de Festas", "Destaque de Eventos", 
+    "Diarista / Faxineira", "Doceria", "Eletrodomésticos", "Eletricista", "Eletrônicos", "Encanador", 
+    "Escola Infantil", "Estética Automotiva", "Estética Facial", "Esteticista", "Farmácia", "Fisioterapia", 
+    "Fitness", "Floricultura", "Fotógrafo(a)", "Freteiro", "Fretista / Mudanças", "Funilaria e Pintura", 
+    "Garçom e garçonete", "Gesseiro", "Guincho 24h", "Hamburgueria", "Hortifruti", "Idiomas", "Imobiliária", 
+    "Informática", "Instalador de Ar-condicionado", "Internet de fibra óptica", "Jardineiro", "Joalheria", 
+    "Lanchonete", "Lava Jato", "Lavagem de Sofás / Estofados", "Loja de Roupas", "Loja de Variedades", 
+    "Madeireira", "Manicure e Pedicure", "Maquiador(a)", "Marceneiro", "Marido de Aluguel", "Material de Construção", 
+    "Mecânico de Autos", "Montador de Móveis", "Motoboy/Entregas", "Motorista Particular", "Móveis", 
+    "Moto Peças", "Nutricionista", "Odontologia", "Ótica", "Outro (Personalizado)", "Padaria", "Papelaria", 
+    "Passeador de Cães (Dog Walker)", "Pastelaria", "Pedreiro", "Pet Shop", "Pintor", "Piscineiro", "Pizzaria", 
+    "Professor(a) Particular", "Psicologia", "Recepcionista de Eventos", "Reforço Escolar", "Refrigeração", 
+    "Relojoaria", "Salgadeiro(a)", "Segurança / Vigilante", "Seguros", "Som e Alarme", "Sorveteria", 
+    "Tatuagem/Piercing", "Técnico de Celular", "Técnico de Fogão", "Técnico de Geladeira", "Técnico de Lavadora", 
+    "Técnico de Notebook/PC", "Telhadista", "TI (Tecnologia)", "Tintas", "Veterinário(a)", "Web Designer"
+]
+# ==============================================================================
+# SUPER MOTOR DE INTELIGÊNCIA GERALJÁ - VERSÃO MEGA EXPANDIDA
+# ==============================================================================
+CONCEITOS_EXPANDIDOS = {
+    # --- ALIMENTAÇÃO, BARES E GASTRONOMIA ---
+    "pizza": "Pizzaria", "pizzaria": "Pizzaria", "fome": "Pizzaria", "massa": "Pizzaria", "calzone": "Pizzaria",
+    "lanche": "Lanchonete", "hamburguer": "Lanchonete", "burger": "Lanchonete", "x-tudo": "Lanchonete", "hot dog": "Lanchonete", "cachorro quente": "Lanchonete", "salgado": "Lanchonete", "coxinha": "Lanchonete", "pastel": "Lanchonete",
+    "comida": "Restaurante", "almoco": "Restaurante", "marmita": "Restaurante", "jantar": "Restaurante", "restaurante": "Restaurante", "self service": "Restaurante", "churrasco": "Restaurante", "espetinho": "Restaurante",
+    "doce": "Confeitaria", "bolo": "Confeitaria", "festa": "Confeitaria", "salgadinho": "Confeitaria", "brigadeiro": "Confeitaria", "sobremesa": "Confeitaria", "aniversario": "Confeitaria",
+    "pao": "Padaria", "padaria": "Padaria", "cafe": "Padaria", "padoca": "Padaria", "leite": "Padaria", "biscoito": "Padaria",
+    "acai": "Açaí", "cupuacu": "Açaí", "sorvete": "Sorveteria", "picole": "Sorveteria", "gelateria": "Sorveteria",
+    "cerveja": "Adega", "bebida": "Adega", "gelo": "Adega", "adega": "Adega", "vinho": "Adega", "destilado": "Adega", "vodka": "Adega", "refrigerante": "Adega",
+    "churros": "Doceria", "crepe": "Doceria", "tapioca": "Lanchonete",
+
+    # --- VAREJO, MODA E PRESENTES ---
+    "roupa": "Loja de Roupas", "vestuario": "Loja de Roupas", "moda": "Loja de Roupas", "camiseta": "Loja de Roupas", "calca": "Loja de Roupas", "blusa": "Loja de Roupas", "boutique": "Loja de Roupas", "brecho": "Loja de Roupas",
+    "sapato": "Calçados", "tenis": "Calçados", "chinelo": "Calçados", "sandalia": "Calçados", "bota": "Calçados", "sapataria": "Calçados",
+    "presente": "Loja de Variedades", "brinquedo": "Loja de Variedades", "utilidades": "Loja de Variedades", "papelaria": "Loja de Variedades", "caderno": "Loja de Variedades",
+    "relogio": "Relojoaria", "joia": "Joalheria", "anel": "Joalheria", "brinco": "Joalheria",
+    "otica": "Ótica", "oculos": "Ótica", "lente": "Ótica",
+
+    # --- SAÚDE, BELEZA E BEM-ESTAR ---
+    "remedio": "Farmácia", "farmacia": "Farmácia", "drogaria": "Farmácia", "saude": "Farmácia", "medicamento": "Farmácia",
+    "cabelo": "Barbearia/Salão", "barba": "Barbearia/Salão", "corte": "Barbearia/Salão", "cabeleireiro": "Barbearia/Salão", "manicure": "Barbearia/Salão", "unha": "Barbearia/Salão", "pedicure": "Barbearia/Salão", "sobrancelha": "Barbearia/Salão", "maquiagem": "Barbearia/Salão",
+    "academia": "Fitness", "treino": "Fitness", "musculacao": "Fitness", "crossfit": "Fitness", "suplemento": "Fitness",
+    "dentista": "Odontologia", "dente": "Odontologia", "aparelho": "Odontologia",
+
+    # --- TECNOLOGIA E ELETRODOMÉSTICOS ---
+    "celular": "Assistência Técnica", "iphone": "Assistência Técnica", "tela": "Assistência Técnica", "carregador": "Assistência Técnica", "android": "Assistência Técnica", "bateria": "Assistência Técnica",
+    "computador": "TI", "notebook": "TI", "formatar": "TI", "wifi": "TI", "internet": "TI", "pc": "TI", "gamer": "TI", "impressora": "TI",
+    "geladeira": "Refrigeração", "ar condicionado": "Refrigeração", "freezer": "Refrigeração", "ar": "Refrigeração", "climatizador": "Refrigeração",
+  
+    # --- PETS E AGRO ---
+    "pet": "Pet Shop", "racao": "Pet Shop", "cachorro": "Pet Shop", "gato": "Pet Shop", "banho e tosa": "Pet Shop", "veterinario": "Pet Shop", "viva": "Pet Shop", "aquario": "Pet Shop",
+
+    # --- MANUTENÇÃO, REFORMA E CONSTRUÇÃO ---
+    "vazamento": "Encanador", "cano": "Encanador", "torneira": "Encanador", "desentupir": "Encanador", "caixa dagua": "Encanador", "esgoto": "Encanador", "hidraulica": "Encanador",
+    "curto": "Eletricista", "fiacao": "Eletricista", "luz": "Eletricista", "chuveiro": "Eletricista", "tomada": "Eletricista", "disjuntor": "Eletricista", "energia": "Eletricista", "fio": "Eletricista",
+    "pintar": "Pintor", "pintura": "Pintor", "parede": "Pintor", "massa corrida": "Pintor", "verniz": "Pintor",
+    "reforma": "Pedreiro", "piso": "Pedreiro", "azulejo": "Pedreiro", "obra": "Pedreiro", "tijolo": "Pedreiro", "cimento": "Pedreiro", "reboco": "Pedreiro", "alicerce": "Pedreiro",
+    "gesso": "Gesseiro", "drywall": "Gesseiro", "sanca": "Gesseiro", "forro": "Gesseiro",
+    "telhado": "Telhadista", "goteira": "Telhadista", "calha": "Telhadista",
+    "solda": "Serralheiro", "portao": "Serralheiro", "grade": "Serralheiro", "aluminio": "Serralheiro", "ferro": "Serralheiro",
+    "vidro": "Vidraceiro", "janela": "Vidraceiro", "box": "Vidraceiro", "espelho": "Vidraceiro",
+    "chave": "Chaveiro", "fechadura": "Chaveiro", "tranca": "Chaveiro", "copia": "Chaveiro", "abertura": "Chaveiro",
+
+    # --- AUTOMOTIVO ---
+    "carro": "Mecânico", "motor": "Mecânico", "oficina": "Mecânico", "freio": "Mecânico", "suspensao": "Mecânico", "cambio": "Mecânico",
+    "pneu": "Borracheiro", "estepe": "Borracheiro", "furou": "Borracheiro", "vulcanizacao": "Borracheiro", "balanceamento": "Borracheiro",
+    "guincho": "Guincho 24h", "reboque": "Guincho 24h", "plataforma": "Guincho 24h",
+    "lavajato": "Estética Automotiva", "lavagem": "Estética Automotiva", "polimento": "Estética Automotiva", "limpeza de banco": "Estética Automotiva",
+
+    # --- LOGÍSTICA E SERVIÇOS GERAIS ---
+    "frete": "Freteiro", "mudanca": "Freteiro", "carreto": "Freteiro", "transporte": "Freteiro",
+    "montar": "Montador", "armario": "Montador", "moveis": "Montador", "guarda roupa": "Montador", "cozinha": "Montador",
+    "faxina": "Diarista", "limpeza": "Diarista", "passar": "Diarista", "arrumadeira": "Diarista",
+    "jardim": "Jardineiro", "grama": "Jardineiro", "poda": "Jardineiro", "rocar": "Jardineiro",
+    "piscina": "Piscineiro", "cloro": "Piscineiro", "limpeza de piscina": "Piscineiro",
+    "ajudante": "Ajudante Geral", "braco": "Ajudante Geral", "carga": "Ajudante Geral"
+}
+
 # ------------------------------------------------------------------------------
 # 4. MOTORES DE IA E GEOLOCALIZAÇÃO
 # ------------------------------------------------------------------------------
@@ -776,89 +877,41 @@ with menu_abas[4]: # Verifique se o índice da sua aba de feedback é 4 ou 5
                 st.warning("⚠️ Por favor, escreva algo antes de enviar.")
                 
 # ------------------------------------------------------------------------------
-# 16. FINALIZADOR DE LAYOUT E RODAPÉ AUTOMÁTICO (O "VARREDOR 3.0")
+# 16. FINALIZADOR DE LAYOUT E RODAPÉ AUTOMÁTICO (O "VARREDOR")
 # ------------------------------------------------------------------------------
 def finalizar_e_alinhar_layout():
     """
-    Versão 3.0: Além de alinhar, ele limpa erros de floats e garante
-    que o rodapé fique sempre no final, independente do tamanho da tela.
+    Esta função atua como um imã. Ela puxa todo o conteúdo anterior para 
+    o alinhamento correto e limpa distorções antes de carregar o rodapé.
     """
-    # 1. Força uma quebra de qualquer elemento flutuante anterior
-    st.markdown('<div style="clear: both;"></div>', unsafe_allow_html=True)
-    st.write("---") 
+    st.write("---") # Linha de separação final
     
-    # 2. CSS Avançado para travar o layout
-    estilo_blindado = """
+    # CSS de fechamento e centralização forçada
+    fechamento_estilo = """
         <style>
-            /* Evita que o conteúdo cole nas bordas em celulares */
-            @media (max-width: 640px) {
-                .main .block-container {
-                    padding-left: 1rem !important;
-                    padding-right: 1rem !important;
-                }
+            /* Garante que o último elemento não cole no fundo da tela */
+            .main .block-container {
+                padding-bottom: 5rem !important;
             }
-
-            /* Estilização do Rodapé */
-            .footer-container {
+            
+            /* Força o alinhamento central de qualquer texto órfão no final */
+            .footer-clean {
                 text-align: center;
-                padding: 40px 20px;
-                background-color: #f9f9f9;
-                border-radius: 20px 20px 0 0;
-                margin-top: 50px;
-                border-top: 1px solid #eee;
-            }
-
-            .footer-brand {
-                color: #0047AB;
-                font-weight: bold;
-                font-size: 1.2rem;
-                margin-bottom: 5px;
-            }
-
-            .footer-tagline {
-                color: #666;
-                font-size: 0.9rem;
-                margin-bottom: 15px;
+                padding: 20px;
+                opacity: 0.7;
+                font-size: 0.8rem;
+                width: 100%;
             }
         </style>
         
-        <div class="footer-container">
-            <div class="footer-brand">🎯 GeralJá</div>
-            <div class="footer-tagline">Conectando o Grajaú com inteligência e tecnologia.</div>
-            <div style="opacity: 0.5; font-size: 0.7rem;">
-                v2.0 | © 2026 Sistema de Inteligência Local<br>
-                Orgulhosamente desenvolvido para a comunidade.
-            </div>
+        <div class="footer-clean">
+            <p>🎯 <b>GeralJá</b> - Sistema de Inteligência Local</p>
+            <p>Conectando quem precisa com quem sabe fazer.</p>
+            <p>v2.0 | © 2026 Todos os direitos reservados</p>
         </div>
     """
-    st.markdown(estilo_blindado, unsafe_allow_html=True)
+    st.markdown(fechamento_estilo, unsafe_allow_html=True)
 
+# CHAMADA FINAL - ESTA DEVE SER A ÚLTIMA LINHA DO SEU APP
+finalizar_e_alinhar_layout()
 # ------------------------------------------------------------------------------
-# EXECUÇÃO FINAL
-# ------------------------------------------------------------------------------
-try:
-    finalizar_e_alinhar_layout()
-except Exception as e:
-    # Se até o varredor der erro, ele não derruba o site
-    st.write("---")
-    st.caption("GeralJá 2026")
-# ------------------------------------------------------------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
