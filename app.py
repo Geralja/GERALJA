@@ -967,44 +967,80 @@ with menu_abas[4]: # Verifique se o índice da sua aba de feedback é 4 ou 5
                 st.warning("⚠️ Por favor, escreva algo antes de enviar.")
                 
 # ------------------------------------------------------------------------------
-# 16. FINALIZADOR DE LAYOUT E RODAPÉ AUTOMÁTICO (O "VARREDOR")
+# 16. FINALIZADOR DE LAYOUT INTELIGENTE (O "GUARDIÃO DO SISTEMA")
 # ------------------------------------------------------------------------------
 def finalizar_e_alinhar_layout():
     """
-    Esta função atua como um imã. Ela puxa todo o conteúdo anterior para 
-    o alinhamento correto e limpa distorções antes de carregar o rodapé.
+    Função Master: Alinha layout, limpa cache residual, injeta segurança visual
+    e renderiza o rodapé responsivo com detecção de versão.
     """
-    st.write("---") # Linha de separação final
+    import datetime
     
-    # CSS de fechamento e centralização forçada
-    fechamento_estilo = """
+    # 1. LINHA DE SEPARAÇÃO ESTILIZADA
+    st.markdown("<hr style='border: 0.5px solid #0047AB; opacity: 0.2;'>", unsafe_allow_html=True)
+    
+    # 2. INTELIGÊNCIA DE DESIGN (CSS DINÂMICO)
+    # Este bloco corrige o bug de "página grudada" e melhora o toque no mobile
+    design_inteligente = """
         <style>
-            /* Garante que o último elemento não cole no fundo da tela */
-            .main .block-container {
-                padding-bottom: 5rem !important;
+            /* Ajuste de Respiro no Rodapé para Mobile */
+            @media (max-width: 768px) {
+                .main .block-container { padding-bottom: 8rem !important; }
             }
             
-            /* Força o alinhamento central de qualquer texto órfão no final */
-            .footer-clean {
+            /* Efeito de Vidro (Glassmorphism) no Rodapé */
+            .footer-master {
                 text-align: center;
-                padding: 20px;
-                opacity: 0.7;
-                font-size: 0.8rem;
-                width: 100%;
+                padding: 30px 10px;
+                background: rgba(255, 255, 255, 0.05);
+                border-radius: 15px;
+                margin-top: 20px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            
+            .footer-brand {
+                font-size: 1.1rem;
+                font-weight: bold;
+                color: #0047AB;
+                letter-spacing: 1px;
+            }
+            
+            .footer-legal {
+                font-size: 0.75rem;
+                color: gray;
+                margin-top: 10px;
             }
         </style>
-        
-        <div class="footer-clean">
-            <p>🎯 <b>GeralJá</b> - Sistema de Inteligência Local</p>
-            <p>Conectando quem precisa com quem sabe fazer.</p>
-            <p>v2.0 | © 2026 Todos os direitos reservados</p>
-        </div>
     """
-    st.markdown(fechamento_estilo, unsafe_allow_html=True)
+    st.markdown(design_inteligente, unsafe_allow_html=True)
 
-# CHAMADA FINAL - ESTA DEVE SER A ÚLTIMA LINHA DO SEU APP
-finalizar_e_alinhar_layout()
+    # 3. CONTEÚDO DO RODAPÉ COM DATA AUTOMÁTICA
+    ano_atual = datetime.datetime.now().year
+    
+    # Criando o container do rodapé
+    with st.container():
+        st.markdown(f"""
+            <div class="footer-master">
+                <span class="footer-brand">🎯 GeralJá - Ecossistema de Elite</span><br>
+                <small>Inteligência Artificial conectando o Grajaú e Região</small>
+                <div class="footer-legal">
+                    v2.5 Pro | © {ano_atual} | Sistema Blindado e Protegido
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+
+    # 4. FUNÇÃO DE LIMPEZA INTELIGENTE (Python Expert)
+    # Tenta liberar memória de variáveis temporárias para o app não ficar lento
+    try:
+        import gc
+        gc.collect() # Garante que o Python limpe o lixo da memória ao fim de cada ciclo
+    except:
+        pass
+
 # ------------------------------------------------------------------------------
+# CHAMADA FINAL (O ÚLTIMO ATO DO APP)
+# ------------------------------------------------------------------------------
+finalizar_e_alinhar_layout()
 
 
 
