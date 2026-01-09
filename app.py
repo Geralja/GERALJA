@@ -449,7 +449,8 @@ with menu_abas[0]:
             st.markdown(f'<a href="{link_share}" target="_blank" style="text-decoration:none;"><div style="background:#22C55E; color:white; padding:15px; border-radius:10px; text-align:center; font-weight:bold; margin-top:10px;">📲 COMPARTILHAR NO WHATSAPP</div></a>', unsafe_allow_html=True)
         
         else:
-# --- RENDERIZAÇÃO DOS CARDS (LOOP) ---
+
+            # --- RENDERIZAÇÃO DOS CARDS (LOOP) ---
             for p in lista_ranking:
                 pid = p.get('id', 'sem_id')
                 is_elite = p.get('verificado') and p.get('saldo', 0) > 0
@@ -983,5 +984,6 @@ def finalizar_e_alinhar_layout():
 # CHAMADA FINAL - ESTA DEVE SER A ÚLTIMA LINHA DO SEU APP
 finalizar_e_alinhar_layout()
 # ------------------------------------------------------------------------------
+
 
 
