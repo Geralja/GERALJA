@@ -673,133 +673,105 @@ LISTA_SEGMENTOS = sorted([
     "Técnico de TV", "Transporte Escolar", "Vidraçaria", "Web Designer", "Zootecnista"
 ])
 
-# --- MOTOR DE BUSCA RESILIENTE ---
-with tabs[0]:
-    busca = st.text_input("🔍 O que você procura?", key="busca_home")
-    if busca:
-        # Busca todos sem filtro rígido para garantir que apareçam
-        profs_ref = db.collection("profissionais").stream()
-        res = []
-        for p in profs_ref:
-            d = p.to_dict()
-            nome = str(d.get('nome', '')).lower()
-            cat = str(d.get('area', d.get('categoria', ''))).lower() # Pega 'area' ou 'categoria'
-            termo = busca.lower()
-            
-            if termo in nome or termo in cat:
-                # Se não tiver distância, coloca 0
-                d['dist'] = calcular_distancia(lat_c, lon_c, d.get('lat'), d.get('lon')) if d.get('lat') else 0.0
-                d['id_doc'] = p.id
-                res.append(d)
-        
-        if res:
-            for prof in res:
-                with st.container():
-                    st.markdown(f"### {prof.get('nome')}")
-                    st.caption(f"⭐ {prof.get('area', 'Profissional')}")
-                    # Mostra a foto principal se existir
-                    if prof.get('foto_url'):
-                        st.image(prof.get('foto_url'), width=150)
-                    st.link_button(f"Falar com {prof.get('nome')}", f"https://wa.me/55{prof.get('whatsapp')}")
-        else:
-            st.warning("Nenhum profissional encontrado com esse nome ou categoria.")
-            
-# --- ABA 1: CADASTRAR (VERSÃO FINAL COM 3 FOTOS E TRAVAS) ---
+# --- ABA 1: CADASTRAR (SISTEMA DE ADMISSÃO DE ELITE V2) ---
 with menu_abas[1]:
-    st.markdown("<h2 style='text-align: center;'>🚀 Cadastro Profissional GeralJá</h2>", unsafe_allow_html=True)
-    st.info("Cadastre-se para aparecer no Radar, na Rádio Grajaú Tem e no Facebook!")
-
-    with st.form("form_completo_v2", clear_on_submit=False):
-        st.subheader("📋 Informações do Negócio")
-        col_1, col_2 = st.columns(2)
-        nome_in = col_1.text_input("Nome Comercial", placeholder="Ex: João da Fibra")
-        zap_in = col_2.text_input("WhatsApp (DDD + Número)", placeholder="Ex: 99988776655")
+    st.markdown("<h2 style='text-align: center;'>🚀 Cadastro GeralJá</h2>", unsafe_allow_html=True)
+    st.markdown("---")
+    
+    # Início do Formulário
+    with st.form("form_novo_profissional_v2", clear_on_submit=False):
+        st.subheader("📋 Informações Básicas")
+        col_id1, col_id2 = st.columns(2)
+        nome_input = col_id1.text_input("Nome Comercial", placeholder="Ex: João da Fibra ou Loja do Povo")
+        zap_input = col_id2.text_input("WhatsApp (Com DDD)", placeholder="Ex: 99988776655")
         
-        tipo_in = st.radio("Tipo de Cadastro", ["👨‍🔧 Profissional Autônomo", "🏢 Comércio/Loja"], horizontal=True)
-
+        # FUNCIONALIDADE: Separação de Categorias
+        tipo_input = st.radio(
+            "Você é:", 
+            ["👨‍🔧 Profissional Autônomo", "🏢 Comércio/Loja"], 
+            horizontal=True,
+            help="Isso ajuda o cliente a saber se você vai até ele ou se ele vem até você."
+        )
+        
         st.markdown("---")
         st.subheader("🛠️ Especialidade e Segurança")
-        col_3, col_4 = st.columns(2)
-        cat_in = col_3.selectbox("Sua Área Principal", LISTA_SEGMENTOS)
-        senha_in = col_4.text_input("Crie uma Senha", type="password", help="Necessária para alterar seus dados depois.")
-
-        descricao_in = st.text_area("Descrição dos Serviços", placeholder="Conte o que você faz, diferenciais, etc...")
-
-        # FUNCIONALIDADE: AS 3 FOTOS
-        st.markdown("### 📸 Galeria de Fotos")
-        col_f1, col_f2, col_f3 = st.columns(3)
-        f1 = col_f1.file_uploader("Foto 1 (Principal)", type=['jpg', 'jpeg', 'png'], key="f1")
-        f2 = col_f2.file_uploader("Foto 2 (Trabalho)", type=['jpg', 'jpeg', 'png'], key="f2")
-        f3 = col_f3.file_uploader("Foto 3 (Trabalho)", type=['jpg', 'jpeg', 'png'], key="f3")
+        col_id3, col_id4 = st.columns(2)
+        # FUNCIONALIDADE: 500+ Segmentos (incluindo Fibra Óptica)
+        categoria_input = col_id3.selectbox("Sua Área Principal", LISTA_SEGMENTOS)
+        senha_input = col_id4.text_input("Senha de Edição", type="password", help="Use esta senha se precisar atualizar seus dados no futuro.")
+        
+        descricao_input = st.text_area("Descrição do Serviço/Loja", placeholder="Destaque seus diferenciais...")
+        foto_upload = st.file_uploader("Sua Foto ou Logotipo", type=['jpg', 'jpeg', 'png'])
 
         st.markdown("---")
-        btn_salvar = st.form_submit_button("✅ FINALIZAR E SALVAR NO ECOSSISTEMA", use_container_width=True)
+        btn_finalizar = st.form_submit_button("✅ SALVAR E ENTRAR NO RADAR", use_container_width=True)
 
-    if btn_salvar:
-        if not nome_in or not zap_in or not senha_in:
-            st.error("⚠️ Nome, WhatsApp e Senha são obrigatórios!")
+    # Lógica de Processamento
+    if btn_finalizar:
+        if not nome_input or not zap_input or not senha_input:
+            st.warning("⚠️ Atenção! Nome, WhatsApp e Senha são campos obrigatórios.")
         else:
-            with st.spinner("📦 Processando seu perfil de elite..."):
+            with st.spinner("📦 Verificando dados e salvando no ecossistema..."):
                 try:
-                    # 1. Identidade Única
-                    id_limpo = re.sub(r'\D', '', zap_in)
+                    # 1. Padronização do ID (WhatsApp vira a identidade única)
+                    id_limpo = re.sub(r'\D', '', zap_input)
                     doc_ref = db.collection("profissionais").document(id_limpo)
                     doc_atual = doc_ref.get()
 
-                    # 2. TRAVA DE SEGURANÇA E SEGMENTO
-                    categoria_final = cat_in
+                    # 2. FUNCIONALIDADE: Trava de Segmento e Segurança
+                    categoria_final = categoria_input
                     dados_existentes = {}
-                    
+
                     if doc_atual.exists:
                         dados_existentes = doc_atual.to_dict()
-                        if dados_existentes.get('senha') != senha_in:
-                            st.error("🚫 SENHA INCORRETA! Se este WhatsApp já é seu, use a senha cadastrada.")
+                        # Verifica se a senha bate para permitir atualização
+                        if dados_existentes.get('senha') != senha_input:
+                            st.error("🚫 ACESSO NEGADO: Este WhatsApp já está cadastrado. A senha digitada está incorreta.")
                             st.stop()
                         else:
-                            # Se a senha bate, a TRAVA garante que o segmento não mude sozinho
-                            categoria_final = dados_existentes.get('area', dados_existentes.get('categoria', cat_in))
-                            st.warning(f"♻️ Perfil reconhecido! Mantivemos seu segmento como '{categoria_final}'.")
+                            # Se a senha estiver OK, ele mantém o segmento original (A TRAVA)
+                            categoria_final = dados_existentes.get('area', categoria_input)
+                            st.info(f"♻️ Perfil reconhecido! Mantivemos seu segmento como '{categoria_final}'.")
+                    
+                    # 3. Processamento da Foto (Base64)
+                    foto_final = ""
+                    if foto_upload:
+                        foto_final = f"data:image/png;base64,{converter_img_b64(foto_upload)}"
+                    elif doc_atual.exists:
+                        foto_final = dados_existentes.get('foto_url', '')
 
-                    # 3. PROCESSAMENTO DAS 3 FOTOS (Base64)
-                    img1 = f"data:image/png;base64,{converter_img_b64(f1)}" if f1 else (dados_existentes.get('foto_url', '') if doc_atual.exists else "")
-                    img2 = f"data:image/png;base64,{converter_img_b64(f2)}" if f2 else (dados_existentes.get('foto2', '') if doc_atual.exists else "")
-                    img3 = f"data:image/png;base64,{converter_img_b64(f3)}" if f3 else (dados_existentes.get('foto3', '') if doc_atual.exists else "")
+                    # 4. Localização (Garantia de GPS)
+                    lat_salvar = minha_lat if 'minha_lat' in locals() else LAT_REF
+                    lon_salvar = minha_lon if 'minha_lon' in locals() else LON_REF
 
-                    # 4. LOCALIZAÇÃO
-                    lat_s = minha_lat if 'minha_lat' in locals() else LAT_REF
-                    lon_s = minha_lon if 'minha_lon' in locals() else LON_REF
-
-                    # 5. MONTAGEM FINAL (Sem remover nada)
-                    cadastro_final = {
-                        "nome": nome_in,
-                        "area": categoria_final,
-                        "descricao": descricao_in,
-                        "senha": senha_in,
-                        "tipo": tipo_in,
+                    # 5. Montagem do Objeto V2 (Compatível com o Motor de Busca)
+                    novo_pro = {
+                        "nome": nome_input,
+                        "area": categoria_final, # Trava de segmento aplicada
+                        "descricao": descricao_input,
+                        "senha": senha_input,
+                        "tipo": tipo_input,
                         "whatsapp": id_limpo,
-                        "foto_url": img1, # Principal
-                        "foto2": img2,
-                        "foto3": img3,
-                        "status": "ativo",
-                        "verificado": dados_existentes.get('verificado', False),
-                        "ranking_elite": dados_existentes.get('ranking_elite', 0),
-                        "saldo": dados_existentes.get('saldo', BONUS_WELCOME) if not doc_atual.exists else dados_existentes.get('saldo'),
-                        "cliques": dados_existentes.get('cliques', 0),
-                        "rating": 5,
-                        "lat": lat_s,
-                        "lon": lon_s,
+                        "foto_url": foto_final,
+                        "status": "ativo",       # Garante que apareça na busca
+                        "ranking_elite": dados_existentes.get('ranking_elite', 0) if doc_atual.exists else 0,
+                        "saldo": dados_existentes.get('saldo', BONUS_WELCOME) if doc_atual.exists else BONUS_WELCOME,
+                        "lat": lat_salvar,
+                        "lon": lon_salvar,
+                        "cliques": dados_existentes.get('cliques', 0) if doc_atual.exists else 0,
                         "data_cadastro": dados_existentes.get('data_cadastro', datetime.datetime.now().strftime("%d/%m/%Y")),
                         "ultima_modificacao": datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
                     }
 
-                    doc_ref.set(cadastro_final)
+                    # 6. Salvar no Firebase
+                    doc_ref.set(novo_pro)
                     
                     st.balloons()
-                    st.success(f"🎊 TUDO PRONTO! {nome_in} já está ativo no radar.")
+                    st.success(f"🎊 PARABÉNS! {nome_input} agora é parte do GeralJá e da Rádio Grajaú Tem!")
                     
-                    # Alerta Admin via Link
-                    link_adm = enviar_alerta_admin(nome_in, categoria_final, id_limpo)
-                    st.markdown(f"[📢 Avisar Administração (WhatsApp)]({link_adm})")
+                    # Alerta para o Admin
+                    link_admin = enviar_alerta_admin(nome_input, categoria_final, id_limpo)
+                    st.markdown(f"[📢 Avisar Administração via WhatsApp]({link_admin})")
 
                 except Exception as e:
                     st.error(f"❌ Erro ao salvar: {e}")
@@ -1028,6 +1000,4 @@ def finalizar_e_alinhar_layout():
 # CHAMADA FINAL - ESTA DEVE SER A ÚLTIMA LINHA DO SEU APP
 finalizar_e_alinhar_layout()
 # ------------------------------------------------------------------------------
-
-
 
