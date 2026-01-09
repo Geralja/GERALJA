@@ -20,8 +20,6 @@ def converter_img_b64(file):
     return None
 st.set_page_config(page_title="Geral Já", layout="wide")
 
-st.set_page_config(page_title="Geral Já", layout="wide")
-
 # --- CONFIGURAÇÃO DE TEMA MANUAL ---
 if 'tema_claro' not in st.session_state:
     st.session_state.tema_claro = False
@@ -44,9 +42,6 @@ if st.session_state.tema_claro:
 
 # ... seus outros imports (firebase, base64, etc)
 
-st.set_page_config(page_title="Geral Já", layout="wide")
-
-# --- COLOQUE AQUI: CSS PARA CORRIGIR O MODO ESCURO E CLARO ---
 st.markdown('''
     <style>
         /* Força o preenchimento no topo */
@@ -75,9 +70,7 @@ st.markdown("""
     }
     </style>
 """, unsafe_allow_html=True)
-st.set_page_config(page_title="GeralJá", layout="wide")
 
-# Remove o menu superior, o rodapé 'Made with Streamlit' e o botão de Deploy
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
@@ -705,71 +698,13 @@ with menu_abas[3]:
     # --- DAQUI PARA BAIXO TUDO ESTÁ PROTEGIDO PELA SENHA ---
     st.success("👑 Acesso Autorizado! Bem-vindo ao Painel Supremo.")
     
-   # ------------------------------------------------------------------------------
-# 13. MOTOR DE BUCA TURBINADO (IA + BLINDAGEM V1/V2)
-# ------------------------------------------------------------------------------
-if busca:
-    # 1. IA DE TRADUÇÃO: Converte o que o usuário DIGITOU no que o banco ENTENDE
-    # Ex: "cano estourou" -> "Encanador"
-    termo_ia = ia_busca_consciente_v2(busca)
-    
-    try:
-        # 2. BUSCA NO BANCO (Firestore)
-        profs_ref = db.collection("profissionais").where("status", "==", "ativo").stream()
-        res = []
-        
-        for p in profs_ref:
-            d = p.to_dict()
-            nome_p = remover_acentos(d.get('nome', ''))
-            cat_p = remover_acentos(d.get('categoria', ''))
-            busca_p = remover_acentos(busca)
-            ia_p = remover_acentos(termo_ia)
-            
-            # FILTRO INTELIGENTE: Procura o termo da IA ou o que o usuário digitou
-            if ia_p in cat_p or busca_p in nome_p or busca_p in cat_p:
-                # Cálculo de distância com trava para não dar erro sem GPS
-                dist = calcular_distancia(lat_c, lon_c, d.get('latitude'), d.get('longitude'))
-                d['dist'] = dist
-                d['id_doc'] = p.id
-                res.append(d)
+    # 1. BUSCA DE DADOS E TELEMETRIA
+    all_profs_lista = list(db.collection("profissionais").stream())
+    total_cadastros = len(all_profs_lista)
+    pendentes_lista = [p for p in all_profs_lista if not p.to_dict().get('aprovado', False)]
+    total_moedas = sum([p.to_dict().get('saldo', 0) for p in all_profs_lista])
+    total_cliques = sum([p.to_dict().get('cliques', 0) for p in all_profs_lista])
 
-        # 3. VERIFICAÇÃO DE SEGURANÇA (Evita o NameError)
-        if len(res) > 0:
-            df = pd.DataFrame(res)
-            
-            # Garante que as colunas críticas existam antes de ordenar
-            for col in ['ranking_elite', 'dist']:
-                if col not in df.columns: df[col] = 0.0
-            
-            # ORDENAÇÃO: Elite primeiro, depois os mais próximos
-            df = df.sort_values(by=['ranking_elite', 'dist'], ascending=[False, True])
-
-            # 4. EXIBIÇÃO LAPIDADA
-            for _, prof in df.iterrows():
-                with st.container():
-                    st.markdown(f"""
-                        <div style="border: 1px solid #ddd; padding: 15px; border-radius: 12px; margin-bottom: 10px; background: white;">
-                            <h3 style="margin:0; color: #0047AB;">{prof.get('nome', 'Profissional')}</h3>
-                            <p style="color: #FF8C00; font-weight: bold; margin: 0;">{prof.get('categoria', 'Serviços')}</p>
-                            <p style="font-size: 0.85em; color: #555;">📍 Distância: {prof.get('dist', 0.0)} km</p>
-                        </div>
-                    """, unsafe_allow_html=True)
-                    
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        num = re.sub(r'\D', '', str(prof.get('whatsapp', '')))
-                        st.link_button("🟢 WHATSAPP", f"https://wa.me/55{num}", use_container_width=True)
-                    with c2:
-                        # Botão com ID único para não dar erro de duplicata
-                        st.button("📄 PERFIL", key=f"v1_{prof['id_doc']}", use_container_width=True)
-        else:
-            st.warning(f"🔎 Não encontramos '{busca}' no momento. Tente outro termo!")
-
-    except Exception as e:
-        # Se tudo der errado, o site avisa mas NÃO trava
-        st.error("Ops! O motor de busca está em manutenção rápida. Tente em 1 minuto.")
-        print(f"Erro Crítico: {e}")
-# ------------------------------------------------------------------------------
     # Painel de Indicadores
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("💰 Moedas", f"{total_moedas} 🪙")
@@ -895,7 +830,7 @@ if len(menu_abas) > 5:
         else:
             st.info("Aguardando chave mestra para exibir dados sensíveis.")
             # --- ABA: FEEDBACK (A VOZ DO CLIENTE) ---
-with menu_abas[4]: # Verifique se o índice da sua aba de feedback é 4 ou 5
+with menu_abas[6]: # Verifique se o índice da sua aba de feedback é 4 ou 5
     st.markdown("### ⭐ Sua opinião é fundamental")
     st.write("Conte-nos como foi a sua experiência com o GeralJá.")
     
@@ -973,4 +908,3 @@ def finalizar_e_alinhar_layout():
 # CHAMADA FINAL - ESTA DEVE SER A ÚLTIMA LINHA DO SEU APP
 finalizar_e_alinhar_layout()
 # ------------------------------------------------------------------------------
-
