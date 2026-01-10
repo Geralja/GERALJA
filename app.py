@@ -569,75 +569,18 @@ with menu_abas[2]:
             
             st.link_button("🚀 ENVIAR COMPROVANTE AGORA", f"https://wa.me/{ZAP_ADMIN}?text=Fiz o PIX: {st.session_state.user_id}", use_container_width=True)
 
-# ------------------------------------------------------------------------------
-# 4. EDIÇÃO DE PERFIL TURBINADA (FOTOS COMPRIMIDAS & IA READY)
-# ------------------------------------------------------------------------------
-with st.expander("📝 EDITAR MEU PERFIL & VITRINE", expanded=True):
-    with st.form("perfil_v7"):
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            n_nome = st.text_input("Nome Profissional/Comercial", d.get('nome', ''))
-            
-            # Seleção de Categoria Inteligente
-            try:
-                index_cat = CATEGORIAS_OFICIAIS.index(d.get('area', 'Ajudante Geral'))
-            except:
-                index_cat = 0
-            n_area = st.selectbox("Seu Segmento Principal", CATEGORIAS_OFICIAIS, index=index_cat)
-            
-        with col2:
-            n_whatsapp = st.text_input("WhatsApp (ex: 11999998888)", d.get('whatsapp', ''))
-            n_bio = st.text_area("Sua Bio/Resumo (Diga o que você faz de melhor)", d.get('bio', ''), height=100)
-
-        st.markdown("---")
-        st.subheader("🖼️ Sua Vitrine (Fotos leves para carregar rápido)")
-        
-        # Upload de Fotos com processamento automático
-        f_perfil = st.file_uploader("Trocar Foto de Perfil", type=['jpg', 'jpeg', 'png'])
-        f_vitrine = st.file_uploader("Adicionar Fotos do Trabalho (Máx 3)", type=['jpg', 'jpeg', 'png'], accept_multiple_files=True)
-
-        enviar_perfil = st.form_submit_state = st.form_submit_button("🚀 SALVAR ALTERAÇÕES")
-
-        if enviar_perfil:
-            with st.spinner("Turbinando seu perfil..."):
-                # Criamos o dicionário de atualização (o 'up')
-                up = {
-                    "nome": n_nome,
-                    "area": n_area,
-                    "whatsapp": n_whatsapp,
-                    "bio": n_bio,
-                    "ultima_atualizacao": datetime.datetime.now().strftime("%d/%m/%Y %H:%M")
-                }
-
-                # --- BLINDAGEM DE FOTO DE PERFIL ---
-                if f_perfil:
-                    img_b64 = converter_img_b64(f_perfil) # Aqui a Pillow reduz para 500px
-                    if img_b64:
-                        up["foto_perfil"] = img_b64
-
-                # --- BLINDAGEM DE VITRINE ---
-                if f_vitrine:
-                    fotos_processadas = []
-                    for f in f_vitrine[:3]: # Limita a 3 fotos para não estourar o Firebase
-                        b64 = converter_img_b64(f)
-                        if b64:
-                            fotos_processadas.append(b64)
-                    up["vitrine"] = fotos_processadas
-
-                # --- EXECUÇÃO DO UPDATE PROTEGIDO ---
+        # 4. EDIÇÃO DE PERFIL (FOTOS, HORÁRIOS E SEGMENTO)
+        with st.expander("📝 EDITAR MEU PERFIL & VITRINE", expanded=True):
+            with st.form("perfil_v7"):
+                n_nome = st.text_input("Nome Profissional", d.get('nome', ''))
+                
+                # --- VOLTANDO A FUNÇÃO DE MUDAR SEGMENTO ---
+                # Procura a categoria atual na lista para deixar selecionada
                 try:
-                    # Remove campos vazios para não sujar o banco
-                    up_final = {k: v for k, v in up.items() if v not in [None, "", []]}
-                    
-                    doc_ref.update(up_final)
-                    
-                    st.success("🎯 Perfil Atualizado! Seus clientes já verão as novidades.")
-                    time.sleep(1)
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"❌ Erro ao salvar: {e}")
-                    st.info("💡 Tente subir fotos menores ou verifique sua conexão.")
+                    index_cat = CATEGORIAS_OFICIAIS.index(d.get('area', 'Ajudante Geral'))
+                except:
+                    index_cat = 0
+                n_area = st.selectbox("Mudar meu Segmento/Área", CATEGORIAS_OFICIAIS, index=index_cat)
                 # ------------------------------------------
 
                 n_desc = st.text_area("Descrição", d.get('descricao', ''))
@@ -943,7 +886,6 @@ except:
     ano_atual = 2025 # Valor padrão caso o módulo falhe
 
 st.markdown(f'<div style="text-align:center; padding:20px; color:#94A3B8; font-size:10px;">GERALJÁ v20.0 © {ano_atual}</div>', unsafe_allow_html=True)
-
 
 
 
