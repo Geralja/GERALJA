@@ -1,7 +1,19 @@
+# ==============================================================================
+# GERALJÁ: CRIANDO SOLUÇÕES
+# ==============================================================================
 import streamlit as st
-import math
+import firebase_admin
+from firebase_admin import credentials, firestore
+import base64
+import json
 import datetime
+import math
+import re
+import time
 import pandas as pd
+import unicodedata
+st.set_page_config(page_title="GeralJá", layout="wide")
+
 
 # --- CONFIGURAÇÃO DA PÁGINA (ESTILO GOOGLE) ---
 st.set_page_config(page_title="GeralJá Brasil", layout="centered", initial_sidebar_state="collapsed")
@@ -157,3 +169,4 @@ else:
 
 # --- FOOTER ---
 st.markdown("<br><br><div style='text-align:center; color:#70757a; font-size:14px;'>Brasil · São Paulo - Baseado no seu histórico · GeralJá Landing Page 2025</div>", unsafe_allow_html=True)
+
