@@ -1,6 +1,3 @@
-# ==============================================================================
-# GERALJÁ: CRIANDO SOLUÇÕES
-# ==============================================================================
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, firestore
@@ -8,165 +5,127 @@ import base64
 import json
 import datetime
 import math
-import re
-import time
 import pandas as pd
-import unicodedata
-st.set_page_config(page_title="GeralJá", layout="wide")
+from streamlit_js_eval import get_geolocation
 
+# --- CONFIGURAÇÃO ÚNICA DA PÁGINA ---
+st.set_page_config(page_title="GeralJá - Inteligência em Serviços", layout="wide", initial_sidebar_state="collapsed")
 
-# --- CONFIGURAÇÃO DA PÁGINA (ESTILO GOOGLE) ---
-st.set_page_config(page_title="GeralJá Brasil", layout="centered", initial_sidebar_state="collapsed")
+# --- LÓGICA DE DADOS EXISTENTES (O seu "Cérebro" de Categorias) ---
+CONCEITOS_EXPANDIDOS = {
+    "Encanador": ["vazamento", "cano", "torneira", "esgoto", "caixa d'água", "pia", "infiltração"],
+    "Eletricista": ["luz", "curto", "tomada", "disjuntor", "fiação", "chuveiro", "instalação elétrica"],
+    "Diarista": ["limpeza", "faxina", "arrumação", "passar roupa", "sujeira", "casa", "apartamento"],
+    "Mecânico": ["carro", "motor", "pneu", "freio", "revisão", "barulho", "oficina"],
+    "Pizzaria": ["fome", "pizza", "comida", "entrega", "jantar", "queijo", "massa"]
+}
 
-# --- UI IMPLEMENTATION (MINIMALIST WHITE) ---
+# --- INTERFACE CSS (ESTILO GOOGLE + MENU) ---
 st.markdown("""
     <style>
-        /* Fundo Branco e Fontes Limpas */
         .stApp { background-color: white; }
         
-        /* Estilo da Barra de Busca Google */
-        .search-container {
+        /* Menu Superior */
+        .nav-bar {
             display: flex;
-            justify-content: center;
-            padding-top: 50px;
+            justify-content: flex-end;
+            padding: 15px;
+            gap: 20px;
+            font-family: Arial, sans-serif;
+            font-size: 13px;
         }
-        
+        .nav-item { color: #5f6368; text-decoration: none; cursor: pointer; }
+        .nav-item:hover { text-decoration: underline; }
+
+        /* Barra de Busca */
         div.stTextInput > div > div > input {
             border-radius: 24px !important;
             border: 1px solid #dfe1e5 !important;
             padding: 12px 20px !important;
-            font-size: 16px !important;
             box-shadow: none !important;
         }
         
-        div.stTextInput > div > div > input:hover, div.stTextInput > div > div > input:focus {
-            box-shadow: 0 1px 6px rgba(32,33,36,0.28) !important;
-            border-color: rgba(223,225,229,0) !important;
-        }
-
-        /* Badge Elite e Verificado */
-        .badge-elite {
-            background-color: #FACC15;
-            color: black;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 10px;
-            font-weight: bold;
-            margin-left: 5px;
-        }
-        
-        .badge-verificado {
-            color: #1a73e8;
-            font-size: 14px;
-            margin-left: 5px;
-        }
-
-        /* Card de Resultados (Estilo Google Search) */
-        .result-card {
-            padding: 15px 0px;
-            border-bottom: 1px solid #f1f3f4;
-            max-width: 600px;
-        }
-        
-        .result-title {
-            color: #1a0dab;
-            font-size: 20px;
-            text-decoration: none;
-            cursor: pointer;
-        }
-        
-        .result-title:hover { text-decoration: underline; }
-        
-        .result-url { color: #202124; font-size: 14px; margin-bottom: 2px; }
-        
-        .result-desc { color: #4d5156; font-size: 14px; line-height: 1.5; }
+        /* Badges de Elite e Verificado que já tínhamos */
+        .badge-elite { background-color: #FF8C00; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: bold; }
+        .verificado { color: #1a73e8; font-weight: bold; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- MAPPING SEARCH IMPLEMENTATION (IA SIMULADA) ---
-MAPA_IA = {
-    "fome": "Alimentação/Pizzaria",
-    "vazamento": "Encanador",
-    "cano": "Encanador",
-    "curto": "Eletricista",
-    "luz": "Eletricista",
-    "escuro": "Eletricista",
-    "limpeza": "Diarista/Faxina",
-    "sujeira": "Diarista/Faxina"
-}
+# --- MENU SUPERIOR ---
+st.markdown("""
+    <div class="nav-bar">
+        <span class="nav-item">Sobre</span>
+        <span class="nav-item">Parceiros</span>
+        <span class="nav-item"><b>Painel Admin</b></span>
+    </div>
+""", unsafe_allow_html=True)
 
-# Dados de Exemplo (Building the System)
-DATA_PROFISSIONAIS = [
-    {"nome": "João Silva", "cat": "Encanador", "nota": 4.9, "elite": True, "verificado": True, "dist": 1.2, "whats": "5511999999999", "desc": "Especialista em caça-vazamentos e reparos hidráulicos residenciais."},
-    {"nome": "Maria Limpeza", "cat": "Diarista/Faxina", "nota": 4.8, "elite": False, "verificado": True, "dist": 0.8, "whats": "5511888888888", "desc": "Limpeza pós-obra e organização de closets com certificação profissional."},
-    {"nome": "Carlos Volts", "cat": "Eletricista", "nota": 5.0, "elite": True, "verificado": True, "dist": 2.5, "whats": "5511777777777", "desc": "Instalações elétricas, quadros de força e manutenção de ar-condicionado."},
-]
+# --- ESTADO DA BUSCA ---
+if 'search_active' not in st.session_state:
+    st.session_state.search_active = False
+if 'query' not in st.session_state:
+    st.session_state.query = ""
 
-# --- LÓGICA DE BUSCA ---
-def realizar_busca(query):
-    query = query.lower()
-    # IA Mapping: traduz termos genéricos para categorias reais
-    categoria_alvo = MAPA_IA.get(query, query)
-    
-    resultados = [p for p in DATA_PROFISSIONAIS if categoria_alvo in p['cat'].lower() or categoria_alvo in p['desc'].lower()]
-    # Ranking System (Elite > Nota > Distância)
-    return sorted(resultados, key=lambda x: (x['elite'], x['nota'], -x['dist']), reverse=True)
-
-# --- UI: HOME STATE (ESTILO GOOGLE.COM) ---
-if 'search_query' not in st.session_state:
-    st.session_state.search_query = ""
-
-if not st.session_state.search_query:
+# --- HOME: ESTILO GOOGLE ---
+if not st.session_state.search_active:
     st.write("##")
     st.write("##")
-    st.markdown("<h1 style='text-align: center; font-size: 80px;'><span style='color:#4285F4'>G</span><span style='color:#EA4335'>e</span><span style='color:#FBBC05'>r</span><span style='color:#4285F4'>a</span><span style='color:#34A853'>l</span><span style='color:#EA4335'>Já</span></h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; font-size: 90px; font-family: Product Sans, Arial;'><span style='color:#4285F4'>G</span><span style='color:#EA4335'>e</span><span style='color:#FBBC05'>r</span><span style='color:#4285F4'>a</span><span style='color:#34A853'>l</span><span style='color:#EA4335'>Já</span></h1>", unsafe_allow_html=True)
     
-    query = st.text_input("", key="main_search", placeholder="O que você precisa agora?")
-    
-    col1, col2, col3, col4 = st.columns([1,1,1,1])
+    col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        if st.button("Pesquisa GeralJá", use_container_width=True):
-            st.session_state.search_query = query
-            st.rerun()
-    with col3:
-        st.button("Estou com Sorte", use_container_width=True)
+        q = st.text_input("", placeholder="O que você precisa agora?", key="home_input")
+        st.write("##")
+        c1, c2, c3, c4, c5 = st.columns(5)
+        with c2:
+            if st.button("Buscar Agora", use_container_width=True) or (q != ""):
+                if q:
+                    st.session_state.query = q
+                    st.session_state.search_active = True
+                    st.rerun()
+        with c4:
+            st.button("Sou Profissional", use_container_width=True)
 
-# --- UI: RESULTS STATE (GOOGLE SEARCH RESULTS) ---
+# --- RESULTADOS: ESTILO GOOGLE SEARCH ---
 else:
-    # Top Bar Minimalista
     t1, t2, t3 = st.columns([1, 4, 1])
     with t1:
-        if st.button("← Voltar"):
-            st.session_state.search_query = ""
+        if st.button("← GeralJá"):
+            st.session_state.search_active = False
             st.rerun()
     with t2:
-        new_query = st.text_input("", value=st.session_state.search_query)
-    
+        st.session_state.query = st.text_input("", value=st.session_state.query)
+
     st.markdown("---")
     
-    results = realizar_busca(st.session_state.search_query)
+    # Inteligência de Mapeamento (Somando os seus dados existentes)
+    termo = st.session_state.query.lower()
+    categoria_encontrada = None
     
-    if results:
-        st.write(f"Aproximadamente {len(results)} resultados encontrados.")
-        for p in results:
-            elite_tag = "<span class='badge-elite'>ELITE</span>" if p['elite'] else ""
-            veri_tag = "<span class='badge-verificado'>●</span>" if p['verificado'] else ""
-            
-            st.markdown(f"""
-                <div class="result-card">
-                    <div class="result-url">https://www.geralja.com.br/profissional/{p['nome'].replace(' ','_').lower()}</div>
-                    <div class="result-title">{p['nome']} {veri_tag} {elite_tag}</div>
-                    <div class="result-desc">
-                        <b>{p['cat']}</b> · ⭐ {p['nota']} · 📍 {p['dist']}km de distância<br>
-                        {p['desc']}
-                    </div>
+    for cat, sinónimos in CONCEITOS_EXPANDIDOS.items():
+        if termo in cat.lower() or any(s in termo for s in sinónimos):
+            categoria_encontrada = cat
+            break
+
+    if categoria_encontrada:
+        st.write(f"Exibindo resultados para: **{categoria_encontrada}**")
+        
+        # Simulando dados que viriam do seu Firebase
+        st.markdown(f"""
+            <div style="max-width: 600px; margin-bottom: 25px;">
+                <div style="color: #202124; font-size: 14px;">https://www.geralja.com.br › {categoria_encontrada.lower()}</div>
+                <div style="color: #1a0dab; font-size: 20px; cursor: pointer;">João Silva - {categoria_encontrada} Elite <span class="verificado">✔</span></div>
+                <div style="color: #4d5156; font-size: 14px;">
+                    ⭐ 5.0 · <b>Profissional Verificado</b> · Atende a 2km de você.<br>
+                    Especialista em {categoria_encontrada} com mais de 10 anos de experiência.
                 </div>
-            """, unsafe_allow_html=True)
-            if st.button(f"Entrar em contato com {p['nome']}", key=p['nome']):
-                st.success(f"Redirecionando para o WhatsApp de {p['nome']}...")
+            </div>
+        """, unsafe_allow_html=True)
+        
+        if st.button(f"Chamar no WhatsApp"):
+            st.success("Conectando ao profissional...")
     else:
-        st.warning("Nenhum profissional encontrado para essa busca. Tente 'fome', 'vazamento' ou 'luz'.")
+        st.warning("Não encontramos exatamente o que você digitou. Tente termos como 'fome', 'vazamento' ou 'luz'.")
 
-# --- FOOTER ---
-st.markdown("<br><br><div style='text-align:center; color:#70757a; font-size:14px;'>Brasil · São Paulo - Baseado no seu histórico · GeralJá Landing Page 2025</div>", unsafe_allow_html=True)
-
+# --- RODAPÉ ---
+st.markdown(f"<div style='position: fixed; bottom: 0; width: 100%; background: #f2f2f2; padding: 10px; color: #70757a; font-size: 14px;'>Brasil · São Paulo - Baseado no GeralJá v20.0</div>", unsafe_allow_html=True)
