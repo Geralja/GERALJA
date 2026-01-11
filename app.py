@@ -1,3 +1,6 @@
+# ==============================================================================
+# GERALJÁ: CRIANDO SOLUÇÕES
+# ==============================================================================
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, firestore
@@ -5,138 +8,161 @@ import base64
 import json
 import datetime
 import math
+import re
+import time
 import pandas as pd
 import unicodedata
-from urllib.parse import quote
+from datetime import datetime
+import pytz
 
-# 1. CONFIGURAÇÃO DE AMBIENTE (Baseado no seu app.py original)
-st.set_page_config(page_title="GeralJá | Pesquisa Inteligente", page_icon="🎯", layout="wide", initial_sidebar_state="collapsed")
+# Tenta importar bibliotecas extras do arquivo original, se não tiver, segue sem quebrar
+try:
+    from streamlit_js_eval import streamlit_js_eval, get_geolocation
+except ImportError:
+    pass
 
-# 2. CONEXÃO FIREBASE (Soma dos seus arquivos - Camada de Persistência)
+# ------------------------------------------------------------------------------
+# 1. CONFIGURAÇÃO DE AMBIENTE E PERFORMANCE
+# ------------------------------------------------------------------------------
+st.set_page_config(
+    page_title="GeralJá | Criando Soluções",
+    page_icon="🇧🇷",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+
+# --- FUNCIONALIDADE DO ARQUIVO: TEMA MANUAL ---
+if 'tema_claro' not in st.session_state:
+    st.session_state.tema_claro = False
+
+# Botão discreto no topo para ajuste de tema (Funcionalidade do arquivo original)
+col_theme, _ = st.columns([1, 10])
+with col_theme:
+    st.session_state.tema_claro = st.toggle("☀️ Luz", value=st.session_state.tema_claro)
+
+if st.session_state.tema_claro:
+    st.markdown("""
+        <style>
+            .stApp { background-color: #FFFFFF !important; }
+            .stMarkdown, .stText, h1, h2, h3 { color: #000000 !important; }
+        </style>
+    """, unsafe_allow_html=True)
+
+# Remove itens padrões do Streamlit
+st.markdown("""
+    <style>
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    </style>
+""", unsafe_allow_html=True)
+
+# ------------------------------------------------------------------------------
+# 2. CAMADA DE PERSISTÊNCIA (FIREBASE)
+# ------------------------------------------------------------------------------
 @st.cache_resource
 def conectar_banco_master():
     if not firebase_admin._apps:
         try:
-            b64_key = st.secrets["FIREBASE_BASE64"]
-            # Limpeza de padding para evitar erro de base64
-            missing_padding = len(b64_key) % 4
-            if missing_padding: b64_key += '=' * (4 - missing_padding)
-            
-            decoded_json = base64.b64decode(b64_key).decode("utf-8")
-            cred_dict = json.loads(decoded_json)
-            cred = credentials.Certificate(cred_dict)
-            firebase_admin.initialize_app(cred)
-            return firestore.client()
+            # Tenta pegar dos secrets do Streamlit
+            if "FIREBASE_BASE64" in st.secrets:
+                b64_key = st.secrets["FIREBASE_BASE64"]
+                decoded_json = base64.b64decode(b64_key).decode("utf-8")
+                cred_dict = json.loads(decoded_json)
+                cred = credentials.Certificate(cred_dict)
+                return firebase_admin.initialize_app(cred)
+            else:
+                # Fallback para desenvolvimento local (se houver arquivo json)
+                # cred = credentials.Certificate("serviceAccountKey.json")
+                # return firebase_admin.initialize_app(cred)
+                st.warning("⚠️ Configure a secret FIREBASE_BASE64 para conectar ao banco.")
+                return None
         except Exception as e:
-            st.error(f"Erro na conexão com o Banco: {e}")
-            return None
-    return firestore.client()
+            st.error(f"❌ FALHA NA INFRAESTRUTURA: {e}")
+            st.stop()
+    return firebase_admin.get_app()
 
-db = conectar_banco_master()
+app_engine = conectar_banco_master()
+if app_engine:
+    db = firestore.client()
+else:
+    st.stop()
 
-# 3. FUNÇÕES CORE (As melhores funções dos seus arquivos)
-def normalizar(t):
-    return "".join(c for c in unicodedata.normalize('NFD', t) if unicodedata.category(c) != 'Mn').lower()
+# ------------------------------------------------------------------------------
+# 3. POLÍTICAS E CONSTANTES
+# ------------------------------------------------------------------------------
+PIX_OFICIAL = "11991853488"
+ZAP_ADMIN = "5511991853488"
+CHAVE_ADMIN = "mumias"
+LAT_REF = -23.5505
+LON_REF = -46.6333
 
-def calcular_distancia(lat1, lon1, lat2, lon2):
-    R = 6371
-    dlat, dlon = math.radians(lat2-lat1), math.radians(lon2-lon1)
-    a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
-    return R * (2 * math.atan2(math.sqrt(a), math.sqrt(1-a)))
+CATEGORIAS_OFICIAIS = [
+    "Encanador", "Eletricista", "Pintor", "Pedreiro", "Gesseiro", "Telhadista", 
+    "Serralheiro", "Vidraceiro", "Marceneiro", "Marmoraria", "Calhas e Rufos", 
+    "Dedetização", "Desentupidora", "Piscineiro", "Jardineiro", "Limpeza de Estofados",
+    "Mecânico", "Borracheiro", "Guincho 24h", "Estética Automotiva", "Lava Jato", 
+    "Auto Elétrica", "Funilaria e Pintura", "Som e Alarme", "Moto Peças", "Auto Peças",
+    "Loja de Roupas", "Calçados", "Loja de Variedades", "Relojoaria", "Joalheria", 
+    "Ótica", "Armarinho/Aviamentos", "Papelaria", "Floricultura", "Bazar", 
+    "Material de Construção", "Tintas", "Madeireira", "Móveis", "Eletrodomésticos",
+    "Pizzaria", "Lanchonete", "Restaurante", "Confeitaria", "Padaria", "Açaí", 
+    "Sorveteria", "Adega", "Doceria", "Hortifruti", "Açougue", "Pastelaria", 
+    "Churrascaria", "Hamburgueria", "Comida Japonesa", "Cafeteria",
+    "Farmácia", "Barbearia/Salão", "Manicure/Pedicure", "Estética Facial", 
+    "Tatuagem/Piercing", "Fitness", "Academia", "Fisioterapia", "Odontologia", 
+    "Clínica Médica", "Psicologia", "Nutricionista", "TI", "Assistência Técnica", 
+    "Celulares", "Informática", "Refrigeração", "Técnico de Fogão", "Técnico de Lavadora", 
+    "Eletrônicos", "Chaveiro", "Montador", "Freteiro", "Carreto", "Motoboy/Entregas",
+    "Pet Shop", "Veterinário", "Banho e Tosa", "Adestrador", "Agropecuária",
+    "Aulas Particulares", "Escola Infantil", "Reforço Escolar", "Idiomas", 
+    "Advocacia", "Contabilidade", "Imobiliária", "Seguros", "Ajudante Geral", 
+    "Diarista", "Cuidador de Idosos", "Babá", "Outro (Personalizado)"
+]
 
-# 4. ESTILO GOOGLE (Sua nova UI Clean)
-st.markdown("""
-    <style>
-        .stApp { background-color: white !important; }
-        div.stTextInput > div > div > input {
-            border-radius: 24px !important; border: 1px solid #dfe1e5 !important;
-            padding: 12px 25px !important; box-shadow: none !important;
-        }
-        .result-card { max-width: 650px; margin-bottom: 25px; font-family: 'Arial'; }
-        .result-title { color: #1a0dab; font-size: 20px; text-decoration: none; cursor: pointer; }
-        .badge-elite { background-color: #FF8C00; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; }
-    </style>
-""", unsafe_allow_html=True)
+CONCEITOS_EXPANDIDOS = {
+    "pizza": "Pizzaria", "pizzaria": "Pizzaria", "fome": "Pizzaria", "massa": "Pizzaria",
+    "lanche": "Lanchonete", "hamburguer": "Lanchonete", "burger": "Lanchonete", "salgado": "Lanchonete",
+    "comida": "Restaurante", "almoco": "Restaurante", "marmita": "Restaurante", "jantar": "Restaurante",
+    "doce": "Confeitaria", "bolo": "Confeitaria", "pao": "Padaria", "padaria": "Padaria",
+    "acai": "Açaí", "sorvete": "Sorveteria", "cerveja": "Adega", "bebida": "Adega",
+    "roupa": "Loja de Roupas", "moda": "Loja de Roupas", "sapato": "Calçados", "tenis": "Calçados",
+    "presente": "Loja de Variedades", "relogio": "Relojoaria", "joia": "Joalheria",
+    "remedio": "Farmácia", "farmacia": "Farmácia", "cabelo": "Barbearia/Salão", "unha": "Barbearia/Salão",
+    "celular": "Assistência Técnica", "iphone": "Assistência Técnica", "computador": "TI", "pc": "TI",
+    "geladeira": "Refrigeração", "ar condicionado": "Refrigeração", "fogao": "Técnico de Fogão",
+    "tv": "Eletrônicos", "pet": "Pet Shop", "racao": "Pet Shop", "cachorro": "Pet Shop",
+    "vazamento": "Encanador", "cano": "Encanador", "curto": "Eletricista", "luz": "Eletricista",
+    "pintar": "Pintor", "parede": "Pintor", "reforma": "Pedreiro", "piso": "Pedreiro",
+    "telhado": "Telhadista", "solda": "Serralheiro", "vidro": "Vidraceiro", "chave": "Chaveiro",
+    "carro": "Mecânico", "motor": "Mecânico", "pneu": "Borracheiro", "guincho": "Guincho 24h",
+    "frete": "Freteiro", "mudanca": "Freteiro", "faxina": "Diarista", "limpeza": "Diarista",
+    "jardim": "Jardineiro", "piscina": "Piscineiro"
+}
 
-# 5. GERENCIAMENTO DE ESTADO (Navegação dos Botões)
-if 'page' not in st.session_state: st.session_state.page = 'home'
-if 'q' not in st.session_state: st.session_state.q = ""
+# ------------------------------------------------------------------------------
+# 4. MOTORES DE IA E UTILS
+# ------------------------------------------------------------------------------
+def normalizar_para_ia(texto):
+    if not texto: return ""
+    return "".join(c for c in unicodedata.normalize('NFD', str(texto)) 
+                   if unicodedata.category(c) != 'Mn').lower().strip()
 
-# --- MODO HOME (PÁGINA INICIAL) ---
-if st.session_state.page == 'home':
-    st.write("##")
-    st.write("##")
-    st.markdown("<h1 style='text-align: center; font-size: 90px; color:#4285F4;'>GeralJá</h1>", unsafe_allow_html=True)
-    
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        query = st.text_input("", placeholder="O que você precisa?", key="main_search")
-        st.write("##")
-        c1, c2, c3, c4, c5 = st.columns(5)
-        with c2:
-            if st.button("Buscar Agora", use_container_width=True) or (query != ""):
-                if query:
-                    st.session_state.q = query
-                    st.session_state.page = 'results'
-                    st.rerun()
-        with c4:
-            if st.button("Sou Profissional", use_container_width=True):
-                st.session_state.page = 'cadastro'
-                st.rerun()
+def processar_ia_avancada(texto):
+    if not texto: return "Vazio"
+    t_clean = normalizar_para_ia(texto)
+    for chave, categoria in CONCEITOS_EXPANDIDOS.items():
+        if re.search(rf"\b{normalizar_para_ia(chave)}\b", t_clean):
+            return categoria
+    for cat in CATEGORIAS_OFICIAIS:
+        if normalizar_para_ia(cat) in t_clean:
+            return cat
+    return "NAO_ENCONTRADO"
 
-# --- MODO RESULTADOS (ESTILO GOOGLE SEARCH) ---
-elif st.session_state.page == 'results':
-    t1, t2 = st.columns([1, 5])
-    with t1:
-        if st.button("← Voltar"):
-            st.session_state.page = 'home'
-            st.rerun()
-    with t2:
-        st.session_state.q = st.text_input("", value=st.session_state.q)
-
-    st.divider()
-    
-    # Busca Real no Firebase usando sua lógica de categoria
-    if db:
-        profs = db.collection("profissionais").where("aprovado", "==", True).stream()
-        lista = []
-        termo = normalizar(st.session_state.q)
-        
-        for p in profs:
-            dados = p.to_dict()
-            if termo in normalizar(dados.get('categoria','')) or termo in normalizar(dados.get('nome','')):
-                lista.append(dados)
-        
-        # Ranking de Elite (Sua meta de 90% de sucesso)
-        lista = sorted(lista, key=lambda x: (x.get('elite', False), x.get('nota', 0)), reverse=True)
-
-        for p in lista:
-            elite = "<span class='badge-elite'>ELITE</span>" if p.get('elite') else ""
-            link_wa = f"https://wa.me/{p.get('telefone')}?text=Vim+pelo+GeralJa"
-            st.markdown(f"""
-                <div class="result-card">
-                    <div style="color:#202124; font-size:14px;">https://geralja.com.br › {p.get('categoria')}</div>
-                    <a href="{link_wa}" target="_blank" class="result-title">{p.get('nome')} {elite}</a>
-                    <div style="color:#4d5156; font-size:14px;">⭐ {p.get('nota')} • {p.get('bairro')}</div>
-                    <div style="color:#4d5156; font-size:14px;">{p.get('descricao')}</div>
-                </div>
-            """, unsafe_allow_html=True)
-            if st.button(f"Contratar {p.get('nome')}", key=p.get('nome')):
-                st.success("Redirecionando...")
-
-# --- MODO ADMIN (O SEU COFRE) ---
-elif st.session_state.page == 'admin':
-    if st.button("Sair"): st.session_state.page = 'home'; st.rerun()
-    senha = st.text_input("Chave do Cofre", type="password")
-    if senha == "riqueza2026": # Sua senha original
-        st.title("🤝 Gestão de Parceiros")
-        # Aqui entra sua lógica de aprovação que já estava no código limpo
-        pendentes = db.collection("profissionais").where("aprovado", "==", False).stream()
-        for p in pendentes:
-            st.write(f"Novo Cadastro: {p.to_dict().get('nome')}")
-            if st.button(f"Aprovar {p.id}"):
-                db.collection("profissionais").document(p.id).update({"aprovado": True})
-                st.rerun()
-
-# --- RODAPÉ ÚNICO ---
-st.markdown(f"<div style='position:fixed; bottom:0; width:100%; text-align:center; padding:10px; background:#f2f2f2; color:#70757a; font-size:12px;'>GeralJá v20.0 © {datetime.datetime.now().year} | São Paulo - Brasil</div>", unsafe_allow_html=True)
+def calcular_distancia_real(lat1, lon1, lat2, lon2):
+    try:
+        if None in [lat1, lon1, lat2, lon2]: return 999.0
+        R = 6371 
+        dlat, dlon = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
+        a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
+        return round(R * (2
