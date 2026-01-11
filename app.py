@@ -1689,3 +1689,71 @@ def main():
 
 if __name__ == "__main__":
     main()
+# ------------------------------------------------------------------------------
+# 16. FINALIZADOR DE LAYOUT E RODAPÉ AUTOMÁTICO (O "VARREDOR 3.0")
+# ------------------------------------------------------------------------------
+def finalizar_e_alinhar_layout():
+    """
+    Versão 3.0: Além de alinhar, ele limpa erros de floats e garante
+    que o rodapé fique sempre no final, independente do tamanho da tela.
+    """
+    # 1. Força uma quebra de qualquer elemento flutuante anterior
+    st.markdown('<div style="clear: both;"></div>', unsafe_allow_html=True)
+    st.write("---") 
+    
+    # 2. CSS Avançado para travar o layout
+    estilo_blindado = """
+        <style>
+            /* Evita que o conteúdo cole nas bordas em celulares */
+            @media (max-width: 640px) {
+                .main .block-container {
+                    padding-left: 1rem !important;
+                    padding-right: 1rem !important;
+                }
+            }
+
+            /* Estilização do Rodapé */
+            .footer-container {
+                text-align: center;
+                padding: 40px 20px;
+                background-color: #f9f9f9;
+                border-radius: 20px 20px 0 0;
+                margin-top: 50px;
+                border-top: 1px solid #eee;
+            }
+
+            .footer-brand {
+                color: #0047AB;
+                font-weight: bold;
+                font-size: 1.2rem;
+                margin-bottom: 5px;
+            }
+
+            .footer-tagline {
+                color: #666;
+                font-size: 0.9rem;
+                margin-bottom: 15px;
+            }
+        </style>
+        
+        <div class="footer-container">
+            <div class="footer-brand">🎯 GeralJá</div>
+            <div class="footer-tagline">Conectando o Grajaú com inteligência e tecnologia.</div>
+            <div style="opacity: 0.5; font-size: 0.7rem;">
+                v2.0 | © 2026 Sistema de Inteligência Local<br>
+                Orgulhosamente desenvolvido para a comunidade.
+            </div>
+        </div>
+    """
+    st.markdown(estilo_blindado, unsafe_allow_html=True)
+
+# ------------------------------------------------------------------------------
+# EXECUÇÃO FINAL
+# ------------------------------------------------------------------------------
+try:
+    finalizar_e_alinhar_layout()
+except Exception as e:
+    # Se até o varredor der erro, ele não derruba o site
+    st.write("---")
+    st.caption("GeralJá 2026")
+# ------------------------------------------------------------------------------
