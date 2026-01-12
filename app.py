@@ -338,80 +338,118 @@ with menu_abas[0]:
                 st.markdown("</div>", unsafe_allow_html=True)
 
 # ==============================================================================
-# ABA 2: CADASTRAR (TURBINADA COM FOTO E VERIFICAÇÃO)
+# ABA 1: BUSCAR (IA + RANKING ELITE + VITRINE DE 3 FOTOS)
 # ==============================================================================
-with menu_abas[1]:
-    st.header("🚀 Cadastre-se na Elite")
-    st.info("Turbine seu perfil! Preencha os dados e suba uma foto para atrair mais clientes.")
+with menu_abas[0]:
+    st.markdown("### 🏙️ O que você precisa?")
     
-    with st.form("form_cadastro", clear_on_submit=False):
-        col_c1, col_c2 = st.columns(2)
-        
-        with col_c1:
-            nome_c = st.text_input("Nome Completo ou Nome da Loja")
-            zap_c = st.text_input("Seu WhatsApp (Ex: 11999998888)")
-            area_c = st.selectbox("Qual sua área?", CATEGORIAS_OFICIAIS)
-            tipo_c = st.radio("Você é:", ["👤 Profissional", "🏢 Comércio/Loja"], horizontal=True)
+    # --- MOTOR DE LOCALIZAÇÃO EM TEMPO REAL ---
+    with st.expander("📍 Sua Localização (GPS)", expanded=False):
+        loc = get_geolocation()
+        if loc:
+            minha_lat = loc['coords']['latitude']
+            minha_lon = loc['coords']['longitude']
+            st.success(f"Localização detectada!")
+        else:
+            minha_lat = LAT_REF
+            minha_lon = LON_REF
+            st.warning("GPS desativado. Usando localização padrão (SP).")
 
-        with col_c2:
-            senha_c = st.text_input("Crie uma Senha", type="password")
-            senha_c_conf = st.text_input("Confirme sua Senha", type="password")
-            # --- CAMPO DE FOTO TURBINADO ---
-            foto_c = st.file_uploader("📸 Foto de Perfil ou Logotipo", type=["jpg", "png", "jpeg"])
+    c1, c2 = st.columns([3, 1])
+    termo_busca = c1.text_input("Ex: 'Cano estourado' ou 'Pizza'", key="main_search")
+    raio_km = c2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 20, 50, 100, 500, 2000], value=10)
+    
+    if termo_busca:
+        # Processamento via IA para identificar a categoria
+        cat_ia = processar_ia_avancada(termo_busca)
+        st.info(f"✨ IA: Buscando por **{cat_ia}** próximo a você")
+        
+        from datetime import datetime
+        import pytz
+        import re
+        from urllib.parse import quote
+        
+        fuso = pytz.timezone('America/Sao_Paulo')
+        hora_atual = datetime.now(fuso).strftime('%H:%M')
+
+        # Busca no Firebase (Filtra apenas aprovados e da categoria certa)
+        profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
+        
+        lista_ranking = []
+        for p_doc in profs:
+            p = p_doc.to_dict()
+            p['id'] = p_doc.id
             
-        desc_c = st.text_area("Descreva seus serviços (Capriche no texto!)")
+            # CALCULA DISTÂNCIA REAL (GPS vs Profissional)
+            dist = calcular_distancia_real(minha_lat, minha_lon, p.get('lat', LAT_REF), p.get('lon', LON_REF))
+            
+            if dist <= raio_km:
+                p['dist'] = dist
+                # MOTOR DE SCORE ELITE (Ranking)
+                score = 0
+                score += 500 if p.get('verificado', False) else 0
+                score += (p.get('saldo', 0) * 10)
+                score += (p.get('rating', 5) * 20)
+                p['score_elite'] = score
+                lista_ranking.append(p)
+
+        # Ordenação: Elite primeiro (maior score), depois os mais próximos (menor distância)
+        lista_ranking.sort(key=lambda x: (-x['score_elite'], x['dist']))
+
+        if not lista_ranking:
+            st.markdown(f"""
+            <div style="background-color: #FFF4E5; padding: 20px; border-radius: 15px; border-left: 5px solid #FF8C00;">
+                <h3 style="color: #856404;">🔍 Essa profissão ainda não foi preenchida nesta região.</h3>
+                <p style="color: #856404;">Compartilhe o <b>GeralJá</b> e ajude a crescer sua rede local!</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            link_share = "https://wa.me/?text=Ei!%20Procurei%20um%20serviço%20no%20GeralJá%20e%20vi%20que%20ainda%20temos%20vagas!%20Cadastre-se:%20https://geralja.streamlit.app"
+            st.markdown(f'<a href="{link_share}" target="_blank" style="text-decoration:none;"><div style="background:#22C55E; color:white; padding:15px; border-radius:10px; text-align:center; font-weight:bold; margin-top:10px;">📲 COMPARTILHAR NO WHATSAPP</div></a>', unsafe_allow_html=True)
         
-        st.markdown("---")
-        st.markdown("**📍 Localização Geográfica** (Para aparecer no mapa de buscas)")
-        col_l1, col_l2 = st.columns(2)
-        lat_c = col_l1.number_input("Latitude", value=LAT_REF, format="%.6f")
-        lon_c = col_l2.number_input("Longitude", value=LON_REF, format="%.6f")
-        
-        submit_c = st.form_submit_button("CRIAR MEU PERFIL E GANHAR BÔNUS", use_container_width=True)
-        
-        if submit_c:
-            # Validações de segurança
-            if not nome_c or not zap_c or not senha_c:
-                st.warning("⚠️ Nome, WhatsApp e Senha são obrigatórios!")
-            elif senha_c != senha_c_conf:
-                st.error("❌ As senhas não conferem. Tente novamente.")
-            elif len(senha_c) < 4:
-                st.warning("⚠️ A senha deve ter pelo menos 4 caracteres.")
-            else:
-                try:
-                    doc_ref = db.collection("profissionais").document(zap_c)
-                    if doc_ref.get().exists:
-                        st.error("❌ Este WhatsApp já está cadastrado em nossa base!")
-                    else:
-                        # Processamento da imagem se existir
-                        foto_b64 = ""
-                        if foto_c is not None:
-                            # Utiliza a função de conversão existente no seu projeto
-                            foto_b64 = converter_img_b64(foto_c)
-                        
-                        dados_novos = {
-                            "nome": nome_c,
-                            "area": area_c,
-                            "descricao": desc_c,
-                            "tipo": tipo_c,
-                            "senha": senha_c,
-                            "foto_b64": foto_b64, # Nova função!
-                            "lat": lat_c,
-                            "lon": lon_c,
-                            "saldo": 5, # Mantido bônus de boas-vindas
-                            "aprovado": False,
-                            "cliques": 0,
-                            "rating": 5.0,
-                            "verificado": False,
-                            "data_criacao": datetime.datetime.now().isoformat()
-                        }
-                        
-                        doc_ref.set(dados_novos)
-                        st.success("✅ PERFIL CRIADO! Agora o administrador irá validar seus dados para te liberar no mapa.")
-                        st.balloons()
-                        
-                except Exception as e:
-                    st.error(f"Erro ao salvar no banco de dados: {e}")
+        else:
+            # --- RENDERIZAÇÃO DOS CARDS (LOOP) ---
+            for p in lista_ranking:
+                pid = p['id']
+                is_elite = p.get('verificado') and p.get('saldo', 0) > 0
+                
+                # Cores dinâmicas baseadas no tipo de conta
+                cor_borda = "#FFD700" if is_elite else ("#FF8C00" if p.get('tipo') == "🏢 Comércio/Loja" else "#0047AB")
+                bg_card = "#FFFDF5" if is_elite else "#FFFFFF"
+                
+                # Início do Card Customizado
+                st.markdown(f"""
+                <div style="border: 1px solid #E2E8F0; border-left: 8px solid {cor_borda}; padding: 15px; background: {bg_card}; border-radius: 20px; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+                    <div style="display:flex; justify-content: space-between; margin-bottom: 10px;">
+                        <span style="font-size: 11px; color: #64748B; font-weight: bold; background: #F1F5F9; padding: 4px 8px; border-radius: 10px;">📍 a {p['dist']:.1f} km de você</span>
+                        <span style="font-size: 11px; color: #D97706; font-weight: bold;">{"🏆 DESTAQUE ELITE" if is_elite else ""}</span>
+                    </div>
+                """, unsafe_allow_html=True)
+
+                col_img, col_txt = st.columns([1, 4])
+                with col_img:
+                    foto = p.get('foto_url') if p.get('foto_url') else f"https://ui-avatars.com/api/?name={p.get('nome')}&background=random"
+                    st.markdown(f'<img src="{foto}" style="width:75px; height:75px; border-radius:50%; object-fit:cover; border:3px solid {cor_borda}">', unsafe_allow_html=True)
+                
+                with col_txt:
+                    nome_exibicao = p.get('nome', '').upper()
+                    if p.get('verificado', False): nome_exibicao += " ☑️"
+                    
+                    status_loja = ""
+                    if p.get('tipo') == "🏢 Comércio/Loja":
+                        h_ab, h_fe = p.get('h_abre', '08:00'), p.get('h_fecha', '18:00')
+                        status_loja = " 🟢 <b style='color:green;'>ABERTO</b>" if h_ab <= hora_atual <= h_fe else " 🔴 <b style='color:red;'>FECHADO</b>"
+                    
+                    st.markdown(f"**{nome_exibicao}** {status_loja}", unsafe_allow_html=True)
+                    st.caption(f"{p.get('descricao', '')[:120]}...")
+
+                # --- NOVO: GRID DE FOTOS DA VITRINE (Soma das 3 fotos) ---
+                # Pega as fotos do portfólio (portfolio_imgs) que você já salva na Aba Perfil
+                fotos_portfolio = p.get('portfolio_imgs', [])
+                if fotos_portfolio:
+                    st.markdown('<div style="margin-top:10px;"></div>', unsafe_allow_html=True)
+                    cols_v = st.columns(3)
+                    for i, img_b64 in enumerate(fotos_
 
 # ==============================================================================
 # ABA 3: MEU PERFIL (VITRINE LUXUOSA ESTILO INSTA)
@@ -564,6 +602,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
