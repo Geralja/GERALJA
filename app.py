@@ -86,7 +86,8 @@ app_engine = conectar_banco_master()
 if app_engine:
     db = firestore.client()
 else:
-    st.stop()def buscar_opcoes_dinamicas(documento, padrao):
+    st.stop()
+    def buscar_opcoes_dinamicas(documento, padrao):
     try:
         doc = db.collection("configuracoes").document(documento).get()
         if doc.exists:
@@ -685,6 +686,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
