@@ -15,12 +15,6 @@ import unicodedata
 from datetime import datetime
 import pytz
 
-# Tenta importar bibliotecas extras do arquivo original, se não tiver, segue sem quebrar
-try:
-    from streamlit_js_eval import streamlit_js_eval, get_geolocation
-except ImportError:
-    pass
-
 # ------------------------------------------------------------------------------
 # 1. CONFIGURAÇÃO DE AMBIENTE E PERFORMANCE
 # ------------------------------------------------------------------------------
@@ -30,7 +24,11 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed"
 )
-
+# Tenta importar bibliotecas extras do arquivo original, se não tiver, segue sem quebrar
+try:
+    from streamlit_js_eval import streamlit_js_eval, get_geolocation
+except ImportError:
+    pass
 # --- FUNCIONALIDADE DO ARQUIVO: TEMA MANUAL ---
 if 'tema_claro' not in st.session_state:
     st.session_state.tema_claro = False
@@ -743,6 +741,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
