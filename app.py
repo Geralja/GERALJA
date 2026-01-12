@@ -89,6 +89,7 @@ else:
     st.stop()
     
     def buscar_opcoes_dinamicas(documento, padrao):
+    
     try:
         doc = db.collection("configuracoes").document(documento).get()
         if doc.exists:
@@ -687,6 +688,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
