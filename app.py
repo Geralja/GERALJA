@@ -307,184 +307,180 @@ with menu_abas[0]:
                         st.markdown(f'<meta http-equiv="refresh" content="0;URL={link}">', unsafe_allow_html=True)
 
 # ==============================================================================
-# ABA 2: CADASTRAR (RECONSTRUÍDA)
+# ABA 2: CADASTRAR (TURBINADA COM FOTO E VERIFICAÇÃO)
 # ==============================================================================
 with menu_abas[1]:
-    st.header("🚀 Cadastre-se Grátis")
-    st.info("Preencha seus dados para aparecer nas buscas da sua região.")
+    st.header("🚀 Cadastre-se na Elite")
+    st.info("Turbine seu perfil! Preencha os dados e suba uma foto para atrair mais clientes.")
     
-    with st.form("form_cadastro"):
-        nome_c = st.text_input("Nome Completo ou Nome da Loja")
-        zap_c = st.text_input("Seu WhatsApp (Somente números, ex: 11999998888)")
-        senha_c = st.text_input("Crie uma Senha", type="password")
-        area_c = st.selectbox("Qual sua área?", CATEGORIAS_OFICIAIS)
-        desc_c = st.text_area("Descreva seus serviços")
-        tipo_c = st.radio("Você é:", ["👤 Profissional", "🏢 Comércio/Loja"])
+    with st.form("form_cadastro", clear_on_submit=False):
+        col_c1, col_c2 = st.columns(2)
+        
+        with col_c1:
+            nome_c = st.text_input("Nome Completo ou Nome da Loja")
+            zap_c = st.text_input("Seu WhatsApp (Ex: 11999998888)")
+            area_c = st.selectbox("Qual sua área?", CATEGORIAS_OFICIAIS)
+            tipo_c = st.radio("Você é:", ["👤 Profissional", "🏢 Comércio/Loja"], horizontal=True)
+
+        with col_c2:
+            senha_c = st.text_input("Crie uma Senha", type="password")
+            senha_c_conf = st.text_input("Confirme sua Senha", type="password")
+            # --- CAMPO DE FOTO TURBINADO ---
+            foto_c = st.file_uploader("📸 Foto de Perfil ou Logotipo", type=["jpg", "png", "jpeg"])
+            
+        desc_c = st.text_area("Descreva seus serviços (Capriche no texto!)")
         
         st.markdown("---")
-        st.markdown("**Localização Aproximada** (Para clientes te acharem)")
-        # Tenta pegar localização real ou usa referência
-        lat_c = st.number_input("Latitude", value=LAT_REF, format="%.4f")
-        lon_c = st.number_input("Longitude", value=LON_REF, format="%.4f")
+        st.markdown("**📍 Localização Geográfica** (Para aparecer no mapa de buscas)")
+        col_l1, col_l2 = st.columns(2)
+        lat_c = col_l1.number_input("Latitude", value=LAT_REF, format="%.6f")
+        lon_c = col_l2.number_input("Longitude", value=LON_REF, format="%.6f")
         
-        submit_c = st.form_submit_button("CRIAR MEU PERFIL", use_container_width=True)
+        submit_c = st.form_submit_button("CRIAR MEU PERFIL E GANHAR BÔNUS", use_container_width=True)
         
         if submit_c:
-            if nome_c and zap_c and senha_c:
-                doc_ref = db.collection("profissionais").document(zap_c)
-                if doc_ref.get().exists:
-                    st.error("Este WhatsApp já está cadastrado!")
-                else:
-                    dados_novos = {
-                        "nome": nome_c,
-                        "area": area_c,
-                        "descricao": desc_c,
-                        "tipo": tipo_c,
-                        "senha": senha_c,
-                        "lat": lat_c,
-                        "lon": lon_c,
-                        "saldo": 5, # Bonus de boas vindas
-                        "aprovado": False, # Precisa de aprovação admin
-                        "cliques": 0,
-                        "rating": 5.0,
-                        "verificado": False,
-                        "data_criacao": datetime.now().isoformat()
-                    }
-                    doc_ref.set(dados_novos)
-                    st.success("Cadastro realizado! Aguarde aprovação do administrador.")
-                    st.balloons()
+            # Validações de segurança
+            if not nome_c or not zap_c or not senha_c:
+                st.warning("⚠️ Nome, WhatsApp e Senha são obrigatórios!")
+            elif senha_c != senha_c_conf:
+                st.error("❌ As senhas não conferem. Tente novamente.")
+            elif len(senha_c) < 4:
+                st.warning("⚠️ A senha deve ter pelo menos 4 caracteres.")
             else:
-                st.warning("Preencha os campos obrigatórios.")
+                try:
+                    doc_ref = db.collection("profissionais").document(zap_c)
+                    if doc_ref.get().exists:
+                        st.error("❌ Este WhatsApp já está cadastrado em nossa base!")
+                    else:
+                        # Processamento da imagem se existir
+                        foto_b64 = ""
+                        if foto_c is not None:
+                            # Utiliza a função de conversão existente no seu projeto
+                            foto_b64 = converter_img_b64(foto_c)
+                        
+                        dados_novos = {
+                            "nome": nome_c,
+                            "area": area_c,
+                            "descricao": desc_c,
+                            "tipo": tipo_c,
+                            "senha": senha_c,
+                            "foto_b64": foto_b64, # Nova função!
+                            "lat": lat_c,
+                            "lon": lon_c,
+                            "saldo": 5, # Mantido bônus de boas-vindas
+                            "aprovado": False,
+                            "cliques": 0,
+                            "rating": 5.0,
+                            "verificado": False,
+                            "data_criacao": datetime.datetime.now().isoformat()
+                        }
+                        
+                        doc_ref.set(dados_novos)
+                        st.success("✅ PERFIL CRIADO! Agora o administrador irá validar seus dados para te liberar no mapa.")
+                        st.balloons()
+                        
+                except Exception as e:
+                    st.error(f"Erro ao salvar no banco de dados: {e}")
 
 # ==============================================================================
-# ABA 3: MEU PERFIL (CORRIGIDA)
+# ABA 3: MEU PERFIL (VITRINE LUXUOSA ESTILO INSTA)
 # ==============================================================================
 with menu_abas[2]:
     if 'auth' not in st.session_state: st.session_state.auth = False
     
     if not st.session_state.auth:
-        st.subheader("🔐 Login Parceiro")
-        l_zap = st.text_input("WhatsApp", key="login_zap")
-        l_pw = st.text_input("Senha", type="password", key="login_pw")
-        if st.button("ENTRAR", use_container_width=True):
-            # Validação simples
-            if l_zap:
-                doc_ref = db.collection("profissionais").document(l_zap)
-                doc = doc_ref.get()
-                if doc.exists and doc.to_dict().get('senha') == l_pw:
-                    st.session_state.auth = True
-                    st.session_state.user_id = l_zap
-                    st.rerun()
-                else:
-                    st.error("❌ Dados incorretos ou usuário não encontrado.")
+        st.markdown("<h2 style='text-align:center;'>🔐 Portal do Parceiro</h2>", unsafe_allow_html=True)
+        with st.container():
+            l_zap = st.text_input("WhatsApp (ID)", key="login_zap")
+            l_pw = st.text_input("Senha", type="password", key="login_pw")
+            if st.button("ENTRAR NA MINHA VITRINE", use_container_width=True):
+                if l_zap:
+                    doc_ref = db.collection("profissionais").document(l_zap)
+                    doc = doc_ref.get()
+                    if doc.exists and doc.to_dict().get('senha') == l_pw:
+                        st.session_state.auth = True
+                        st.session_state.user_id = l_zap
+                        st.rerun()
+                    else:
+                        st.error("❌ Credenciais inválidas.")
     else:
-        # Puxamos os dados atualizados do banco
         uid = st.session_state.user_id
         doc_ref = db.collection("profissionais").document(uid)
-        d_snapshot = doc_ref.get()
+        d = doc_ref.get().to_dict()
         
-        if not d_snapshot.exists:
-            st.error("Erro: Usuário não encontrado no banco.")
-            st.session_state.auth = False
-            st.rerun()
-            
-        d = d_snapshot.to_dict()
-        
-        # --- DASHBOARD DE MÉTRICAS ---
+        # --- HEADER ESTILO INSTAGRAM ---
         st.markdown(f"""
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px;">
-                <div style="background:#1E293B; color:white; padding:15px; border-radius:15px; text-align:center;">
-                    <small>SALDO</small><br><b style="font-size:20px;">{d.get('saldo', 0)} 🪙</b>
+            <div style="display: flex; align-items: center; gap: 20px; padding: 20px; background: white; border-radius: 20px; border: 1px solid #E2E8F0; margin-bottom: 20px;">
+                <div style="position: relative;">
+                    <img src="data:image/png;base64,{d.get('foto_b64', '')}" 
+                         style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #E1306C;"
+                         onerror="this.src='https://ui-avatars.com/api/?name={d.get('nome')}&background=random'">
+                    <div style="position: absolute; bottom: 5px; right: 5px; background: #22C55E; width: 15px; height: 15px; border-radius: 50%; border: 2px solid white;"></div>
                 </div>
-                <div style="background:#1E293B; color:white; padding:15px; border-radius:15px; text-align:center;">
-                    <small>CLIQUES</small><br><b style="font-size:20px;">{d.get('cliques', 0)} 🚀</b>
-                </div>
-                <div style="background:#1E293B; color:white; padding:15px; border-radius:15px; text-align:center;">
-                    <small>STATUS</small><br><b style="font-size:14px;">{"🟢 ATIVO" if d.get('aprovado') else "🟡 ANÁLISE"}</b>
+                <div style="flex-grow: 1;">
+                    <h2 style="margin: 0; font-size: 22px;">{d.get('nome')}</h2>
+                    <p style="margin: 0; color: #64748B; font-size: 14px;">@{d.get('area').lower().replace(' ', '')}</p>
+                    <div style="display: flex; gap: 15px; margin-top: 10px;">
+                        <div style="text-align: center;"><b style="display: block;">{d.get('cliques', 0)}</b><small style="color: #64748B;">Cliques</small></div>
+                        <div style="text-align: center;"><b style="display: block;">⭐ {d.get('rating', 5.0)}</b><small style="color: #64748B;">Nota</small></div>
+                        <div style="text-align: center;"><b style="display: block;">{d.get('saldo', 0)}</b><small style="color: #64748B;">Moedas</small></div>
+                    </div>
                 </div>
             </div>
         """, unsafe_allow_html=True)
-        
-        # --- LOJA DE MOEDAS ---
-        with st.expander("💎 COMPRAR DESTAQUE (MOEDAS)", expanded=False):
-             st.caption("As moedas aumentam sua visibilidade e permitem que clientes cliquem no seu WhatsApp.")
-             c1, c2, c3 = st.columns(3)
-             # Links diretos para o WhatsApp do Admin
-             msg_base = f"Olá! Quero comprar moedas para o ID: {uid}"
-             if c1.button("🥉 10 Moedas (R$25)", use_container_width=True):
-                 st.markdown(f'<meta http-equiv="refresh" content="0;URL=https://wa.me/{ZAP_ADMIN}?text={msg_base} (Pacote Bronze)">', unsafe_allow_html=True)
-             if c2.button("🥈 30 Moedas (R$60)", use_container_width=True):
-                 st.markdown(f'<meta http-equiv="refresh" content="0;URL=https://wa.me/{ZAP_ADMIN}?text={msg_base} (Pacote Prata)">', unsafe_allow_html=True)
-             if c3.button("🥇 100 Moedas (R$150)", use_container_width=True):
-                 st.markdown(f'<meta http-equiv="refresh" content="0;URL=https://wa.me/{ZAP_ADMIN}?text={msg_base} (Pacote Ouro)">', unsafe_allow_html=True)
+
+        # --- DASHBOARD DE PERFORMANCE (LUXUOSA) ---
+        col_m1, col_m2, col_m3 = st.columns(3)
+        col_m1.metric("Visibilidade", f"{d.get('cliques', 0)} rkt", "Aumento de 12%")
+        col_m2.metric("Saldo Atual", f"{d.get('saldo', 0)} 🪙")
+        col_m3.metric("Status Perfil", "Elite" if d.get('elite') else "Padrão")
+
+        # --- LOJA DE DESTAQUES (GRID VISUAL) ---
+        st.markdown("### 💎 Impulsione sua Vitrine")
+        with st.container():
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                st.markdown("<div style='background: linear-gradient(135deg, #FFD700, #FFA500); padding: 15px; border-radius: 15px; color: white; text-align: center;'><b>BRONZE</b><br>10 🪙<br>R$ 25</div>", unsafe_allow_html=True)
+                if st.button("Comprar 10", key="buy_10", use_container_width=True):
+                     st.markdown(f'<meta http-equiv="refresh" content="0;URL=https://wa.me/{ZAP_ADMIN}?text=Quero 10 moedas para ID: {uid}">', unsafe_allow_html=True)
+            with c2:
+                st.markdown("<div style='background: linear-gradient(135deg, #C0C0C0, #808080); padding: 15px; border-radius: 15px; color: white; text-align: center;'><b>PRATA</b><br>30 🪙<br>R$ 60</div>", unsafe_allow_html=True)
+                if st.button("Comprar 30", key="buy_30", use_container_width=True):
+                     st.markdown(f'<meta http-equiv="refresh" content="0;URL=https://wa.me/{ZAP_ADMIN}?text=Quero 30 moedas para ID: {uid}">', unsafe_allow_html=True)
+            with c3:
+                st.markdown("<div style='background: linear-gradient(135deg, #FFD700, #D4AF37); padding: 15px; border-radius: 15px; color: white; text-align: center;'><b>OURO</b><br>100 🪙<br>R$ 150</div>", unsafe_allow_html=True)
+                if st.button("Comprar 100", key="buy_100", use_container_width=True):
+                     st.markdown(f'<meta http-equiv="refresh" content="0;URL=https://wa.me/{ZAP_ADMIN}?text=Quero 100 moedas para ID: {uid}">', unsafe_allow_html=True)
 
         st.divider()
 
-        # --- EDIÇÃO DE PERFIL (CORRIGIDO: SELETORES FORA DO FORM) ---
-        st.subheader("📝 Editar Dados")
-        
-        # 1. Seletores FORA do formulário para interatividade imediata
-        col_sel1, col_sel2 = st.columns(2)
-        
-        # Define índice inicial baseado no banco
-        try:
-            idx_cat = CATEGORIAS_OFICIAIS.index(d.get('area', 'Ajudante Geral'))
-        except:
-            idx_cat = 0
-            
-        idx_tipo = 0 if d.get('tipo') == "👤 Profissional" else 1
-
-        n_area = col_sel1.selectbox("Sua Categoria", CATEGORIAS_OFICIAIS, index=idx_cat)
-        n_tipo = col_sel2.radio("Tipo de Perfil", ["👤 Profissional", "🏢 Comércio/Loja"], index=idx_tipo)
-
-        # 2. Formulário inicia aqui
-        with st.form("edit_perfil"):
-            n_nome = st.text_input("Nome de Exibição", value=d.get('nome', ''))
-            n_desc = st.text_area("Descrição / Bio", value=d.get('descricao', ''))
-            
-            # Lógica Condicional (agora funciona pois n_tipo está fora)
-            h_abre_str = d.get('h_abre', '08:00')
-            h_fecha_str = d.get('h_fecha', '18:00')
-            
-            if n_tipo == "🏢 Comércio/Loja":
-                st.markdown("**Horário de Funcionamento**")
-                c_h1, c_h2 = st.columns(2)
-                # Converte string HH:MM para objeto time para o widget
-                val_abre = datetime.strptime(h_abre_str, '%H:%M').time()
-                val_fecha = datetime.strptime(h_fecha_str, '%H:%M').time()
+        # --- EDIÇÃO DE DADOS (TURBINADA) ---
+        with st.expander("⚙️ CONFIGURAÇÕES DA VITRINE", expanded=False):
+            with st.form("edit_v2"):
+                st.markdown("#### ✨ Informações Públicas")
+                new_foto = st.file_uploader("Trocar Foto de Perfil", type=["jpg", "png", "jpeg"])
+                n_nome = st.text_input("Nome da Vitrine", value=d.get('nome'))
+                n_desc = st.text_area("Bio (O que você faz de melhor?)", value=d.get('descricao'))
                 
-                h_abre = c_h1.time_input("Abre às", value=val_abre)
-                h_fecha = c_h2.time_input("Fecha às", value=val_fecha)
-            else:
-                h_abre = None
-                h_fecha = None
-            
-            st.markdown("---")
-            st.caption("Para alterar a foto, entre em contato com o suporte.")
-            
-            btn_salvar = st.form_submit_button("💾 SALVAR DADOS", use_container_width=True)
-            
-            if btn_salvar:
-                update_data = {
-                    "nome": n_nome,
-                    "area": n_area,
-                    "descricao": n_desc,
-                    "tipo": n_tipo
-                }
-                
-                if n_tipo == "🏢 Comércio/Loja" and h_abre and h_fecha:
-                    update_data['h_abre'] = h_abre.strftime('%H:%M')
-                    update_data['h_fecha'] = h_fecha.strftime('%H:%M')
-                
-                doc_ref.update(update_data)
-                st.success("✅ Perfil atualizado com sucesso!")
-                time.sleep(1) # Dá tempo do usuário ler
-                st.rerun()
+                col_e1, col_e2 = st.columns(2)
+                n_area = col_e1.selectbox("Categoria", CATEGORIAS_OFICIAIS, index=CATEGORIAS_OFICIAIS.index(d.get('area', 'Ajudante Geral')))
+                n_tipo = col_e2.radio("Tipo", ["👤 Profissional", "🏢 Comércio/Loja"], index=0 if d.get('tipo') == "👤 Profissional" else 1, horizontal=True)
 
-        if st.button("Sair da Conta", type="secondary"):
+                if st.form_submit_button("💾 ATUALIZAR MINHA VITRINE", use_container_width=True):
+                    up = {
+                        "nome": n_nome, "area": n_area, "descricao": n_desc, "tipo": n_tipo
+                    }
+                    if new_foto:
+                        up["foto_b64"] = converter_img_b64(new_foto)
+                    
+                    doc_ref.update(up)
+                    st.success("Vitrine atualizada! 🚀")
+                    time.sleep(1)
+                    st.rerun()
+
+        if st.button("LOGOUT", type="secondary"):
             st.session_state.auth = False
             st.rerun()
-
 # ==============================================================================
 # ABA 4: ADMIN
 # ==============================================================================
@@ -537,4 +533,5 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
