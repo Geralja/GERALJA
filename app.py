@@ -83,20 +83,30 @@ def conectar_banco_master():
     return firebase_admin.get_app()
 
 app_engine = conectar_banco_master()
+
 if app_engine:
     db = firestore.client()
 else:
+    st.error("Erro ao conectar ao Firebase. Verifique suas configurações.")
     st.stop()
-    
-    def buscar_opcoes_dinamicas(documento, padrao):
-    
-        try:
+
+# --- FUNÇÕES DE SUPORTE (Mantenha fora de blocos IF/ELSE para funcionar no app todo) ---
+
+def buscar_opcoes_dinamicas(documento, padrao):
+    """
+    Busca listas de categorias ou tipos na coleção 'configuracoes'.
+    """
+    try:
         doc = db.collection("configuracoes").document(documento).get()
         if doc.exists:
-            return doc.to_dict().get("lista", padrao)
+            dados = doc.to_dict()
+            return dados.get("lista", padrao)
         return padrao
-    except:
+    except Exception as e:
+        # Se houver erro ou o banco estiver vazio, retorna a lista padrão
         return padrao
+
+# --- PROSSEGUIR COM O RESTANTE DO CÓDIGO ---
 
 # ------------------------------------------------------------------------------
 # 3. POLÍTICAS E CONSTANTES
@@ -688,6 +698,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
