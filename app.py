@@ -359,15 +359,20 @@ with menu_abas[0]:
                     </a>
                 """, unsafe_allow_html=True)
                 
-                st.markdown("</div>", unsafe_allow_html=True)# ==============================================================================
-# ABA 2: 📝 CADASTRO TURBINADO (VITRINE + DINÂMICO + SEGURO)
+# ==============================================================================
+# ABA 2: 📝 CADASTRO TURBINADO E BLINDADO
 # ==============================================================================
 with menu_abas[1]:
     st.markdown("### 🚀 Faça parte do GeralJá")
-    st.caption("Preencha os dados abaixo para criar sua vitrine luxo e aparecer para clientes próximos.")
+    
+    # --- TRAVA DE SEGURANÇA PARA COORDENADAS (Evita erro na linha 89) ---
+    if 'minha_lat' not in locals():
+        minha_lat = -23.5505  # Valor padrão (SP)
+    if 'minha_lon' not in locals():
+        minha_lon = -46.6333  # Valor padrão (SP)
 
-    # 1. BUSCA OPÇÕES DO ADMIN (Categorias e Tipos)
-    lista_areas = buscar_opcoes_dinamicas("categorias", ["Serviços Gerais", "Alimentação", "Manutenção"])
+    # 1. BUSCA OPÇÕES DO ADMIN
+    lista_areas = buscar_opcoes_dinamicas("categorias", ["Serviços Gerais", "Manutenção"])
     lista_tipos = buscar_opcoes_dinamicas("tipos", ["👤 Profissional Autônomo", "🏢 Comércio/Loja"])
 
     with st.form("form_cadastro_luxo", clear_on_submit=True):
@@ -381,48 +386,43 @@ with menu_abas[1]:
         
         with col2:
             st.markdown("📍 **Sua Localização**")
-            # Usa as coordenadas do GPS se disponíveis, senão usa padrão
-            lat_c = st.number_input("Latitude", value=minha_lat, format="%.6f")
-            lon_c = st.number_input("Longitude", value=minha_lon, format="%.6f")
-            st.caption("Clique no botão de GPS na aba buscar para atualizar sua posição automaticamente.")
+            lat_c = st.number_input("Latitude", value=float(minha_lat), format="%.6f")
+            lon_c = st.number_input("Longitude", value=float(minha_lon), format="%.6f")
+            st.caption("Ajuste manualmente se o GPS não marcar seu local exato.")
 
         st.divider()
-        desc_c = st.text_area("Descrição do Serviço (Sua Vitrine)*", placeholder="Conte o que você faz, seus diferenciais e horários...", help="Isso ajuda a IA te encontrar!")
+        desc_c = st.text_area("Descrição do Serviço (Sua Vitrine)*", placeholder="Conte o que você faz...")
 
-        # --- SEÇÃO DE FOTOS TURBINADA ---
-        st.markdown("#### 📸 Sua Vitrine Visual")
-        st.caption("A primeira foto é seu perfil. As outras 3 formam seu portfólio luxo.")
-        
+        # --- SEÇÃO DE FOTOS ---
+        st.markdown("#### 📸 Sua Vitrine Visual (Até 4 fotos)")
         c_perfil, c_v1, c_v2, c_v3 = st.columns(4)
         
         with c_perfil:
-            foto_perfil = st.file_uploader("Foto Perfil", type=['jpg', 'jpeg', 'png'])
+            foto_perfil = st.file_uploader("Perfil", type=['jpg', 'png'], key="perf")
         with c_v1:
-            f1 = st.file_uploader("Vitrine 1", type=['jpg', 'jpeg', 'png'], key="v1")
+            f1 = st.file_uploader("Vitrine 1", type=['jpg', 'png'], key="v1")
         with c_v2:
-            f2 = st.file_uploader("Vitrine 2", type=['jpg', 'jpeg', 'png'], key="v2")
+            f2 = st.file_uploader("Vitrine 2", type=['jpg', 'png'], key="v2")
         with c_v3:
-            f3 = st.file_uploader("Vitrine 3", type=['jpg', 'jpeg', 'png'], key="v3")
+            f3 = st.file_uploader("Vitrine 3", type=['jpg', 'png'], key="v3")
 
         st.divider()
         btn_enviar = st.form_submit_button("🚀 CRIAR MINHA VITRINE AGORA", use_container_width=True)
 
         if btn_enviar:
-            # BLINDAGEM: Validação de campos obrigatórios
+            import datetime # Garante que o datetime funcione aqui dentro
+            
             if not nome_c or not zap_c or not desc_c:
-                st.error("⚠️ Por favor, preencha todos os campos obrigatórios (*).")
-            elif len(zap_c) < 10:
-                st.error("⚠️ O número de WhatsApp parece estar incompleto.")
+                st.error("⚠️ Preencha Nome, WhatsApp e Descrição.")
             else:
-                with st.spinner("Turbinando sua vitrine..."):
-                    # Processamento das imagens para Base64
+                with st.spinner("Salvando sua vitrine..."):
+                    # Converte fotos (Função converter_img_b64 deve estar no topo do app)
                     foto_b64 = converter_img_b64(foto_perfil) if foto_perfil else ""
                     f1_b64 = converter_img_b64(f1) if f1 else ""
                     f2_b64 = converter_img_b64(f2) if f2 else ""
                     f3_b64 = converter_img_b64(f3) if f3 else ""
 
-                    # Montagem do objeto (Mesma estrutura que a Busca lê)
-                    novo_profissional = {
+                    novo_pro = {
                         "nome": nome_c,
                         "area": area_c,
                         "tipo": tipo_c,
@@ -430,23 +430,22 @@ with menu_abas[1]:
                         "lat": lat_c,
                         "lon": lon_c,
                         "foto_b64": foto_b64,
-                        "f1": f1_b64, # Foto Vitrine 1
-                        "f2": f2_b64, # Foto Vitrine 2
-                        "f3": f3_b64, # Foto Vitrine 3
-                        "aprovado": False, # Passa pelo crivo do Admin
+                        "f1": f1_b64,
+                        "f2": f2_b64,
+                        "f3": f3_b64,
+                        "aprovado": False,
                         "verificado": False,
                         "saldo": 0,
                         "rating": 5.0,
                         "cliques": 0,
-                        "data_cadastro": datetime.datetime.now().isoformat()
+                        "data_cadastro": datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
                     }
 
-                    # Salvando no Firebase usando o WhatsApp como ID único para evitar duplicados
-                    db.collection("profissionais").document(zap_c).set(novo_profissional)
+                    # Salva usando o ZAP como ID (Blindagem contra duplicados)
+                    db.collection("profissionais").document(zap_c).set(novo_pro)
                     
                     st.balloons()
-                    st.success("✅ Cadastro Enviado! Sua vitrine está em análise e logo estará no ar.")
-                    st.info("Dica: Use a Aba 'Perfil' para gerenciar seus dados futuramente usando seu WhatsApp.")
+                    st.success("✅ Cadastro enviado! Aguarde a aprovação do Admin.")
 # ==============================================================================
 # ABA 3: MEU PERFIL (VITRINE LUXUOSA ESTILO INSTA)
 # ==============================================================================
@@ -686,6 +685,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
