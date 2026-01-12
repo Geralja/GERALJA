@@ -1,5 +1,5 @@
 # ==============================================================================
-# GERALJÁ: CRIANDO SOLUÇÕES
+# GERALJÁ: EDIÇÃO ELITE BRASIL
 # ==============================================================================
 import streamlit as st
 import firebase_admin
@@ -15,9 +15,7 @@ import unicodedata
 from datetime import datetime
 import pytz
 
-# ------------------------------------------------------------------------------
-# 1. CONFIGURAÇÃO DE AMBIENTE E PERFORMANCE
-# ------------------------------------------------------------------------------
+# 1. CONFIGURAÇÃO DA PÁGINA (Sempre o primeiro comando)
 st.set_page_config(
     page_title="GeralJá | Criando Soluções",
     page_icon="🇧🇷",
@@ -25,78 +23,62 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Tenta importar bibliotecas extras
-try:
-    from streamlit_js_eval import streamlit_js_eval, get_geolocation
-except ImportError:
-    pass
-
-# --- [ESSENCIAL] INICIALIZAÇÃO DE VARIÁVEIS DE ESTADO ---
-# Isso evita o erro "AttributeError" ou "NameError"
+# 2. INICIALIZAÇÃO DE ESTADO (Vacinando contra erros de variável)
 if 'modo_noite' not in st.session_state:
     st.session_state.modo_noite = False
-if 'main_search' not in st.session_state:
-    st.session_state.main_search = ""
 
-# --- DESIGN SYSTEM & HEADER (ESTILIZADO) ---
-
-# Define as cores baseado no modo noite
-cor_fundo_header = "rgba(0,0,0,0)" if st.session_state.modo_noite else "white"
-cor_texto_sub = "#94A3B8" if st.session_state.modo_noite else "#64748B"
-
-# Trava de Rolagem: Se o campo de busca estiver vazio, trava o scroll
-termo_busca_atual = st.session_state.get('main_search', "")
-trava_scroll = "overflow: hidden;" if not termo_busca_atual else "overflow: auto;"
-
+# 3. CSS PARA LIMPAR O TOPO E AJUSTAR CORES
+# Aqui removemos as margens brancas que o Streamlit coloca por padrão
 st.markdown(f"""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-    * {{ font-family: 'Inter', sans-serif; }}
+    /* Remove o espaço vazio no topo (Header do Streamlit) */
+    header[data-testid="stHeader"] {{
+        display: none !important;
+    }}
     
-    /* Remove espaço excessivo no topo e controla o scroll da página */
+    /* Cola o conteúdo no topo da tela */
     .block-container {{
-        padding-top: 0.5rem !important;
+        padding-top: 0rem !important;
         padding-bottom: 0rem !important;
-        {trava_scroll}
+        margin-top: -20px;
     }}
 
-    /* Header Compacto e Transparente */
+    /* Ajuste de Cores do Header */
     .header-container {{
-        background: {cor_fundo_header};
-        padding: 5px 10px 15px 10px;
-        border-radius: 0 0 30px 30px;
+        background: {"#0E1117" if st.session_state.modo_noite else "#FFFFFF"};
+        padding: 20px 10px;
         text-align: center;
         border-bottom: 4px solid #FF8C00;
-        margin-bottom: 10px;
+        margin-bottom: 20px;
+        border-radius: 0 0 25px 25px;
     }}
+
+    .logo-azul {{ color: #0047AB; font-weight: 900; font-size: 42px; letter-spacing: -2px; }}
+    .logo-laranja {{ color: #FF8C00; font-weight: 900; font-size: 42px; letter-spacing: -2px; }}
     
-    .logo-azul {{ 
-        color: #0047AB; 
-        font-weight: 900; 
-        font-size: 40px; 
-        letter-spacing: -2px; 
-    }}
-    
-    .logo-laranja {{ 
-        color: #FF8C00; 
-        font-weight: 900; 
-        font-size: 40px; 
-        letter-spacing: -2px; 
+    /* Garante que o fundo da página mude de verdade */
+    .stApp {{
+        background-color: {"#0E1117" if st.session_state.modo_noite else "#FFFFFF"} !important;
     }}
 </style>
 """, unsafe_allow_html=True)
 
-# Renderização da Logo com Subtítulo em Português
+# 4. RENDERIZAÇÃO DO CABEÇALHO
+cor_sub = "#94A3B8" if st.session_state.modo_noite else "#64748B"
+
 st.markdown(f'''
     <div class="header-container">
         <span class="logo-azul">GERAL</span><span class="logo-laranja">JÁ</span><br>
-        <small style="color:{cor_texto_sub}; font-weight:700;">EDIÇÃO ELITE BRASIL</small>
+        <small style="color:{cor_sub}; font-weight:700; letter-spacing: 2px;">EDIÇÃO ELITE BRASIL</small>
     </div>
 ''', unsafe_allow_html=True)
 
-# ------------------------------------------------------------------------------
-# 2. CAMADA DE PERSISTÊNCIA (FIREBASE)
-# ------------------------------------------------------------------------------
+# 5. BOTÃO DE TEMA (Logo abaixo da logo para ficar fácil de achar)
+col_t1, col_t2, col_t3 = st.columns([1, 2, 1])
+with col_t2:
+    st.session_state.modo_noite = st.toggle("🌙 Modo Escuro", value=st.session_state.modo_noite)
+
+# --- CONTINUAÇÃO DO CÓDIGO (FIREBASE) ---
 @st.cache_resource
 def conectar_banco_master():
     if not firebase_admin._apps:
@@ -108,12 +90,13 @@ def conectar_banco_master():
                 cred = credentials.Certificate(cred_dict)
                 return firebase_admin.initialize_app(cred)
             else:
-                st.warning("⚠️ Configure a secret FIREBASE_BASE64 para conectar ao banco.")
                 return None
         except Exception as e:
-            st.error(f"❌ FALHA NA INFRAESTRUTURA: {e}")
+            st.error(f"Erro Infra: {e}")
             st.stop()
     return firebase_admin.get_app()
+
+db = firestore.client() if conectar_banco_master() else None
 
 app_engine = conectar_banco_master()
 
@@ -737,6 +720,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
