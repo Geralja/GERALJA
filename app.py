@@ -87,6 +87,7 @@ if app_engine:
     db = firestore.client()
 else:
     st.stop()
+    
     def buscar_opcoes_dinamicas(documento, padrao):
     try:
         doc = db.collection("configuracoes").document(documento).get()
@@ -686,6 +687,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
