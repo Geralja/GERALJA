@@ -453,38 +453,93 @@ with menu_abas[2]:
             st.session_state.auth = False
             st.rerun()
 # ==============================================================================
-# ABA 4: ADMIN
+# ABA 3: 👑 PAINEL DE CONTROLE MASTER (TURBINADO)
 # ==============================================================================
 with menu_abas[3]:
-    st.header("👑 Painel Administrativo")
-    pw_admin = st.text_input("Senha Admin", type="password")
+    st.markdown("## 👑 Gestão Estratégica GeralJá")
     
-    if pw_admin == CHAVE_ADMIN:
-        st.success("Acesso Liberado")
+    access_adm = st.text_input("Chave Mestra", type="password", key="auth_master")
+
+    if access_adm == CHAVE_ADMIN:
+        # --- 1. DASHBOARD DE MÉTRICAS ---
+        st.markdown("### 📊 Performance da Rede")
+        todos_profs = list(db.collection("profissionais").stream())
         
-        # Aprovações Pendentes
-        st.subheader("Aprovações Pendentes")
-        pendentes = db.collection("profissionais").where("aprovado", "==", False).stream()
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("Profissionais", len(todos_profs))
         
-        for p in pendentes:
-            dd = p.to_dict()
-            with st.expander(f"Pendente: {dd.get('nome')} ({dd.get('area')})"):
-                st.write(dd.get('descricao'))
-                c1, c2 = st.columns(2)
-                if c1.button("✅ APROVAR", key=f"ap_{p.id}"):
-                    db.collection("profissionais").document(p.id).update({"aprovado": True})
-                    st.rerun()
-                if c2.button("❌ DELETAR", key=f"del_{p.id}"):
-                    db.collection("profissionais").document(p.id).delete()
-                    st.rerun()
+        # Cálculos rápidos
+        total_cliques = sum([p.to_dict().get('cliques', 0) for p in todos_profs])
+        saldo_total = sum([p.to_dict().get('saldo', 0) for p in todos_profs])
+        pendentes = len([p for p in todos_profs if not p.to_dict().get('aprovado')])
+        
+        m2.metric("Cliques Totais", total_cliques)
+        m3.metric("Saldo em Circulação", f"{saldo_total} 💎")
+        m4.metric("Aguardando Aprovação", pendentes, delta_color="inverse", delta=pendentes)
+
+        st.divider()
+
+        # --- 2. LISTA DE GESTÃO ---
+        st.markdown("### 📋 Gerenciar Profissionais")
+        
+        for p_doc in todos_profs:
+            p = p_doc.to_dict()
+            pid = p_doc.id
+            
+            with st.expander(f"{'✅' if p.get('aprovado') else '⏳'} {p.get('nome').upper()} - {p.get('area')}"):
+                c1, c2, c3 = st.columns([1, 2, 1])
+                
+                with c1:
+                    # Foto de Perfil
+                    foto = p.get('foto_b64')
+                    if foto:
+                        st.image(f"data:image/png;base64,{foto}", width=100)
+                    st.write(f"ID: `{pid}`")
+                    st.write(f"Saldo: **{p.get('saldo', 0)} 💎**")
+
+                with c2:
+                    st.write(f"**Descrição:** {p.get('descricao')}")
+                    st.write(f"**Tipo:** {p.get('tipo')}")
+                    st.write(f"**Cliques:** {p.get('cliques', 0)}")
                     
-        # Ferramentas do Arquivo Original
-        st.subheader("Ferramentas de Manutenção")
-        if st.button("🧹 Rodar Varredura de Segurança"):
-            # Lógica simples de varredura
-            st.info("Verificando integridade do banco de dados...")
-            time.sleep(1)
-            st.success("Banco de dados íntegro e otimizado.")
+                    # Exibir as 3 fotos da vitrine se existirem
+                    st.write("🖼️ **Vitrine:**")
+                    fv = [p.get('f1'), p.get('f2'), p.get('f3')]
+                    cols_f = st.columns(3)
+                    for i, f_data in enumerate(fv):
+                        if f_data:
+                            cols_f[i].image(f"data:image/png;base64,{f_data}", use_container_width=True)
+
+                with c3:
+                    st.write("⚡ **Ações Rápidas**")
+                    
+                    # Aprovação
+                    if not p.get('aprovado'):
+                        if st.button("✅ APROVAR AGORA", key=f"apr_{pid}", use_container_width=True):
+                            db.collection("profissionais").document(pid).update({"aprovado": True})
+                            st.rerun()
+                    
+                    # Verificado/Elite
+                    is_ver = p.get('verificado', False)
+                    label_ver = "💎 REMOVER ELITE" if is_ver else "🌟 TORNAR ELITE"
+                    if st.button(label_ver, key=f"ver_{pid}", use_container_width=True):
+                        db.collection("profissionais").document(pid).update({"verificado": not is_ver})
+                        st.rerun()
+
+                    # Adicionar Saldo (Pacote de 10)
+                    if st.button("➕ ADD 10 SALDO", key=f"plus_{pid}", use_container_width=True):
+                        db.collection("profissionais").document(pid).update({"saldo": p.get('saldo', 0) + 10})
+                        st.rerun()
+
+                    # Botão de Exclusão (Cuidado!)
+                    if st.button("🗑️ EXCLUIR", key=f"del_{pid}", use_container_width=True):
+                        db.collection("profissionais").document(pid).delete()
+                        st.rerun()
+
+    elif access_adm != "":
+        st.error("🚫 Acesso negado. Chave incorreta.")
+    else:
+        st.info("Aguardando Chave Mestra para liberar os controles.")
 
 # ==============================================================================
 # ABA 5: FEEDBACK
@@ -504,6 +559,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
