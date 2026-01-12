@@ -35,56 +35,61 @@ st.set_page_config(
 if 'tema_claro' not in st.session_state:
     st.session_state.tema_claro = False
 
-# --- GERENCIADOR DE TEMA (MODO NOITE LUXO) ---
-if 'modo_noite' not in st.session_state:
-    st.session_state.modo_noite = False
+# --- DESIGN SYSTEM & HEADER (AJUSTADO) ---
+# Se o modo noite estiver ON, as cores do header se adaptam
+cor_fundo_header = "rgba(0,0,0,0)" if st.session_state.modo_noite else "white"
+cor_texto_sub = "#94A3B8" if st.session_state.modo_noite else "#64748B"
 
-# Botão discreto no topo
-col_theme, _ = st.columns([1, 10])
-with col_theme:
-    st.session_state.modo_noite = st.toggle("🌙 Modo Noite", value=st.session_state.modo_noite)
+# Trava de Rolagem: Se não houver termo de busca, escondemos a barra de rolagem
+trava_scroll = ""
+if not termo_busca: # Certifique-se que a variável 'termo_busca' foi definida antes ou use st.session_state
+    trava_scroll = "overflow: hidden;"
 
-if st.session_state.modo_noite:
-    st.markdown("""
-        <style>
-            /* Fundo Total Escuro */
-            .stApp, .stAppViewContainer, .stMain {
-                background-color: #0E1117 !important;
-            }
-            
-            /* Textos em Branco */
-            h1, h2, h3, h4, h5, h6, p, span, label, .stMarkdown, .stCaption {
-                color: #FFFFFF !important;
-            }
+st.markdown(f"""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+    * {{ font-family: 'Inter', sans-serif; }}
+    
+    /* Remove espaço excessivo no topo do Streamlit */
+    .block-container {{
+        padding-top: 1rem !important;
+        padding-bottom: 0rem !important;
+        {trava_scroll}
+    }}
 
-            /* Cartões e Inputs Escuros com Borda Fina */
-            .stTextInput input, .stSelectbox div, .stTextArea textarea, .stNumberInput input {
-                background-color: #1A1C23 !important;
-                color: #FFFFFF !important;
-                border: 1px solid #30363D !important;
-            }
-
-            /* Abas (Tabs) */
-            button[data-baseweb="tab"] p {
-                color: #FFFFFF !important;
-            }
-            
-            /* Ajuste para os cards brancos da vitrine não "gritarem" no fundo preto */
-            div[style*="background: white"], div[style*="background: #FFFFFF"] {
-                background-color: #161B22 !important;
-                border: 1px solid #30363D !important;
-            }
-        </style>
-    """, unsafe_allow_html=True)
-
-# Mantém os menus escondidos
-st.markdown("""
-    <style>
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        header {visibility: hidden;}
-    </style>
+    /* Header Compacto e Transparente */
+    .header-container {{
+        background: {cor_fundo_header};
+        padding: 10px 10px 20px 10px;
+        border-radius: 0 0 30px 30px;
+        text-align: center;
+        border-bottom: 4px solid #FF8C00;
+        margin-bottom: 10px;
+    }}
+    
+    .logo-azul {{ 
+        color: #0047AB; 
+        font-weight: 900; 
+        font-size: 40px; 
+        letter-spacing: -2px; 
+    }}
+    
+    .logo-laranja {{ 
+        color: #FF8C00; 
+        font-weight: 900; 
+        font-size: 40px; 
+        letter-spacing: -2px; 
+    }}
+</style>
 """, unsafe_allow_html=True)
+
+# Renderização da Logo
+st.markdown(f'''
+    <div class="header-container">
+        <span class="logo-azul">GERAL</span><span class="logo-laranja">JÁ</span><br>
+        <small style="color:{cor_texto_sub}; font-weight:700;">BRASIL ELITE EDITION</small>
+    </div>
+''', unsafe_allow_html=True)
 # ------------------------------------------------------------------------------
 # 2. CAMADA DE PERSISTÊNCIA (FIREBASE)
 # ------------------------------------------------------------------------------
@@ -726,6 +731,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
