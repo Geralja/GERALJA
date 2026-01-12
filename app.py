@@ -86,7 +86,14 @@ app_engine = conectar_banco_master()
 if app_engine:
     db = firestore.client()
 else:
-    st.stop()
+    st.stop()def buscar_opcoes_dinamicas(documento, padrao):
+    try:
+        doc = db.collection("configuracoes").document(documento).get()
+        if doc.exists:
+            return doc.to_dict().get("lista", padrao)
+        return padrao
+    except:
+        return padrao
 
 # ------------------------------------------------------------------------------
 # 3. POLÍTICAS E CONSTANTES
@@ -352,7 +359,94 @@ with menu_abas[0]:
                     </a>
                 """, unsafe_allow_html=True)
                 
-                st.markdown("</div>", unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)# ==============================================================================
+# ABA 2: 📝 CADASTRO TURBINADO (VITRINE + DINÂMICO + SEGURO)
+# ==============================================================================
+with menu_abas[1]:
+    st.markdown("### 🚀 Faça parte do GeralJá")
+    st.caption("Preencha os dados abaixo para criar sua vitrine luxo e aparecer para clientes próximos.")
+
+    # 1. BUSCA OPÇÕES DO ADMIN (Categorias e Tipos)
+    lista_areas = buscar_opcoes_dinamicas("categorias", ["Serviços Gerais", "Alimentação", "Manutenção"])
+    lista_tipos = buscar_opcoes_dinamicas("tipos", ["👤 Profissional Autônomo", "🏢 Comércio/Loja"])
+
+    with st.form("form_cadastro_luxo", clear_on_submit=True):
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            nome_c = st.text_input("Nome Completo ou Nome do Negócio*", placeholder="Como os clientes te acharão")
+            zap_c = st.text_input("WhatsApp (com DDD)*", placeholder="Ex: 11999999999")
+            area_c = st.selectbox("Sua Especialidade*", options=sorted(lista_areas))
+            tipo_c = st.selectbox("Tipo de Atendimento*", options=lista_tipos)
+        
+        with col2:
+            st.markdown("📍 **Sua Localização**")
+            # Usa as coordenadas do GPS se disponíveis, senão usa padrão
+            lat_c = st.number_input("Latitude", value=minha_lat, format="%.6f")
+            lon_c = st.number_input("Longitude", value=minha_lon, format="%.6f")
+            st.caption("Clique no botão de GPS na aba buscar para atualizar sua posição automaticamente.")
+
+        st.divider()
+        desc_c = st.text_area("Descrição do Serviço (Sua Vitrine)*", placeholder="Conte o que você faz, seus diferenciais e horários...", help="Isso ajuda a IA te encontrar!")
+
+        # --- SEÇÃO DE FOTOS TURBINADA ---
+        st.markdown("#### 📸 Sua Vitrine Visual")
+        st.caption("A primeira foto é seu perfil. As outras 3 formam seu portfólio luxo.")
+        
+        c_perfil, c_v1, c_v2, c_v3 = st.columns(4)
+        
+        with c_perfil:
+            foto_perfil = st.file_uploader("Foto Perfil", type=['jpg', 'jpeg', 'png'])
+        with c_v1:
+            f1 = st.file_uploader("Vitrine 1", type=['jpg', 'jpeg', 'png'], key="v1")
+        with c_v2:
+            f2 = st.file_uploader("Vitrine 2", type=['jpg', 'jpeg', 'png'], key="v2")
+        with c_v3:
+            f3 = st.file_uploader("Vitrine 3", type=['jpg', 'jpeg', 'png'], key="v3")
+
+        st.divider()
+        btn_enviar = st.form_submit_button("🚀 CRIAR MINHA VITRINE AGORA", use_container_width=True)
+
+        if btn_enviar:
+            # BLINDAGEM: Validação de campos obrigatórios
+            if not nome_c or not zap_c or not desc_c:
+                st.error("⚠️ Por favor, preencha todos os campos obrigatórios (*).")
+            elif len(zap_c) < 10:
+                st.error("⚠️ O número de WhatsApp parece estar incompleto.")
+            else:
+                with st.spinner("Turbinando sua vitrine..."):
+                    # Processamento das imagens para Base64
+                    foto_b64 = converter_img_b64(foto_perfil) if foto_perfil else ""
+                    f1_b64 = converter_img_b64(f1) if f1 else ""
+                    f2_b64 = converter_img_b64(f2) if f2 else ""
+                    f3_b64 = converter_img_b64(f3) if f3 else ""
+
+                    # Montagem do objeto (Mesma estrutura que a Busca lê)
+                    novo_profissional = {
+                        "nome": nome_c,
+                        "area": area_c,
+                        "tipo": tipo_c,
+                        "descricao": desc_c,
+                        "lat": lat_c,
+                        "lon": lon_c,
+                        "foto_b64": foto_b64,
+                        "f1": f1_b64, # Foto Vitrine 1
+                        "f2": f2_b64, # Foto Vitrine 2
+                        "f3": f3_b64, # Foto Vitrine 3
+                        "aprovado": False, # Passa pelo crivo do Admin
+                        "verificado": False,
+                        "saldo": 0,
+                        "rating": 5.0,
+                        "cliques": 0,
+                        "data_cadastro": datetime.datetime.now().isoformat()
+                    }
+
+                    # Salvando no Firebase usando o WhatsApp como ID único para evitar duplicados
+                    db.collection("profissionais").document(zap_c).set(novo_profissional)
+                    
+                    st.balloons()
+                    st.success("✅ Cadastro Enviado! Sua vitrine está em análise e logo estará no ar.")
+                    st.info("Dica: Use a Aba 'Perfil' para gerenciar seus dados futuramente usando seu WhatsApp.")
 # ==============================================================================
 # ABA 3: MEU PERFIL (VITRINE LUXUOSA ESTILO INSTA)
 # ==============================================================================
@@ -477,7 +571,40 @@ with menu_abas[3]:
         m3.metric("Saldo em Circulação", f"{saldo_total} 💎")
         m4.metric("Aguardando Aprovação", pendentes, delta_color="inverse", delta=pendentes)
 
+        st.divider()# --- GERENCIADOR DE CATEGORIAS DINÂMICAS ---
         st.divider()
+        st.markdown("### 🛠️ Configurações de Expansão")
+        st.caption("Adicione novas opções que aparecerão instantaneamente no formulário de cadastro.")
+        
+        col_adm_1, col_adm_2 = st.columns(2)
+        
+        with col_adm_1:
+            st.write("**✨ Novas Profissões (IA)**")
+            nova_cat = st.text_input("Nome da Profissão", placeholder="Ex: Adestrador", key="add_cat_input")
+            if st.button("➕ Adicionar Categoria", use_container_width=True):
+                if nova_cat:
+                    doc_ref = db.collection("configuracoes").document("categorias")
+                    lista_atual = buscar_opcoes_dinamicas("categorias", [])
+                    if nova_cat not in lista_atual:
+                        lista_atual.append(nova_cat)
+                        doc_ref.set({"lista": lista_atual})
+                        st.success(f"'{nova_cat}' agora faz parte do sistema!")
+                        time.sleep(1)
+                        st.rerun()
+
+        with col_adm_2:
+            st.write("**🏢 Novos Tipos de Negócio**")
+            novo_tipo = st.text_input("Tipo de Comércio", placeholder="Ex: Food Truck", key="add_tipo_input")
+            if st.button("➕ Adicionar Tipo", use_container_width=True):
+                if novo_tipo:
+                    doc_ref = db.collection("configuracoes").document("tipos")
+                    lista_atual = buscar_opcoes_dinamicas("tipos", [])
+                    if novo_tipo not in lista_atual:
+                        lista_atual.append(novo_tipo)
+                        doc_ref.set({"lista": lista_atual})
+                        st.success(f"'{novo_tipo}' adicionado com sucesso!")
+                        time.sleep(1)
+                        st.rerun()
 
         # --- 2. LISTA DE GESTÃO ---
         st.markdown("### 📋 Gerenciar Profissionais")
@@ -559,6 +686,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
