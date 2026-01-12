@@ -35,7 +35,11 @@ st.set_page_config(
 if 'tema_claro' not in st.session_state:
     st.session_state.tema_claro = False
 
-# Botão discreto no topo para ajuste de tema (Funcionalidade do arquivo original)
+# --- GERENCIADOR DE TEMA (BLINDADO E COMPLETO) ---
+if 'tema_claro' not in st.session_state:
+    st.session_state.tema_claro = False
+
+# Botão discreto no topo para ajuste de tema
 col_theme, _ = st.columns([1, 10])
 with col_theme:
     st.session_state.tema_claro = st.toggle("☀️ Luz", value=st.session_state.tema_claro)
@@ -43,20 +47,53 @@ with col_theme:
 if st.session_state.tema_claro:
     st.markdown("""
         <style>
-            .stApp { background-color: #FFFFFF !important; }
-            .stMarkdown, .stText, h1, h2, h3 { color: #000000 !important; }
+            /* Força o fundo branco em todas as camadas principais */
+            .stApp, .stAppViewContainer, .stMain, .block-container {
+                background-color: #FFFFFF !important;
+            }
+            
+            /* Garante que textos, rótulos e títulos fiquem pretos */
+            h1, h2, h3, h4, h5, h6, p, span, label, .stMarkdown, .stCaption {
+                color: #1A1A1A !important;
+            }
+
+            /* Ajusta as caixas de seleção e campos de texto para contraste no modo claro */
+            .stTextInput input, .stSelectbox div, .stTextArea textarea, .stNumberInput input {
+                background-color: #F8F9FA !important;
+                color: #1A1A1A !important;
+                border: 1px solid #DDE1E7 !important;
+            }
+
+            /* Ajusta os Expander (detalhes) para não sumirem */
+            .streamlit-expanderHeader {
+                background-color: #FFFFFF !important;
+                color: #1A1A1A !important;
+            }
+
+            /* Corrigindo os Tabs (Abas) no modo claro */
+            button[data-baseweb="tab"] p {
+                color: #1A1A1A !important;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+else:
+    # Opcional: Forçar um fundo escuro elegante caso o sistema não mude sozinho
+    st.markdown("""
+        <style>
+            .stApp { background-color: #0E1117 !important; }
         </style>
     """, unsafe_allow_html=True)
 
-# Remove itens padrões do Streamlit
+# Remove itens padrões do Streamlit (Menu, Footer, Header)
 st.markdown("""
     <style>
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        header {visibility: hidden;}
+        /* Remove a linha branca do topo que sobra do header */
+        .stAppHeader {background-color: rgba(0,0,0,0) !important;}
     </style>
 """, unsafe_allow_html=True)
-
 # ------------------------------------------------------------------------------
 # 2. CAMADA DE PERSISTÊNCIA (FIREBASE)
 # ------------------------------------------------------------------------------
@@ -698,6 +735,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
