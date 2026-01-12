@@ -353,7 +353,6 @@ with menu_abas[0]:
                 """, unsafe_allow_html=True)
                 
                 st.markdown("</div>", unsafe_allow_html=True)
-
 # ==============================================================================
 # ABA 3: MEU PERFIL (VITRINE LUXUOSA ESTILO INSTA)
 # ==============================================================================
@@ -505,6 +504,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
