@@ -35,63 +35,54 @@ st.set_page_config(
 if 'tema_claro' not in st.session_state:
     st.session_state.tema_claro = False
 
-# --- GERENCIADOR DE TEMA (BLINDADO E COMPLETO) ---
-if 'tema_claro' not in st.session_state:
-    st.session_state.tema_claro = False
+# --- GERENCIADOR DE TEMA (MODO NOITE LUXO) ---
+if 'modo_noite' not in st.session_state:
+    st.session_state.modo_noite = False
 
-# Botão discreto no topo para ajuste de tema
+# Botão discreto no topo
 col_theme, _ = st.columns([1, 10])
 with col_theme:
-    st.session_state.tema_claro = st.toggle("☀️ Luz", value=st.session_state.tema_claro)
+    st.session_state.modo_noite = st.toggle("🌙 Modo Noite", value=st.session_state.modo_noite)
 
-if st.session_state.tema_claro:
+if st.session_state.modo_noite:
     st.markdown("""
         <style>
-            /* Força o fundo branco em todas as camadas principais */
-            .stApp, .stAppViewContainer, .stMain, .block-container {
-                background-color: #FFFFFF !important;
+            /* Fundo Total Escuro */
+            .stApp, .stAppViewContainer, .stMain {
+                background-color: #0E1117 !important;
             }
             
-            /* Garante que textos, rótulos e títulos fiquem pretos */
+            /* Textos em Branco */
             h1, h2, h3, h4, h5, h6, p, span, label, .stMarkdown, .stCaption {
-                color: #1A1A1A !important;
+                color: #FFFFFF !important;
             }
 
-            /* Ajusta as caixas de seleção e campos de texto para contraste no modo claro */
+            /* Cartões e Inputs Escuros com Borda Fina */
             .stTextInput input, .stSelectbox div, .stTextArea textarea, .stNumberInput input {
-                background-color: #F8F9FA !important;
-                color: #1A1A1A !important;
-                border: 1px solid #DDE1E7 !important;
+                background-color: #1A1C23 !important;
+                color: #FFFFFF !important;
+                border: 1px solid #30363D !important;
             }
 
-            /* Ajusta os Expander (detalhes) para não sumirem */
-            .streamlit-expanderHeader {
-                background-color: #FFFFFF !important;
-                color: #1A1A1A !important;
-            }
-
-            /* Corrigindo os Tabs (Abas) no modo claro */
+            /* Abas (Tabs) */
             button[data-baseweb="tab"] p {
-                color: #1A1A1A !important;
+                color: #FFFFFF !important;
+            }
+            
+            /* Ajuste para os cards brancos da vitrine não "gritarem" no fundo preto */
+            div[style*="background: white"], div[style*="background: #FFFFFF"] {
+                background-color: #161B22 !important;
+                border: 1px solid #30363D !important;
             }
         </style>
     """, unsafe_allow_html=True)
-else:
-    # Opcional: Forçar um fundo escuro elegante caso o sistema não mude sozinho
-    st.markdown("""
-        <style>
-            .stApp { background-color: #0E1117 !important; }
-        </style>
-    """, unsafe_allow_html=True)
 
-# Remove itens padrões do Streamlit (Menu, Footer, Header)
+# Mantém os menus escondidos
 st.markdown("""
     <style>
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         header {visibility: hidden;}
-        /* Remove a linha branca do topo que sobra do header */
-        .stAppHeader {background-color: rgba(0,0,0,0) !important;}
     </style>
 """, unsafe_allow_html=True)
 # ------------------------------------------------------------------------------
@@ -735,6 +726,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
