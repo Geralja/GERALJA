@@ -24,33 +24,38 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed"
 )
-# Tenta importar bibliotecas extras do arquivo original, se não tiver, segue sem quebrar
+
+# Tenta importar bibliotecas extras
 try:
     from streamlit_js_eval import streamlit_js_eval, get_geolocation
 except ImportError:
     pass
-# --- FUNCIONALIDADE DO ARQUIVO: TEMA MANUAL ---
-if 'tema_claro' not in st.session_state:
-    st.session_state.tema_claro = False
 
-# --- DESIGN SYSTEM & HEADER (AJUSTADO) ---
-# Se o modo noite estiver ON, as cores do header se adaptam
+# --- [ESSENCIAL] INICIALIZAÇÃO DE VARIÁVEIS DE ESTADO ---
+# Isso evita o erro "AttributeError" ou "NameError"
+if 'modo_noite' not in st.session_state:
+    st.session_state.modo_noite = False
+if 'main_search' not in st.session_state:
+    st.session_state.main_search = ""
+
+# --- DESIGN SYSTEM & HEADER (ESTILIZADO) ---
+
+# Define as cores baseado no modo noite
 cor_fundo_header = "rgba(0,0,0,0)" if st.session_state.modo_noite else "white"
 cor_texto_sub = "#94A3B8" if st.session_state.modo_noite else "#64748B"
 
-# Trava de Rolagem: Se não houver termo de busca, escondemos a barra de rolagem
-trava_scroll = ""
-if not termo_busca: # Certifique-se que a variável 'termo_busca' foi definida antes ou use st.session_state
-    trava_scroll = "overflow: hidden;"
+# Trava de Rolagem: Se o campo de busca estiver vazio, trava o scroll
+termo_busca_atual = st.session_state.get('main_search', "")
+trava_scroll = "overflow: hidden;" if not termo_busca_atual else "overflow: auto;"
 
 st.markdown(f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
     * {{ font-family: 'Inter', sans-serif; }}
     
-    /* Remove espaço excessivo no topo do Streamlit */
+    /* Remove espaço excessivo no topo e controla o scroll da página */
     .block-container {{
-        padding-top: 1rem !important;
+        padding-top: 0.5rem !important;
         padding-bottom: 0rem !important;
         {trava_scroll}
     }}
@@ -58,7 +63,7 @@ st.markdown(f"""
     /* Header Compacto e Transparente */
     .header-container {{
         background: {cor_fundo_header};
-        padding: 10px 10px 20px 10px;
+        padding: 5px 10px 15px 10px;
         border-radius: 0 0 30px 30px;
         text-align: center;
         border-bottom: 4px solid #FF8C00;
@@ -81,13 +86,14 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# Renderização da Logo
+# Renderização da Logo com Subtítulo em Português
 st.markdown(f'''
     <div class="header-container">
         <span class="logo-azul">GERAL</span><span class="logo-laranja">JÁ</span><br>
-        <small style="color:{cor_texto_sub}; font-weight:700;">BRASIL ELITE EDITION</small>
+        <small style="color:{cor_texto_sub}; font-weight:700;">EDIÇÃO ELITE BRASIL</small>
     </div>
 ''', unsafe_allow_html=True)
+
 # ------------------------------------------------------------------------------
 # 2. CAMADA DE PERSISTÊNCIA (FIREBASE)
 # ------------------------------------------------------------------------------
@@ -95,7 +101,6 @@ st.markdown(f'''
 def conectar_banco_master():
     if not firebase_admin._apps:
         try:
-            # Tenta pegar dos secrets do Streamlit
             if "FIREBASE_BASE64" in st.secrets:
                 b64_key = st.secrets["FIREBASE_BASE64"]
                 decoded_json = base64.b64decode(b64_key).decode("utf-8")
@@ -103,9 +108,6 @@ def conectar_banco_master():
                 cred = credentials.Certificate(cred_dict)
                 return firebase_admin.initialize_app(cred)
             else:
-                # Fallback para desenvolvimento local (se houver arquivo json)
-                # cred = credentials.Certificate("serviceAccountKey.json")
-                # return firebase_admin.initialize_app(cred)
                 st.warning("⚠️ Configure a secret FIREBASE_BASE64 para conectar ao banco.")
                 return None
         except Exception as e:
@@ -118,26 +120,20 @@ app_engine = conectar_banco_master()
 if app_engine:
     db = firestore.client()
 else:
-    st.error("Erro ao conectar ao Firebase. Verifique suas configurações.")
+    st.error("Erro ao conectar ao Firebase.")
     st.stop()
 
-# --- FUNÇÕES DE SUPORTE (Mantenha fora de blocos IF/ELSE para funcionar no app todo) ---
+# --- FUNÇÕES DE SUPORTE ---
 
 def buscar_opcoes_dinamicas(documento, padrao):
-    """
-    Busca listas de categorias ou tipos na coleção 'configuracoes'.
-    """
     try:
         doc = db.collection("configuracoes").document(documento).get()
         if doc.exists:
             dados = doc.to_dict()
             return dados.get("lista", padrao)
         return padrao
-    except Exception as e:
-        # Se houver erro ou o banco estiver vazio, retorna a lista padrão
+    except Exception:
         return padrao
-
-# --- PROSSEGUIR COM O RESTANTE DO CÓDIGO ---
 
 # ------------------------------------------------------------------------------
 # 3. POLÍTICAS E CONSTANTES
@@ -741,6 +737,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
