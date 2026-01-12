@@ -1,5 +1,5 @@
 # ==============================================================================
-# GERALJÁ: EDIÇÃO ELITE BRASIL
+# GERALJÁ: CRIANDO SOLUÇÕES
 # ==============================================================================
 import streamlit as st
 import firebase_admin
@@ -15,7 +15,15 @@ import unicodedata
 from datetime import datetime
 import pytz
 
-# 1. CONFIGURAÇÃO DA PÁGINA (Sempre o primeiro comando)
+# Tenta importar bibliotecas extras do arquivo original, se não tiver, segue sem quebrar
+try:
+    from streamlit_js_eval import streamlit_js_eval, get_geolocation
+except ImportError:
+    pass
+
+# ------------------------------------------------------------------------------
+# 1. CONFIGURAÇÃO DE AMBIENTE E PERFORMANCE
+# ------------------------------------------------------------------------------
 st.set_page_config(
     page_title="GeralJá | Criando Soluções",
     page_icon="🇧🇷",
@@ -23,66 +31,73 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 2. INICIALIZAÇÃO DE ESTADO (Vacinando contra erros de variável)
-if 'modo_noite' not in st.session_state:
-    st.session_state.modo_noite = False
+# --- FUNCIONALIDADE DO ARQUIVO: TEMA MANUAL ---
+if 'tema_claro' not in st.session_state:
+    st.session_state.tema_claro = False
 
-# 3. CSS PARA LIMPAR O TOPO E AJUSTAR CORES
-# Aqui removemos as margens brancas que o Streamlit coloca por padrão
+# --- DESIGN SYSTEM & HEADER (AJUSTADO) ---
+# Se o modo noite estiver ON, as cores do header se adaptam
+cor_fundo_header = "rgba(0,0,0,0)" if st.session_state.modo_noite else "white"
+cor_texto_sub = "#94A3B8" if st.session_state.modo_noite else "#64748B"
+
+# Trava de Rolagem: Se não houver termo de busca, escondemos a barra de rolagem
+trava_scroll = ""
+if not termo_busca: # Certifique-se que a variável 'termo_busca' foi definida antes ou use st.session_state
+    trava_scroll = "overflow: hidden;"
+
 st.markdown(f"""
 <style>
-    /* Remove o espaço vazio no topo (Header do Streamlit) */
-    header[data-testid="stHeader"] {{
-        display: none !important;
-    }}
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+    * {{ font-family: 'Inter', sans-serif; }}
     
-    /* Cola o conteúdo no topo da tela */
+    /* Remove espaço excessivo no topo do Streamlit */
     .block-container {{
-        padding-top: 0rem !important;
+        padding-top: 1rem !important;
         padding-bottom: 0rem !important;
-        margin-top: -20px;
+        {trava_scroll}
     }}
 
-    /* Ajuste de Cores do Header */
+    /* Header Compacto e Transparente */
     .header-container {{
-        background: {"#0E1117" if st.session_state.modo_noite else "#FFFFFF"};
-        padding: 20px 10px;
+        background: {cor_fundo_header};
+        padding: 10px 10px 20px 10px;
+        border-radius: 0 0 30px 30px;
         text-align: center;
         border-bottom: 4px solid #FF8C00;
-        margin-bottom: 20px;
-        border-radius: 0 0 25px 25px;
+        margin-bottom: 10px;
     }}
-
-    .logo-azul {{ color: #0047AB; font-weight: 900; font-size: 42px; letter-spacing: -2px; }}
-    .logo-laranja {{ color: #FF8C00; font-weight: 900; font-size: 42px; letter-spacing: -2px; }}
     
-    /* Garante que o fundo da página mude de verdade */
-    .stApp {{
-        background-color: {"#0E1117" if st.session_state.modo_noite else "#FFFFFF"} !important;
+    .logo-azul {{ 
+        color: #0047AB; 
+        font-weight: 900; 
+        font-size: 40px; 
+        letter-spacing: -2px; 
+    }}
+    
+    .logo-laranja {{ 
+        color: #FF8C00; 
+        font-weight: 900; 
+        font-size: 40px; 
+        letter-spacing: -2px; 
     }}
 </style>
 """, unsafe_allow_html=True)
 
-# 4. RENDERIZAÇÃO DO CABEÇALHO
-cor_sub = "#94A3B8" if st.session_state.modo_noite else "#64748B"
-
+# Renderização da Logo
 st.markdown(f'''
     <div class="header-container">
         <span class="logo-azul">GERAL</span><span class="logo-laranja">JÁ</span><br>
-        <small style="color:{cor_sub}; font-weight:700; letter-spacing: 2px;">EDIÇÃO ELITE BRASIL</small>
+        <small style="color:{cor_texto_sub}; font-weight:700;">BRASIL ELITE EDITION</small>
     </div>
 ''', unsafe_allow_html=True)
-
-# 5. BOTÃO DE TEMA (Logo abaixo da logo para ficar fácil de achar)
-col_t1, col_t2, col_t3 = st.columns([1, 2, 1])
-with col_t2:
-    st.session_state.modo_noite = st.toggle("🌙 Modo Escuro", value=st.session_state.modo_noite)
-
-# --- CONTINUAÇÃO DO CÓDIGO (FIREBASE) ---
+# ------------------------------------------------------------------------------
+# 2. CAMADA DE PERSISTÊNCIA (FIREBASE)
+# ------------------------------------------------------------------------------
 @st.cache_resource
 def conectar_banco_master():
     if not firebase_admin._apps:
         try:
+            # Tenta pegar dos secrets do Streamlit
             if "FIREBASE_BASE64" in st.secrets:
                 b64_key = st.secrets["FIREBASE_BASE64"]
                 decoded_json = base64.b64decode(b64_key).decode("utf-8")
@@ -90,33 +105,41 @@ def conectar_banco_master():
                 cred = credentials.Certificate(cred_dict)
                 return firebase_admin.initialize_app(cred)
             else:
+                # Fallback para desenvolvimento local (se houver arquivo json)
+                # cred = credentials.Certificate("serviceAccountKey.json")
+                # return firebase_admin.initialize_app(cred)
+                st.warning("⚠️ Configure a secret FIREBASE_BASE64 para conectar ao banco.")
                 return None
         except Exception as e:
-            st.error(f"Erro Infra: {e}")
+            st.error(f"❌ FALHA NA INFRAESTRUTURA: {e}")
             st.stop()
     return firebase_admin.get_app()
-
-db = firestore.client() if conectar_banco_master() else None
 
 app_engine = conectar_banco_master()
 
 if app_engine:
     db = firestore.client()
 else:
-    st.error("Erro ao conectar ao Firebase.")
+    st.error("Erro ao conectar ao Firebase. Verifique suas configurações.")
     st.stop()
 
-# --- FUNÇÕES DE SUPORTE ---
+# --- FUNÇÕES DE SUPORTE (Mantenha fora de blocos IF/ELSE para funcionar no app todo) ---
 
 def buscar_opcoes_dinamicas(documento, padrao):
+    """
+    Busca listas de categorias ou tipos na coleção 'configuracoes'.
+    """
     try:
         doc = db.collection("configuracoes").document(documento).get()
         if doc.exists:
             dados = doc.to_dict()
             return dados.get("lista", padrao)
         return padrao
-    except Exception:
+    except Exception as e:
+        # Se houver erro ou o banco estiver vazio, retorna a lista padrão
         return padrao
+
+# --- PROSSEGUIR COM O RESTANTE DO CÓDIGO ---
 
 # ------------------------------------------------------------------------------
 # 3. POLÍTICAS E CONSTANTES
@@ -253,7 +276,7 @@ if comando == "abracadabra":
 menu_abas = st.tabs(lista_abas)
 
 # ==============================================================================
-# ABA 1: BUSCAR (IA + GPS + RANKING ELITE + VITRINE LUXO) - VERSÃO COMPATÍVEL
+# ABA 1: BUSCAR (IA + GPS + RANKING ELITE + VITRINE LUXO)
 # ==============================================================================
 with menu_abas[0]:
     st.markdown("### 🏙️ O que você precisa?")
@@ -270,21 +293,13 @@ with menu_abas[0]:
             minha_lon = LON_REF
             st.warning("GPS desativado. Usando localização padrão (SP).")
 
-    # --- 2. INPUTS DE BUSCA (Conectado à Trava de Scroll do Topo) ---
+    # --- 2. INPUTS DE BUSCA ---
     c1, c2 = st.columns([3, 1])
-    termo_busca = c1.text_input(
-        "Ex: 'Cano estourado' ou 'Pizza'", 
-        key="main_search", # CHAVE ESSENCIAL PARA O SCROLL
-        placeholder="Busque qualquer serviço..."
-    )
+    termo_busca = c1.text_input("Ex: 'Cano estourado' ou 'Pizza'", key="main_search", placeholder="Busque qualquer serviço...")
     raio_km = c2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 20, 50, 100, 500], value=10)
     
-    # Se não pesquisou nada, avisa o usuário (já que a tela está travada)
-    if not termo_busca:
-        st.info("👆 Digite o que procura para liberar os resultados e a navegação.")
-
     if termo_busca:
-        # Processamento via IA
+        # Processamento via IA para identificar a categoria
         cat_ia = processar_ia_avancada(termo_busca)
         st.info(f"✨ IA: Buscando por **{cat_ia}** próximo a você")
         
@@ -296,7 +311,7 @@ with menu_abas[0]:
         fuso = pytz.timezone('America/Sao_Paulo')
         hora_atual = datetime.datetime.now(fuso).strftime('%H:%M')
 
-        # 3. BUSCA NO BANCO
+        # 3. BUSCA NO BANCO (Apenas aprovados da categoria)
         profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
         
         lista_ranking = []
@@ -304,12 +319,12 @@ with menu_abas[0]:
             p = p_doc.to_dict()
             p['id'] = p_doc.id
             
-            # Cálculo de distância
+            # CÁLCULO DE DISTÂNCIA REAL
             dist = calcular_distancia_real(minha_lat, minha_lon, p.get('lat', LAT_REF), p.get('lon', LON_REF))
             
             if dist <= raio_km:
                 p['dist'] = dist
-                # MOTOR DE SCORE ELITE
+                # MOTOR DE SCORE ELITE (Ranking: Verificado + Saldo + Nota)
                 score = 0
                 score += 500 if p.get('verificado', False) else 0
                 score += (p.get('saldo', 0) * 10)
@@ -317,71 +332,67 @@ with menu_abas[0]:
                 p['score_elite'] = score
                 lista_ranking.append(p)
 
-        # Ordenação
+        # Ordenação: Maior Score primeiro, depois os mais próximos
         lista_ranking.sort(key=lambda x: (-x['score_elite'], x['dist']))
 
         if not lista_ranking:
             st.warning("Nenhum profissional encontrado nesta categoria por perto.")
-            link_share = "https://wa.me/?text=Ei!%20Procurei%20um%20serviço%20no%20GeralJá%20e%20vi%20que%20ainda%20precisamos%20de%20profissionais!"
+            link_share = "https://wa.me/?text=Ei!%20Procurei%20um%20serviço%20no%20GeralJá%20e%20vi%20que%20ainda%20precisamos%20de%20profissionais!%20https://geralja.streamlit.app"
             st.markdown(f'<a href="{link_share}" target="_blank" style="text-decoration:none;"><div style="background:#22C55E; color:white; padding:15px; border-radius:10px; text-align:center; font-weight:bold;">📲 CONVIDAR PROFISSIONAIS</div></a>', unsafe_allow_html=True)
         
         else:
-            # --- 4. RENDERIZAÇÃO DA VITRINE LUXO (ADAPTADA AO TEMA) ---
+            # --- 4. RENDERIZAÇÃO DA VITRINE LUXO ---
             for p in lista_ranking:
                 pid = p['id']
                 is_elite = p.get('verificado') and p.get('saldo', 0) > 0
                 
-                # Cores Dinâmicas para o Modo Noite
-                if st.session_state.modo_noite:
-                    bg_card = "#161B22"
-                    cor_texto = "#FFFFFF"
-                    cor_sub = "#94A3B8"
-                    cor_borda_padrão = "#30363D"
-                else:
-                    bg_card = "#FFFDF5" if is_elite else "#FFFFFF"
-                    cor_texto = "#1A1A1A"
-                    cor_sub = "#64748B"
-                    cor_borda_padrão = "#E2E8F0"
-
+                # Definição de Cores
                 cor_borda = "#FFD700" if is_elite else ("#FF8C00" if p.get('tipo') == "🏢 Comércio/Loja" else "#0047AB")
+                bg_card = "#FFFDF5" if is_elite else "#FFFFFF"
                 
                 st.markdown(f"""
-                <div style="border: 1px solid {cor_borda_padrão}; border-left: 8px solid {cor_borda}; padding: 15px; background: {bg_card}; border-radius: 20px; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                <div style="border: 1px solid #E2E8F0; border-left: 8px solid {cor_borda}; padding: 15px; background: {bg_card}; border-radius: 20px; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
                     <div style="display:flex; justify-content: space-between; margin-bottom: 10px;">
-                        <span style="font-size: 11px; color: {cor_sub}; font-weight: bold; background: rgba(128,128,128,0.1); padding: 4px 8px; border-radius: 10px;">📍 a {p['dist']:.1f} km</span>
-                        <span style="font-size: 11px; color: #FFD700; font-weight: bold;">{"🏆 DESTAQUE ELITE" if is_elite else ""}</span>
+                        <span style="font-size: 11px; color: #64748B; font-weight: bold; background: #F1F5F9; padding: 4px 8px; border-radius: 10px;">📍 a {p['dist']:.1f} km</span>
+                        <span style="font-size: 11px; color: #D97706; font-weight: bold;">{"🏆 DESTAQUE ELITE" if is_elite else ""}</span>
                     </div>
                 """, unsafe_allow_html=True)
 
                 col_img, col_txt = st.columns([1, 4])
                 with col_img:
+                    # Foto Principal
                     foto_perfil = p.get('foto_b64')
                     src_principal = f"data:image/png;base64,{foto_perfil}" if foto_perfil else f"https://ui-avatars.com/api/?name={p.get('nome')}&background=random"
                     st.markdown(f'<img src="{src_principal}" style="width:75px; height:75px; border-radius:50%; object-fit:cover; border:3px solid {cor_borda}">', unsafe_allow_html=True)
                 
                 with col_txt:
                     nome_ex = p.get('nome', '').upper()
-                    verificado_check = " ☑️" if p.get('verificado') else ""
+                    if p.get('verificado'): nome_ex += " ☑️"
                     
                     status_loja = ""
                     if p.get('tipo') == "🏢 Comércio/Loja":
                         h_ab, h_fe = p.get('h_abre', '08:00'), p.get('h_fecha', '18:00')
                         status_loja = " 🟢" if h_ab <= hora_atual <= h_fe else " 🔴"
                     
-                    st.markdown(f"<span style='color:{cor_texto}; font-weight:bold;'>{nome_ex}{verificado_check} {status_loja}</span>", unsafe_allow_html=True)
-                    st.markdown(f"<p style='color:{cor_sub}; font-size:13px; line-height:1.2;'>{p.get('descricao', '')[:120]}...</p>", unsafe_allow_html=True)
+                    st.markdown(f"**{nome_ex}** {status_loja}")
+                    st.caption(f"{p.get('descricao', '')[:120]}...")
 
                 # --- VITRINE: GRID DE 3 FOTOS ---
+                # Puxa os campos f1, f2 e f3 do banco
                 fotos_v = [p.get('f1'), p.get('f2'), p.get('f3')]
-                fotos_validas = [f for f in fotos_v if f]
+                fotos_validas = [f for f in fotos_v if f] # Filtra apenas as que existem
                 
                 if fotos_validas:
+                    st.write("") # Espaçador visual
                     cols_v = st.columns(3)
                     for i, img_data in enumerate(fotos_validas):
                         with cols_v[i]:
-                            st.markdown(f'<img src="data:image/png;base64,{img_data}" style="width:100%; height:85px; border-radius:12px; object-fit:cover; border:1px solid #444;">', unsafe_allow_html=True)
+                            st.markdown(f"""
+                                <img src="data:image/png;base64,{img_data}" 
+                                     style="width:100%; height:85px; border-radius:12px; object-fit:cover; border:1px solid #eee;">
+                            """, unsafe_allow_html=True)
 
-                # --- BOTÃO WHATSAPP ---
+                # --- BOTÃO WHATSAPP HTML (ESTÁVEL) ---
                 num_limpo = re.sub(r'\D', '', str(pid))
                 if not num_limpo.startswith('55'): num_limpo = '55' + num_limpo
                 link_zap = f"https://api.whatsapp.com/send?phone={num_limpo}&text={quote('Olá, vi sua vitrine no GeralJá!')}"
@@ -392,7 +403,7 @@ with menu_abas[0]:
                             🚀 FALAR COM {p.get('nome').split()[0].upper()}
                         </div>
                     </a>
-                    </div> """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
                 
 # ==============================================================================
 # ABA 2: 📝 CADASTRO TURBINADO E BLINDADO
@@ -720,23 +731,6 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
