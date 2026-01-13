@@ -419,7 +419,7 @@ if termo_busca:
     try:
         # 1. IA DE MAPEAMENTO (Busca Inteligente)
         try:
-            cat_ia = processar_ia_avancada(termo_busca)
+            cat_ia = processar_ia_blindada(termo_busca)
         except:
             cat_ia = termo_busca.capitalize()
 
@@ -767,3 +767,4 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
