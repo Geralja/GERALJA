@@ -28,34 +28,28 @@ LON_PADRAO = -46.6333
 CATEGORIAS_OFICIAIS = ["Pedreiro", "Encanador", "Eletricista", "Pintor", "Mecânico", "Alimentação", "Outros"]
 
 # ==============================================================================
-# MOTOR MESTRE DE INTELIGÊNCIA - GERALJÁ
+# 3. MOTOR MESTRE DE INTELIGÊNCIA - GERALJÁ (O CÉREBRO)
 # ==============================================================================
 
 class MotorGeralJa:
-    """Classe que centraliza todas as operações de IA e Lógica do App"""
-    
     @staticmethod
     def processar_intencao(termo):
-        """Entende o que o cliente quer e mapeia para uma categoria real"""
         termo = termo.lower().strip()
-        # Dicionário Mestre de Sinônimos
         mapa = {
-            "pintor": ["pinta", "parede", "tinta", "grafite"],
-            "encanador": ["cano", "vazamento", "pia", "esgoto", "torneira"],
-            "eletricista": ["luz", "fio", "tomada", "disjuntor", "choque"],
-            "mecanico": ["carro", "motor", "pneu", "freio", "revisão"],
-            "alimentacao": ["fome", "comida", "pizza", "lanche", "marmita"],
-            "pedreiro": ["obra", "reforma", "cimento", "tijolo", "telhado"]
+            "Pintor": ["pinta", "parede", "tinta", "grafite"],
+            "Encanador": ["cano", "vazamento", "pia", "esgoto", "torneira"],
+            "Eletricista": ["luz", "fio", "tomada", "disjuntor", "choque"],
+            "Mecânico": ["carro", "motor", "pneu", "freio", "revisão"],
+            "Alimentação": ["fome", "comida", "pizza", "lanche", "marmita"],
+            "Pedreiro": ["obra", "reforma", "cimento", "tijolo", "telhado"]
         }
-        
         for categoria, palavras in mapa.items():
             if any(p in termo for p in palavras):
-                return categoria.capitalize()
+                return categoria
         return termo.capitalize()
 
     @staticmethod
     def calcular_distancia(lat1, lon1, lat2, lon2):
-        """Calcula KM entre cliente e profissional com proteção contra erros"""
         try:
             if not all([lat1, lon1, lat2, lon2]): return 999.0
             R = 6371
@@ -67,32 +61,44 @@ class MotorGeralJa:
 
     @staticmethod
     def renderizar_vitrine(p, pid):
-        """O Código Mestre de Design (O que faz a vitrine ficar 'legal')"""
+        # Lógica de Imagem
         foto = p.get('f1', '')
-        img = f"data:image/jpeg;base64,{foto}" if len(foto) > 100 else "https://via.placeholder.com/400"
+        img = f"data:image/jpeg;base64,{foto}" if len(foto) > 100 else "https://via.placeholder.com/400x400?text=GeralJa"
+        
         nome = p.get('nome', 'Profissional').upper()
         dist = p.get('dist', 0.0)
-        
-        # HTML BLINDADO (Estilo Instagram/Airbnb)
+        verificado = p.get('verificado', False)
+        badge = "<span style='background:#FFD700; color:black; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold;'>ELITE</span>" if verificado else ""
+
         html = f"""
-        <div style="border-radius:20px; padding:15px; background:white; box-shadow:0px 4px 15px rgba(0,0,0,0.1); margin-bottom:20px; border-left: 8px solid #FFD700;">
-            <div style="display:flex; align-items:center; gap:15px;">
-                <img src="{img}" style="width:70px; height:70px; border-radius:50%; object-fit:cover; border:2px solid #FFD700;">
-                <div>
-                    <h3 style="margin:0; font-size:18px; color:#1A1C23;">{nome} {'✅' if p.get('verificado') else ''}</h3>
-                    <span style="color:#FF4B4B; font-weight:bold; font-size:13px;">📍 a {dist:.1f} km de você</span>
+        <div style="border: 2px solid #FFD700; border-radius: 15px; padding: 15px; margin-bottom: 20px; background-color: white;">
+            <div style="display: flex; justify-content: space-between; align-items: start;">
+                <div style="display: flex; align-items: center;">
+                    <div style="width: 60px; height: 60px; border-radius: 50%; background: url('{img}') center/cover; border: 2px solid #EEE; margin-right: 12px;"></div>
+                    <div>
+                        <h4 style="margin: 0; color: #1A1C23;">{nome} ✅</h4>
+                        <p style="margin: 0; color: #ff4b4b; font-weight: bold; font-size: 12px;">📍 {dist:.1f} KM DE VOCÊ</p>
+                    </div>
                 </div>
+                {badge}
             </div>
-            <p style="margin-top:10px; color:#555; font-size:14px;">{p.get('area', 'Geral')} • {p.get('descricao', '')[:110]}...</p>
+            <div style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 10px;">
+                 <p style="font-size: 13px; color: #444;">{p.get('area', 'Geral')} • {p.get('descricao', '')[:100]}...</p>
+            </div>
         </div>
         """
         st.markdown(html, unsafe_allow_html=True)
         
-        # Botão Nativo para Interação
-        if st.button(f"Falar com {nome.split()[0]} agora", key=f"btn_{pid}", use_container_width=True):
-            st.link_button("🚀 Abrir WhatsApp", f"https://wa.me/55{p.get('whatsapp', pid)}")
+        if st.button(f"📞 CONTATAR {nome}", key=f"btn_{pid}", use_container_width=True):
+            zap = p.get('whatsapp', pid)
+            st.link_button("🚀 ABRIR WHATSAPP", f"https://wa.me/55{zap}")
 
-# Instanciamos o motor para uso global
+    @staticmethod
+    def converter_img_b64(file):
+        if file is None: return ""
+        return base64.b64encode(file.read()).decode()
+
+# INSTANCIAÇÃO OBRIGATÓRIA (Liga o motor)
 IA_MESTRE = MotorGeralJa()
 # ------------------------------------------------------------------------------
 # 2. CAMADA DE PERSISTÊNCIA (FIREBASE)
@@ -743,6 +749,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
