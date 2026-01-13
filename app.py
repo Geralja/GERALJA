@@ -270,57 +270,59 @@ if comando == "abracadabra":
 
 menu_abas = st.tabs(lista_abas)
 
-# ==============================================================================
-# ABA 1: 🔍 VITRINE DE PROFISSIONAIS (EDIÇÃO BLINDADA COM IA)
-# ==============================================================================
+# --- ABA 1: BUSCA (UNIFICADA E ÚNICA COM FILTRO NACIONAL) ---
 with menu_abas[0]:
-    st.markdown("### 🏙️ Encontre Profissionais Próximos")
+    st.markdown("### ??? Qual problema resolveremos agora?")
+    c_city, c_term, c_raio = st.columns([1, 2, 1])
+    busca_cidade = c_city.text_input("Sua Cidade", placeholder="Ex: Rio de Janeiro")
+    termo_busca = c_term.text_input("Ex: 'Cano estourado', 'Pintar casa'", key="main_search")
+    raio_km = c_raio.select_slider("Raio (KM)", options=[1, 5, 10, 20, 50, 100, "Brasil"], value=50, key="main_raio")
     
-    # --------------------------------------------------------------------------
-    # 1. INTERFACE DE BUSCA
-    # --------------------------------------------------------------------------
-    c_b1, c_b2 = st.columns([3, 1])
-    with c_b1:
-        termo_busca = st.text_input(
-            "O que você precisa hoje?", 
-            placeholder="Ex: 'meu cano estourou', 'quero pizza', 'pintor'...", 
-            key="main_search_v3"
-        )
-    with c_b2:
-        raio_km = st.select_slider("Raio (KM)", options=[1, 5, 10, 20, 50, 100, 500], value=50)
-
-    # -------------------------------------------------------------------------- 
-# 2. MOTOR DE BUSCA E IA 
-# -------------------------------------------------------------------------- 
-if termo_busca:
-    # Aciona a IA para entender a intenção do usuário
-    cat_ia = processar_ia_blindada(termo_busca)
-    
-    try:
-        if cat_ia != "NAO_ENCONTRADO":
-            st.info(f"✨ IA GeralJá: Localizando especialistas em **{cat_ia}**")
+    if termo_busca:
+        cat_ia = processar_ia_avancada(termo_busca)
+        st.info(f"? IA: Buscando profissionais em **{cat_ia}**.")
+        profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
+        lista = []
+        for p_doc in profs:
+            p = p_doc.to_dict()
+            p['id'] = p_doc.id
             
-            # Busca filtrada por categoria mapeada pela IA
-            query = db.collection("profissionais").where("area", "==", cat_ia)
-            
-            # Adicionar mais contexto à busca
-            if localizacao:
-                query = query.where("localizacao", "==", localizacao)
-            
-            # Executar a busca
-            resultados = query.stream()
-            
-            # Exibir os resultados
-            if resultados:
-                st.write("Resultados:")
-                for resultado in resultados:
-                    st.write(resultado.to_dict())
+            # Lógica de Filtro Nacional vs Raio em SP
+            if raio_km == "Brasil":
+                lista.append(p)
+            elif busca_cidade and busca_cidade.lower() in p.get('cidade', '').lower():
+                lista.append(p)
             else:
-                st.write("Nenhum resultado encontrado.")
+                dist = calcular_distancia_real(LAT_REF_SP, LON_REF_SP, p.get('lat', LAT_REF_SP), p.get('lon', LON_REF_SP))
+                if dist <= (raio_km if isinstance(raio_km, int) else 999):
+                    p['dist'] = dist
+                    lista.append(p)
+        
+        # Ordenação: Se tiver distância, ordena por ela. Se não, pelo nome.
+        lista.sort(key=lambda x: x.get('dist', 0))
+        
+        if not lista:
+            st.warning("?? Nenhum profissional encontrado neste raio ou cidade.")
         else:
-            st.write("Não foi possível entender a sua busca.")
-    except Exception as e:
-        st.write(f"Erro: {e}")
+            for pro in lista:
+                with st.container():
+                    dist_txt = f"{pro['dist']} KM" if 'dist' in pro else pro.get('cidade', 'Brasil')
+                    st.markdown(f"""
+                    <div class="pro-card">
+                        <img src="{pro.get('foto_url') or 'https://api.dicebear.com/7.x/avataaars/svg?seed='+pro['id']}" class="pro-img">
+                        <div style="flex-grow:1;">
+                            <span class="badge-dist">?? {dist_txt}</span><span class="badge-area">?? {pro['area']}</span>
+                            <h2 style="margin:10px 0; color:#1E293B;">{pro.get('nome', 'Profissional').upper()}</h2>
+                            <p style="color:#475569; font-size:14px;">{pro.get('descricao')}</p>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    if pro.get('saldo', 0) >= TAXA_CONTATO:
+                        if st.button(f"CONTATAR {pro['nome'].split()[0].upper()}", key=f"btn_{pro['id']}"):
+                            db.collection("profissionais").document(pro['id']).update({"saldo": firestore.Increment(-TAXA_CONTATO), "cliques": firestore.Increment(1)})
+                            st.balloons()
+                            st.markdown(f'<a href="https://wa.me/55{pro["whatsapp"]}" class="btn-zap">ABRIR WHATSAPP</a>', unsafe_allow_html=True)
+
               
 #============================================================================== 
 # ABA 2: 👤 MEU PAINEL (LOGIN PERSISTENTE + VITRINE DE FOTOS) 
@@ -659,6 +661,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
