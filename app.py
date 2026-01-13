@@ -39,8 +39,7 @@ class MotorGeralJa:
         if not termo: return "NAO_ENCONTRADO"
         t_clean = MotorGeralJa.normalizar(termo)
         
-        # Aqui você pode manter seu dicionário ou usar o CONCEITOS_EXPANDIDOS
-        # Para exemplo, vamos usar a lógica de busca por palavras-chave:
+      lógica de busca por palavras-chave:
         mapa = {
             "Pintor": ["pinta", "parede", "tinta", "grafite"],
             "Encanador": ["cano", "vazamento", "pia", "esgoto", "torneira"],
@@ -56,17 +55,29 @@ class MotorGeralJa:
                     return categoria
         return termo.capitalize()
 
-    @staticmethod
+@staticmethod
     def calcular_distancia(lat1, lon1, lat2, lon2):
-        """Cálculo preciso com tratamento de erros"""
+        """Cálculo preciso com conversão de tipos e limpeza de erro"""
         try:
-            if None in [lat1, lon1, lat2, lon2]: return 999.0
-            R = 6371 
-            dlat, dlon = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
-            a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * \
-                math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
-            return round(R * (2 * math.atan2(math.sqrt(a), math.sqrt(1-a))), 1)
-        except: return 999.0
+            # Converte tudo para float caso venha como texto do banco/input
+            l1, o1 = float(lat1), float(lon1)
+            l2, o2 = float(lat2), float(lon2)
+            
+            # Se for coordenada 0,0 provavelmente está errado, joga pra longe
+            if l1 == 0 or l2 == 0: return 999.0
+            
+            R = 6371  # Raio da Terra em KM
+            dlat = math.radians(l2 - l1)
+            dlon = math.radians(o2 - o1)
+            
+            a = math.sin(dlat/2)**2 + math.cos(math.radians(l1)) * \
+                math.cos(math.radians(l2)) * math.sin(dlon/2)**2
+            
+            c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+            return round(R * c, 1)
+        except (ValueError, TypeError, Exception):
+            # Se qualquer dado falhar, retorna 999km para o profissional ir pro fim da lista
+            return 999.0
 
     @staticmethod
     def renderizar_vitrine(p, pid):
@@ -801,6 +812,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
