@@ -504,7 +504,7 @@ with menu_abas[1]:
                     st.error("❌ Não conseguimos validar este endereço no mapa. Tente incluir o número da casa e a cidade.")
 
 # ==============================================================================
-# ABA 3: MEU PERFIL (VITRINE + EDIÇÃO INTEGRADA)
+# ABA 3: MEU PERFIL (VITRINE + EDIÇÃO INTEGRADA COM 4 FOTOS)
 # ==============================================================================
 with menu_abas[2]:
     if 'auth' not in st.session_state: 
@@ -520,40 +520,45 @@ with menu_abas[2]:
             if st.button("ENTRAR NA MINHA VITRINE", use_container_width=True):
                 tel_clean = re.sub(r'\D', '', l_zap)
                 if tel_clean:
-                    doc_ref = db.collection("profissionais").document(tel_clean)
-                    doc = doc_ref.get()
-                    if doc.exists and str(doc.to_dict().get('senha')) == str(l_pw):
-                        st.session_state.auth = True
-                        st.session_state.user_id = tel_clean
-                        st.session_state.editando_id = tel_clean # Sincroniza os IDs
-                        st.success("Acesso liberado!")
-                        st.rerun()
-                    else:
-                        st.error("❌ Credenciais inválidas.")
+                    try:
+                        doc_ref = db.collection("profissionais").document(tel_clean)
+                        doc = doc_ref.get()
+                        if doc.exists and str(doc.to_dict().get('senha')) == str(l_pw):
+                            st.session_state.auth = True
+                            st.session_state.user_id = tel_clean
+                            st.success("✅ Acesso liberado!")
+                            st.rerun()
+                        else:
+                            st.error("❌ Credenciais inválidas.")
+                    except Exception as e:
+                        st.error(f"Erro ao acessar banco: {e}")
                 else:
-                    st.warning("Digite seu WhatsApp.")
+                    st.warning("⚠️ Digite seu WhatsApp.")
 
     # --- FLUXO 2: AUTENTICADO (VITRINE + EDIÇÃO) ---
     else:
         uid = st.session_state.user_id
-        doc_ref = db.collection("profissionais").document(uid)
-        d = doc_ref.get().to_dict()
+        # Busca dados atualizados do profissional
+        doc_snapshot = db.collection("profissionais").document(uid).get()
+        if not doc_snapshot.exists:
+            st.error("Perfil não encontrado.")
+            st.session_state.auth = False
+            st.rerun()
+            
+        d = doc_snapshot.to_dict()
 
-        # CRIANDO SUB-ABAS DENTRO DA ABA 3
-        # Isso elimina o erro de "sub_aba_editar não definida"
-        sub_aba_dashboard, sub_aba_editar = st.tabs(["📊 Minha Performance", "🛠️ Editar Perfil"])
+        # Definição das Sub-Abas
+        sub_tab_dash, sub_tab_edit = st.tabs(["📊 Minha Performance", "🛠️ Editar Perfil"])
 
         # --- SUB-ABA 1: DASHBOARD ---
-        with sub_aba_dashboard:
-            # HEADER ESTILO INSTAGRAM
+        with sub_tab_dash:
+            # Header Estilo Instagram (Usa a foto principal 'f1' como avatar)
+            foto_perfil = d.get('f1', '') 
             st.markdown(f"""
                 <div style="display: flex; align-items: center; gap: 20px; padding: 20px; background: white; border-radius: 20px; border: 1px solid #E2E8F0; margin-bottom: 20px;">
-                    <div style="position: relative;">
-                        <img src="data:image/png;base64,{d.get('foto_b64', d.get('f1', ''))}" 
-                             style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #E1306C;"
-                             onerror="this.src='https://ui-avatars.com/api/?name={d.get('nome')}&background=random'">
-                        <div style="position: absolute; bottom: 5px; right: 5px; background: #22C55E; width: 15px; height: 15px; border-radius: 50%; border: 2px solid white;"></div>
-                    </div>
+                    <img src="data:image/png;base64,{foto_perfil}" 
+                         style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #E1306C;"
+                         onerror="this.src='https://ui-avatars.com/api/?name={d.get('nome')}&background=random'">
                     <div style="flex-grow: 1;">
                         <h2 style="margin: 0; font-size: 22px; color: black;">{d.get('nome')}</h2>
                         <p style="margin: 0; color: #64748B; font-size: 14px;">@{str(d.get('area')).lower().replace(' ', '')}</p>
@@ -571,68 +576,70 @@ with menu_abas[2]:
             col_m2.metric("Saldo Atual", f"{d.get('saldo', 0)} 🪙")
             col_m3.metric("Status", "Elite" if d.get('elite') else "Padrão")
 
-            st.markdown("### 💎 Impulsione sua Vitrine")
-            c1, c2, c3 = st.columns(3)
-            pacotes = [("BRONZE", 10, 25, "#FFD700"), ("PRATA", 30, 60, "#C0C0C0"), ("OURO", 100, 150, "#D4AF37")]
-            
-            for idx, (nome, moedas, preco, cor) in enumerate(pacotes):
-                with [c1, c2, c3][idx]:
-                    st.markdown(f"<div style='background: {cor}; padding: 10px; border-radius: 10px; color: white; text-align: center;'><b>{nome}</b><br>{moedas} 🪙<br>R$ {preco}</div>", unsafe_allow_html=True)
-                    if st.button(f"Comprar {moedas}", key=f"buy_{moedas}"):
-                        st.markdown(f'<meta http-equiv="refresh" content="0;URL=https://wa.me/{ZAP_ADMIN}?text=Quero {moedas} moedas para ID: {uid}">', unsafe_allow_html=True)
-
-            if st.button("🚪 Sair do Perfil", use_container_width=True):
+            if st.button("🚪 Sair da Conta", use_container_width=True):
                 st.session_state.auth = False
                 st.rerun()
 
-        # --- SUB-ABA 2: EDIÇÃO (SÓ APARECE SE LOGADO) ---
-        with sub_aba_editar:
-            st.markdown("### 🛠️ Editar Meus Dados")
-            with st.form("form_edicao_final"):
-                col_e1, col_e2 = st.columns(2)
-                with col_e1:
-                    novo_nome = st.text_input("Nome/Empresa", value=d.get('nome'))
-                    novo_telefone = st.text_input("WhatsApp", value=d.get('telefone'))
-                with col_e2:
-                    idx_area = CATEGORIAS_OFICIAIS.index(d.get('area')) if d.get('area') in CATEGORIAS_OFICIAIS else 0
-                    nova_area = st.selectbox("Especialidade", CATEGORIAS_OFICIAIS, index=idx_area)
-                    nova_senha = st.text_input("Senha", value=d.get('senha'), type="password")
-
-                nova_desc = st.text_area("Descrição", value=d.get('descricao'), height=100)
+        # --- SUB-ABA 2: EDIÇÃO (COM 4 FOTOS) ---
+        with sub_tab_edit:
+            st.markdown("### 🛠️ Atualizar Meus Dados")
+            with st.form("form_edicao_premium"):
+                c1, c2 = st.columns(2)
+                novo_nome = c1.text_input("Nome/Empresa", value=d.get('nome'))
+                novo_tel = c1.text_input("WhatsApp (Número Novo)", value=d.get('telefone'))
                 
-                st.write("📷 **Fotos do Portfólio**")
-                f1, f2 = st.columns(2)
-                up_f1 = f1.file_uploader("Foto Principal", type=['jpg', 'png'], key="u1")
-                up_f2 = f2.file_uploader("Foto 2", type=['jpg', 'png'], key="u2")
+                idx_area = CATEGORIAS_OFICIAIS.index(d.get('area')) if d.get('area') in CATEGORIAS_OFICIAIS else 0
+                nova_area = c2.selectbox("Especialidade", CATEGORIAS_OFICIAIS, index=idx_area)
+                nova_pw = c2.text_input("Nova Senha", value=d.get('senha'), type="password")
 
-                if st.form_submit_button("💾 SALVAR ALTERAÇÕES", use_container_width=True):
-                    upd = {
-                        "nome": novo_nome.upper(),
-                        "area": nova_area,
-                        "descricao": nova_desc,
-                        "senha": str(nova_senha),
-                        "telefone": re.sub(r'\D', '', novo_telefone)
-                    }
-                    if up_f1: upd["f1"] = IA_MESTRE.converter_img_b64(up_f1)
-                    if up_f2: upd["f2"] = IA_MESTRE.converter_img_b64(up_f2)
-                    
-                    # Lógica de migração de número (se mudou o zap)
-                    novo_id = upd["telefone"]
-                    if novo_id != uid:
-                        if db.collection("profissionais").document(novo_id).get().exists:
-                            st.error("Número já cadastrado por outro usuário.")
+                nova_desc = st.text_area("Descrição do Serviço", value=d.get('descricao'), height=120)
+                
+                st.markdown("---")
+                st.write("📷 **Fotos do seu Portfólio (Substitua as que desejar)**")
+                
+                # Grid de 2x2 para as 4 fotos
+                f_col1, f_col2 = st.columns(2)
+                up_f1 = f_col1.file_uploader("Foto 1 (Principal)", type=['jpg', 'png', 'jpeg'], key="e_f1")
+                up_f2 = f_col1.file_uploader("Foto 2", type=['jpg', 'png', 'jpeg'], key="e_f2")
+                up_f3 = f_col2.file_uploader("Foto 3", type=['jpg', 'png', 'jpeg'], key="e_f3")
+                up_f4 = f_col2.file_uploader("Foto 4", type=['jpg', 'png', 'jpeg'], key="e_f4")
+
+                if st.form_submit_button("💾 SALVAR TODAS AS ALTERAÇÕES", use_container_width=True):
+                    with st.spinner("🚀 Atualizando perfil..."):
+                        # Preparar dados básicos
+                        upd = {
+                            "nome": novo_nome.upper().strip(),
+                            "area": nova_area,
+                            "descricao": nova_desc.strip(),
+                            "senha": str(nova_pw),
+                            "telefone": re.sub(r'\D', '', novo_tel)
+                        }
+                        
+                        # Processar as 4 fotos se enviadas
+                        for key, file in [("f1", up_f1), ("f2", up_f2), ("f3", up_f3), ("f4", up_f4)]:
+                            if file:
+                                upd[key] = IA_MESTRE.converter_img_b64(file)
+
+                        novo_id = upd["telefone"]
+                        
+                        # Se mudou o telefone, move o documento
+                        if novo_id != uid:
+                            if db.collection("profissionais").document(novo_id).get().exists:
+                                st.error("❌ Este novo número já está cadastrado.")
+                            else:
+                                dados_completos = d.copy()
+                                dados_completos.update(upd)
+                                db.collection("profissionais").document(novo_id).set(dados_completos)
+                                db.collection("profissionais").document(uid).delete()
+                                st.session_state.user_id = novo_id
+                                st.success("✅ Perfil migrado e atualizado!")
+                                time.sleep(1)
+                                st.rerun()
                         else:
-                            novo_doc = d.copy()
-                            novo_doc.update(upd)
-                            db.collection("profissionais").document(novo_id).set(novo_doc)
-                            db.collection("profissionais").document(uid).delete()
-                            st.session_state.user_id = novo_id
-                            st.success("Perfil migrado!")
+                            db.collection("profissionais").document(uid).update(upd)
+                            st.success("✅ Dados salvos com sucesso!")
+                            time.sleep(1)
                             st.rerun()
-                    else:
-                        db.collection("profissionais").document(uid).update(upd)
-                        st.success("Dados atualizados!")
-                        st.rerun()
 # ==============================================================================
 # ABA 4: 👑 PAINEL DE CONTROLE MASTER (TURBINADO)
 # ==============================================================================
@@ -773,6 +780,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
