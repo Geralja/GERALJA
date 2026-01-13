@@ -188,94 +188,64 @@ CONCEITOS_EXPANDIDOS = {
     "jardim": "Jardineiro", "piscina": "Piscineiro"
 }
 
-# ==============================================================================
-# MOTOR MESTRE GERALJÁ v3.0 - O ORQUESTRADOR FINAL
-# ==============================================================================
+# ------------------------------------------------------------------------------
+# 4. MOTORES DE IA E UTILS
+# ------------------------------------------------------------------------------
+def normalizar_para_ia(texto):
+    if not texto: return ""
+    return "".join(c for c in unicodedata.normalize('NFD', str(texto)) 
+                   if unicodedata.category(c) != 'Mn').lower().strip()
 
-class MotorGeralJa:
-    @staticmethod
-    def normalizar(texto):
-        """Remove acentos e padroniza o texto (IA Utils)"""
-        if not texto: return ""
-        return "".join(c for c in unicodedata.normalize('NFD', str(texto)) 
-                       if unicodedata.category(c) != 'Mn').lower().strip()
+def processar_ia_avancada(texto):
+    if not texto: return "Vazio"
+    t_clean = normalizar_para_ia(texto)
+    for chave, categoria in CONCEITOS_EXPANDIDOS.items():
+        if re.search(rf"\b{normalizar_para_ia(chave)}\b", t_clean):
+            return categoria
+    for cat in CATEGORIAS_OFICIAIS:
+        if normalizar_para_ia(cat) in t_clean:
+            return cat
+    return "NAO_ENCONTRADO"
 
-    @staticmethod
-    def processar_intencao(termo):
-        """Versão turbinada que usa Normalização e Conceitos Expandidos"""
-        if not termo: return "NAO_ENCONTRADO"
-        t_clean = MotorGeralJa.normalizar(termo)
-        
-        # Aqui você pode manter seu dicionário ou usar o CONCEITOS_EXPANDIDOS
-        # Para exemplo, vamos usar a lógica de busca por palavras-chave:
-        mapa = {
-            "Pintor": ["pinta", "parede", "tinta", "grafite"],
-            "Encanador": ["cano", "vazamento", "pia", "esgoto", "torneira"],
-            "Eletricista": ["luz", "fio", "tomada", "disjuntor", "choque"],
-            "Mecânico": ["carro", "motor", "pneu", "freio", "revisao"],
-            "Alimentação": ["fome", "comida", "pizza", "lanche", "marmita"],
-            "Pedreiro": ["obra", "reforma", "cimento", "tijolo", "telhado"]
-        }
-        
-        for categoria, palavras in mapa.items():
-            for p in palavras:
-                if MotorGeralJa.normalizar(p) in t_clean:
-                    return categoria
-        return termo.capitalize()
+def calcular_distancia_real(lat1, lon1, lat2, lon2):
+    try:
+        if None in [lat1, lon1, lat2, lon2]: return 999.0
+        R = 6371 
+        dlat, dlon = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
+        a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
+        return round(R * (2 * math.atan2(math.sqrt(a), math.sqrt(1-a))), 1)
+    except: return 999.0
 
-    @staticmethod
-    def calcular_distancia(lat1, lon1, lat2, lon2):
-        """Cálculo preciso com tratamento de erros"""
-        try:
-            if None in [lat1, lon1, lat2, lon2]: return 999.0
-            R = 6371 
-            dlat, dlon = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
-            a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * \
-                math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
-            return round(R * (2 * math.atan2(math.sqrt(a), math.sqrt(1-a))), 1)
-        except: return 999.0
+def converter_img_b64(file):
+    if file is None: return ""
+    try: return base64.b64encode(file.read()).decode()
+    except: return ""
 
-    @staticmethod
-    def renderizar_vitrine(p, pid):
-        """Design Luxo Blindado"""
-        foto = p.get('f1', '')
-        img = f"data:image/jpeg;base64,{foto}" if len(foto) > 100 else "https://via.placeholder.com/400"
-        dist = p.get('dist', 0.0)
-        
-        html = f"""
-        <div style="border-radius:20px; padding:15px; background:white; box-shadow:0px 4px 15px rgba(0,0,0,0.1); margin-bottom:20px; border-left: 8px solid #FFD700;">
-            <div style="display:flex; align-items:center; gap:15px;">
-                <img src="{img}" style="width:70px; height:70px; border-radius:50%; object-fit:cover; border:2px solid #FFD700;">
-                <div>
-                    <h3 style="margin:0; font-size:18px; color:#1A1C23;">{p.get('nome', 'Profissional').upper()} {'✅' if p.get('verificado') else ''}</h3>
-                    <span style="color:#FF4B4B; font-weight:bold; font-size:13px;">📍 a {dist:.1f} km de você</span>
-                </div>
-            </div>
-            <p style="margin-top:10px; color:#555; font-size:14px;">{p.get('area', 'Geral')} • {p.get('descricao', '')[:110]}...</p>
+# --- FUNCIONALIDADE DO ARQUIVO: O VARREDOR (Rodapé Automático) ---
+def finalizar_e_alinhar_layout():
+    """
+    Esta função atua como um ímã. Puxa o conteúdo e limpa o rodapé.
+    """
+    st.write("---")
+    fechamento_estilo = """
+        <style>
+            .main .block-container { padding-bottom: 5rem !important; }
+            .footer-clean {
+                text-align: center;
+                padding: 20px;
+                opacity: 0.7;
+                font-size: 0.8rem;
+                width: 100%;
+                color: gray;
+            }
+        </style>
+        <div class="footer-clean">
+            <p>🎯 <b>GeralJá</b> - Sistema de Inteligência Local</p>
+            <p>Conectando quem precisa com quem sabe fazer.</p>
+            <p>v3.0 | © 2026 Todos os direitos reservados</p>
         </div>
-        """
-        st.markdown(html, unsafe_allow_html=True)
-        if st.button(f"Falar com {p.get('nome', '').split()[0]}", key=f"btn_{pid}", use_container_width=True):
-            st.link_button("🚀 Abrir WhatsApp", f"https://wa.me/55{p.get('whatsapp', pid)}")
-
-    @staticmethod
-    def finalizar_layout():
-        """O VARREDOR (Seu rodapé automático agora dentro do mestre)"""
-        st.write("---")
-        fechamento_estilo = """
-            <style>
-                .main .block-container { padding-bottom: 5rem !important; }
-                .footer-clean { text-align: center; padding: 20px; opacity: 0.7; font-size: 0.8rem; width: 100%; color: gray; }
-            </style>
-            <div class="footer-clean">
-                <p>🎯 <b>GeralJá</b> - Sistema de Inteligência Local</p>
-                <p>v3.0 | © 2026 Todos os direitos reservados</p>
-            </div>
-        """
-        st.markdown(fechamento_estilo, unsafe_allow_html=True)
-
-# INSTANCIAÇÃO
-IA_MESTRE = MotorGeralJa()
+    """
+    st.markdown(fechamento_estilo, unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
 # 5. DESIGN SYSTEM
@@ -301,12 +271,12 @@ if comando == "abracadabra":
 menu_abas = st.tabs(lista_abas)
 
 # ==============================================================================
-# ABA 1: BUSCAR (IA + GPS + RANKING ELITE + VITRINE LUXO)
+# --- ABA 1: BUSCA (SISTEMA GPS + RANKING ELITE + VITRINE) ---
 # ==============================================================================
 with menu_abas[0]:
     st.markdown("### 🏙️ O que você precisa?")
     
-    # --- 1. MOTOR DE LOCALIZAÇÃO (GPS) ---
+    # --- MOTOR DE LOCALIZAÇÃO EM TEMPO REAL ---
     with st.expander("📍 Sua Localização (GPS)", expanded=False):
         loc = get_geolocation()
         if loc:
@@ -318,25 +288,25 @@ with menu_abas[0]:
             minha_lon = LON_REF
             st.warning("GPS desativado. Usando localização padrão (SP).")
 
-    # --- 2. INPUTS DE BUSCA ---
     c1, c2 = st.columns([3, 1])
-    termo_busca = c1.text_input("Ex: 'Cano estourado' ou 'Pizza'", key="main_search", placeholder="Busque qualquer serviço...")
-    raio_km = c2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 20, 50, 100, 500], value=10)
+    termo_busca = c1.text_input("Ex: 'Cano estourado' ou 'Pizza'", key="main_search")
+    raio_km = c2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 20, 50, 100, 500, 2000], value=10)
     
     if termo_busca:
         # Processamento via IA para identificar a categoria
         cat_ia = processar_ia_avancada(termo_busca)
         st.info(f"✨ IA: Buscando por **{cat_ia}** próximo a você")
         
-        import datetime
+        # Lógica de Horário em tempo real
+        from datetime import datetime
         import pytz
         import re
         from urllib.parse import quote
         
         fuso = pytz.timezone('America/Sao_Paulo')
-        hora_atual = datetime.datetime.now(fuso).strftime('%H:%M')
+        hora_atual = datetime.now(fuso).strftime('%H:%M')
 
-        # 3. BUSCA NO BANCO (Apenas aprovados da categoria)
+        # Busca no Firebase (Filtra apenas aprovados e da categoria certa)
         profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
         
         lista_ranking = []
@@ -344,12 +314,12 @@ with menu_abas[0]:
             p = p_doc.to_dict()
             p['id'] = p_doc.id
             
-            # CÁLCULO DE DISTÂNCIA REAL
+            # CALCULA DISTÂNCIA REAL (GPS vs Profissional)
             dist = calcular_distancia_real(minha_lat, minha_lon, p.get('lat', LAT_REF), p.get('lon', LON_REF))
             
             if dist <= raio_km:
                 p['dist'] = dist
-                # MOTOR DE SCORE ELITE (Ranking: Verificado + Saldo + Nota)
+                # MOTOR DE SCORE ELITE (Ranking)
                 score = 0
                 score += 500 if p.get('verificado', False) else 0
                 score += (p.get('saldo', 0) * 10)
@@ -357,166 +327,183 @@ with menu_abas[0]:
                 p['score_elite'] = score
                 lista_ranking.append(p)
 
-        # Ordenação: Maior Score primeiro, depois os mais próximos
+        # Ordenação: Elite primeiro (maior score), depois os mais próximos (menor distância)
         lista_ranking.sort(key=lambda x: (-x['score_elite'], x['dist']))
 
         if not lista_ranking:
-            st.warning("Nenhum profissional encontrado nesta categoria por perto.")
-            link_share = "https://wa.me/?text=Ei!%20Procurei%20um%20serviço%20no%20GeralJá%20e%20vi%20que%20ainda%20precisamos%20de%20profissionais!%20https://geralja.streamlit.app"
-            st.markdown(f'<a href="{link_share}" target="_blank" style="text-decoration:none;"><div style="background:#22C55E; color:white; padding:15px; border-radius:10px; text-align:center; font-weight:bold;">📲 CONVIDAR PROFISSIONAIS</div></a>', unsafe_allow_html=True)
+            st.markdown(f"""
+            <div style="background-color: #FFF4E5; padding: 20px; border-radius: 15px; border-left: 5px solid #FF8C00;">
+                <h3 style="color: #856404;">🔍 Essa profissão ainda não foi preenchida nesta região.</h3>
+                <p style="color: #856404;">Compartilhe o <b>GeralJá</b> e ajude a crescer sua rede local!</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            link_share = "https://wa.me/?text=Ei!%20Procurei%20um%20serviço%20no%20GeralJá%20e%20vi%20que%20ainda%20temos%20vagas!%20Cadastre-se:%20https://geralja.streamlit.app"
+            st.markdown(f'<a href="{link_share}" target="_blank" style="text-decoration:none;"><div style="background:#22C55E; color:white; padding:15px; border-radius:10px; text-align:center; font-weight:bold; margin-top:10px;">📲 COMPARTILHAR NO WHATSAPP</div></a>', unsafe_allow_html=True)
         
         else:
-            # --- 4. RENDERIZAÇÃO DA VITRINE LUXO ---
+            # --- RENDERIZAÇÃO DOS CARDS (LOOP) ---
             for p in lista_ranking:
                 pid = p['id']
                 is_elite = p.get('verificado') and p.get('saldo', 0) > 0
                 
-                # Definição de Cores
-                cor_borda = "#FFD700" if is_elite else ("#FF8C00" if p.get('tipo') == "🏢 Comércio/Loja" else "#0047AB")
-                bg_card = "#FFFDF5" if is_elite else "#FFFFFF"
-                
-                st.markdown(f"""
-                <div style="border: 1px solid #E2E8F0; border-left: 8px solid {cor_borda}; padding: 15px; background: {bg_card}; border-radius: 20px; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-                    <div style="display:flex; justify-content: space-between; margin-bottom: 10px;">
-                        <span style="font-size: 11px; color: #64748B; font-weight: bold; background: #F1F5F9; padding: 4px 8px; border-radius: 10px;">📍 a {p['dist']:.1f} km</span>
-                        <span style="font-size: 11px; color: #D97706; font-weight: bold;">{"🏆 DESTAQUE ELITE" if is_elite else ""}</span>
+                with st.container():
+                    # Cores dinâmicas baseadas no tipo de conta
+                    cor_borda = "#FFD700" if is_elite else ("#FF8C00" if p.get('tipo') == "🏢 Comércio/Loja" else "#0047AB")
+                    bg_card = "#FFFDF5" if is_elite else "#FFFFFF"
+                    
+                    st.markdown(f"""
+                    <div style="border-left: 8px solid {cor_borda}; padding: 15px; background: {bg_card}; border-radius: 15px; margin-bottom: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                        <span style="font-size: 12px; color: gray; font-weight: bold;">📍 a {p['dist']:.1f} km de você {" | 🏆 DESTAQUE" if is_elite else ""}</span>
                     </div>
-                """, unsafe_allow_html=True)
+                    """, unsafe_allow_html=True)
 
-                col_img, col_txt = st.columns([1, 4])
-                with col_img:
-                    # Foto Principal
-                    foto_perfil = p.get('foto_b64')
-                    src_principal = f"data:image/png;base64,{foto_perfil}" if foto_perfil else f"https://ui-avatars.com/api/?name={p.get('nome')}&background=random"
-                    st.markdown(f'<img src="{src_principal}" style="width:75px; height:75px; border-radius:50%; object-fit:cover; border:3px solid {cor_borda}">', unsafe_allow_html=True)
-                
-                with col_txt:
-                    nome_ex = p.get('nome', '').upper()
-                    if p.get('verificado'): nome_ex += " ☑️"
+                    col_img, col_txt = st.columns([1, 4])
+                    with col_img:
+                        foto = p.get('foto_url', 'https://via.placeholder.com/150')
+                        st.markdown(f'<img src="{foto}" style="width:75px; height:75px; border-radius:50%; object-fit:cover; border:3px solid {cor_borda}">', unsafe_allow_html=True)
                     
-                    status_loja = ""
-                    if p.get('tipo') == "🏢 Comércio/Loja":
-                        h_ab, h_fe = p.get('h_abre', '08:00'), p.get('h_fecha', '18:00')
-                        status_loja = " 🟢" if h_ab <= hora_atual <= h_fe else " 🔴"
+                    with col_txt:
+                        nome_exibicao = p.get('nome', '').upper()
+                        if p.get('verificado', False): nome_exibicao += " <span style='color:#1DA1F2;'>☑️</span>"
+                        
+                        status_loja = ""
+                        if p.get('tipo') == "🏢 Comércio/Loja":
+                            h_ab, h_fe = p.get('h_abre', '08:00'), p.get('h_fecha', '18:00')
+                            status_loja = " 🟢 <b style='color:green;'>ABERTO</b>" if h_ab <= hora_atual <= h_fe else " 🔴 <b style='color:red;'>FECHADO</b>"
+                        
+                        st.markdown(f"**{nome_exibicao}** {status_loja}", unsafe_allow_html=True)
+                        st.caption(f"{p.get('descricao', '')[:120]}...")
+
+                    # Vitrine de Fotos do Portfólio
+                    if p.get('portfolio_imgs'):
+                        cols_v = st.columns(3)
+                        for i, img_b64 in enumerate(p.get('portfolio_imgs')[:3]):
+                            cols_v[i].image(img_b64, use_container_width=True)
+
+                    # --- LÓGICA DO BOTÃO DE WHATSAPP (AQUI DENTRO DO LOOP) ---
+                    nome_curto = p.get('nome', 'Profissional').split()[0].upper()
                     
-                    st.markdown(f"**{nome_ex}** {status_loja}")
-                    st.caption(f"{p.get('descricao', '')[:120]}...")
+                    # Limpeza do número de telefone (ID do documento)
+                    numero_limpo = re.sub(r'\D', '', str(pid))
+                    if not numero_limpo.startswith('55'):
+                        numero_limpo = f"55{numero_limpo}"
+                    
+                    texto_zap = quote(f"Olá {p.get('nome')}, vi seu perfil no GeralJá!")
+                    link_final = f"https://wa.me/{numero_limpo}?text={texto_zap}"
 
-                # --- VITRINE: GRID DE 3 FOTOS ---
-                # Puxa os campos f1, f2 e f3 do banco
-                fotos_v = [p.get('f1'), p.get('f2'), p.get('f3')]
-                fotos_validas = [f for f in fotos_v if f] # Filtra apenas as que existem
-                
-                if fotos_validas:
-                    st.write("") # Espaçador visual
-                    cols_v = st.columns(3)
-                    for i, img_data in enumerate(fotos_validas):
-                        with cols_v[i]:
-                            st.markdown(f"""
-                                <img src="data:image/png;base64,{img_data}" 
-                                     style="width:100%; height:85px; border-radius:12px; object-fit:cover; border:1px solid #eee;">
-                            """, unsafe_allow_html=True)
+                    # --- BOTÃO ÚNICO (VISUAL TOP + ABRE SEMPRE) ---
+                    import re
+                    from urllib.parse import quote
+                    
+                    # 1. Preparação dos dados
+                    num_limpo = re.sub(r'\D', '', str(pid))
+                    if not num_limpo.startswith('55'): num_limpo = f"55{num_limpo}"
+                    texto_zap = quote(f"Olá {p.get('nome')}, vi seu perfil no GeralJá!")
+                    link_final = f"https://wa.me/{num_limpo}?text={texto_zap}"
+                    nome_btn = p.get('nome', 'Profissional').split()[0].upper()
+                    
+                    # 2. BOTÃO HTML (Ocupa o lugar do st.button)
+                    # Este botão abre o WhatsApp instantaneamente e não é bloqueado
+                    st.markdown(f"""
+                        <a href="{link_final}" target="_blank" style="text-decoration: none;">
+                            <div style="
+                                background-color: #25D366;
+                                color: white;
+                                padding: 15px;
+                                border-radius: 12px;
+                                text-align: center;
+                                font-weight: bold;
+                                font-size: 18px;
+                                box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+                                transition: 0.3s;
+                                cursor: pointer;
+                                margin-top: 10px;
+                            ">
+                                💬 FALAR COM {nome_btn}
+                            </div>
+                        </a>
+                    """, unsafe_allow_html=True)
+                    
+                    # 3. LÓGICA DE DÉBITO E SEGURANÇA
+                # Verifica se tem saldo antes de processar
+                if p.get('saldo', 0) <= 0:
+                    continue  # <--- AGORA ESTÁ DENTRO DO IF (4 espaços)
 
-                # --- BOTÃO WHATSAPP HTML (ESTÁVEL) ---
-                num_limpo = re.sub(r'\D', '', str(pid))
-                if not num_limpo.startswith('55'): num_limpo = '55' + num_limpo
-                link_zap = f"https://api.whatsapp.com/send?phone={num_limpo}&text={quote('Olá, vi sua vitrine no GeralJá!')}"
-                
-                st.markdown(f"""
-                    <a href="{link_zap}" target="_blank" style="text-decoration: none;">
-                        <div style="background:#25D366; color:white; padding:12px; border-radius:12px; text-align:center; font-weight:bold; margin-top:15px; box-shadow: 0 4px 10px rgba(37,211,102,0.2);">
-                            🚀 FALAR COM {p.get('nome').split()[0].upper()}
-                        </div>
-                    </a>
-                """, unsafe_allow_html=True)
+                # Se passou pelo if acima, registra o clique/visualização
+                db.collection("profissionais").document(pid).update({
+                    "cliques": p.get('cliques', 0) + 1
+                })
                 
 # ==============================================================================
 # ABA 2: 📝 CADASTRO TURBINADO E BLINDADO
 # ==============================================================================
 with menu_abas[1]:
-    st.markdown("### 🚀 Faça parte do GeralJá")
+    st.header("🚀 Seja um Parceiro GeralJá")
+    st.write("Cadastre seu serviço e seja encontrado por clientes próximos!")
     
-    # --- TRAVA DE SEGURANÇA PARA COORDENADAS (Evita erro na linha 89) ---
-    if 'minha_lat' not in locals():
-        minha_lat = -23.5505  # Valor padrão (SP)
-    if 'minha_lon' not in locals():
-        minha_lon = -46.6333  # Valor padrão (SP)
+    # Função interna para usar a chave que você salvou nos Secrets
+    def obter_coords_google(endereco):
+        api_key = st.secrets["GOOGLE_MAPS_API_KEY"]
+        url = f"https://maps.googleapis.com/maps/api/geocode/json?address={endereco}&key={api_key}"
+        try:
+            response = requests.get(url).json()
+            if response['status'] == 'OK':
+                loc = response['results'][0]['geometry']['location']
+                end_formatado = response['results'][0]['formatted_address']
+                return loc['lat'], loc['lng'], end_formatado
+        except:
+            pass
+        return None, None, None
 
-    # 1. BUSCA OPÇÕES DO ADMIN
-    lista_areas = buscar_opcoes_dinamicas("categorias", ["Serviços Gerais", "Manutenção"])
-    lista_tipos = buscar_opcoes_dinamicas("tipos", ["👤 Profissional Autônomo", "🏢 Comércio/Loja"])
-
-    with st.form("form_cadastro_luxo", clear_on_submit=True):
-        col1, col2 = st.columns(2)
+    with st.form("reg_preciso"):
+        col_c1, col_c2 = st.columns(2)
+        r_n = col_c1.text_input("Nome Completo")
+        r_z = col_c2.text_input("WhatsApp (Apenas números)", help="Ex: 11999999999")
         
-        with col1:
-            nome_c = st.text_input("Nome Completo ou Nome do Negócio*", placeholder="Como os clientes te acharão")
-            zap_c = st.text_input("WhatsApp (com DDD)*", placeholder="Ex: 11999999999")
-            area_c = st.selectbox("Sua Especialidade*", options=sorted(lista_areas))
-            tipo_c = st.selectbox("Tipo de Atendimento*", options=lista_tipos)
+        # CAMPO CRUCIAL: O endereço que o Google vai ler
+        r_endereco = st.text_input("Endereço de Atendimento", placeholder="Rua, Número, Bairro, Cidade - Estado")
         
-        with col2:
-            st.markdown("📍 **Sua Localização**")
-            lat_c = st.number_input("Latitude", value=float(minha_lat), format="%.6f")
-            lon_c = st.number_input("Longitude", value=float(minha_lon), format="%.6f")
-            st.caption("Ajuste manualmente se o GPS não marcar seu local exato.")
-
-        st.divider()
-        desc_c = st.text_area("Descrição do Serviço (Sua Vitrine)*", placeholder="Conte o que você faz...")
-
-        # --- SEÇÃO DE FOTOS ---
-        st.markdown("#### 📸 Sua Vitrine Visual (Até 4 fotos)")
-        c_perfil, c_v1, c_v2, c_v3 = st.columns(4)
+        col_c3, col_c4 = st.columns(2)
+        r_s = col_c3.text_input("Crie uma Senha", type="password")
+        r_a = col_c4.selectbox("Sua Especialidade Principal", CATEGORIAS_OFICIAIS)
         
-        with c_perfil:
-            foto_perfil = st.file_uploader("Perfil", type=['jpg', 'png'], key="perf")
-        with c_v1:
-            f1 = st.file_uploader("Vitrine 1", type=['jpg', 'png'], key="v1")
-        with c_v2:
-            f2 = st.file_uploader("Vitrine 2", type=['jpg', 'png'], key="v2")
-        with c_v3:
-            f3 = st.file_uploader("Vitrine 3", type=['jpg', 'png'], key="v3")
-
-        st.divider()
-        btn_enviar = st.form_submit_button("🚀 CRIAR MINHA VITRINE AGORA", use_container_width=True)
-
-        if btn_enviar:
-            import datetime # Garante que o datetime funcione aqui dentro
-            
-            if not nome_c or not zap_c or not desc_c:
-                st.error("⚠️ Preencha Nome, WhatsApp e Descrição.")
+        r_d = st.text_area("Descreva seus serviços")
+        
+        st.info("📌 Sua localização será usada para mostrar seus serviços aos clientes mais próximos.")
+        
+        if st.form_submit_button("FINALIZAR MEU CADASTRO", use_container_width=True):
+            if len(r_z) < 10 or not r_endereco:
+                st.error("⚠️ Nome, WhatsApp e Endereço são obrigatórios!")
             else:
-                with st.spinner("Salvando sua vitrine..."):
-                    # Converte fotos (Função converter_img_b64 deve estar no topo do app)
-                    foto_b64 = converter_img_b64(foto_perfil) if foto_perfil else ""
-                    f1_b64 = converter_img_b64(f1) if f1 else ""
-                    f2_b64 = converter_img_b64(f2) if f2 else ""
-                    f3_b64 = converter_img_b64(f3) if f3 else ""
+                # MÁGICA DO GOOGLE ACONTECENDO AQUI
+                lat, lon, endereco_real = obter_coords_google(r_endereco)
+                
+                if lat and lon:
+                    try:
+                        db.collection("profissionais").document(r_z).set({
+                            "nome": r_n,
+                            "whatsapp": r_z,
+                            "senha": r_s,
+                            "area": r_a,
+                            "descricao": r_d,
+                            "endereco_digitado": r_endereco,
+                            "endereco_oficial": endereco_real, # Endereço corrigido pelo Google
+                            "lat": lat,
+                            "lon": lon,
+                            "saldo": BONUS_WELCOME,
+                            "cliques": 0,
+                            "rating": 5.0,
+                            "aprovado": False,
+                            "data_registro": datetime.datetime.now()
+                        })
+                        st.success(f"✅ Cadastro enviado! Localizamos você em: {endereco_real}")
+                        st.balloons()
+                    except Exception as e:
+                        st.error(f"Erro ao salvar no banco: {e}")
+                else:
+                    st.error("❌ Não conseguimos validar este endereço no mapa. Tente incluir o número da casa e a cidade.")
 
-                    novo_pro = {
-                        "nome": nome_c,
-                        "area": area_c,
-                        "tipo": tipo_c,
-                        "descricao": desc_c,
-                        "lat": lat_c,
-                        "lon": lon_c,
-                        "foto_b64": foto_b64,
-                        "f1": f1_b64,
-                        "f2": f2_b64,
-                        "f3": f3_b64,
-                        "aprovado": False,
-                        "verificado": False,
-                        "saldo": 0,
-                        "rating": 5.0,
-                        "cliques": 0,
-                        "data_cadastro": datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
-                    }
-
-                    # Salva usando o ZAP como ID (Blindagem contra duplicados)
-                    db.collection("profissionais").document(zap_c).set(novo_pro)
-                    
-                    st.balloons()
-                    st.success("✅ Cadastro enviado! Aguarde a aprovação do Admin.")
 # ==============================================================================
 # ABA 3: MEU PERFIL (VITRINE LUXUOSA ESTILO INSTA)
 # ==============================================================================
@@ -617,7 +604,7 @@ with menu_abas[2]:
             st.session_state.auth = False
             st.rerun()
 # ==============================================================================
-# ABA 3: 👑 PAINEL DE CONTROLE MASTER (TURBINADO)
+# ABA 4: 👑 PAINEL DE CONTROLE MASTER (TURBINADO)
 # ==============================================================================
 with menu_abas[3]:
     st.markdown("## 👑 Gestão Estratégica GeralJá")
@@ -751,12 +738,6 @@ with menu_abas[4]:
     if st.button("Enviar Feedback"):
         st.success("Obrigado! Sua mensagem foi enviada para nossa equipe.")
         # Em produção, salvaria em uma coleção 'feedbacks'
-
-# ------------------------------------------------------------------------------
-# FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
-# ------------------------------------------------------------------------------
-finalizar_e_alinhar_layout()
-
 
 
 
