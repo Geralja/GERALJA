@@ -302,7 +302,64 @@ with menu_abas[0]:
             
             lista_resultados = []
             termo_min = cat_ia.lower()
+def exibir_card_profissional(p, pid):
+    # Blindagem de cores e status
+    is_elite = p.get('verificado', False) and float(p.get('saldo', 0)) > 0
+    cor_borda = "#FFD700" if is_elite else "#E2E8F0"
+    
+    # Tratamento das 4 fotos
+    fotos = []
+    for i in range(1, 5):
+        f = p.get(f'f{i}', '')
+        if len(str(f)) > 100:
+            fotos.append(f"data:image/jpeg;base64,{f}")
+    
+    # Foto principal e extras
+    img_capa = fotos[0] if len(fotos) > 0 else "https://via.placeholder.com/400x300?text=GeralJa"
+    
+    st.markdown(f"""
+    <div style="background:white; border-radius:25px; padding:0; margin-bottom:25px; border:2px solid {cor_borda}; box-shadow:0 10px 25px rgba(0,0,0,0.1); overflow:hidden; font-family:sans-serif;">
+        <div style="padding:15px; display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <div style="width:45px; height:45px; border-radius:50%; background:url('{img_capa}') center/cover; border:2px solid #FFD700;"></div>
+                <div>
+                    <h4 style="margin:0; font-size:16px; color:#1A202C;">{p.get('nome', '').upper()} {"☑️" if p.get('verificado') else ""}</h4>
+                    <small style="color:#718096;">📍 {p.get('dist', 0):.1f} km de você</small>
+                </div>
+            </div>
+            {"<span style='background:#FFD700; color:black; padding:4px 12px; border-radius:15px; font-size:10px; font-weight:bold;'>ELITE</span>" if is_elite else ""}
+        </div>
 
+        <div style="display:grid; grid-template-columns: 2fr 1fr; gap:5px; height:250px; padding:0 10px;">
+            <div style="background:url('{img_capa}') center/cover; border-radius:15px 0 0 15px;"></div>
+            <div style="display:grid; grid-template-rows: 1fr 1fr 1fr; gap:5px;">
+                <div style="background:url('{fotos[1] if len(fotos)>1 else img_capa}') center/cover; border-radius:0 15px 0 0;"></div>
+                <div style="background:url('{fotos[2] if len(fotos)>2 else img_capa}') center/cover;"></div>
+                <div style="background:url('{fotos[3] if len(fotos)>3 else img_capa}') center/cover; border-radius:0 0 15px 0;"></div>
+            </div>
+        </div>
+
+        <div style="padding:15px;">
+            <div style="margin-bottom:8px;">
+                <span style="background:#EDF2F7; color:#2D3748; padding:3px 10px; border-radius:8px; font-size:11px; font-weight:bold; text-transform:uppercase;">{p.get('area', 'Serviços')}</span>
+            </div>
+            <p style="color:#4A5568; font-size:14px; line-height:1.5; margin:0;">{p.get('descricao', '')[:160]}...</p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Botão de Ação fora do HTML (Nativo Streamlit para funcionar o WhatsApp)
+    col_btn, _ = st.columns([1, 0.01])
+    with col_btn:
+        if st.button(f"💬 CHAMAR {p.get('nome','').split()[0].upper()}", key=f"wa_{pid}", use_container_width=True):
+            # Desconto de saldo
+            if float(p.get('saldo', 0)) > 0:
+                try: db.collection("profissionais").document(pid).update({"saldo": firestore.Increment(-1)})
+                except: pass
+            
+            msg = f"Olá, vi seu perfil de {p.get('area')} no GeralJá e gostaria de um orçamento!"
+            st.link_button("🔥 ABRIR WHATSAPP", f"https://wa.me/55{pid}?text={msg.replace(' ', '%20')}", use_container_width=True)
+    st.markdown("<br>", unsafe_allow_html=True)
             for doc in profs_ref:
                 p = doc.to_dict()
                 p['id'] = doc.id # O ID é o WhatsApp
@@ -679,6 +736,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
