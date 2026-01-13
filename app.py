@@ -401,92 +401,60 @@ with menu_abas[0]:
                 """, unsafe_allow_html=True)
                 
 # ==============================================================================
-# ABA 2: 📝 CADASTRO TURBINADO E BLINDADO
+# ABA 2: 👤 MEU PAINEL (COM TRAVA DE SEGURANÇA REFORÇADA)
 # ==============================================================================
 with menu_abas[1]:
-    st.markdown("### 🚀 Faça parte do GeralJá")
+    st.subheader("🛠️ Gerenciar meu Perfil")
     
-    # --- TRAVA DE SEGURANÇA PARA COORDENADAS (Evita erro na linha 89) ---
-    if 'minha_lat' not in locals():
-        minha_lat = -23.5505  # Valor padrão (SP)
-    if 'minha_lon' not in locals():
-        minha_lon = -46.6333  # Valor padrão (SP)
+    # Seção de Login para acessar o Painel
+    col_l1, col_l2 = st.columns(2)
+    acesso_whatsapp = col_l1.text_input("Seu WhatsApp (Login)", placeholder="Apenas números", key="login_zap")
+    acesso_senha = col_l2.text_input("Sua Senha", type="password", key="login_pass")
 
-    # 1. BUSCA OPÇÕES DO ADMIN
-    lista_areas = buscar_opcoes_dinamicas("categorias", ["Serviços Gerais", "Manutenção"])
-    lista_tipos = buscar_opcoes_dinamicas("tipos", ["👤 Profissional Autônomo", "🏢 Comércio/Loja"])
-
-    with st.form("form_cadastro_luxo", clear_on_submit=True):
-        col1, col2 = st.columns(2)
+    if acesso_whatsapp and acesso_senha:
+        # Busca o profissional no Firebase
+        doc_ref = db.collection("profissionais").document(acesso_whatsapp).get()
         
-        with col1:
-            nome_c = st.text_input("Nome Completo ou Nome do Negócio*", placeholder="Como os clientes te acharão")
-            zap_c = st.text_input("WhatsApp (com DDD)*", placeholder="Ex: 11999999999")
-            area_c = st.selectbox("Sua Especialidade*", options=sorted(lista_areas))
-            tipo_c = st.selectbox("Tipo de Atendimento*", options=lista_tipos)
-        
-        with col2:
-            st.markdown("📍 **Sua Localização**")
-            lat_c = st.number_input("Latitude", value=float(minha_lat), format="%.6f")
-            lon_c = st.number_input("Longitude", value=float(minha_lon), format="%.6f")
-            st.caption("Ajuste manualmente se o GPS não marcar seu local exato.")
-
-        st.divider()
-        desc_c = st.text_area("Descrição do Serviço (Sua Vitrine)*", placeholder="Conte o que você faz...")
-
-        # --- SEÇÃO DE FOTOS ---
-        st.markdown("#### 📸 Sua Vitrine Visual (Até 4 fotos)")
-        c_perfil, c_v1, c_v2, c_v3 = st.columns(4)
-        
-        with c_perfil:
-            foto_perfil = st.file_uploader("Perfil", type=['jpg', 'png'], key="perf")
-        with c_v1:
-            f1 = st.file_uploader("Vitrine 1", type=['jpg', 'png'], key="v1")
-        with c_v2:
-            f2 = st.file_uploader("Vitrine 2", type=['jpg', 'png'], key="v2")
-        with c_v3:
-            f3 = st.file_uploader("Vitrine 3", type=['jpg', 'png'], key="v3")
-
-        st.divider()
-        btn_enviar = st.form_submit_button("🚀 CRIAR MINHA VITRINE AGORA", use_container_width=True)
-
-        if btn_enviar:
-            import datetime # Garante que o datetime funcione aqui dentro
+        if doc_ref.exists:
+            dados_p = doc_ref.to_dict()
+            # Puxa a senha gravada (converte para string para evitar erro de tipo)
+            senha_no_banco = str(dados_p.get("senha", ""))
             
-            if not nome_c or not zap_c or not desc_c:
-                st.error("⚠️ Preencha Nome, WhatsApp e Descrição.")
-            else:
-                with st.spinner("Salvando sua vitrine..."):
-                    # Converte fotos (Função converter_img_b64 deve estar no topo do app)
-                    foto_b64 = converter_img_b64(foto_perfil) if foto_perfil else ""
-                    f1_b64 = converter_img_b64(f1) if f1 else ""
-                    f2_b64 = converter_img_b64(f2) if f2 else ""
-                    f3_b64 = converter_img_b64(f3) if f3 else ""
+            # --- VALIDAÇÃO DE ACESSO ---
+            if acesso_senha == senha_no_banco:
+                st.success(f"✅ Autenticado: {dados_p.get('nome')}")
+                
+                # Mantenha o saldo e status visíveis no topo do painel
+                c_s1, c_s2 = st.columns(2)
+                c_s1.metric("Meu Saldo", f"R$ {dados_p.get('saldo', 0):.2f}")
+                status_sel = "✅ Ativo" if dados_p.get("aprovado") else "⏳ Pendente"
+                c_s2.metric("Status", status_sel)
 
-                    novo_pro = {
-                        "nome": nome_c,
-                        "area": area_c,
-                        "tipo": tipo_c,
-                        "descricao": desc_c,
-                        "lat": lat_c,
-                        "lon": lon_c,
-                        "foto_b64": foto_b64,
-                        "f1": f1_b64,
-                        "f2": f2_b64,
-                        "f3": f3_b64,
-                        "aprovado": False,
-                        "verificado": False,
-                        "saldo": 0,
-                        "rating": 5.0,
-                        "cliques": 0,
-                        "data_cadastro": datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
-                    }
-
-                    # Salva usando o ZAP como ID (Blindagem contra duplicados)
-                    db.collection("profissionais").document(zap_c).set(novo_pro)
+                # --------------------------------------------------------------
+                # BLOCO DE EDIÇÃO (COLE O SEU CÓDIGO ORIGINAL AQUI DENTRO)
+                # --------------------------------------------------------------
+                with st.expander("📝 ALTERAR MEUS DADOS E FOTOS", expanded=True):
+                    st.warning("⚠️ Lembre-se de clicar em 'Salvar Alterações' no final.")
                     
-                    st.balloons()
-                    st.success("✅ Cadastro enviado! Aguarde a aprovação do Admin.")
+                    # AQUI VOCÊ MANTÉM OS SEUS INPUTS ORIGINAIS:
+                    # nome = st.text_input("Nome", value=dados_p.get('nome'))
+                    # desc = st.text_area("Descrição", value=dados_p.get('descricao'))
+                    # area = st.selectbox("Categoria", options=LISTA_AREAS, index=...)
+                    # f1 = st.file_uploader("Foto 1", ...)
+                    
+                    st.info("Insira aqui todo o seu código de formulário de edição que já funcionava.")
+
+                # --------------------------------------------------------------
+            else:
+                st.error("❌ Senha incorreta. Acesso negado.")
+        else:
+            st.error("❌ Este WhatsApp não foi encontrado na nossa base.")
+    
+    # --- SEÇÃO DE NOVO CADASTRO (FICA FORA DO LOGIN) ---
+    st.divider()
+    with st.expander("✨ Não tem conta? Cadastre-se agora!"):
+        st.write("Preencha os dados abaixo para criar sua vitrine.")
+        # Cole aqui o seu código de NOVO CADASTRO, garantindo que ele peça uma 'senha'
 # ==============================================================================
 # ABA 3: MEU PERFIL (VITRINE LUXUOSA ESTILO INSTA)
 # ==============================================================================
@@ -726,6 +694,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
