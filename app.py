@@ -294,16 +294,6 @@ def converter_img_b64(file):
 
 # --- FUNCIONALIDADE DO ARQUIVO: O VARREDOR (Rodapé Automático) ---
 def finalizar_e_alinhar_layout():
-    # --- LÓGICA DE PROCESSAMENTO ---
-if termo_busca:
-    try:
-        # 1. IA DE MAPEAMENTO (BLINDADA)
-        try:
-            cat_ia = processar_ia_avancada(termo_busca)
-        except:
-            cat_ia = termo_busca.capitalize()
-        # ... resto do código ...
-
     """
     Esta função atua como um ímã. Puxa o conteúdo e limpa o rodapé.
     """
@@ -749,32 +739,3 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
