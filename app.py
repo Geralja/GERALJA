@@ -1,5 +1,5 @@
 # ==============================================================================
-# GERALJÁ: CRIANDO SOLUÇÕES
+# GERALJÁ: CRIANDO SOLUÇÕES - VERSÃO FINAL CORRIGIDA
 # ==============================================================================
 import streamlit as st
 import firebase_admin
@@ -14,49 +14,7 @@ import unicodedata
 import pytz
 from datetime import datetime
 
-# --- CONFIGURAÇÕES GERAIS ---
-# Coordenadas de referência (Exemplo: São Paulo)
-LAT_PADRAO = -23.5505 
-LON_PADRAO = -46.6333
-CATEGORIAS_OFICIAIS = ["Pedreiro", "Encanador", "Eletricista", "Pintor", "Mecânico", "Alimentação", "Outros"]
-
-# --- FUNÇÃO DE CONVERSÃO (Obrigatória para o cadastro de fotos) ---
-def converter_img_b64(file):
-    if file is None: return ""
-    return base64.b64encode(file.read()).decode()
-
-# --- FUNÇÃO DE DISTÂNCIA (Obrigatória para a Vitrine) ---
-def calcular_distancia_real(lat1, lon1, lat2, lon2):
-    R = 6371  # Raio da Terra em km
-    dlat = math.radians(lat2 - lat1)
-    dlon = math.radians(lon2 - lon1)
-    a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
-    return R * c
-# Tenta importar bibliotecas extras do arquivo original, se não tiver, segue sem quebrar
-try:
-    from streamlit_js_eval import streamlit_js_eval, get_geolocation
-except ImportError:
-    pass
-def calcular_distancia(lat1, lon1, lat2, lon2):
-    """
-    Calcula a distância entre dois pontos (Haversine)
-    """
-    try:
-        if not all([lat1, lon1, lat2, lon2]):
-            return 999.0 # Se não tiver coord, joga pra longe
-        
-        R = 6371  # Raio da Terra em KM
-        dlat = math.radians(lat2 - lat1)
-        dlon = math.radians(lon2 - lon1)
-        a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
-        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
-        return R * c
-    except:
-        return 999.0
-# ------------------------------------------------------------------------------
-# 1. CONFIGURAÇÃO DE AMBIENTE E PERFORMANCE
-# ------------------------------------------------------------------------------
+# 1. CONFIGURAÇÃO DE PÁGINA (Sempre o primeiro comando Streamlit)
 st.set_page_config(
     page_title="GeralJá | Criando Soluções",
     page_icon="🇧🇷",
@@ -64,60 +22,76 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- FUNCIONALIDADE DO ARQUIVO: TEMA MANUAL ---
-if 'tema_claro' not in st.session_state:
-    st.session_state.tema_claro = False
+# 2. CONFIGURAÇÕES GERAIS
+LAT_PADRAO = -23.5505 
+LON_PADRAO = -46.6333
+CATEGORIAS_OFICIAIS = ["Pedreiro", "Encanador", "Eletricista", "Pintor", "Mecânico", "Alimentação", "Outros"]
 
-# --- GERENCIADOR DE TEMA (MODO NOITE LUXO) ---
-if 'modo_noite' not in st.session_state:
-    st.session_state.modo_noite = False
+# 3. FUNÇÕES DE APOIO (PROCESSAMENTO)
 
-# Botão discreto no topo
-col_theme, _ = st.columns([1, 10])
-with col_theme:
-    st.session_state.modo_noite = st.toggle("🌙 Modo Noite", value=st.session_state.modo_noite)
+def processar_ia_avancada(termo):
+    """
+    Motor de IA Simples (Blindado) caso a API principal falhe
+    """
+    termo = termo.lower()
+    if "pinta" in termo or "parede" in termo: return "Pintor"
+    if "cano" in termo or "vazamento" in termo: return "Encanador"
+    if "luz" in termo or "fio" in termo or "tomada" in termo: return "Eletricista"
+    if "carro" in termo or "motor" in termo: return "Mecânico"
+    if "fome" in termo or "comida" in termo or "pizza" in termo: return "Alimentação"
+    if "obra" in termo or "reforma" in termo: return "Pedreiro"
+    return termo.capitalize()
 
-if st.session_state.modo_noite:
-    st.markdown("""
-        <style>
-            /* Fundo Total Escuro */
-            .stApp, .stAppViewContainer, .stMain {
-                background-color: #0E1117 !important;
-            }
-            
-            /* Textos em Branco */
-            h1, h2, h3, h4, h5, h6, p, span, label, .stMarkdown, .stCaption {
-                color: #FFFFFF !important;
-            }
+def calcular_distancia(lat1, lon1, lat2, lon2):
+    try:
+        if not all([lat1, lon1, lat2, lon2]): return 999.0
+        R = 6371 
+        dlat = math.radians(lat2 - lat1)
+        dlon = math.radians(lon2 - lon1)
+        a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+        return R * c
+    except:
+        return 999.0
 
-            /* Cartões e Inputs Escuros com Borda Fina */
-            .stTextInput input, .stSelectbox div, .stTextArea textarea, .stNumberInput input {
-                background-color: #1A1C23 !important;
-                color: #FFFFFF !important;
-                border: 1px solid #30363D !important;
-            }
+def converter_img_b64(file):
+    if file is None: return ""
+    return base64.b64encode(file.read()).decode()
 
-            /* Abas (Tabs) */
-            button[data-baseweb="tab"] p {
-                color: #FFFFFF !important;
-            }
-            
-            /* Ajuste para os cards brancos da vitrine não "gritarem" no fundo preto */
-            div[style*="background: white"], div[style*="background: #FFFFFF"] {
-                background-color: #161B22 !important;
-                border: 1px solid #30363D !important;
-            }
-        </style>
-    """, unsafe_allow_html=True)
+def exibir_card_profissional(p, pid):
+    # Lógica da foto
+    foto_perfil = p.get('f1', '')
+    img_url = f"data:image/jpeg;base64,{foto_perfil}" if len(foto_perfil) > 100 else "https://via.placeholder.com/400x400?text=GeralJa"
+    
+    nome = p.get('nome', 'Profissional').upper()
+    dist = p.get('dist', 0.0)
+    verificado = p.get('verificado', False)
+    badge_elite = "<span style='background:#FFD700; color:black; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold;'>ELITE</span>" if verificado else ""
 
-# Mantém os menus escondidos
-st.markdown("""
-    <style>
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        header {visibility: hidden;}
-    </style>
-""", unsafe_allow_html=True)
+    html_card = f"""
+    <div style="border: 2px solid #FFD700; border-radius: 15px; padding: 15px; margin-bottom: 20px; background-color: white; font-family: sans-serif;">
+        <div style="display: flex; justify-content: space-between; align-items: start;">
+            <div style="display: flex; align-items: center;">
+                <div style="width: 50px; height: 50px; border-radius: 50%; background: url('{img_url}') center/cover; border: 2px solid #EEE; margin-right: 12px;"></div>
+                <div>
+                    <h4 style="margin: 0; color: #1f1f1f; font-size: 16px;">{nome} ✅</h4>
+                    <p style="margin: 0; color: #ff4b4b; font-weight: bold; font-size: 12px;">📍 {dist:.1f} KM DE VOCÊ</p>
+                </div>
+            </div>
+            {badge_elite}
+        </div>
+        <div style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 10px; border: 1px dashed #ddd;">
+             <p style="font-size: 13px; color: #444; line-height: 1.4;">{p.get('descricao', '')[:100]}...</p>
+        </div>
+    </div>
+    """
+    st.markdown(html_card, unsafe_allow_html=True)
+    
+    if st.button(f"📞 CONTATAR {nome}", key=f"btn_{pid}", use_container_width=True):
+        zap = p.get('whatsapp', pid)
+        st.link_button("🚀 ABRIR WHATSAPP", f"https://wa.me/55{zap}")
+
+# --- CONTINUAÇÃO DO SEU CÓDIGO (MODO NOITE, ETC) ---
 # ------------------------------------------------------------------------------
 # 2. CAMADA DE PERSISTÊNCIA (FIREBASE)
 # ------------------------------------------------------------------------------
@@ -767,6 +741,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
