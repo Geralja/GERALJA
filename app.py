@@ -15,8 +15,9 @@ import pytz
 from datetime import datetime
 
 # --- CONFIGURAÇÕES GERAIS ---
-LAT_REF = -23.5505  # Exemplo: São Paulo
-LON_REF = -46.6333
+# Coordenadas de referência (Exemplo: São Paulo)
+LAT_PADRAO = -23.5505 
+LON_PADRAO = -46.6333
 CATEGORIAS_OFICIAIS = ["Pedreiro", "Encanador", "Eletricista", "Pintor", "Mecânico", "Alimentação", "Outros"]
 
 # --- FUNÇÃO DE CONVERSÃO (Obrigatória para o cadastro de fotos) ---
@@ -766,6 +767,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
