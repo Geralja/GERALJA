@@ -294,35 +294,39 @@ def converter_img_b64(file):
 
 # --- FUNCIONALIDADE DO ARQUIVO: O VARREDOR (Rodapé Automático) ---
 def finalizar_e_alinhar_layout():
-    
-   # --- LÓGICA DE PROCESSAMENTO ---
+    # --- LÓGICA DE PROCESSAMENTO ---
 if termo_busca:
     try:
-        # 1. IA DE MAPEAMENTO (Busca Inteligente)
+        # 1. IA DE MAPEAMENTO (BLINDADA)
         try:
             cat_ia = processar_ia_avancada(termo_busca)
         except:
             cat_ia = termo_busca.capitalize()
+        # ... resto do código ...
 
-        # 2. BUSCA NO FIREBASE
-        # Aqui você busca os profissionais que atendem a cat_ia ou o termo_busca
-        docs = db.collection("profissionais").where("area", "==", cat_ia).stream()
-        
-        encontrou = False
-        for doc in docs:
-            encontrou = True
-            p = doc.to_dict()
-            pid = doc.id
-            
-            # 3. EXIBIÇÃO DO CARD (Chama a função de luxo)
-            # Apenas chame a função, NÃO use st.write() antes dela
-            exibir_card_profissional(p, pid)
-
-        if not encontrou:
-            st.warning(f"Nenhum profissional encontrado para '{termo_busca}'.")
-
-    except Exception as e:
-        st.error(f"Erro no processamento: {e}")
+    """
+    Esta função atua como um ímã. Puxa o conteúdo e limpa o rodapé.
+    """
+    st.write("---")
+    fechamento_estilo = """
+        <style>
+            .main .block-container { padding-bottom: 5rem !important; }
+            .footer-clean {
+                text-align: center;
+                padding: 20px;
+                opacity: 0.7;
+                font-size: 0.8rem;
+                width: 100%;
+                color: gray;
+            }
+        </style>
+        <div class="footer-clean">
+            <p>🎯 <b>GeralJá</b> - Sistema de Inteligência Local</p>
+            <p>Conectando quem precisa com quem sabe fazer.</p>
+            <p>v3.0 | © 2026 Todos os direitos reservados</p>
+        </div>
+    """
+    st.markdown(fechamento_estilo, unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
 # 5. DESIGN SYSTEM
@@ -745,9 +749,6 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
-
-
-
 
 
 
