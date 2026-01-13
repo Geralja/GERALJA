@@ -188,64 +188,94 @@ CONCEITOS_EXPANDIDOS = {
     "jardim": "Jardineiro", "piscina": "Piscineiro"
 }
 
-# ------------------------------------------------------------------------------
-# 4. MOTORES DE IA E UTILS
-# ------------------------------------------------------------------------------
-def normalizar_para_ia(texto):
-    if not texto: return ""
-    return "".join(c for c in unicodedata.normalize('NFD', str(texto)) 
-                   if unicodedata.category(c) != 'Mn').lower().strip()
+# ==============================================================================
+# MOTOR MESTRE GERALJÁ v3.0 - O ORQUESTRADOR FINAL
+# ==============================================================================
 
-def processar_ia_avancada(texto):
-    if not texto: return "Vazio"
-    t_clean = normalizar_para_ia(texto)
-    for chave, categoria in CONCEITOS_EXPANDIDOS.items():
-        if re.search(rf"\b{normalizar_para_ia(chave)}\b", t_clean):
-            return categoria
-    for cat in CATEGORIAS_OFICIAIS:
-        if normalizar_para_ia(cat) in t_clean:
-            return cat
-    return "NAO_ENCONTRADO"
+class MotorGeralJa:
+    @staticmethod
+    def normalizar(texto):
+        """Remove acentos e padroniza o texto (IA Utils)"""
+        if not texto: return ""
+        return "".join(c for c in unicodedata.normalize('NFD', str(texto)) 
+                       if unicodedata.category(c) != 'Mn').lower().strip()
 
-def calcular_distancia_real(lat1, lon1, lat2, lon2):
-    try:
-        if None in [lat1, lon1, lat2, lon2]: return 999.0
-        R = 6371 
-        dlat, dlon = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
-        a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
-        return round(R * (2 * math.atan2(math.sqrt(a), math.sqrt(1-a))), 1)
-    except: return 999.0
+    @staticmethod
+    def processar_intencao(termo):
+        """Versão turbinada que usa Normalização e Conceitos Expandidos"""
+        if not termo: return "NAO_ENCONTRADO"
+        t_clean = MotorGeralJa.normalizar(termo)
+        
+        # Aqui você pode manter seu dicionário ou usar o CONCEITOS_EXPANDIDOS
+        # Para exemplo, vamos usar a lógica de busca por palavras-chave:
+        mapa = {
+            "Pintor": ["pinta", "parede", "tinta", "grafite"],
+            "Encanador": ["cano", "vazamento", "pia", "esgoto", "torneira"],
+            "Eletricista": ["luz", "fio", "tomada", "disjuntor", "choque"],
+            "Mecânico": ["carro", "motor", "pneu", "freio", "revisao"],
+            "Alimentação": ["fome", "comida", "pizza", "lanche", "marmita"],
+            "Pedreiro": ["obra", "reforma", "cimento", "tijolo", "telhado"]
+        }
+        
+        for categoria, palavras in mapa.items():
+            for p in palavras:
+                if MotorGeralJa.normalizar(p) in t_clean:
+                    return categoria
+        return termo.capitalize()
 
-def converter_img_b64(file):
-    if file is None: return ""
-    try: return base64.b64encode(file.read()).decode()
-    except: return ""
+    @staticmethod
+    def calcular_distancia(lat1, lon1, lat2, lon2):
+        """Cálculo preciso com tratamento de erros"""
+        try:
+            if None in [lat1, lon1, lat2, lon2]: return 999.0
+            R = 6371 
+            dlat, dlon = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
+            a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * \
+                math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
+            return round(R * (2 * math.atan2(math.sqrt(a), math.sqrt(1-a))), 1)
+        except: return 999.0
 
-# --- FUNCIONALIDADE DO ARQUIVO: O VARREDOR (Rodapé Automático) ---
-def finalizar_e_alinhar_layout():
-    """
-    Esta função atua como um ímã. Puxa o conteúdo e limpa o rodapé.
-    """
-    st.write("---")
-    fechamento_estilo = """
-        <style>
-            .main .block-container { padding-bottom: 5rem !important; }
-            .footer-clean {
-                text-align: center;
-                padding: 20px;
-                opacity: 0.7;
-                font-size: 0.8rem;
-                width: 100%;
-                color: gray;
-            }
-        </style>
-        <div class="footer-clean">
-            <p>🎯 <b>GeralJá</b> - Sistema de Inteligência Local</p>
-            <p>Conectando quem precisa com quem sabe fazer.</p>
-            <p>v3.0 | © 2026 Todos os direitos reservados</p>
+    @staticmethod
+    def renderizar_vitrine(p, pid):
+        """Design Luxo Blindado"""
+        foto = p.get('f1', '')
+        img = f"data:image/jpeg;base64,{foto}" if len(foto) > 100 else "https://via.placeholder.com/400"
+        dist = p.get('dist', 0.0)
+        
+        html = f"""
+        <div style="border-radius:20px; padding:15px; background:white; box-shadow:0px 4px 15px rgba(0,0,0,0.1); margin-bottom:20px; border-left: 8px solid #FFD700;">
+            <div style="display:flex; align-items:center; gap:15px;">
+                <img src="{img}" style="width:70px; height:70px; border-radius:50%; object-fit:cover; border:2px solid #FFD700;">
+                <div>
+                    <h3 style="margin:0; font-size:18px; color:#1A1C23;">{p.get('nome', 'Profissional').upper()} {'✅' if p.get('verificado') else ''}</h3>
+                    <span style="color:#FF4B4B; font-weight:bold; font-size:13px;">📍 a {dist:.1f} km de você</span>
+                </div>
+            </div>
+            <p style="margin-top:10px; color:#555; font-size:14px;">{p.get('area', 'Geral')} • {p.get('descricao', '')[:110]}...</p>
         </div>
-    """
-    st.markdown(fechamento_estilo, unsafe_allow_html=True)
+        """
+        st.markdown(html, unsafe_allow_html=True)
+        if st.button(f"Falar com {p.get('nome', '').split()[0]}", key=f"btn_{pid}", use_container_width=True):
+            st.link_button("🚀 Abrir WhatsApp", f"https://wa.me/55{p.get('whatsapp', pid)}")
+
+    @staticmethod
+    def finalizar_layout():
+        """O VARREDOR (Seu rodapé automático agora dentro do mestre)"""
+        st.write("---")
+        fechamento_estilo = """
+            <style>
+                .main .block-container { padding-bottom: 5rem !important; }
+                .footer-clean { text-align: center; padding: 20px; opacity: 0.7; font-size: 0.8rem; width: 100%; color: gray; }
+            </style>
+            <div class="footer-clean">
+                <p>🎯 <b>GeralJá</b> - Sistema de Inteligência Local</p>
+                <p>v3.0 | © 2026 Todos os direitos reservados</p>
+            </div>
+        """
+        st.markdown(fechamento_estilo, unsafe_allow_html=True)
+
+# INSTANCIAÇÃO
+IA_MESTRE = MotorGeralJa()
 
 # ------------------------------------------------------------------------------
 # 5. DESIGN SYSTEM
@@ -726,6 +756,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
