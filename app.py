@@ -503,15 +503,35 @@ with menu_abas[1]:
                 else:
                     st.error("❌ Não conseguimos validar este endereço no mapa. Tente incluir o número da casa e a cidade.")
 
+import base64
+from PIL import Image
+import io
+
 # ==============================================================================
-# ABA 3: MEU PERFIL (VITRINE + EDIÇÃO INTEGRADA COM 4 FOTOS)
+# FUNÇÃO AUXILIAR DE CONVERSÃO (IA MESTRE)
+# ==============================================================================
+def converter_img_b64(file):
+    """Lógica da IA Mestre para otimizar e converter imagens"""
+    try:
+        img = Image.open(file)
+        # Redimensiona para evitar arquivos gigantes (opcional)
+        img.thumbnail((800, 800)) 
+        buffered = io.BytesIO()
+        img.save(buffered, format="JPEG", quality=80)
+        return base64.b64encode(buffered.getvalue()).decode()
+    except Exception as e:
+        st.error(f"Erro ao processar imagem: {e}")
+        return None
+
+# ==============================================================================
+# ABA 3: MEU PERFIL (UNIFICADA E CORRIGIDA)
 # ==============================================================================
 with menu_abas[2]:
     if 'auth' not in st.session_state: 
         st.session_state.auth = False
     
-    # --- FLUXO 1: NÃO AUTENTICADO (LOGIN) ---
     if not st.session_state.auth:
+        # --- TELA DE LOGIN ---
         st.markdown("<h2 style='text-align:center;'>🔐 Portal do Parceiro</h2>", unsafe_allow_html=True)
         with st.container(border=True):
             l_zap = st.text_input("WhatsApp (ID)", key="login_zap")
@@ -520,93 +540,52 @@ with menu_abas[2]:
             if st.button("ENTRAR NA MINHA VITRINE", use_container_width=True):
                 tel_clean = re.sub(r'\D', '', l_zap)
                 if tel_clean:
-                    try:
-                        doc_ref = db.collection("profissionais").document(tel_clean)
-                        doc = doc_ref.get()
-                        if doc.exists and str(doc.to_dict().get('senha')) == str(l_pw):
-                            st.session_state.auth = True
-                            st.session_state.user_id = tel_clean
-                            st.success("✅ Acesso liberado!")
-                            st.rerun()
-                        else:
-                            st.error("❌ Credenciais inválidas.")
-                    except Exception as e:
-                        st.error(f"Erro ao acessar banco: {e}")
-                else:
-                    st.warning("⚠️ Digite seu WhatsApp.")
-
-    # --- FLUXO 2: AUTENTICADO (VITRINE + EDIÇÃO) ---
+                    doc = db.collection("profissionais").document(tel_clean).get()
+                    if doc.exists and str(doc.to_dict().get('senha')) == str(l_pw):
+                        st.session_state.auth = True
+                        st.session_state.user_id = tel_clean
+                        st.rerun()
+                    else:
+                        st.error("❌ Credenciais inválidas.")
     else:
+        # --- USUÁRIO LOGADO ---
         uid = st.session_state.user_id
-        # Busca dados atualizados do profissional
-        doc_snapshot = db.collection("profissionais").document(uid).get()
-        if not doc_snapshot.exists:
-            st.error("Perfil não encontrado.")
-            st.session_state.auth = False
-            st.rerun()
-            
-        d = doc_snapshot.to_dict()
+        d = db.collection("profissionais").document(uid).get().to_dict()
 
-        # Definição das Sub-Abas
-        sub_tab_dash, sub_tab_edit = st.tabs(["📊 Minha Performance", "🛠️ Editar Perfil"])
+        sub_tab_dash, sub_tab_edit = st.tabs(["📊 Performance", "🛠️ Editar Perfil"])
 
-        # --- SUB-ABA 1: DASHBOARD ---
         with sub_tab_dash:
-            # Header Estilo Instagram (Usa a foto principal 'f1' como avatar)
-            foto_perfil = d.get('f1', '') 
-            st.markdown(f"""
-                <div style="display: flex; align-items: center; gap: 20px; padding: 20px; background: white; border-radius: 20px; border: 1px solid #E2E8F0; margin-bottom: 20px;">
-                    <img src="data:image/png;base64,{foto_perfil}" 
-                         style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #E1306C;"
-                         onerror="this.src='https://ui-avatars.com/api/?name={d.get('nome')}&background=random'">
-                    <div style="flex-grow: 1;">
-                        <h2 style="margin: 0; font-size: 22px; color: black;">{d.get('nome')}</h2>
-                        <p style="margin: 0; color: #64748B; font-size: 14px;">@{str(d.get('area')).lower().replace(' ', '')}</p>
-                        <div style="display: flex; gap: 15px; margin-top: 10px;">
-                            <div style="text-align: center;"><b style="display: block; color: black;">{d.get('cliques', 0)}</b><small style="color: #64748B;">Cliques</small></div>
-                            <div style="text-align: center;"><b style="display: block; color: black;">⭐ {d.get('rating', 5.0)}</b><small style="color: #64748B;">Nota</small></div>
-                            <div style="text-align: center;"><b style="display: block; color: black;">{d.get('saldo', 0)}</b><small style="color: #64748B;">Moedas</small></div>
-                        </div>
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
-
-            col_m1, col_m2, col_m3 = st.columns(3)
-            col_m1.metric("Visibilidade", f"{d.get('cliques', 0)} rkt")
-            col_m2.metric("Saldo Atual", f"{d.get('saldo', 0)} 🪙")
-            col_m3.metric("Status", "Elite" if d.get('elite') else "Padrão")
-
-            if st.button("🚪 Sair da Conta", use_container_width=True):
+            # Dashboard simplificado
+            st.success(f"Bem-vindo, {d.get('nome')}!")
+            col_m1, col_m2 = st.columns(2)
+            col_m1.metric("Cliques", d.get('cliques', 0))
+            col_m2.metric("Saldo", f"{d.get('saldo', 0)} 🪙")
+            
+            if st.button("🚪 Sair"):
                 st.session_state.auth = False
                 st.rerun()
 
-        # --- SUB-ABA 2: EDIÇÃO (COM 4 FOTOS) ---
         with sub_tab_edit:
-            st.markdown("### 🛠️ Atualizar Meus Dados")
+            st.markdown("### 🛠️ Atualizar Dados e Fotos")
             with st.form("form_edicao_premium"):
                 c1, c2 = st.columns(2)
                 novo_nome = c1.text_input("Nome/Empresa", value=d.get('nome'))
-                novo_tel = c1.text_input("WhatsApp (Número Novo)", value=d.get('telefone'))
-                
-                idx_area = CATEGORIAS_OFICIAIS.index(d.get('area')) if d.get('area') in CATEGORIAS_OFICIAIS else 0
-                nova_area = c2.selectbox("Especialidade", CATEGORIAS_OFICIAIS, index=idx_area)
-                nova_pw = c2.text_input("Nova Senha", value=d.get('senha'), type="password")
-
-                nova_desc = st.text_area("Descrição do Serviço", value=d.get('descricao'), height=120)
+                novo_tel = c1.text_input("WhatsApp", value=d.get('telefone'))
+                nova_area = c2.selectbox("Especialidade", CATEGORIAS_OFICIAIS, 
+                                       index=CATEGORIAS_OFICIAIS.index(d.get('area')) if d.get('area') in CATEGORIAS_OFICIAIS else 0)
+                nova_pw = c2.text_input("Senha", value=d.get('senha'), type="password")
+                nova_desc = st.text_area("Descrição", value=d.get('descricao'))
                 
                 st.markdown("---")
-                st.write("📷 **Fotos do seu Portfólio (Substitua as que desejar)**")
-                
-                # Grid de 2x2 para as 4 fotos
+                st.write("📷 **Atualizar Portfólio (4 Fotos)**")
                 f_col1, f_col2 = st.columns(2)
-                up_f1 = f_col1.file_uploader("Foto 1 (Principal)", type=['jpg', 'png', 'jpeg'], key="e_f1")
-                up_f2 = f_col1.file_uploader("Foto 2", type=['jpg', 'png', 'jpeg'], key="e_f2")
-                up_f3 = f_col2.file_uploader("Foto 3", type=['jpg', 'png', 'jpeg'], key="e_f3")
-                up_f4 = f_col2.file_uploader("Foto 4", type=['jpg', 'png', 'jpeg'], key="e_f4")
+                up_f1 = f_col1.file_uploader("Foto 1 (Principal)", type=['jpg', 'png', 'jpeg'], key="up1")
+                up_f2 = f_col1.file_uploader("Foto 2", type=['jpg', 'png', 'jpeg'], key="up2")
+                up_f3 = f_col2.file_uploader("Foto 3", type=['jpg', 'png', 'jpeg'], key="up3")
+                up_f4 = f_col2.file_uploader("Foto 4", type=['jpg', 'png', 'jpeg'], key="up4")
 
-                if st.form_submit_button("💾 SALVAR TODAS AS ALTERAÇÕES", use_container_width=True):
-                    with st.spinner("🚀 Atualizando perfil..."):
-                        # Preparar dados básicos
+                if st.form_submit_button("💾 SALVAR ALTERAÇÕES"):
+                    with st.spinner("🚀 Salvando..."):
                         upd = {
                             "nome": novo_nome.upper().strip(),
                             "area": nova_area,
@@ -615,30 +594,31 @@ with menu_abas[2]:
                             "telefone": re.sub(r'\D', '', novo_tel)
                         }
                         
-                        # Processar as 4 fotos se enviadas
+                        # Processamento das Fotos usando a função local corrigida
                         for key, file in [("f1", up_f1), ("f2", up_f2), ("f3", up_f3), ("f4", up_f4)]:
                             if file:
-                                upd[key] = IA_MESTRE.converter_img_b64(file)
+                                # AQUI ESTÁ A CORREÇÃO: Chamando a função direta
+                                foto_b64 = converter_img_b64(file)
+                                if foto_b64:
+                                    upd[key] = foto_b64
 
                         novo_id = upd["telefone"]
                         
-                        # Se mudou o telefone, move o documento
+                        # Lógica de migração de documento (se mudou o número)
                         if novo_id != uid:
                             if db.collection("profissionais").document(novo_id).get().exists:
-                                st.error("❌ Este novo número já está cadastrado.")
+                                st.error("❌ Número já cadastrado.")
                             else:
-                                dados_completos = d.copy()
-                                dados_completos.update(upd)
-                                db.collection("profissionais").document(novo_id).set(dados_completos)
+                                novos_dados = d.copy()
+                                novos_dados.update(upd)
+                                db.collection("profissionais").document(novo_id).set(novos_dados)
                                 db.collection("profissionais").document(uid).delete()
                                 st.session_state.user_id = novo_id
-                                st.success("✅ Perfil migrado e atualizado!")
-                                time.sleep(1)
+                                st.success("✅ Perfil migrado!")
                                 st.rerun()
                         else:
                             db.collection("profissionais").document(uid).update(upd)
-                            st.success("✅ Dados salvos com sucesso!")
-                            time.sleep(1)
+                            st.success("✅ Dados atualizados!")
                             st.rerun()
 # ==============================================================================
 # ABA 4: 👑 PAINEL DE CONTROLE MASTER (TURBINADO)
@@ -780,6 +760,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
