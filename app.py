@@ -6,15 +6,32 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 import base64
 import json
-import datetime
 import math
 import re
 import time
 import pandas as pd
 import unicodedata
-from datetime import datetime
 import pytz
+from datetime import datetime
 
+# --- CONFIGURAÇÕES GERAIS ---
+LAT_REF = -23.5505  # Exemplo: São Paulo
+LON_REF = -46.6333
+CATEGORIAS_OFICIAIS = ["Pedreiro", "Encanador", "Eletricista", "Pintor", "Mecânico", "Alimentação", "Outros"]
+
+# --- FUNÇÃO DE CONVERSÃO (Obrigatória para o cadastro de fotos) ---
+def converter_img_b64(file):
+    if file is None: return ""
+    return base64.b64encode(file.read()).decode()
+
+# --- FUNÇÃO DE DISTÂNCIA (Obrigatória para a Vitrine) ---
+def calcular_distancia_real(lat1, lon1, lat2, lon2):
+    R = 6371  # Raio da Terra em km
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    return R * c
 # Tenta importar bibliotecas extras do arquivo original, se não tiver, segue sem quebrar
 try:
     from streamlit_js_eval import streamlit_js_eval, get_geolocation
@@ -722,6 +739,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
