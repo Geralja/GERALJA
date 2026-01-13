@@ -134,8 +134,62 @@ def buscar_opcoes_dinamicas(documento, padrao):
         # Se houver erro ou o banco estiver vazio, retorna a lista padrão
         return padrao
 
-# --- PROSSEGUIR COM O RESTANTE DO CÓDIGO ---
+def exibir_card_profissional(p, pid):
+    # 1. Configurações de Elite e Cores
+    saldo = float(p.get('saldo', 0))
+    is_elite = p.get('verificado', False) and saldo > 0
+    cor_borda = "#FFD700" if is_elite else "#E2E8F0"
+    
+    # 2. Processamento das 4 Fotos (Blindagem de Base64)
+    fotos = []
+    for i in range(1, 5):
+        f = p.get(f'f{i}', '')
+        if len(str(f)) > 100: # Verifica se a imagem existe/é válida
+            fotos.append(f"data:image/jpeg;base64,{f}")
+    
+    # Se não houver fotos, usa um placeholder elegante
+    img_principal = fotos[0] if len(fotos) > 0 else "https://via.placeholder.com/400x400?text=GeralJa"
 
+    # 3. HTML Estilo Instagram (Design de Luxo)
+    st.markdown(f"""
+    <div style="background:white; border-radius:20px; margin-bottom:20px; border:2px solid {cor_borda}; box-shadow:0 8px 20px rgba(0,0,0,0.08); overflow:hidden;">
+        <div style="padding:12px 15px; display:flex; justify-content:space-between; align-items:center; background:#F8FAFC;">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <div style="width:40px; height:40px; border-radius:50%; background:url('{img_principal}') center/cover; border:2px solid {cor_borda};"></div>
+                <div>
+                    <h4 style="margin:0; font-size:15px; color:#1E293B;">{p.get('nome', '').upper()} {"☑️" if p.get('verificado') else ""}</h4>
+                    <small style="color:#64748B;">📍 {p.get('dist', 0):.1f} KM DE VOCÊ</small>
+                </div>
+            </div>
+            {"<span style='background:#FFD700; color:black; padding:3px 10px; border-radius:12px; font-size:10px; font-weight:900;'>ELITE</span>" if is_elite else ""}
+        </div>
+
+        <div style="display:grid; grid-template-columns: 2.5fr 1fr; gap:4px; height:240px; padding:5px;">
+            <div style="background:url('{img_principal}') center/cover; border-radius:12px 0 0 12px;"></div>
+            <div style="display:grid; grid-template-rows: repeat(3, 1fr); gap:4px;">
+                <div style="background:url('{fotos[1] if len(fotos)>1 else img_principal}') center/cover; border-radius:0 12px 0 0;"></div>
+                <div style="background:url('{fotos[2] if len(fotos)>2 else img_principal}') center/cover;"></div>
+                <div style="background:url('{fotos[3] if len(fotos)>3 else img_principal}') center/cover; border-radius:0 0 12px 0;"></div>
+            </div>
+        </div>
+
+        <div style="padding:15px;">
+            <span style="background:#F1F5F9; color:#475569; padding:2px 8px; border-radius:6px; font-size:11px; font-weight:bold; text-transform:uppercase;">{p.get('area', 'Serviços')}</span>
+            <p style="margin-top:10px; color:#334155; font-size:14px; line-height:1.4;">{p.get('descricao', '')[:150]}...</p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # 4. Botão WhatsApp Integrado (Com desconto de saldo)
+    if st.button(f"🟢 FALAR COM {p.get('nome','').split()[0].upper()}", key=f"wa_v_{pid}", use_container_width=True):
+        if saldo > 0:
+            try: db.collection("profissionais").document(pid).update({"saldo": firestore.Increment(-1)})
+            except: pass
+        
+        msg = f"Olá {p.get('nome','')}, vi seu perfil de {p.get('area')} no GeralJá e gostaria de um orçamento!"
+        link_zap = f"https://wa.me/55{pid}?text={msg.replace(' ', '%20')}"
+        st.link_button("🚀 ABRIR WHATSAPP AGORA", link_zap, use_container_width=True)
+    st.markdown("---")
 # ------------------------------------------------------------------------------
 # 3. POLÍTICAS E CONSTANTES
 # ------------------------------------------------------------------------------
@@ -284,14 +338,14 @@ with menu_abas[0]:
     with col_info:
         st.write("") # Espaçador
         if termo_busca:
-            st.caption(f"Filtrando no raio de {raio_km}km")
+            st.caption(f"📍 Buscando em {raio_km}km")
 
     st.markdown("---")
 
     # --- LÓGICA DE PROCESSAMENTO ---
     if termo_busca:
         try:
-            # 1. IA DE MAPEAMENTO
+            # 1. IA DE MAPEAMENTO (BLINDADA)
             try:
                 cat_ia = processar_ia_blindada(termo_busca)
             except:
@@ -302,115 +356,47 @@ with menu_abas[0]:
             
             lista_resultados = []
             termo_min = cat_ia.lower()
-def exibir_card_profissional(p, pid):
-    # Blindagem de cores e status
-    is_elite = p.get('verificado', False) and float(p.get('saldo', 0)) > 0
-    cor_borda = "#FFD700" if is_elite else "#E2E8F0"
-    
-    # Tratamento das 4 fotos
-    fotos = []
-    for i in range(1, 5):
-        f = p.get(f'f{i}', '')
-        if len(str(f)) > 100:
-            fotos.append(f"data:image/jpeg;base64,{f}")
-    
-    # Foto principal e extras
-    img_capa = fotos[0] if len(fotos) > 0 else "https://via.placeholder.com/400x300?text=GeralJa"
-    
-    st.markdown(f"""
-    <div style="background:white; border-radius:25px; padding:0; margin-bottom:25px; border:2px solid {cor_borda}; box-shadow:0 10px 25px rgba(0,0,0,0.1); overflow:hidden; font-family:sans-serif;">
-        <div style="padding:15px; display:flex; justify-content:space-between; align-items:center;">
-            <div style="display:flex; align-items:center; gap:10px;">
-                <div style="width:45px; height:45px; border-radius:50%; background:url('{img_capa}') center/cover; border:2px solid #FFD700;"></div>
-                <div>
-                    <h4 style="margin:0; font-size:16px; color:#1A202C;">{p.get('nome', '').upper()} {"☑️" if p.get('verificado') else ""}</h4>
-                    <small style="color:#718096;">📍 {p.get('dist', 0):.1f} km de você</small>
-                </div>
-            </div>
-            {"<span style='background:#FFD700; color:black; padding:4px 12px; border-radius:15px; font-size:10px; font-weight:bold;'>ELITE</span>" if is_elite else ""}
-        </div>
 
-        <div style="display:grid; grid-template-columns: 2fr 1fr; gap:5px; height:250px; padding:0 10px;">
-            <div style="background:url('{img_capa}') center/cover; border-radius:15px 0 0 15px;"></div>
-            <div style="display:grid; grid-template-rows: 1fr 1fr 1fr; gap:5px;">
-                <div style="background:url('{fotos[1] if len(fotos)>1 else img_capa}') center/cover; border-radius:0 15px 0 0;"></div>
-                <div style="background:url('{fotos[2] if len(fotos)>2 else img_capa}') center/cover;"></div>
-                <div style="background:url('{fotos[3] if len(fotos)>3 else img_capa}') center/cover; border-radius:0 0 15px 0;"></div>
-            </div>
-        </div>
-
-        <div style="padding:15px;">
-            <div style="margin-bottom:8px;">
-                <span style="background:#EDF2F7; color:#2D3748; padding:3px 10px; border-radius:8px; font-size:11px; font-weight:bold; text-transform:uppercase;">{p.get('area', 'Serviços')}</span>
-            </div>
-            <p style="color:#4A5568; font-size:14px; line-height:1.5; margin:0;">{p.get('descricao', '')[:160]}...</p>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # Botão de Ação fora do HTML (Nativo Streamlit para funcionar o WhatsApp)
-    col_btn, _ = st.columns([1, 0.01])
-    with col_btn:
-        if st.button(f"💬 CHAMAR {p.get('nome','').split()[0].upper()}", key=f"wa_{pid}", use_container_width=True):
-            # Desconto de saldo
-            if float(p.get('saldo', 0)) > 0:
-                try: db.collection("profissionais").document(pid).update({"saldo": firestore.Increment(-1)})
-                except: pass
-            
-            msg = f"Olá, vi seu perfil de {p.get('area')} no GeralJá e gostaria de um orçamento!"
-            st.link_button("🔥 ABRIR WHATSAPP", f"https://wa.me/55{pid}?text={msg.replace(' ', '%20')}", use_container_width=True)
-    st.markdown("<br>", unsafe_allow_html=True)
             for doc in profs_ref:
                 p = doc.to_dict()
-                p['id'] = doc.id # O ID é o WhatsApp
+                p['id'] = doc.id 
                 
-                # Critérios de Busca (Área ou Nome)
+                # Filtro de texto (Área ou Nome)
                 area_p = str(p.get('area', '')).lower()
                 nome_p = str(p.get('nome', '')).lower()
 
                 if termo_min in area_p or termo_min in nome_p:
-                    # Cálculo de distância com proteção contra dados nulos
+                    # Cálculo de distância blindado
                     lat_p = p.get('lat', LAT_REF)
                     lon_p = p.get('lon', LON_REF)
                     dist = calcular_distancia_real(LAT_REF, LON_REF, lat_p, lon_p)
                     
                     if dist <= raio_km:
                         p['dist'] = dist
-                        
-                        # --- CÁLCULO DE RANKING ELITE ---
-                        # Verificado ganha 10.000 pontos, cada GeralCone (saldo) ganha 100 pontos
+                        # RANKING: Verificado (10k pontos) + Saldo (100 pontos por GeralCone)
                         score = (10000 if p.get('verificado', False) else 0) + (float(p.get('saldo', 0)) * 100)
                         p['ranking_score'] = score
-                        
                         lista_resultados.append(p)
 
             # 3. EXIBIÇÃO ORGANIZADA
             if lista_resultados:
-                # ORDENAÇÃO: 1º Score de Ranking (Maior), 2º Distância (Menor)
+                # Ordenação de Luxo: Quem tem mais pontos no topo, depois os mais próximos
                 lista_resultados.sort(key=lambda x: (-x['ranking_score'], x['dist']))
 
-                st.subheader(f"📍 Profissionais de {cat_ia} encontrados:")
+                st.subheader(f"✨ Melhores especialistas em {cat_ia}:")
                 
                 for prof in lista_resultados:
-                    # Tenta usar a função visual de card, se falhar mostra o básico blindado
-                    try:
-                        exibir_card_profissional(prof, prof['id'])
-                    except Exception as e:
-                        # Fallback de segurança caso a função de card dê erro
-                        with st.container():
-                            st.write(f"👤 **{prof.get('nome')}**")
-                            st.caption(f"⭐ Rank: {prof.get('ranking_score')} | 📍 {prof.get('dist'):.1f} km")
-                            st.write(f"📞 WhatsApp: {prof.get('id')}")
-                            st.write("---")
+                    # CHAMADA DA FUNÇÃO DE LUXO
+                    exibir_card_profissional(prof, prof['id'])
             else:
-                st.warning(f"Nenhum profissional de '{cat_ia}' encontrado nesta região.")
+                st.warning(f"❌ Nenhum profissional de '{cat_ia}' encontrado nesta região.")
 
         except Exception as e:
             st.error(f"Erro no motor de busca: {e}")
     else:
-        # TELA DE ESPERA LIMPA (Sem a imagem de 'alinhão')
-        st.info("💡 Digite uma profissão ou nome acima para ver os melhores da sua região.")
-        st.caption("Os profissionais Verificados e com saldo GeralCones aparecem primeiro no topo!")
+        # TELA DE ESPERA LIMPA
+        st.info("👋 Digite o que você precisa para ver os profissionais de elite.")
+        st.caption("🚀 Profissionais Verificados e com saldo GeralCones aparecem no topo!")
                 
 # ==============================================================================
 # --- ABA 2: CADASTRO (BLINDAGEM DE DUPLICADOS + 4 FOTOS + BÔNUS) ---
@@ -736,6 +722,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
