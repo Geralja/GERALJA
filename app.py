@@ -403,13 +403,13 @@ with menu_abas[0]:
 # ==============================================================================
 # ABA 2: 👤 MEU PAINEL (COM TRAVA DE SENHA)
 # ==============================================================================
-with menu_abas[1]: # Aqui ele usa a variável 'menu_abas' que criamos acima
+with menu_abas[1]:
     st.subheader("🛠️ Gerenciar meu Perfil")
     
     # Campo de Entrada para Login
     col_l1, col_l2 = st.columns(2)
-    acesso_whatsapp = col_l1.text_input("Seu WhatsApp (ID)", placeholder="Apenas números", key="zap_login")
-    acesso_senha = col_l2.text_input("Sua Senha", type="password", key="pass_login")
+    acesso_whatsapp = col_l1.text_input("Seu WhatsApp (ID)", placeholder="Apenas números")
+    acesso_senha = col_l2.text_input("Sua Senha", type="password")
 
     if acesso_whatsapp and acesso_senha:
         # Busca o profissional no banco pelo WhatsApp
@@ -423,32 +423,21 @@ with menu_abas[1]: # Aqui ele usa a variável 'menu_abas' que criamos acima
             if acesso_senha == senha_no_banco:
                 st.success(f"✅ Bem-vindo, {dados_p.get('nome')}!")
                 
-                # --- AQUI VOCÊ COLA O SEU CÓDIGO DE EDIÇÃO QUE JÁ FUNCIONAVA ---
-                with st.expander("📝 Editar Meus Dados", expanded=True):
-                    # Exemplo de campos (Mantenha os seus originais aqui dentro)
-                    novo_nome = st.text_input("Nome Profissional", value=dados_p.get('nome'))
-                    nova_desc = st.text_area("Descrição", value=dados_p.get('descricao'))
-                    
-                    if st.button("Salvar Alterações"):
-                        db.collection("profissionais").document(acesso_whatsapp).update({
-                            "nome": novo_nome,
-                            "descricao": nova_desc
-                        })
-                        st.success("Dados atualizados!")
-                        st.rerun()
+                # --- AQUI DENTRO FICA O CÓDIGO DE EDIÇÃO (O QUE JÁ TINHAMOS) ---
+                with st.expander("📝 Editar Meus Dados"):
+                    # Seus campos de edição (nome, descrição, fotos...) entram aqui
+                    st.write("Aqui você pode alterar suas fotos e informações.")
+                    # ... (resto do seu código de formulário)
                 
             else:
                 st.error("❌ Senha incorreta. Tente novamente.")
         else:
-            st.warning("⚠️ Este WhatsApp não está cadastrado.")
+            st.warning("⚠️ Este WhatsApp não está cadastrado. Deseja criar uma conta?")
+            if st.button("Criar Novo Cadastro"):
+                # Lógica para abrir formulário de novo cadastro
+                pass
     else:
-        st.info("💡 Insira seu WhatsApp e Senha para acessar seu painel.")
-
-    # --- SEÇÃO DE NOVO CADASTRO (FORA DO LOGIN) ---
-    st.divider()
-    with st.expander("✨ Não tem conta? Cadastre-se agora!"):
-        # Coloque aqui seu formulário de NOVO CADASTRO
-        st.write("Crie sua vitrine preenchendo os dados abaixo.")
+        st.info("💡 Insira seu WhatsApp e Senha para acessar seu painel exclusivo.")
 # ==============================================================================
 # ABA 3: MEU PERFIL (VITRINE LUXUOSA ESTILO INSTA)
 # ==============================================================================
@@ -688,6 +677,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
