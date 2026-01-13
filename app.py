@@ -39,15 +39,39 @@ class MotorGeralJa:
         if not termo: return "NAO_ENCONTRADO"
         t_clean = MotorGeralJa.normalizar(termo)
         
-      lógica de busca por palavras-chave:
+@staticmethod
+    def processar_intencao(termo):
+        """
+        Dicionário Mestre de Sinônimos com Normalização.
+        Capaz de entender gírias, variações e necessidades específicas.
+        """
+        if not termo: return "NAO_ENCONTRADO"
+        
+        # Limpa o termo de busca (remove acentos e espaços)
+        t_clean = MotorGeralJa.normalizar(termo)
+        
+        # MAPA EXPANDIDO: Mais palavras-chave para não perder nenhum cliente
         mapa = {
-            "Pintor": ["pinta", "parede", "tinta", "grafite"],
-            "Encanador": ["cano", "vazamento", "pia", "esgoto", "torneira"],
-            "Eletricista": ["luz", "fio", "tomada", "disjuntor", "choque"],
-            "Mecânico": ["carro", "motor", "pneu", "freio", "revisao"],
-            "Alimentação": ["fome", "comida", "pizza", "lanche", "marmita"],
-            "Pedreiro": ["obra", "reforma", "cimento", "tijolo", "telhado"]
+            "Pintor": ["pint", "parede", "tinta", "grafite", "verniz", "massa corrida", "textura"],
+            "Encanador": ["cano", "vazamento", "pia", "esgoto", "torneira", "hidraulico", "caixa d'agua", "desentup"],
+            "Eletricista": ["luz", "fio", "tomada", "disjuntor", "choque", "curto", "padrao", "eletrica", "lampada"],
+            "Mecânico": ["carro", "motor", "pneu", "freio", "revisao", "oleo", "suspensao", "oficina", "alinhamento"],
+            "Alimentação": ["fome", "comida", "pizza", "lanche", "marmita", "restaurante", "doce", "salgado", "bolo"],
+            "Pedreiro": ["obra", "reforma", "cimento", "tijolo", "telhado", "piso", "azulejo", "alicerce", "constru"],
+            "Limpeza": ["faxina", "limpar", "casa", "diarista", "organiza", "lavar", "pos-obra"],
+            "Ar Condicionado": ["gelar", "ar", "climatiza", "split", "instalacao ar"],
+            "Marido de Aluguel": ["conserto", "montagem", "pendurar", "furo", "reparos gerais"]
         }
+        
+        # Busca por radical (Pega "pintar", "pintura" e "pintor" apenas com "pint")
+        for categoria, palavras in mapa.items():
+            for p in palavras:
+                # Se o radical da palavra-chave estiver no termo buscado
+                if MotorGeralJa.normalizar(p) in t_clean:
+                    return categoria
+                    
+        # Se não achar no mapa, tenta retornar o termo original para ver se bate com o banco
+        return termo.capitalize()
         
         for categoria, palavras in mapa.items():
             for p in palavras:
@@ -812,6 +836,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
