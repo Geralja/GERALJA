@@ -1,6 +1,7 @@
 # ==============================================================================
 # GERALJÁ: CRIANDO SOLUÇÕES - VERSÃO FINAL CORRIGIDA
 # ==============================================================================
+# [1] IMPORTS QUE VOCÊ MANDOU
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, firestore
@@ -14,39 +15,24 @@ import unicodedata
 import pytz
 from datetime import datetime
 
-# 1. CONFIGURAÇÃO DE PÁGINA (Sempre o primeiro comando Streamlit)
-st.set_page_config(
-    page_title="GeralJá | Criando Soluções",
-    page_icon="🇧🇷",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
+# [2] CONFIGURAÇÃO INICIAL (Sempre antes de qualquer comando de UI)
+st.set_page_config(page_title="GeralJá v3.0", layout="wide")
 
-# 2. CONFIGURAÇÕES GERAIS
 LAT_PADRAO = -23.5505 
 LON_PADRAO = -46.6333
-CATEGORIAS_OFICIAIS = ["Pedreiro", "Encanador", "Eletricista", "Pintor", "Mecânico", "Alimentação", "Outros"]
 
-# ==============================================================================
-# MOTOR MESTRE GERALJÁ v3.0 - O ORQUESTRADOR FINAL
-# ==============================================================================
-
+# [3] O MOTOR MESTRE (COLE AQUI!)
 class MotorGeralJa:
     @staticmethod
     def normalizar(texto):
-        """Remove acentos e padroniza o texto (IA Utils)"""
         if not texto: return ""
         return "".join(c for c in unicodedata.normalize('NFD', str(texto)) 
                        if unicodedata.category(c) != 'Mn').lower().strip()
 
     @staticmethod
     def processar_intencao(termo):
-        """Versão turbinada que usa Normalização e Conceitos Expandidos"""
         if not termo: return "NAO_ENCONTRADO"
         t_clean = MotorGeralJa.normalizar(termo)
-        
-        # Aqui você pode manter seu dicionário ou usar o CONCEITOS_EXPANDIDOS
-        # Para exemplo, vamos usar a lógica de busca por palavras-chave:
         mapa = {
             "Pintor": ["pinta", "parede", "tinta", "grafite"],
             "Encanador": ["cano", "vazamento", "pia", "esgoto", "torneira"],
@@ -55,7 +41,6 @@ class MotorGeralJa:
             "Alimentação": ["fome", "comida", "pizza", "lanche", "marmita"],
             "Pedreiro": ["obra", "reforma", "cimento", "tijolo", "telhado"]
         }
-        
         for categoria, palavras in mapa.items():
             for p in palavras:
                 if MotorGeralJa.normalizar(p) in t_clean:
@@ -64,7 +49,6 @@ class MotorGeralJa:
 
     @staticmethod
     def calcular_distancia(lat1, lon1, lat2, lon2):
-        """Cálculo preciso com tratamento de erros"""
         try:
             if None in [lat1, lon1, lat2, lon2]: return 999.0
             R = 6371 
@@ -76,7 +60,6 @@ class MotorGeralJa:
 
     @staticmethod
     def renderizar_vitrine(p, pid):
-        """Design Luxo Blindado"""
         foto = p.get('f1', '')
         img = f"data:image/jpeg;base64,{foto}" if len(foto) > 100 else "https://via.placeholder.com/400"
         dist = p.get('dist', 0.0)
@@ -95,11 +78,11 @@ class MotorGeralJa:
         """
         st.markdown(html, unsafe_allow_html=True)
         if st.button(f"Falar com {p.get('nome', '').split()[0]}", key=f"btn_{pid}", use_container_width=True):
-            st.link_button("🚀 Abrir WhatsApp", f"https://wa.me/55{p.get('whatsapp', pid)}")
+            zap = p.get('whatsapp', pid)
+            st.link_button("🚀 Abrir WhatsApp", f"https://wa.me/55{zap}")
 
     @staticmethod
     def finalizar_layout():
-        """O VARREDOR (Seu rodapé automático agora dentro do mestre)"""
         st.write("---")
         fechamento_estilo = """
             <style>
@@ -113,7 +96,7 @@ class MotorGeralJa:
         """
         st.markdown(fechamento_estilo, unsafe_allow_html=True)
 
-# INSTANCIAÇÃO
+# LIGA O MOTOR
 IA_MESTRE = MotorGeralJa()
 # ------------------------------------------------------------------------------
 # 2. CAMADA DE PERSISTÊNCIA (FIREBASE)
@@ -764,4 +747,5 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
