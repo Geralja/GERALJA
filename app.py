@@ -436,92 +436,133 @@ with menu_abas[0]:
                 })
                 
 # ==============================================================================
-# --- ABA 2: CADASTRO (BLINDAGEM DE DUPLICADOS + 4 FOTOS + BÔNUS) ---
+# --- ABA 2: CADASTRO & EDIÇÃO (SISTEMA DE ACESSO ELITE) ---
 # ==============================================================================
 
 with menu_abas[1]:
-    st.markdown("### 🚀 Cadastro de Profissional Elite")
-    st.info("🎁 BÔNUS: Novos cadastros ganham **10 GeralCones** de saldo inicial!")
+    st.markdown("### 🚀 Portal do Profissional")
+    
+    # Criamos duas sub-abas internas: uma para quem quer entrar e outra para quem quer se cadastrar
+    sub_aba_cadastro, sub_aba_editar = st.tabs(["NOVO CADASTRO", "EDITAR MEU PERFIL"])
 
-    with st.form("form_cadastro_blindado_v4", clear_on_submit=True):
-        col1, col2 = st.columns(2)
-        with col1:
-            nome = st.text_input("Nome Completo ou Empresa", placeholder="Ex: João Silva Pinturas")
-            telefone = st.text_input("WhatsApp (DDD + Número)", help="Apenas números. Ex: 11999998888")
-            area = st.selectbox("Sua Especialidade", CATEGORIAS_OFICIAIS)
-        
-        with col2:
-            cidade = st.text_input("Cidade / UF", placeholder="Ex: São Paulo / SP")
-            senha_acesso = st.text_input("Crie uma Senha", type="password", help="Para editar seu perfil no futuro")
+    # --------------------------------------------------------------------------
+    # SUB-ABA: NOVO CADASTRO
+    # --------------------------------------------------------------------------
+    with sub_aba_cadastro:
+        st.info("🎁 BÔNUS: Novos cadastros ganham **10 GeralCones** de saldo inicial!")
 
-        descricao = st.text_area("Descrição (O que você faz?)", placeholder="Conte um pouco sobre sua experiência e serviços...")
-        
-        st.markdown("---")
-        st.write("📷 **Portfólio de Fotos** (Mostre seu trabalho)")
-        
-        # Grid de fotos 2x2 para ficar bonito no form
-        f_col1, f_col2 = st.columns(2)
-        with f_col1:
-            f1_file = st.file_uploader("Foto 1 (Perfil/Principal)", type=['jpg', 'jpeg', 'png'], key="cad_f1")
-            f2_file = st.file_uploader("Foto 2 (Opcional)", type=['jpg', 'jpeg', 'png'], key="cad_f2")
-        with f_col2:
-            f3_file = st.file_uploader("Foto 3 (Opcional)", type=['jpg', 'jpeg', 'png'], key="cad_f3")
-            f4_file = st.file_uploader("Foto 4 (Opcional)", type=['jpg', 'jpeg', 'png'], key="cad_f4")
-
-        submit = st.form_submit_button("🚀 FINALIZAR E GANHAR 10 GERALCONES")
-
-        if submit:
-            # 1. LIMPEZA E FORMATAÇÃO DO ID
-            tel_id = re.sub(r'\D', '', telefone)
+        with st.form("form_cadastro_blindado_v4", clear_on_submit=True):
+            col1, col2 = st.columns(2)
+            with col1:
+                nome = st.text_input("Nome Completo ou Empresa", placeholder="Ex: João Silva Pinturas")
+                telefone = st.text_input("WhatsApp (DDD + Número)", help="Apenas números. Ex: 11999998888")
+                area = st.selectbox("Sua Especialidade", CATEGORIAS_OFICIAIS)
             
-            # --- REGRAS DE OURO (VALIDAÇÃO) ---
-            if not nome or len(tel_id) < 10:
-                st.error("❌ Nome e WhatsApp válidos são obrigatórios!")
-            elif not f1_file:
-                st.error("❌ Envie pelo menos a Foto Principal para atrair clientes!")
-            else:
-                try:
-                    with st.spinner("Validando Cadastro Único..."):
-                        # 2. BLINDAGEM CONTRA DUPLICADOS
+            with col2:
+                cidade = st.text_input("Cidade / UF", placeholder="Ex: São Paulo / SP")
+                senha_acesso = st.text_input("Crie uma Senha", type="password", help="Para editar seu perfil no futuro")
+
+            descricao = st.text_area("Descrição (O que você faz?)", placeholder="Conte um pouco sobre sua experiência e serviços...")
+            
+            st.markdown("---")
+            st.write("📷 **Portfólio de Fotos**")
+            f_col1, f_col2 = st.columns(2)
+            with f_col1:
+                f1_file = st.file_uploader("Foto 1 (Principal)", type=['jpg', 'jpeg', 'png'], key="cad_f1")
+                f2_file = st.file_uploader("Foto 2", type=['jpg', 'jpeg', 'png'], key="cad_f2")
+            with f_col2:
+                f3_file = st.file_uploader("Foto 3", type=['jpg', 'jpeg', 'png'], key="cad_f3")
+                f4_file = st.file_uploader("Foto 4", type=['jpg', 'jpeg', 'png'], key="cad_f4")
+
+            submit = st.form_submit_button("🚀 FINALIZAR E GANHAR 10 GERALCONES")
+
+            if submit:
+                tel_id = re.sub(r'\D', '', telefone)
+                
+                if not nome or len(tel_id) < 10 or not senha_acesso:
+                    st.error("❌ Nome, WhatsApp e SENHA são obrigatórios!")
+                elif not f1_file:
+                    st.error("❌ Envie pelo menos a Foto Principal!")
+                else:
+                    try:
+                        # 2. TRAVA DE DUPLICADOS (NÃO LIBERA 2 CADASTROS COM O MESMO NÚMERO)
                         doc_ref = db.collection("profissionais").document(tel_id).get()
                         
                         if doc_ref.exists:
-                            st.warning(f"⚠️ Atenção! O número {tel_id} já está cadastrado no sistema.")
-                            st.info("Use a aba de edição ou entre em contato com o suporte.")
+                            st.error(f"❌ O número {tel_id} já está cadastrado!")
+                            st.info("Caso tenha esquecido sua senha, entre em contato com o suporte.")
                         else:
-                            # 3. CONVERSÃO DE IMAGENS (SOMA DA FOTO 4)
-                            img1 = converter_img_b64(f1_file)
-                            img2 = converter_img_b64(f2_file) if f2_file else ""
-                            img3 = converter_img_b64(f3_file) if f3_file else ""
-                            img4 = converter_img_b64(f4_file) if f4_file else ""
+                            # 3. CONVERSÃO
+                            img1 = IA_MESTRE.converter_img_b64(f1_file) # Usando o método do seu Motor
+                            img2 = IA_MESTRE.converter_img_b64(f2_file) if f2_file else ""
+                            img3 = IA_MESTRE.converter_img_b64(f3_file) if f3_file else ""
+                            img4 = IA_MESTRE.converter_img_b64(f4_file) if f4_file else ""
 
-                            # 4. ESTRUTURA DE DADOS COM BÔNUS DE 10 GERALCONES
                             dados_prof = {
                                 "nome": nome.strip().upper(),
                                 "telefone": tel_id,
                                 "area": area,
                                 "descricao": descricao,
                                 "cidade": cidade.strip(),
-                                "senha": senha_acesso,
+                                "senha": senha_acesso, # Salva a senha para o login futuro
                                 "f1": img1, "f2": img2, "f3": img3, "f4": img4,
-                                "aprovado": False,  # Entra para análise do admin
+                                "aprovado": False,
                                 "verificado": False,
-                                "saldo": 10.0,      # <--- BÔNUS GERALCONES AQUI
-                                "lat": LAT_REF, 
-                                "lon": LON_REF,
+                                "saldo": 10.0,
+                                "lat": LAT_PADRAO, 
+                                "lon": LON_PADRAO,
                                 "data_cadastro": datetime.now(pytz.timezone('America/Sao_Paulo')).strftime("%d/%m/%Y %H:%M")
                             }
 
-                            # 5. SALVAMENTO FINAL
                             db.collection("profissionais").document(tel_id).set(dados_prof)
-                            
                             st.balloons()
-                            st.success(f"🎊 PARABÉNS! {nome}, você ganhou 10 GeralCones!")
-                            st.info("Seu perfil foi enviado para aprovação. Em breve você estará na vitrine!")
-                            
-                except Exception as e:
-                    st.error(f"❌ Erro Técnico ao cadastrar: {e}")
+                            st.success(f"🎊 PARABÉNS! {nome}, perfil criado com sucesso!")
+                    except Exception as e:
+                        st.error(f"❌ Erro ao cadastrar: {e}")
 
+    # --------------------------------------------------------------------------
+    # SUB-ABA: EDIÇÃO DO CADASTRO (A VOLTA DA EDIÇÃO)
+    # --------------------------------------------------------------------------
+    with sub_aba_editar:
+        st.markdown("#### 🔑 Login para Edição")
+        login_tel = st.text_input("WhatsApp Cadastrado", key="login_tel")
+        login_senha = st.text_input("Senha de Acesso", type="password", key="login_pass")
+        
+        if st.button("🔓 ACESSAR MEU PERFIL"):
+            tel_clean = re.sub(r'\D', '', login_tel)
+            user_doc = db.collection("profissionais").document(tel_clean).get()
+            
+            if user_doc.exists:
+                dados = user_doc.to_dict()
+                # 1. VALIDAÇÃO DA SENHA (DANDO ACESSO AGORA)
+                if str(dados.get('senha')) == login_senha:
+                    st.session_state['editando_id'] = tel_clean
+                    st.success("Acesso liberado! Altere seus dados abaixo:")
+                else:
+                    st.error("❌ Senha incorreta!")
+            else:
+                st.error("❌ Profissional não encontrado!")
+
+        # FORMULÁRIO DE EDIÇÃO (SÓ APARECE APÓS LOGIN)
+        if 'editando_id' in st.session_state:
+            pid = st.session_state['editando_id']
+            dados_atuais = db.collection("profissionais").document(pid).get().to_dict()
+            
+            with st.form("form_edicao"):
+                st.info(f"Editando Perfil: {dados_atuais.get('nome')}")
+                novo_nome = st.text_input("Nome", value=dados_atuais.get('nome'))
+                nova_area = st.selectbox("Especialidade", CATEGORIAS_OFICIAIS, index=CATEGORIAS_OFICIAIS.index(dados_atuais.get('area')) if dados_atuais.get('area') in CATEGORIAS_OFICIAIS else 0)
+                nova_desc = st.text_area("Descrição", value=dados_atuais.get('descricao'))
+                
+                if st.form_submit_button("💾 SALVAR ALTERAÇÕES"):
+                    db.collection("profissionais").document(pid).update({
+                        "nome": novo_nome.upper(),
+                        "area": nova_area,
+                        "descricao": nova_desc
+                    })
+                    st.success("✅ Perfil atualizado!")
+                    del st.session_state['editando_id'] # Fecha a edição após salvar
+                    st.rerun()
 # ==============================================================================
 # ABA 3: MEU PERFIL (VITRINE LUXUOSA ESTILO INSTA)
 # ==============================================================================
@@ -756,6 +797,7 @@ with menu_abas[4]:
     if st.button("Enviar Feedback"):
         st.success("Obrigado! Sua mensagem foi enviada para nossa equipe.")
         # Em produção, salvaria em uma coleção 'feedbacks'
+
 
 
 
