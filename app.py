@@ -269,8 +269,9 @@ if comando == "abracadabra":
     lista_abas.append("📊 FINANCEIRO")
 
 menu_abas = st.tabs(lista_abas)
-
+# ==============================================================================
 # --- ABA 1: BUSCA (SISTEMA GPS + RANKING ELITE + VITRINE) ---
+# ==============================================================================
 with menu_abas[0]:
     st.markdown("### 🏙️ O que você precisa?")
     
@@ -437,89 +438,71 @@ with menu_abas[0]:
 # ABA 2: 📝 CADASTRO TURBINADO E BLINDADO
 # ==============================================================================
 with menu_abas[1]:
-    st.markdown("### 🚀 Faça parte do GeralJá")
+    st.header("🚀 Seja um Parceiro GeralJá")
+    st.write("Cadastre seu serviço e seja encontrado por clientes próximos!")
     
-    # --- TRAVA DE SEGURANÇA PARA COORDENADAS (Evita erro na linha 89) ---
-    if 'minha_lat' not in locals():
-        minha_lat = -23.5505  # Valor padrão (SP)
-    if 'minha_lon' not in locals():
-        minha_lon = -46.6333  # Valor padrão (SP)
+    # Função interna para usar a chave que você salvou nos Secrets
+    def obter_coords_google(endereco):
+        api_key = st.secrets["GOOGLE_MAPS_API_KEY"]
+        url = f"https://maps.googleapis.com/maps/api/geocode/json?address={endereco}&key={api_key}"
+        try:
+            response = requests.get(url).json()
+            if response['status'] == 'OK':
+                loc = response['results'][0]['geometry']['location']
+                end_formatado = response['results'][0]['formatted_address']
+                return loc['lat'], loc['lng'], end_formatado
+        except:
+            pass
+        return None, None, None
 
-    # 1. BUSCA OPÇÕES DO ADMIN
-    lista_areas = buscar_opcoes_dinamicas("categorias", ["Serviços Gerais", "Manutenção"])
-    lista_tipos = buscar_opcoes_dinamicas("tipos", ["👤 Profissional Autônomo", "🏢 Comércio/Loja"])
-
-    with st.form("form_cadastro_luxo", clear_on_submit=True):
-        col1, col2 = st.columns(2)
+    with st.form("reg_preciso"):
+        col_c1, col_c2 = st.columns(2)
+        r_n = col_c1.text_input("Nome Completo")
+        r_z = col_c2.text_input("WhatsApp (Apenas números)", help="Ex: 11999999999")
         
-        with col1:
-            nome_c = st.text_input("Nome Completo ou Nome do Negócio*", placeholder="Como os clientes te acharão")
-            zap_c = st.text_input("WhatsApp (com DDD)*", placeholder="Ex: 11999999999")
-            area_c = st.selectbox("Sua Especialidade*", options=sorted(lista_areas))
-            tipo_c = st.selectbox("Tipo de Atendimento*", options=lista_tipos)
+        # CAMPO CRUCIAL: O endereço que o Google vai ler
+        r_endereco = st.text_input("Endereço de Atendimento", placeholder="Rua, Número, Bairro, Cidade - Estado")
         
-        with col2:
-            st.markdown("📍 **Sua Localização**")
-            lat_c = st.number_input("Latitude", value=float(minha_lat), format="%.6f")
-            lon_c = st.number_input("Longitude", value=float(minha_lon), format="%.6f")
-            st.caption("Ajuste manualmente se o GPS não marcar seu local exato.")
-
-        st.divider()
-        desc_c = st.text_area("Descrição do Serviço (Sua Vitrine)*", placeholder="Conte o que você faz...")
-
-        # --- SEÇÃO DE FOTOS ---
-        st.markdown("#### 📸 Sua Vitrine Visual (Até 4 fotos)")
-        c_perfil, c_v1, c_v2, c_v3 = st.columns(4)
+        col_c3, col_c4 = st.columns(2)
+        r_s = col_c3.text_input("Crie uma Senha", type="password")
+        r_a = col_c4.selectbox("Sua Especialidade Principal", CATEGORIAS_OFICIAIS)
         
-        with c_perfil:
-            foto_perfil = st.file_uploader("Perfil", type=['jpg', 'png'], key="perf")
-        with c_v1:
-            f1 = st.file_uploader("Vitrine 1", type=['jpg', 'png'], key="v1")
-        with c_v2:
-            f2 = st.file_uploader("Vitrine 2", type=['jpg', 'png'], key="v2")
-        with c_v3:
-            f3 = st.file_uploader("Vitrine 3", type=['jpg', 'png'], key="v3")
-
-        st.divider()
-        btn_enviar = st.form_submit_button("🚀 CRIAR MINHA VITRINE AGORA", use_container_width=True)
-
-        if btn_enviar:
-            import datetime # Garante que o datetime funcione aqui dentro
-            
-            if not nome_c or not zap_c or not desc_c:
-                st.error("⚠️ Preencha Nome, WhatsApp e Descrição.")
+        r_d = st.text_area("Descreva seus serviços")
+        
+        st.info("📌 Sua localização será usada para mostrar seus serviços aos clientes mais próximos.")
+        
+        if st.form_submit_button("FINALIZAR MEU CADASTRO", use_container_width=True):
+            if len(r_z) < 10 or not r_endereco:
+                st.error("⚠️ Nome, WhatsApp e Endereço são obrigatórios!")
             else:
-                with st.spinner("Salvando sua vitrine..."):
-                    # Converte fotos (Função converter_img_b64 deve estar no topo do app)
-                    foto_b64 = converter_img_b64(foto_perfil) if foto_perfil else ""
-                    f1_b64 = converter_img_b64(f1) if f1 else ""
-                    f2_b64 = converter_img_b64(f2) if f2 else ""
-                    f3_b64 = converter_img_b64(f3) if f3 else ""
+                # MÁGICA DO GOOGLE ACONTECENDO AQUI
+                lat, lon, endereco_real = obter_coords_google(r_endereco)
+                
+                if lat and lon:
+                    try:
+                        db.collection("profissionais").document(r_z).set({
+                            "nome": r_n,
+                            "whatsapp": r_z,
+                            "senha": r_s,
+                            "area": r_a,
+                            "descricao": r_d,
+                            "endereco_digitado": r_endereco,
+                            "endereco_oficial": endereco_real, # Endereço corrigido pelo Google
+                            "lat": lat,
+                            "lon": lon,
+                            "saldo": BONUS_WELCOME,
+                            "cliques": 0,
+                            "rating": 5.0,
+                            "aprovado": False,
+                            "data_registro": datetime.datetime.now()
+                        })
+                        st.success(f"✅ Cadastro enviado! Localizamos você em: {endereco_real}")
+                        st.balloons()
+                    except Exception as e:
+                        st.error(f"Erro ao salvar no banco: {e}")
+                else:
+                    st.error("❌ Não conseguimos validar este endereço no mapa. Tente incluir o número da casa e a cidade.")
 
-                    novo_pro = {
-                        "nome": nome_c,
-                        "area": area_c,
-                        "tipo": tipo_c,
-                        "descricao": desc_c,
-                        "lat": lat_c,
-                        "lon": lon_c,
-                        "foto_b64": foto_b64,
-                        "f1": f1_b64,
-                        "f2": f2_b64,
-                        "f3": f3_b64,
-                        "aprovado": False,
-                        "verificado": False,
-                        "saldo": 0,
-                        "rating": 5.0,
-                        "cliques": 0,
-                        "data_cadastro": datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
-                    }
-
-                    # Salva usando o ZAP como ID (Blindagem contra duplicados)
-                    db.collection("profissionais").document(zap_c).set(novo_pro)
-                    
-                    st.balloons()
-                    st.success("✅ Cadastro enviado! Aguarde a aprovação do Admin.")
 # ==============================================================================
 # ABA 3: MEU PERFIL (VITRINE LUXUOSA ESTILO INSTA)
 # ==============================================================================
@@ -620,7 +603,7 @@ with menu_abas[2]:
             st.session_state.auth = False
             st.rerun()
 # ==============================================================================
-# ABA 3: 👑 PAINEL DE CONTROLE MASTER (TURBINADO)
+# ABA 4: 👑 PAINEL DE CONTROLE MASTER (TURBINADO)
 # ==============================================================================
 with menu_abas[3]:
     st.markdown("## 👑 Gestão Estratégica GeralJá")
@@ -759,6 +742,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
