@@ -28,77 +28,92 @@ LON_PADRAO = -46.6333
 CATEGORIAS_OFICIAIS = ["Pedreiro", "Encanador", "Eletricista", "Pintor", "Mecânico", "Alimentação", "Outros"]
 
 # ==============================================================================
-# 3. MOTOR MESTRE DE INTELIGÊNCIA - GERALJÁ (O CÉREBRO)
+# MOTOR MESTRE GERALJÁ v3.0 - O ORQUESTRADOR FINAL
 # ==============================================================================
 
 class MotorGeralJa:
     @staticmethod
+    def normalizar(texto):
+        """Remove acentos e padroniza o texto (IA Utils)"""
+        if not texto: return ""
+        return "".join(c for c in unicodedata.normalize('NFD', str(texto)) 
+                       if unicodedata.category(c) != 'Mn').lower().strip()
+
+    @staticmethod
     def processar_intencao(termo):
-        termo = termo.lower().strip()
+        """Versão turbinada que usa Normalização e Conceitos Expandidos"""
+        if not termo: return "NAO_ENCONTRADO"
+        t_clean = MotorGeralJa.normalizar(termo)
+        
+        # Aqui você pode manter seu dicionário ou usar o CONCEITOS_EXPANDIDOS
+        # Para exemplo, vamos usar a lógica de busca por palavras-chave:
         mapa = {
             "Pintor": ["pinta", "parede", "tinta", "grafite"],
             "Encanador": ["cano", "vazamento", "pia", "esgoto", "torneira"],
             "Eletricista": ["luz", "fio", "tomada", "disjuntor", "choque"],
-            "Mecânico": ["carro", "motor", "pneu", "freio", "revisão"],
+            "Mecânico": ["carro", "motor", "pneu", "freio", "revisao"],
             "Alimentação": ["fome", "comida", "pizza", "lanche", "marmita"],
             "Pedreiro": ["obra", "reforma", "cimento", "tijolo", "telhado"]
         }
+        
         for categoria, palavras in mapa.items():
-            if any(p in termo for p in palavras):
-                return categoria
+            for p in palavras:
+                if MotorGeralJa.normalizar(p) in t_clean:
+                    return categoria
         return termo.capitalize()
 
     @staticmethod
     def calcular_distancia(lat1, lon1, lat2, lon2):
+        """Cálculo preciso com tratamento de erros"""
         try:
-            if not all([lat1, lon1, lat2, lon2]): return 999.0
-            R = 6371
-            d_lat, d_lon = math.radians(lat2-lat1), math.radians(lon2-lon1)
-            a = math.sin(d_lat/2)**2 + math.cos(math.radians(lat1)) * \
-                math.cos(math.radians(lat2)) * math.sin(d_lon/2)**2
-            return R * (2 * math.atan2(math.sqrt(a), math.sqrt(1-a)))
+            if None in [lat1, lon1, lat2, lon2]: return 999.0
+            R = 6371 
+            dlat, dlon = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
+            a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * \
+                math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
+            return round(R * (2 * math.atan2(math.sqrt(a), math.sqrt(1-a))), 1)
         except: return 999.0
 
     @staticmethod
     def renderizar_vitrine(p, pid):
-        # Lógica de Imagem
+        """Design Luxo Blindado"""
         foto = p.get('f1', '')
-        img = f"data:image/jpeg;base64,{foto}" if len(foto) > 100 else "https://via.placeholder.com/400x400?text=GeralJa"
-        
-        nome = p.get('nome', 'Profissional').upper()
+        img = f"data:image/jpeg;base64,{foto}" if len(foto) > 100 else "https://via.placeholder.com/400"
         dist = p.get('dist', 0.0)
-        verificado = p.get('verificado', False)
-        badge = "<span style='background:#FFD700; color:black; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold;'>ELITE</span>" if verificado else ""
-
+        
         html = f"""
-        <div style="border: 2px solid #FFD700; border-radius: 15px; padding: 15px; margin-bottom: 20px; background-color: white;">
-            <div style="display: flex; justify-content: space-between; align-items: start;">
-                <div style="display: flex; align-items: center;">
-                    <div style="width: 60px; height: 60px; border-radius: 50%; background: url('{img}') center/cover; border: 2px solid #EEE; margin-right: 12px;"></div>
-                    <div>
-                        <h4 style="margin: 0; color: #1A1C23;">{nome} ✅</h4>
-                        <p style="margin: 0; color: #ff4b4b; font-weight: bold; font-size: 12px;">📍 {dist:.1f} KM DE VOCÊ</p>
-                    </div>
+        <div style="border-radius:20px; padding:15px; background:white; box-shadow:0px 4px 15px rgba(0,0,0,0.1); margin-bottom:20px; border-left: 8px solid #FFD700;">
+            <div style="display:flex; align-items:center; gap:15px;">
+                <img src="{img}" style="width:70px; height:70px; border-radius:50%; object-fit:cover; border:2px solid #FFD700;">
+                <div>
+                    <h3 style="margin:0; font-size:18px; color:#1A1C23;">{p.get('nome', 'Profissional').upper()} {'✅' if p.get('verificado') else ''}</h3>
+                    <span style="color:#FF4B4B; font-weight:bold; font-size:13px;">📍 a {dist:.1f} km de você</span>
                 </div>
-                {badge}
             </div>
-            <div style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 10px;">
-                 <p style="font-size: 13px; color: #444;">{p.get('area', 'Geral')} • {p.get('descricao', '')[:100]}...</p>
-            </div>
+            <p style="margin-top:10px; color:#555; font-size:14px;">{p.get('area', 'Geral')} • {p.get('descricao', '')[:110]}...</p>
         </div>
         """
         st.markdown(html, unsafe_allow_html=True)
-        
-        if st.button(f"📞 CONTATAR {nome}", key=f"btn_{pid}", use_container_width=True):
-            zap = p.get('whatsapp', pid)
-            st.link_button("🚀 ABRIR WHATSAPP", f"https://wa.me/55{zap}")
+        if st.button(f"Falar com {p.get('nome', '').split()[0]}", key=f"btn_{pid}", use_container_width=True):
+            st.link_button("🚀 Abrir WhatsApp", f"https://wa.me/55{p.get('whatsapp', pid)}")
 
     @staticmethod
-    def converter_img_b64(file):
-        if file is None: return ""
-        return base64.b64encode(file.read()).decode()
+    def finalizar_layout():
+        """O VARREDOR (Seu rodapé automático agora dentro do mestre)"""
+        st.write("---")
+        fechamento_estilo = """
+            <style>
+                .main .block-container { padding-bottom: 5rem !important; }
+                .footer-clean { text-align: center; padding: 20px; opacity: 0.7; font-size: 0.8rem; width: 100%; color: gray; }
+            </style>
+            <div class="footer-clean">
+                <p>🎯 <b>GeralJá</b> - Sistema de Inteligência Local</p>
+                <p>v3.0 | © 2026 Todos os direitos reservados</p>
+            </div>
+        """
+        st.markdown(fechamento_estilo, unsafe_allow_html=True)
 
-# INSTANCIAÇÃO OBRIGATÓRIA (Liga o motor)
+# INSTANCIAÇÃO
 IA_MESTRE = MotorGeralJa()
 # ------------------------------------------------------------------------------
 # 2. CAMADA DE PERSISTÊNCIA (FIREBASE)
@@ -749,3 +764,4 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
