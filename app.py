@@ -273,74 +273,68 @@ menu_abas = st.tabs(lista_abas)
 # --- ABA 1: BUSCA (SISTEMA GPS + RANKING ELITE + VITRINE) ---
 # ==============================================================================
 with menu_abas[0]:
-    st.markdown("### 🚀 Cadastro de Profissional Elite")
-    st.info("Preencha os dados abaixo para aparecer na vitrine do GeralJá.")
+    st.markdown("### 🔍 Encontre Profissionais no GeralJá")
+    
+    # --- 1. MOTOR DE BUSCA (Sempre Visível) ---
+    c1, c2 = st.columns([3, 1])
+    with c1:
+        termo_busca = st.text_input("O que você precisa?", placeholder="Ex: Pedreiro, Mecânico, Pizza...", key="input_busca_elite")
+    with c2:
+        raio_km = st.select_slider("Raio (km)", options=[1, 5, 10, 50, 100, 500], value=50)
 
-    with st.form("form_cadastro_blindado", clear_on_submit=True):
-        col1, col2 = st.columns(2)
-        with col1:
-            nome = st.text_input("Nome Completo ou Nome da Empresa")
-            # O telefone será o ID único no banco
-            telefone = st.text_input("WhatsApp (Somente números com DDD)", help="Ex: 11999999999")
-            area = st.selectbox("Sua Especialidade", CATEGORIAS_OFICIAIS)
-        
-        with col2:
-            cidade = st.text_input("Cidade / UF")
-            senha_acesso = st.text_input("Crie uma senha para editar seu perfil", type="password")
-
-        descricao = st.text_area("Descrição dos seus serviços (O que você faz de melhor?)")
-        
-        st.markdown("---")
-        st.write("📷 **Fotos do seu Trabalho** (A primeira será sua foto de perfil)")
-        f1_file = st.file_uploader("Foto Principal", type=['jpg', 'jpeg', 'png'], key="f1")
-        f2_file = st.file_uploader("Foto 2 (Opcional)", type=['jpg', 'jpeg', 'png'], key="f2")
-        f3_file = st.file_uploader("Foto 3 (Opcional)", type=['jpg', 'jpeg', 'png'], key="f3")
-
-        submit = st.form_submit_button("🚀 FINALIZAR CADASTRO")
-
-        if submit:
-            # --- VALIDAÇÃO CRÍTICA (A BLINDAGEM COMEÇA AQUI) ---
-            if not nome or not telefone or len(telefone) < 10:
-                st.error("❌ Erro: Nome e WhatsApp com DDD são obrigatórios!")
-            elif not f1_file:
-                st.error("❌ Erro: Você precisa enviar pelo menos a Foto Principal!")
+    # --- 2. LÓGICA DE IA E FILTRAGEM ---
+    if termo_busca:
+        try:
+            # Aciona a IA para entender a intenção
+            cat_ia = processar_ia_blindada(termo_busca)
+            
+            # Feedback da IA
+            if cat_ia != "NAO_ENCONTRADO":
+                st.info(f"✨ IA: Buscando especialistas em **{cat_ia}**")
+                # Busca segura no Firebase
+                query = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
             else:
+                st.warning("🤖 IA: Categoria não identificada. Buscando por termo aproximado...")
+                query = db.collection("profissionais").where("aprovado", "==", True).stream()
+
+            lista_resultados = []
+
+            # --- 3. PROCESSAMENTO DOS CARDS (SOMA DAS REGRAS) ---
+            for doc in query:
                 try:
-                    with st.spinner("Processando cadastro de elite..."):
-                        # 1. Limpeza do Telefone (Garante que seja apenas números)
-                        tel_id = re.sub(r'\D', '', telefone)
-                        
-                        # 2. Conversão de Imagens (Blindada)
-                        img1 = converter_img_b64(f1_file)
-                        img2 = converter_img_b64(f2_file) if f2_file else ""
-                        img3 = converter_img_b64(f3_file) if f3_file else ""
+                    p = doc.to_dict()
+                    p['id'] = doc.id
+                    
+                    # Cálculo de Distância Blindado
+                    dist = calcular_distancia_real(LAT_REF, LON_REF, p.get('lat', LAT_REF), p.get('lon', LON_REF))
+                    
+                    if dist <= raio_km:
+                        p['dist'] = dist
+                        # Cálculo de Ranking (Elite + Saldo)
+                        score = (10000 if p.get('verificado') else 0) + (float(p.get('saldo', 0)) * 100)
+                        p['score_rank'] = score
+                        lista_resultados.append(p)
+                except:
+                    continue
 
-                        # 3. Estrutura de Dados Perfeita
-                        dados_prof = {
-                            "nome": nome.strip(),
-                            "telefone": tel_id,
-                            "area": area,
-                            "descricao": descricao,
-                            "cidade": cidade,
-                            "senha": senha_acesso,
-                            "f1": img1, "f2": img2, "f3": img3,
-                            "aprovado": False,  # Precisa de aprovação do Admin
-                            "verificado": False,
-                            "saldo": 0,
-                            "lat": LAT_REF, # Usa a referência padrão se não tiver GPS
-                            "lon": LON_REF,
-                            "data_cadastro": datetime.now(pytz.timezone('America/Sao_Paulo')).strftime("%d/%m/%Y %H:%M")
-                        }
+            # Ordenação: Quem é Elite/Tem Saldo primeiro, depois os mais perto
+            lista_resultados.sort(key=lambda x: (-x['score_rank'], x['dist']))
 
-                        # 4. Salvar no Firebase usando o Telefone como ID
-                        db.collection("profissionais").document(tel_id).set(dados_prof)
-                        
-                        st.balloons()
-                        st.success(f"✅ SUCESSO! Cadastro de {nome} enviado para análise.")
-                        st.warning("⚠️ Você aparecerá na vitrine assim que o administrador aprovar seu perfil.")
-                
-                except Exception as e:
-                    st.error(f"❌ Falha ao salvar no banco: {e}")
+            # --- 4. EXIBIÇÃO DA VITRINE ---
+            if not lista_resultados:
+                st.error("❌ Nenhum profissional encontrado neste raio de busca.")
+            else:
+                for prof in lista_resultados:
+                    # Usa a função de card para renderizar o visual "foda"
+                    exibir_card_profissional(prof, prof['id'])
+
+        except Exception as e:
+            st.error(f"Erro ao carregar vitrine: {e}")
+    else:
+        # Tela de espera (quando não há busca)
+        st.write("---")
+        st.info("👆 Digite acima o serviço ou profissional que você deseja encontrar.")
+        st.image("https://img.freepik.com/vetores-premium/servicos-de-reparo-e-manutencao-de-casa-trabalhadores-profissionais-equipe-de-personagens-de-desenho-animado_165488-2965.jpg", use_container_width=True)
                 
 # ==============================================================================
 # ABA 2: 📝 CADASTRO TURBINADO E BLINDADO
@@ -650,6 +644,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
