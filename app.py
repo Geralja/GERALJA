@@ -434,15 +434,15 @@ with menu_abas[0]:
                     "cliques": p.get('cliques', 0) + 1
                 })
                 
-# --------------------------------------------------------------------------
-    # SUB-ABA: EDIÇÃO DO CADASTRO (COMPLETA)
+## --------------------------------------------------------------------------
+    # SUB-ABA: EDIÇÃO DO CADASTRO (CORREÇÃO COMPLETA: FOTOS + TELEFONE)
     # --------------------------------------------------------------------------
     with sub_aba_editar:
         st.markdown("#### 🔑 Login para Edição")
-        login_tel = st.text_input("WhatsApp Cadastrado", key="login_tel")
-        login_senha = st.text_input("Senha de Acesso", type="password", key="login_pass")
+        login_tel = st.text_input("WhatsApp Cadastrado", key="login_tel_edit")
+        login_senha = st.text_input("Senha de Acesso", type="password", key="login_pass_edit")
         
-        if st.button("🔓 ACESSAR MEU PERFIL"):
+        if st.button("🔓 ACESSAR MEU PERFIL", key="btn_login_edit"):
             tel_clean = re.sub(r'\D', '', login_tel)
             user_doc = db.collection("profissionais").document(tel_clean).get()
             
@@ -456,42 +456,40 @@ with menu_abas[0]:
             else:
                 st.error("❌ Profissional não encontrado!")
 
-        # FORMULÁRIO DE EDIÇÃO (LIBERADO APÓS LOGIN)
+        # FORMULÁRIO DE EDIÇÃO (APARECE APÓS O LOGIN)
         if 'editando_id' in st.session_state:
             pid = st.session_state['editando_id']
-            # Buscamos os dados mais recentes para preencher o formulário
-            doc_atual = db.collection("profissionais").document(pid).get()
-            d = doc_atual.to_dict()
+            # Busca dados em tempo real
+            d = db.collection("profissionais").document(pid).get().to_dict()
             
-            with st.form("form_edicao_completa"):
-                st.warning(f"Você está editando o perfil de: {d.get('nome')}")
+            with st.form("form_edicao_final"):
+                st.warning(f"Editando: {d.get('nome')}")
                 
                 col_e1, col_e2 = st.columns(2)
                 with col_e1:
                     novo_nome = st.text_input("Nome/Empresa", value=d.get('nome'))
-                    # ATENÇÃO: Mudar o telefone exige cuidado (ID do banco)
-                    novo_telefone = st.text_input("Novo WhatsApp (DDD + Número)", value=d.get('telefone'))
+                    novo_telefone = st.text_input("Alterar WhatsApp (DDD + Número)", value=d.get('telefone'))
                 with col_e2:
                     nova_area = st.selectbox("Especialidade", CATEGORIAS_OFICIAIS, 
                                             index=CATEGORIAS_OFICIAIS.index(d.get('area')) if d.get('area') in CATEGORIAS_OFICIAIS else 0)
-                    nova_senha = st.text_input("Alterar Senha", value=d.get('senha'), type="password")
+                    nova_senha = st.text_input("Nova Senha", value=d.get('senha'), type="password")
 
                 nova_desc = st.text_area("Descrição", value=d.get('descricao'))
 
                 st.markdown("---")
-                st.write("📷 **Atualizar Fotos** (Deixe em branco para manter as atuais)")
+                st.write("📷 **Atualizar Portfólio** (Envie apenas se quiser mudar)")
                 fe1, fe2 = st.columns(2)
                 with fe1:
-                    up_f1 = st.file_uploader("Nova Foto 1", type=['jpg', 'jpeg', 'png'], key="up_f1")
-                    up_f2 = st.file_uploader("Nova Foto 2", type=['jpg', 'jpeg', 'png'], key="up_f2")
+                    up_f1 = st.file_uploader("Nova Foto Principal", type=['jpg', 'png'], key="up_f1")
+                    up_f2 = st.file_uploader("Nova Foto 2", type=['jpg', 'png'], key="up_f2")
                 with fe2:
-                    up_f3 = st.file_uploader("Nova Foto 3", type=['jpg', 'jpeg', 'png'], key="up_f3")
-                    up_f4 = st.file_uploader("Nova Foto 4", type=['jpg', 'jpeg', 'png'], key="up_f4")
+                    up_f3 = st.file_uploader("Nova Foto 3", type=['jpg', 'png'], key="up_f3")
+                    up_f4 = st.file_uploader("Nova Foto 4", type=['jpg', 'png'], key="up_f4")
 
-                if st.form_submit_button("💾 SALVAR TODAS AS ALTERAÇÕES"):
+                if st.form_submit_button("💾 SALVAR ALTERAÇÕES"):
                     try:
-                        # 1. Prepara os novos dados (mantendo as fotos antigas se não subir novas)
-                        novos_dados = {
+                        # Criamos um dicionário com o que mudou
+                        atualizacoes = {
                             "nome": novo_nome.upper(),
                             "area": nova_area,
                             "descricao": nova_desc,
@@ -499,40 +497,39 @@ with menu_abas[0]:
                             "telefone": re.sub(r'\D', '', novo_telefone)
                         }
 
-                        # 2. Processa as fotos apenas se o usuário enviou arquivos novos
-                        if up_f1: novos_dados["f1"] = IA_MESTRE.converter_img_b64(up_f1)
-                        if up_f2: novos_dados["f2"] = IA_MESTRE.converter_img_b64(up_f2)
-                        if up_f3: novos_dados["f3"] = IA_MESTRE.converter_img_b64(up_f3)
-                        if up_f4: novos_dados["f4"] = IA_MESTRE.converter_img_b64(up_f4)
+                        # Processa fotos novas (se houver)
+                        if up_f1: atualizacoes["f1"] = converter_img_b64(up_f1)
+                        if up_f2: atualizacoes["f2"] = converter_img_b64(up_f2)
+                        if up_f3: atualizacoes["f3"] = converter_img_b64(up_f3)
+                        if up_f4: atualizacoes["f4"] = converter_img_b64(up_f4)
 
-                        novo_id = novos_dados["telefone"]
+                        novo_id = atualizacoes["telefone"]
 
-                        # 3. Lógica Crítica: Se o telefone mudou, precisamos mover o documento
+                        # LÓGICA DE TROCA DE TELEFONE (MIGRAÇÃO DE DOCUMENTO)
                         if novo_id != pid:
-                            # Verifica se o NOVO número já não está sendo usado por outro
-                            check_dup = db.collection("profissionais").document(novo_id).get()
-                            if check_dup.exists:
-                                st.error("❌ Esse novo número de telefone já está cadastrado em outra conta!")
+                            # 1. Verifica se o novo número já existe em outra conta
+                            if db.collection("profissionais").document(novo_id).get().exists:
+                                st.error("❌ Este novo número já está em uso!")
                                 st.stop()
                             
-                            # Cria o novo documento com os dados atualizados + o que sobrou do antigo (saldo, etc)
+                            # 2. Cria a cópia com o novo ID
                             dados_completos = d.copy()
-                            dados_completos.update(novos_dados)
+                            dados_completos.update(atualizacoes)
                             db.collection("profissionais").document(novo_id).set(dados_completos)
-                            # Deleta o registro antigo
+                            
+                            # 3. Deleta o antigo
                             db.collection("profissionais").document(pid).delete()
                             st.session_state['editando_id'] = novo_id
                         else:
-                            # Se o telefone é o mesmo, apenas dá o update comum
-                            db.collection("profissionais").document(pid).update(novos_dados)
+                            # Update normal se o telefone for o mesmo
+                            db.collection("profissionais").document(pid).update(atualizacoes)
 
-                        st.success("✅ Perfil atualizado com sucesso!")
+                        st.success("✅ Tudo atualizado!")
                         time.sleep(1)
-                        del st.session_state['editando_id']
                         st.rerun()
 
                     except Exception as e:
-                        st.error(f"Erro ao atualizar: {e}")
+                        st.error(f"Erro na linha 440+: {e}")
 # ==============================================================================
 # ABA 3: MEU PERFIL (VITRINE LUXUOSA ESTILO INSTA)
 # ==============================================================================
@@ -772,6 +769,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
