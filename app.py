@@ -273,166 +273,74 @@ menu_abas = st.tabs(lista_abas)
 # --- ABA 1: BUSCA (SISTEMA GPS + RANKING ELITE + VITRINE) ---
 # ==============================================================================
 with menu_abas[0]:
-    st.markdown("### 🏙️ O que você precisa?")
-    
-    # --- MOTOR DE LOCALIZAÇÃO EM TEMPO REAL ---
-    with st.expander("📍 Sua Localização (GPS)", expanded=False):
-        loc = get_geolocation()
-        if loc:
-            minha_lat = loc['coords']['latitude']
-            minha_lon = loc['coords']['longitude']
-            st.success(f"Localização detectada!")
-        else:
-            minha_lat = LAT_REF
-            minha_lon = LON_REF
-            st.warning("GPS desativado. Usando localização padrão (SP).")
+    st.markdown("### 🚀 Cadastro de Profissional Elite")
+    st.info("Preencha os dados abaixo para aparecer na vitrine do GeralJá.")
 
-    c1, c2 = st.columns([3, 1])
-    termo_busca = c1.text_input("Ex: 'Cano estourado' ou 'Pizza'", key="main_search")
-    raio_km = c2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 20, 50, 100, 500, 2000], value=10)
-    
-    if termo_busca:
-        # Processamento via IA para identificar a categoria
-        cat_ia = processar_ia_avancada(termo_busca)
-        st.info(f"✨ IA: Buscando por **{cat_ia}** próximo a você")
+    with st.form("form_cadastro_blindado", clear_on_submit=True):
+        col1, col2 = st.columns(2)
+        with col1:
+            nome = st.text_input("Nome Completo ou Nome da Empresa")
+            # O telefone será o ID único no banco
+            telefone = st.text_input("WhatsApp (Somente números com DDD)", help="Ex: 11999999999")
+            area = st.selectbox("Sua Especialidade", CATEGORIAS_OFICIAIS)
         
-        # Lógica de Horário em tempo real
-        from datetime import datetime
-        import pytz
-        import re
-        from urllib.parse import quote
-        
-        fuso = pytz.timezone('America/Sao_Paulo')
-        hora_atual = datetime.now(fuso).strftime('%H:%M')
+        with col2:
+            cidade = st.text_input("Cidade / UF")
+            senha_acesso = st.text_input("Crie uma senha para editar seu perfil", type="password")
 
-        # Busca no Firebase (Filtra apenas aprovados e da categoria certa)
-        profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
+        descricao = st.text_area("Descrição dos seus serviços (O que você faz de melhor?)")
         
-        lista_ranking = []
-        for p_doc in profs:
-            p = p_doc.to_dict()
-            p['id'] = p_doc.id
-            
-            # CALCULA DISTÂNCIA REAL (GPS vs Profissional)
-            dist = calcular_distancia_real(minha_lat, minha_lon, p.get('lat', LAT_REF), p.get('lon', LON_REF))
-            
-            if dist <= raio_km:
-                p['dist'] = dist
-                # MOTOR DE SCORE ELITE (Ranking)
-                score = 0
-                score += 500 if p.get('verificado', False) else 0
-                score += (p.get('saldo', 0) * 10)
-                score += (p.get('rating', 5) * 20)
-                p['score_elite'] = score
-                lista_ranking.append(p)
+        st.markdown("---")
+        st.write("📷 **Fotos do seu Trabalho** (A primeira será sua foto de perfil)")
+        f1_file = st.file_uploader("Foto Principal", type=['jpg', 'jpeg', 'png'], key="f1")
+        f2_file = st.file_uploader("Foto 2 (Opcional)", type=['jpg', 'jpeg', 'png'], key="f2")
+        f3_file = st.file_uploader("Foto 3 (Opcional)", type=['jpg', 'jpeg', 'png'], key="f3")
 
-        # Ordenação: Elite primeiro (maior score), depois os mais próximos (menor distância)
-        lista_ranking.sort(key=lambda x: (-x['score_elite'], x['dist']))
+        submit = st.form_submit_button("🚀 FINALIZAR CADASTRO")
 
-        if not lista_ranking:
-            st.markdown(f"""
-            <div style="background-color: #FFF4E5; padding: 20px; border-radius: 15px; border-left: 5px solid #FF8C00;">
-                <h3 style="color: #856404;">🔍 Essa profissão ainda não foi preenchida nesta região.</h3>
-                <p style="color: #856404;">Compartilhe o <b>GeralJá</b> e ajude a crescer sua rede local!</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            link_share = "https://wa.me/?text=Ei!%20Procurei%20um%20serviço%20no%20GeralJá%20e%20vi%20que%20ainda%20temos%20vagas!%20Cadastre-se:%20https://geralja.streamlit.app"
-            st.markdown(f'<a href="{link_share}" target="_blank" style="text-decoration:none;"><div style="background:#22C55E; color:white; padding:15px; border-radius:10px; text-align:center; font-weight:bold; margin-top:10px;">📲 COMPARTILHAR NO WHATSAPP</div></a>', unsafe_allow_html=True)
-        
-        else:
-            # --- RENDERIZAÇÃO DOS CARDS (LOOP) ---
-            for p in lista_ranking:
-                pid = p['id']
-                is_elite = p.get('verificado') and p.get('saldo', 0) > 0
+        if submit:
+            # --- VALIDAÇÃO CRÍTICA (A BLINDAGEM COMEÇA AQUI) ---
+            if not nome or not telefone or len(telefone) < 10:
+                st.error("❌ Erro: Nome e WhatsApp com DDD são obrigatórios!")
+            elif not f1_file:
+                st.error("❌ Erro: Você precisa enviar pelo menos a Foto Principal!")
+            else:
+                try:
+                    with st.spinner("Processando cadastro de elite..."):
+                        # 1. Limpeza do Telefone (Garante que seja apenas números)
+                        tel_id = re.sub(r'\D', '', telefone)
+                        
+                        # 2. Conversão de Imagens (Blindada)
+                        img1 = converter_img_b64(f1_file)
+                        img2 = converter_img_b64(f2_file) if f2_file else ""
+                        img3 = converter_img_b64(f3_file) if f3_file else ""
+
+                        # 3. Estrutura de Dados Perfeita
+                        dados_prof = {
+                            "nome": nome.strip(),
+                            "telefone": tel_id,
+                            "area": area,
+                            "descricao": descricao,
+                            "cidade": cidade,
+                            "senha": senha_acesso,
+                            "f1": img1, "f2": img2, "f3": img3,
+                            "aprovado": False,  # Precisa de aprovação do Admin
+                            "verificado": False,
+                            "saldo": 0,
+                            "lat": LAT_REF, # Usa a referência padrão se não tiver GPS
+                            "lon": LON_REF,
+                            "data_cadastro": datetime.now(pytz.timezone('America/Sao_Paulo')).strftime("%d/%m/%Y %H:%M")
+                        }
+
+                        # 4. Salvar no Firebase usando o Telefone como ID
+                        db.collection("profissionais").document(tel_id).set(dados_prof)
+                        
+                        st.balloons()
+                        st.success(f"✅ SUCESSO! Cadastro de {nome} enviado para análise.")
+                        st.warning("⚠️ Você aparecerá na vitrine assim que o administrador aprovar seu perfil.")
                 
-                with st.container():
-                    # Cores dinâmicas baseadas no tipo de conta
-                    cor_borda = "#FFD700" if is_elite else ("#FF8C00" if p.get('tipo') == "🏢 Comércio/Loja" else "#0047AB")
-                    bg_card = "#FFFDF5" if is_elite else "#FFFFFF"
-                    
-                    st.markdown(f"""
-                    <div style="border-left: 8px solid {cor_borda}; padding: 15px; background: {bg_card}; border-radius: 15px; margin-bottom: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                        <span style="font-size: 12px; color: gray; font-weight: bold;">📍 a {p['dist']:.1f} km de você {" | 🏆 DESTAQUE" if is_elite else ""}</span>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-                    col_img, col_txt = st.columns([1, 4])
-                    with col_img:
-                        foto = p.get('foto_url', 'https://via.placeholder.com/150')
-                        st.markdown(f'<img src="{foto}" style="width:75px; height:75px; border-radius:50%; object-fit:cover; border:3px solid {cor_borda}">', unsafe_allow_html=True)
-                    
-                    with col_txt:
-                        nome_exibicao = p.get('nome', '').upper()
-                        if p.get('verificado', False): nome_exibicao += " <span style='color:#1DA1F2;'>☑️</span>"
-                        
-                        status_loja = ""
-                        if p.get('tipo') == "🏢 Comércio/Loja":
-                            h_ab, h_fe = p.get('h_abre', '08:00'), p.get('h_fecha', '18:00')
-                            status_loja = " 🟢 <b style='color:green;'>ABERTO</b>" if h_ab <= hora_atual <= h_fe else " 🔴 <b style='color:red;'>FECHADO</b>"
-                        
-                        st.markdown(f"**{nome_exibicao}** {status_loja}", unsafe_allow_html=True)
-                        st.caption(f"{p.get('descricao', '')[:120]}...")
-
-                    # Vitrine de Fotos do Portfólio
-                    if p.get('portfolio_imgs'):
-                        cols_v = st.columns(3)
-                        for i, img_b64 in enumerate(p.get('portfolio_imgs')[:3]):
-                            cols_v[i].image(img_b64, use_container_width=True)
-
-                    # --- LÓGICA DO BOTÃO DE WHATSAPP (AQUI DENTRO DO LOOP) ---
-                    nome_curto = p.get('nome', 'Profissional').split()[0].upper()
-                    
-                    # Limpeza do número de telefone (ID do documento)
-                    numero_limpo = re.sub(r'\D', '', str(pid))
-                    if not numero_limpo.startswith('55'):
-                        numero_limpo = f"55{numero_limpo}"
-                    
-                    texto_zap = quote(f"Olá {p.get('nome')}, vi seu perfil no GeralJá!")
-                    link_final = f"https://wa.me/{numero_limpo}?text={texto_zap}"
-
-                    # --- BOTÃO ÚNICO (VISUAL TOP + ABRE SEMPRE) ---
-                    import re
-                    from urllib.parse import quote
-                    
-                    # 1. Preparação dos dados
-                    num_limpo = re.sub(r'\D', '', str(pid))
-                    if not num_limpo.startswith('55'): num_limpo = f"55{num_limpo}"
-                    texto_zap = quote(f"Olá {p.get('nome')}, vi seu perfil no GeralJá!")
-                    link_final = f"https://wa.me/{num_limpo}?text={texto_zap}"
-                    nome_btn = p.get('nome', 'Profissional').split()[0].upper()
-                    
-                    # 2. BOTÃO HTML (Ocupa o lugar do st.button)
-                    # Este botão abre o WhatsApp instantaneamente e não é bloqueado
-                    st.markdown(f"""
-                        <a href="{link_final}" target="_blank" style="text-decoration: none;">
-                            <div style="
-                                background-color: #25D366;
-                                color: white;
-                                padding: 15px;
-                                border-radius: 12px;
-                                text-align: center;
-                                font-weight: bold;
-                                font-size: 18px;
-                                box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-                                transition: 0.3s;
-                                cursor: pointer;
-                                margin-top: 10px;
-                            ">
-                                💬 FALAR COM {nome_btn}
-                            </div>
-                        </a>
-                    """, unsafe_allow_html=True)
-                    
-                    # 3. LÓGICA DE DÉBITO E SEGURANÇA
-                # Verifica se tem saldo antes de processar
-                if p.get('saldo', 0) <= 0:
-                    continue  # <--- AGORA ESTÁ DENTRO DO IF (4 espaços)
-
-                # Se passou pelo if acima, registra o clique/visualização
-                db.collection("profissionais").document(pid).update({
-                    "cliques": p.get('cliques', 0) + 1
-                })
+                except Exception as e:
+                    st.error(f"❌ Falha ao salvar no banco: {e}")
                 
 # ==============================================================================
 # ABA 2: 📝 CADASTRO TURBINADO E BLINDADO
@@ -742,6 +650,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
