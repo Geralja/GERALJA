@@ -271,91 +271,108 @@ if comando == "abracadabra":
 menu_abas = st.tabs(lista_abas)
 
 # ==============================================================================
-# ABA 1: 🔍 VITRINE ELITE (DESIGN ESTILO INSTAGRAM)
+# ABA 1: 🔍 VITRINE ELITE (DESIGN MOSAICO PREMIUM)
 # ==============================================================================
 with menu_abas[0]:
-    # Barra de busca estilizada
+    # 1. Busca e Filtros Estilizados
     termo = st.text_input("🔍 O que você precisa hoje?", key="main_search", placeholder="Ex: Pizzaria, Encanador, Advogado...")
+    
+    # Filtro de Categorias em Chips (Novo componente Streamlit)
+    categorias_chips = ["Todos", "Pedreiro", "Mecânico", "Pizzaria", "Beleza", "Saúde", "Eventos"]
+    sel_cat = st.pills("Categorias Populares", categorias_chips, default="Todos")
 
-    # Filtro de Categorias em Chips (Estilo App)
-    st.write("### 🏷️ Categorias Populares")
-    categorias_chips = ["Todos", "Pedreiro", "Mecânico", "Pizzaria", "Beleza"]
-    sel_cat = st.segmented_control("", categorias_chips, default="Todos")
+    st.markdown("<br>", unsafe_allow_html=True)
 
-    st.divider()
-
-    # Lógica de Busca no Firebase
-    query = db.collection("profissionais").where("aprovado", "==", True)
-    docs = query.stream()
-
-    # Grid de Resultados
-    for doc in docs:
-        p = doc.to_dict()
-        pid = doc.id
+    # 2. Busca de Dados (Usando o seu ranking de distância)
+    # Supondo que 'lista_ranking' já foi processada com as distâncias do GPS
+    for p in lista_ranking:
+        pid = p.get('id', p.get('whatsapp'))
         
-        # Filtro Simples de Busca
-        if termo.lower() in p.get('nome', '').lower() or termo.lower() in p.get('area', '').lower():
-            
-            # --- CARD VITRINE PREMIUM ---
-            with st.container():
-                st.markdown(f"""
-                    <div style="
-                        background: {card_bg}; 
-                        border-radius: 20px; 
-                        padding: 0px; 
-                        margin-bottom: 25px; 
-                        border: 1px solid {border_color};
-                        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-                        overflow: hidden;">
-                        
-                        <div style="padding: 15px; display: flex; align-items: center; justify-content: space-between;">
-                            <div style="display: flex; align-items: center;">
-                                <div style="width: 45px; height: 45px; background: #0047AB; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; margin-right: 12px;">
-                                    {p.get('nome')[0]}
-                                </div>
-                                <div>
-                                    <b style="font-size: 16px; color: {txt_color};">{p.get('nome')}</b> 
-                                    <span style="color: #1DA1F2;">{'✔️' if p.get('verificado') else ''}</span><br>
-                                    <small style="color: #94A3B8;">{p.get('area')}</small>
-                                </div>
-                            </div>
-                            <div style="background: #FFF3E0; color: #FF8C00; padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: bold;">
-                                ⭐ {p.get('saldo', 0) // 10}.0
-                            </div>
-                        </div>
+        # Lógica de Filtro (Busca por nome ou área)
+        filtro_match = (termo.lower() in p.get('nome', '').lower() or 
+                        termo.lower() in p.get('area', '').lower())
+        cat_match = (sel_cat == "Todos" or p.get('area') == sel_cat)
 
-                        <div style="display: flex; gap: 2px; height: 200px; padding: 0 10px;">
-                            <div style="flex: 2; overflow: hidden; border-radius: 10px 0 0 10px;">
-                                <img src="data:image/jpeg;base64,{p.get('f1', '')}" style="width: 100%; height: 100%; object-fit: cover;">
+        if filtro_match and cat_match:
+            is_elite = p.get('verificado') or p.get('saldo', 0) > 50
+            cor_destaque = "#FF8C00" if p.get('tipo') == "🏢 Comércio/Loja" else "#0047AB"
+            if is_elite: cor_destaque = "#FFD700" # Dourado para Elite
+
+            # --- CARD VITRINE TURBINADO ---
+            st.markdown(f"""
+                <div style="
+                    background: {card_bg}; 
+                    border-radius: 25px; 
+                    margin-bottom: 30px; 
+                    border: 1px solid {border_color};
+                    box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+                    overflow: hidden;
+                    position: relative;">
+                    
+                    <div style="padding: 15px; display: flex; align-items: center; justify-content: space-between;">
+                        <div style="display: flex; align-items: center;">
+                            <div style="width: 50px; height: 50px; background: {cor_destaque}; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 900; font-size: 20px; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+                                {p.get('nome')[0].upper()}
                             </div>
-                            <div style="flex: 1; display: flex; flex-direction: column; gap: 2px;">
-                                <div style="flex: 1; overflow: hidden; border-radius: 0 10px 0 0;">
-                                    <img src="data:image/jpeg;base64,{p.get('f2', '')}" style="width: 100%; height: 100%; object-fit: cover;">
+                            <div style="margin-left: 12px;">
+                                <div style="display: flex; align-items: center; gap: 5px;">
+                                    <b style="font-size: 17px; color: {txt_color};">{p.get('nome').upper()}</b>
+                                    {'<span style="color:#1DA1F2; font-size:16px;">☑️</span>' if p.get('verificado') else ''}
                                 </div>
-                                <div style="flex: 1; overflow: hidden; border-radius: 0 0 10px 0;">
-                                    <img src="data:image/jpeg;base64,{p.get('f3', '')}" style="width: 100%; height: 100%; object-fit: cover;">
+                                <div style="display: flex; gap: 8px; align-items: center;">
+                                    <small style="color: {cor_destaque}; font-weight: bold;">{p.get('area').upper()}</small>
+                                    <small style="color: #94A3B8;">• 📍 {p.get('dist', 0):.1f} km</small>
                                 </div>
                             </div>
                         </div>
-
-                        <div style="padding: 15px;">
-                            <p style="font-size: 14px; color: {txt_color}; margin-bottom: 15px;">
-                                {p.get('descricao', 'Sem descrição disponível.')[:120]}...
-                            </p>
+                        <div style="text-align: right;">
+                            <span style="background: #FFF3E0; color: #FF8C00; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 900;">
+                                ⭐ {p.get('saldo', 0) // 10 if p.get('saldo', 0) > 10 else 5}.0
+                            </span>
                         </div>
                     </div>
-                """, unsafe_allow_html=True)
-                
-                # Botão de Ação fora do HTML para funcionar o clique
-                btn_col1, btn_col2 = st.columns([1, 1])
-                with btn_col1:
-                    if st.button(f"📄 Ver Detalhes", key=f"det_{pid}", use_container_width=True):
-                        st.toast(f"Abrindo perfil de {p.get('nome')}...")
-                with btn_col2:
-                    link_zap = f"https://wa.me/55{p.get('whatsapp')}?text=Olá%20{p.get('nome')},%20vi%20sua%20vitrine%20no%20GeralJá!"
-                    st.link_button("🟢 WHATSAPP", link_zap, use_container_width=True)
-                
-                st.markdown("<br>", unsafe_allow_html=True)
+
+                    <div style="display: flex; gap: 4px; height: 220px; padding: 0 10px;">
+                        <div style="flex: 2; overflow: hidden; border-radius: 15px 5px 5px 15px;">
+                            <img src="data:image/jpeg;base64,{p.get('f1', '')}" 
+                                 style="width: 100%; height: 100%; object-fit: cover;" 
+                                 onerror="this.src='https://via.placeholder.com/400x400?text=Foto+Indisponível'">
+                        </div>
+                        <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+                            <div style="flex: 1; overflow: hidden; border-radius: 5px 15px 5px 5px;">
+                                <img src="data:image/jpeg;base64,{p.get('f2', '')}" 
+                                     style="width: 100%; height: 100%; object-fit: cover;"
+                                     onerror="this.src='https://via.placeholder.com/200x200?text=F2'">
+                            </div>
+                            <div style="flex: 1; overflow: hidden; border-radius: 5px 5px 15px 5px;">
+                                <img src="data:image/jpeg;base64,{p.get('f3', '')}" 
+                                     style="width: 100%; height: 100%; object-fit: cover;"
+                                     onerror="this.src='https://via.placeholder.com/200x200?text=F3'">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="padding: 15px;">
+                        <p style="font-size: 14px; color: {txt_color}; line-height: 1.4; margin: 0;">
+                            {p.get('descricao', '')[:110]}...
+                        </p>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            # 3. Botões de Ação Dinâmicos
+            col_btn1, col_btn2 = st.columns(2)
+            with col_btn1:
+                if st.button(f"🔎 VER DETALHES", key=f"det_{pid}", use_container_width=True):
+                    st.session_state.perfil_aberto = p # Salva para mostrar detalhes
+                    st.toast(f"Carregando {p.get('nome')}...")
+            with col_btn2:
+                # Link do WhatsApp com mensagem automática
+                texto_zap = f"Olá {p.get('nome')}, vi sua vitrine no GeralJá e gostaria de um orçamento!"
+                link_zap = f"https://wa.me/55{p.get('whatsapp')}?text={texto_zap.replace(' ', '%20')}"
+                st.link_button("🟢 WHATSAPP", link_zap, use_container_width=True)
+            
+            st.markdown("<br><br>", unsafe_allow_html=True)
                 
 #============================================================================== 
 # ABA 2: 👤 MEU PAINEL (LOGIN PERSISTENTE + VITRINE DE FOTOS) 
