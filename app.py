@@ -341,39 +341,89 @@ menu_abas = st.tabs(lista_abas)
 # ==============================================================================
 # --- ABA 1: VITRINE (SISTEMA DE BUSCA E RANKING DE ELITE) ---
 # ==============================================================================
+# --- ABA 0: VITRINE INTELIGENTE ---
 with menu_abas[0]:
-    st.markdown("### 🔍 O que você procura hoje?")
+    # Design de cabeçalho impactante
+    st.markdown("<h2 style='text-align: center;'>🔍 O que você procura hoje?</h2>", unsafe_allow_html=True)
     
-    # Campo de busca que fala com o Motor Mestre
-    termo_busca = st.text_input("", placeholder="Ex: Preciso de alguém para pintar meu quarto", key="input_busca_direta")
+    # Input principal
+    termo_busca = st.text_input("", placeholder="Ex: 'alguém para arrumar meu telhado' ou 'pizza artesanal'", key="input_busca_direta")
     
+    # Filtros em colunas
+    col_raio, col_ordenacao = st.columns([2, 2])
+    with col_raio:
+        raio_km = st.select_slider("📍 Raio de distância", options=[5, 10, 25, 50, 100, 500], value=50)
+    with col_ordenacao:
+        modo_ordem = st.selectbox("⭐ Priorizar por", ["Melhores Avaliados", "Mais Próximos", "Destaques (Patrocinados)"])
+
+    st.markdown("---")
+
     if termo_busca:
-        try:
-            # 1. O Motor Mestre interpreta o que o usuário quer
-            categoria_identificada = IA_MESTRE.processar_intencao(termo_busca)
-            
-            # 2. Busca no Firebase profissionais dessa categoria
-            # Dica: Certifique-se de que 'area' no banco bate com as categorias da IA
-            docs = db.collection("profissionais").where("area", "==", categoria_identificada).where("aprovado", "==", True).stream()
-            
-            encontrou = False
-            for doc in docs:
-                encontrou = True
-                p = doc.to_dict()
+        with st.spinner("🧠 IA Analisando sua necessidade..."):
+            try:
+                # 1. MAPEAMENTO DE INTENÇÃO (IA)
+                try:
+                    # Tenta converter 'telhado' em 'Pedreiro' ou 'Manutenção'
+                    cat_ia = processar_ia_avancada(termo_busca)
+                except:
+                    cat_ia = termo_busca.capitalize()
+
+                # 2. BUSCA MULTI-FILTRO NO FIREBASE
+                # Buscamos apenas ativos. O filtro de categoria/distância fazemos no Python para mais flexibilidade
+                profs_ref = db.collection("profissionais").where("aprovado", "==", True).stream()
                 
-                # 3. O Motor Mestre calcula a distância
-                p['dist'] = IA_MESTRE.calcular_distancia(LAT_PADRAO, LON_PADRAO, p.get('lat'), p.get('lon'))
-                
-                # 4. O Motor Mestre desenha o card na tela
-                IA_MESTRE.renderizar_vitrine(p, doc.id)
-                
-            if not encontrou:
-                st.warning(f"Ainda não temos especialistas em {categoria_identificada} cadastrados.")
-                
-        except Exception as e:
-            st.error(f"Erro ao processar busca: {e}")
+                lista_resultados = []
+                termo_min = cat_ia.lower()
+
+                for doc in profs_ref:
+                    p = doc.to_dict()
+                    p['id'] = doc.id 
+                    
+                    # Lógica de match (Nome, Área ou Descrição)
+                    texto_alvo = f"{p.get('area', '')} {p.get('nome', '')} {p.get('descricao', '')}".lower()
+                    
+                    if termo_min in texto_alvo:
+                        # Cálculo de distância real
+                        dist = calcular_distancia(LAT_PADRAO, LON_PADRAO, p.get('lat', LAT_PADRAO), p.get('lon', LON_PADRAO))
+                        
+                        if dist <= raio_km:
+                            p['dist'] = dist
+                            
+                            # 3. MOTOR DE RANKING (A "Mágica" do Negócio)
+                            # Verificados ganham 1000 pontos
+                            # Cada R$ 1.00 de saldo (GeralCones) ganha 100 pontos
+                            # Rating (estrelas) ganha 500 pontos por estrela
+                            score = (10000 if p.get('verificado', False) else 0)
+                            score += (float(p.get('saldo', 0)) * 100)
+                            score += (float(p.get('rating', 5.0)) * 500)
+                            
+                            p['ranking_score'] = score
+                            lista_resultados.append(p)
+
+                # 4. EXIBIÇÃO ORGANIZADA
+                if lista_resultados:
+                    # Ordenação dinâmica baseada no selectbox
+                    if modo_ordem == "Destaques (Patrocinados)":
+                        lista_resultados.sort(key=lambda x: -x['ranking_score'])
+                    elif modo_ordem == "Mais Próximos":
+                        lista_resultados.sort(key=lambda x: x['dist'])
+                    else:
+                        lista_resultados.sort(key=lambda x: -x.get('rating', 0))
+
+                    st.success(f"Encontramos {len(lista_resultados)} especialistas para você!")
+                    
+                    # Grid de exibição
+                    for prof in lista_resultados:
+                        exibir_card_profissional(prof, prof['id'])
+                else:
+                    st.warning(f"Ainda não temos profissionais para '{cat_ia}' nesta região.")
+                    st.button("Quero ser o primeiro desta categoria! 🚀")
+
+            except Exception as e:
+                st.error(f"Erro no motor de busca: {e}")
     else:
-        st.info("Digite uma necessidade para ver os melhores profissionais perto de você!")
+        # Vitrine vazia (Exibir sugestões)
+        st.info("Sugestões: Eletricista, Encanador, Diarista, Mecânico...")
                 
 # ==============================================================================
 # --- ABA 2: CADASTRO (BLINDAGEM DE DUPLICADOS + 4 FOTOS + BÔNUS) ---
@@ -699,12 +749,3 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
-
-
-
-
-
-
-
-
-
