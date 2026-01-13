@@ -400,14 +400,14 @@ with menu_abas[0]:
                     </a>
                 """, unsafe_allow_html=True)
                 
-# ==============================================================================
-# ABA 2: 👤 MEU PAINEL (LOGIN PERSISTENTE + VITRINE DE FOTOS)
-# ==============================================================================
+#============================================================================== 
+# ABA 2: 👤 MEU PAINEL (LOGIN PERSISTENTE + VITRINE DE FOTOS) 
+# ============================================================================== 
 with menu_abas[1]:
     # Inicializa o estado de autenticação
-    if 'auth' not in st.session_state: 
+    if 'auth' not in st.session_state:
         st.session_state.auth = False
-    if 'user_id' not in st.session_state: 
+    if 'user_id' not in st.session_state:
         st.session_state.user_id = None
 
     # --- SE NÃO ESTIVER LOGADO: MOSTRA LOGIN OU CADASTRO ---
@@ -418,7 +418,6 @@ with menu_abas[1]:
             st.markdown("### 🔑 Entrar")
             l_zap = st.text_input("WhatsApp (Login)", placeholder="Apenas números", key="l_zap")
             l_pw = st.text_input("Senha", type="password", key="l_pw")
-            
             if st.button("ACESSAR MINHA VITRINE"):
                 doc = db.collection("profissionais").document(l_zap).get()
                 if doc.exists and str(doc.to_dict().get('senha')) == l_pw:
@@ -436,23 +435,19 @@ with menu_abas[1]:
                 c1, c2 = st.columns(2)
                 c_nome = c1.text_input("Nome do Negócio/Profissional*")
                 c_zap = c2.text_input("WhatsApp (Será seu Login)*")
-                
                 c3, c4 = st.columns(2)
                 c_cat = c3.selectbox("Categoria", CATEGORIAS_OFICIAIS)
                 c_pw = c4.text_input("Crie uma Senha*", type="password")
-                
                 c_desc = st.text_area("Descrição do seu Trabalho")
-                
                 st.markdown("#### 📸 Fotos da Vitrine")
                 col_f1, col_f2, col_f3 = st.columns(3)
                 f1 = col_f1.file_uploader("Foto 1 (Principal)", type=['jpg','png','jpeg'])
                 f2 = col_f2.file_uploader("Foto 2", type=['jpg','png','jpeg'])
                 f3 = col_f3.file_uploader("Foto 3", type=['jpg','png','jpeg'])
-
                 if st.form_submit_button("FINALIZAR E PUBLICAR"):
                     if c_nome and c_zap and c_pw:
-                        def to_b64(f): return base64.b64encode(f.read()).decode() if f else None
-                        
+                        def to_b64(f):
+                            return base64.b64encode(f.read()).decode() if f else None
                         db.collection("profissionais").document(c_zap).set({
                             "nome": c_nome.upper(),
                             "senha": c_pw,
@@ -474,9 +469,7 @@ with menu_abas[1]:
     # --- SE ESTIVER LOGADO: MOSTRA DASHBOARD DE EDIÇÃO ---
     else:
         dados = db.collection("profissionais").document(st.session_state.user_id).get().to_dict()
-        
         st.markdown(f"### ✨ Painel de: {dados.get('nome')}")
-        
         # Métrica Estilizada
         c1, c2, c3 = st.columns(3)
         c1.metric("Moedas/Saldo", f"{dados.get('saldo', 0)} 🪙")
@@ -490,15 +483,13 @@ with menu_abas[1]:
                 e_nome = st.text_input("Nome", value=dados.get('nome'))
                 e_cat = st.selectbox("Categoria", CATEGORIAS_OFICIAIS, index=CATEGORIAS_OFICIAIS.index(dados.get('area', 'Ajudante Geral')))
                 e_desc = st.text_area("Descrição", value=dados.get('descricao'))
-                
                 # Edição de fotos (opcional, mostra se já tem)
                 st.write("Deseja trocar as fotos? (Deixe em branco para manter as atuais)")
                 up1 = st.file_uploader("Trocar Foto 1", type=['jpg','png','jpeg'])
-                
                 if st.form_submit_button("SALVAR ALTERAÇÕES"):
                     update_dict = {"nome": e_nome, "area": e_cat, "descricao": e_desc}
-                    if up1: update_dict["f1"] = base64.b64encode(up1.read()).decode()
-                    
+                    if up1:
+                        update_dict["f1"] = base64.b64encode(up1.read()).decode()
                     db.collection("profissionais").document(st.session_state.user_id).update(update_dict)
                     st.success("Atualizado!")
                     st.rerun()
@@ -746,6 +737,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
