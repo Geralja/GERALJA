@@ -401,43 +401,83 @@ with menu_abas[0]:
                 """, unsafe_allow_html=True)
                 
 # ==============================================================================
-# ABA 2: 👤 MEU PAINEL (COM TRAVA DE SENHA)
+# ABA 2: 👤 PAINEL DE ACESSO & CADASTRO TURBINADO
 # ==============================================================================
 with menu_abas[1]:
-    st.subheader("🛠️ Gerenciar meu Perfil")
-    
-    # Campo de Entrada para Login
-    col_l1, col_l2 = st.columns(2)
-    acesso_whatsapp = col_l1.text_input("Seu WhatsApp (ID)", placeholder="Apenas números")
-    acesso_senha = col_l2.text_input("Sua Senha", type="password")
+    escolha = st.radio("Selecione uma opção:", ["Fazer Login", "Criar Nova Vitrine (Grátis)"], horizontal=True)
 
-    if acesso_whatsapp and acesso_senha:
-        # Busca o profissional no banco pelo WhatsApp
-        doc_ref = db.collection("profissionais").document(acesso_whatsapp).get()
+    if escolha == "Criar Nova Vitrine (Grátis)":
+        st.markdown("### 🚀 Cadastre seu Negócio")
         
-        if doc_ref.exists:
-            dados_p = doc_ref.to_dict()
-            senha_no_banco = str(dados_p.get("senha", ""))
+        with st.form("form_cadastro_elite", clear_on_submit=True):
+            col_id1, col_id2 = st.columns(2)
+            nome_negocio = col_id1.text_input("Nome do Negócio ou Profissional*", placeholder="Ex: João Mecânico")
+            whatsapp_cad = col_id2.text_input("WhatsApp (Seu Login)*", placeholder="Apenas números com DDD")
             
-            # VERIFICAÇÃO DE SEGURANÇA
-            if acesso_senha == senha_no_banco:
-                st.success(f"✅ Bem-vindo, {dados_p.get('nome')}!")
-                
-                # --- AQUI DENTRO FICA O CÓDIGO DE EDIÇÃO (O QUE JÁ TINHAMOS) ---
-                with st.expander("📝 Editar Meus Dados"):
-                    # Seus campos de edição (nome, descrição, fotos...) entram aqui
-                    st.write("Aqui você pode alterar suas fotos e informações.")
-                    # ... (resto do seu código de formulário)
-                
-            else:
-                st.error("❌ Senha incorreta. Tente novamente.")
-        else:
-            st.warning("⚠️ Este WhatsApp não está cadastrado. Deseja criar uma conta?")
-            if st.button("Criar Novo Cadastro"):
-                # Lógica para abrir formulário de novo cadastro
-                pass
+            col_seg1, col_seg2 = st.columns(2)
+            segmento = col_seg1.selectbox("Segmento*", ["👤 Profissional Liberal", "🏢 Comércio/Loja/Restaurante"])
+            senha_cad = col_seg2.text_input("Crie uma Senha de Acesso*", type="password")
+            
+            categoria = st.selectbox("Categoria de Atuação*", ["Pedreiro", "Mecânico", "Pizzaria", "Advogado", "Manicure", "Outros"])
+            descricao = st.text_area("Descrição da sua Vitrine (O que você faz?)", placeholder="Conte detalhes do seu serviço...")
+
+            # --- SEÇÃO VITRINE (UPLOAD DE FOTOS) ---
+            st.markdown("#### 📸 Fotos da sua Vitrine")
+            st.info("Dica: Fotos bem iluminadas atraem 3x mais clientes!")
+            
+            c_foto1, c_foto2, c_foto3 = st.columns(3)
+            f1 = c_foto1.file_uploader("Foto Principal", type=['jpg', 'png', 'jpeg'], key="f1")
+            f2 = c_foto2.file_uploader("Trabalho 01", type=['jpg', 'png', 'jpeg'], key="f2")
+            f3 = c_foto3.file_uploader("Trabalho 02", type=['jpg', 'png', 'jpeg'], key="f3")
+
+            # --- CAMPOS ESPECÍFICOS PARA COMÉRCIO ---
+            if segmento == "🏢 Comércio/Loja/Restaurante":
+                st.markdown("#### 🕒 Horário de Funcionamento")
+                c_h1, c_h2 = st.columns(2)
+                h_abre = c_h1.text_input("Abre às:", value="08:00")
+                h_fecha = c_h2.text_input("Fecha às:", value="18:00")
+
+            submit = st.form_submit_button("🚀 PUBLICAR MINHA VITRINE")
+
+            if submit:
+                if not nome_negocio or not whatsapp_cad or not senha_cad:
+                    st.error("Por favor, preencha todos os campos obrigatórios (*)")
+                else:
+                    # Função interna para converter imagem para Base64 (Blindagem de armazenamento)
+                    def converter_foto(file):
+                        if file:
+                            return base64.b64encode(file.read()).decode()
+                        return None
+
+                    dados_cadastro = {
+                        "nome": nome_negocio.upper(),
+                        "whatsapp": whatsapp_cad,
+                        "senha": senha_cad,
+                        "tipo": segmento,
+                        "area": categoria,
+                        "descricao": descricao,
+                        "f1": converter_foto(f1),
+                        "f2": converter_foto(f2),
+                        "f3": converter_foto(f3),
+                        "aprovado": False, # Passa pelo crivo do admin
+                        "saldo": 0,
+                        "verificado": False,
+                        "data_cadastro": datetime.now()
+                    }
+                    
+                    if segmento == "🏢 Comércio/Loja/Restaurante":
+                        dados_cadastro["h_abre"] = h_abre
+                        dados_cadastro["h_fecha"] = h_fecha
+
+                    # Salva no Firebase usando o WhatsApp como ID Único
+                    db.collection("profissionais").document(whatsapp_cad).set(dados_cadastro)
+                    
+                    st.balloons()
+                    st.success("✅ Cadastro enviado com sucesso! Aguarde a ativação pelo administrador.")
+
     else:
-        st.info("💡 Insira seu WhatsApp e Senha para acessar seu painel exclusivo.")
+        # Aqui ficaria o código de Login que já fizemos antes
+        st.info("Área de Login: Digite seus dados para editar sua vitrine.")
 # ==============================================================================
 # ABA 3: MEU PERFIL (VITRINE LUXUOSA ESTILO INSTA)
 # ==============================================================================
@@ -677,6 +717,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
