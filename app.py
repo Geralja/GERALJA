@@ -163,31 +163,25 @@ IA_MESTRE = MotorGeralJa()
 
 # --- FUNÇÕES DE SUPORTE (Mantenha fora de blocos IF/ELSE para funcionar no app todo) ---
 # def buscar_opcoes_dinamicas(documento, padrao):
-#     """ Busca listas de categorias ou tipos na cole
-# ==============================================================================
-# --- ABA 2: CADASTRO (BLINDAGEM DE DUPLICADOS + 4 FOTOS + BÔNUS) ---
-# ==============================================================================
-
+#     """ Busca listas de categorias ou tipos na cole"""
+# ============================================================================== 
+# --- ABA 2: CADASTRO (BLINDAGEM DE DUPLICADOS + 4 FOTOS + BÔNUS) --- 
+# ============================================================================== 
 with menu_abas[1]:
     st.markdown("### 🚀 Cadastro de Profissional Elite")
     st.info("🎁 BÔNUS: Novos cadastros ganham **10 GeralCones** de saldo inicial!")
-
     with st.form("form_cadastro_blindado_v4", clear_on_submit=True):
         col1, col2 = st.columns(2)
         with col1:
             nome = st.text_input("Nome Completo ou Empresa", placeholder="Ex: João Silva Pinturas")
             telefone = st.text_input("WhatsApp (DDD + Número)", help="Apenas números. Ex: 11999998888")
             area = st.selectbox("Sua Especialidade", CATEGORIAS_OFICIAIS)
-        
         with col2:
             cidade = st.text_input("Cidade / UF", placeholder="Ex: São Paulo / SP")
             senha_acesso = st.text_input("Crie uma Senha", type="password", help="Para editar seu perfil no futuro")
-
         descricao = st.text_area("Descrição (O que você faz?)", placeholder="Conte um pouco sobre sua experiência e serviços...")
-        
         st.markdown("---")
         st.write("📷 **Portfólio de Fotos** (Mostre seu trabalho)")
-        
         # Grid de fotos 2x2 para ficar bonito no form
         f_col1, f_col2 = st.columns(2)
         with f_col1:
@@ -196,13 +190,10 @@ with menu_abas[1]:
         with f_col2:
             f3_file = st.file_uploader("Foto 3 (Opcional)", type=['jpg', 'jpeg', 'png'], key="cad_f3")
             f4_file = st.file_uploader("Foto 4 (Opcional)", type=['jpg', 'jpeg', 'png'], key="cad_f4")
-
         submit = st.form_submit_button("🚀 FINALIZAR E GANHAR 10 GERALCONES")
-
         if submit:
             # 1. LIMPEZA E FORMATAÇÃO DO ID
             tel_id = re.sub(r'\D', '', telefone)
-            
             # --- REGRAS DE OURO (VALIDAÇÃO) ---
             if not nome or len(tel_id) < 10:
                 st.error("❌ Nome e WhatsApp válidos são obrigatórios!")
@@ -213,7 +204,6 @@ with menu_abas[1]:
                     with st.spinner("Validando Cadastro Único..."):
                         # 2. BLINDAGEM CONTRA DUPLICADOS
                         doc_ref = db.collection("profissionais").document(tel_id).get()
-                        
                         if doc_ref.exists:
                             st.warning(f"⚠️ Atenção! O número {tel_id} já está cadastrado no sistema.")
                             st.info("Use a aba de edição ou entre em contato com o suporte.")
@@ -223,7 +213,6 @@ with menu_abas[1]:
                             img2 = converter_img_b64(f2_file) if f2_file else ""
                             img3 = converter_img_b64(f3_file) if f3_file else ""
                             img4 = converter_img_b64(f4_file) if f4_file else ""
-
                             # 4. ESTRUTURA DE DADOS COM BÔNUS DE 10 GERALCONES
                             dados_prof = {
                                 "nome": nome.strip().upper(),
@@ -232,30 +221,30 @@ with menu_abas[1]:
                                 "descricao": descricao,
                                 "cidade": cidade.strip(),
                                 "senha": senha_acesso,
-                                "f1": img1, "f2": img2, "f3": img3, "f4": img4,
-                                "aprovado": False,  # Entra para análise do admin
+                                "f1": img1,
+                                "f2": img2,
+                                "f3": img3,
+                                "f4": img4,
+                                "aprovado": False, # Entra para análise do admin
                                 "verificado": False,
-                                "saldo": 10.0,      # <--- BÔNUS GERALCONES AQUI
-                                "lat": LAT_REF, 
+                                "saldo": 10.0, # <--- BÔNUS GERALCONES AQUI
+                                "lat": LAT_REF,
                                 "lon": LON_REF,
                                 "data_cadastro": datetime.now(pytz.timezone('America/Sao_Paulo')).strftime("%d/%m/%Y %H:%M")
                             }
-
                             # 5. SALVAMENTO FINAL
                             db.collection("profissionais").document(tel_id).set(dados_prof)
-                            
                             st.balloons()
                             st.success(f"🎊 PARABÉNS! {nome}, você ganhou 10 GeralCones!")
                             st.info("Seu perfil foi enviado para aprovação. Em breve você estará na vitrine!")
-                            
                 except Exception as e:
                     st.error(f"❌ Erro Técnico ao cadastrar: {e}")
-# ==============================================================================
-# ABA 3: MEU PERFIL (VITRINE LUXUOSA ESTILO INSTA)
-# ==============================================================================
+# ============================================================================== 
+# ABA 3: MEU PERFIL (VITRINE LUXUOSA ESTILO INSTA) 
+# ============================================================================== 
 with menu_abas[2]:
-    if 'auth' not in st.session_state: st.session_state.auth = False
-    
+    if 'auth' not in st.session_state:
+        st.session_state.auth = False
     if not st.session_state.auth:
         st.markdown("<h2 style='text-align:center;'>🔐 Portal do Parceiro</h2>", unsafe_allow_html=True)
         with st.container():
@@ -271,38 +260,35 @@ with menu_abas[2]:
                         st.rerun()
                     else:
                         st.error("❌ Credenciais inválidas.")
+                else:
+                    st.error("Por favor, preencha o WhatsApp e a Senha.")
     else:
         uid = st.session_state.user_id
         doc_ref = db.collection("profissionais").document(uid)
         d = doc_ref.get().to_dict()
-        
         # --- HEADER ESTILO INSTAGRAM ---
         st.markdown(f"""
-            <div style="display: flex; align-items: center; gap: 20px; padding: 20px; background: white; border-radius: 20px; border: 1px solid #E2E8F0; margin-bottom: 20px;">
-                <div style="position: relative;">
-                    <img src="data:image/png;base64,{d.get('foto_b64', '')}" 
-                         style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #E1306C;"
-                         onerror="this.src='https://ui-avatars.com/api/?name={d.get('nome')}&background=random'">
-                    <div style="position: absolute; bottom: 5px; right: 5px; background: #22C55E; width: 15px; height: 15px; border-radius: 50%; border: 2px solid white;"></div>
-                </div>
-                <div style="flex-grow: 1;">
-                    <h2 style="margin: 0; font-size: 22px;">{d.get('nome')}</h2>
-                    <p style="margin: 0; color: #64748B; font-size: 14px;">@{d.get('area').lower().replace(' ', '')}</p>
-                    <div style="display: flex; gap: 15px; margin-top: 10px;">
-                        <div style="text-align: center;"><b style="display: block;">{d.get('cliques', 0)}</b><small style="color: #64748B;">Cliques</small></div>
-                        <div style="text-align: center;"><b style="display: block;">⭐ {d.get('rating', 5.0)}</b><small style="color: #64748B;">Nota</small></div>
-                        <div style="text-align: center;"><b style="display: block;">{d.get('saldo', 0)}</b><small style="color: #64748B;">Moedas</small></div>
-                    </div>
+        <div style="display: flex; align-items: center; gap: 20px; padding: 20px; background: white; border-radius: 20px; border: 1px solid #E2E8F0; margin-bottom: 20px;">
+            <div style="position: relative;">
+                <img src="data:image/png;base64,{d.get('foto_b64', '')}" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #E1306C;" onerror="this.src='https://ui-avatars.com/api/?name={d.get('nome')}&background=random'">
+                <div style="position: absolute; bottom: 5px; right: 5px; background: #22C55E; width: 15px; height: 15px; border-radius: 50%; border: 2px solid white;"></div>
+            </div>
+            <div style="flex-grow: 1;">
+                <h2 style="margin: 0; font-size: 22px;">{d.get('nome')}</h2>
+                <p style="margin: 0; color: #64748B; font-size: 14px;">@{d.get('area').lower().replace(' ', '')}</p>
+                <div style="display: flex; gap: 15px; margin-top: 10px;">
+                    <div style="text-align: center;"><b style="display: block;">{d.get('cliques', 0)}</b><small style="color: #64748B;">Cliques</small></div>
+                    <div style="text-align: center;"><b style="display: block;">⭐ {d.get('rating', 5.0)}</b><small style="color: #64748B;">Nota</small></div>
+                    <div style="text-align: center;"><b style="display: block;">{d.get('saldo', 0)}</b><small style="color: #64748B;">Moedas</small></div>
                 </div>
             </div>
+        </div>
         """, unsafe_allow_html=True)
-
         # --- DASHBOARD DE PERFORMANCE (LUXUOSA) ---
         col_m1, col_m2, col_m3 = st.columns(3)
         col_m1.metric("Visibilidade", f"{d.get('cliques', 0)} rkt", "Aumento de 12%")
         col_m2.metric("Saldo Atual", f"{d.get('saldo', 0)} 🪙")
         col_m3.metric("Status Perfil", "Elite" if d.get('elite') else "Padrão")
-
         # --- LOJA DE DESTAQUES (GRID VISUAL) ---
         st.markdown("### 💎 Impulsione sua Vitrine")
         with st.container():
@@ -310,18 +296,16 @@ with menu_abas[2]:
             with c1:
                 st.markdown("<div style='background: linear-gradient(135deg, #FFD700, #FFA500); padding: 15px; border-radius: 15px; color: white; text-align: center;'><b>BRONZE</b><br>10 🪙<br>R$ 25</div>", unsafe_allow_html=True)
                 if st.button("Comprar 10", key="buy_10", use_container_width=True):
-                     st.markdown(f'<meta http-equiv="refresh" content="0;URL=https://wa.me/{ZAP_ADMIN}?text=Quero 10 moedas para ID: {uid}">', unsafe_allow_html=True)
+                    st.markdown(f'<meta http-equiv="refresh" content="0;URL=https://wa.me/{ZAP_ADMIN}?text=Quero 10 moedas para ID: {uid}">', unsafe_allow_html=True)
             with c2:
                 st.markdown("<div style='background: linear-gradient(135deg, #C0C0C0, #808080); padding: 15px; border-radius: 15px; color: white; text-align: center;'><b>PRATA</b><br>30 🪙<br>R$ 60</div>", unsafe_allow_html=True)
                 if st.button("Comprar 30", key="buy_30", use_container_width=True):
-                     st.markdown(f'<meta http-equiv="refresh" content="0;URL=https://wa.me/{ZAP_ADMIN}?text=Quero 30 moedas para ID: {uid}">', unsafe_allow_html=True)
+                    st.markdown(f'<meta http-equiv="refresh" content="0;URL=https://wa.me/{ZAP_ADMIN}?text=Quero 30 moedas para ID: {uid}">', unsafe_allow_html=True)
             with c3:
                 st.markdown("<div style='background: linear-gradient(135deg, #FFD700, #D4AF37); padding: 15px; border-radius: 15px; color: white; text-align: center;'><b>OURO</b><br>100 🪙<br>R$ 150</div>", unsafe_allow_html=True)
                 if st.button("Comprar 100", key="buy_100", use_container_width=True):
-                     st.markdown(f'<meta http-equiv="refresh" content="0;URL=https://wa.me/{ZAP_ADMIN}?text=Quero 100 moedas para ID: {uid}">', unsafe_allow_html=True)
-
+                    st.markdown(f'<meta http-equiv="refresh" content="0;URL=https://wa.me/{ZAP_ADMIN}?text=Quero 100 moedas para ID: {uid}">', unsafe_allow_html=True)
         st.divider()
-
         # --- EDIÇÃO DE DADOS (TURBINADA) ---
         with st.expander("⚙️ CONFIGURAÇÕES DA VITRINE", expanded=False):
             with st.form("edit_v2"):
@@ -329,58 +313,50 @@ with menu_abas[2]:
                 new_foto = st.file_uploader("Trocar Foto de Perfil", type=["jpg", "png", "jpeg"])
                 n_nome = st.text_input("Nome da Vitrine", value=d.get('nome'))
                 n_desc = st.text_area("Bio (O que você faz de melhor?)", value=d.get('descricao'))
-                
                 col_e1, col_e2 = st.columns(2)
                 n_area = col_e1.selectbox("Categoria", CATEGORIAS_OFICIAIS, index=CATEGORIAS_OFICIAIS.index(d.get('area', 'Ajudante Geral')))
                 n_tipo = col_e2.radio("Tipo", ["👤 Profissional", "🏢 Comércio/Loja"], index=0 if d.get('tipo') == "👤 Profissional" else 1, horizontal=True)
-
                 if st.form_submit_button("💾 ATUALIZAR MINHA VITRINE", use_container_width=True):
                     up = {
-                        "nome": n_nome, "area": n_area, "descricao": n_desc, "tipo": n_tipo
+                        "nome": n_nome,
+                        "area": n_area,
+                        "descricao": n_desc,
+                        "tipo": n_tipo
                     }
                     if new_foto:
                         up["foto_b64"] = converter_img_b64(new_foto)
-                    
                     doc_ref.update(up)
                     st.success("Vitrine atualizada! 🚀")
                     time.sleep(1)
                     st.rerun()
-
         if st.button("LOGOUT", type="secondary"):
             st.session_state.auth = False
             st.rerun()
-# ==============================================================================
-# ABA 4: 👑 PAINEL DE CONTROLE MASTER (TURBINADO)
-# ==============================================================================
+        # ============================================================================== 
+# ABA 4: 👑 PAINEL DE CONTROLE MASTER (TURBINADO) 
+# ============================================================================== 
 with menu_abas[3]:
     st.markdown("## 👑 Gestão Estratégica GeralJá")
-    
     access_adm = st.text_input("Chave Mestra", type="password", key="auth_master")
-
     if access_adm == CHAVE_ADMIN:
         # --- 1. DASHBOARD DE MÉTRICAS ---
         st.markdown("### 📊 Performance da Rede")
         todos_profs = list(db.collection("profissionais").stream())
-        
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("Profissionais", len(todos_profs))
-        
         # Cálculos rápidos
         total_cliques = sum([p.to_dict().get('cliques', 0) for p in todos_profs])
         saldo_total = sum([p.to_dict().get('saldo', 0) for p in todos_profs])
         pendentes = len([p for p in todos_profs if not p.to_dict().get('aprovado')])
-        
         m2.metric("Cliques Totais", total_cliques)
         m3.metric("Saldo em Circulação", f"{saldo_total} 💎")
         m4.metric("Aguardando Aprovação", pendentes, delta_color="inverse", delta=pendentes)
-
-        st.divider()# --- GERENCIADOR DE CATEGORIAS DINÂMICAS ---
+        st.divider()
+        # --- GERENCIADOR DE CATEGORIAS DINÂMICAS ---
         st.divider()
         st.markdown("### 🛠️ Configurações de Expansão")
         st.caption("Adicione novas opções que aparecerão instantaneamente no formulário de cadastro.")
-        
         col_adm_1, col_adm_2 = st.columns(2)
-        
         with col_adm_1:
             st.write("**✨ Novas Profissões (IA)**")
             nova_cat = st.text_input("Nome da Profissão", placeholder="Ex: Adestrador", key="add_cat_input")
@@ -394,7 +370,6 @@ with menu_abas[3]:
                         st.success(f"'{nova_cat}' agora faz parte do sistema!")
                         time.sleep(1)
                         st.rerun()
-
         with col_adm_2:
             st.write("**🏢 Novos Tipos de Negócio**")
             novo_tipo = st.text_input("Tipo de Comércio", placeholder="Ex: Food Truck", key="add_tipo_input")
@@ -408,17 +383,13 @@ with menu_abas[3]:
                         st.success(f"'{novo_tipo}' adicionado com sucesso!")
                         time.sleep(1)
                         st.rerun()
-
         # --- 2. LISTA DE GESTÃO ---
         st.markdown("### 📋 Gerenciar Profissionais")
-        
         for p_doc in todos_profs:
             p = p_doc.to_dict()
             pid = p_doc.id
-            
             with st.expander(f"{'✅' if p.get('aprovado') else '⏳'} {p.get('nome').upper()} - {p.get('area')}"):
                 c1, c2, c3 = st.columns([1, 2, 1])
-                
                 with c1:
                     # Foto de Perfil
                     foto = p.get('foto_b64')
@@ -426,12 +397,10 @@ with menu_abas[3]:
                         st.image(f"data:image/png;base64,{foto}", width=100)
                     st.write(f"ID: `{pid}`")
                     st.write(f"Saldo: **{p.get('saldo', 0)} 💎**")
-
                 with c2:
                     st.write(f"**Descrição:** {p.get('descricao')}")
                     st.write(f"**Tipo:** {p.get('tipo')}")
                     st.write(f"**Cliques:** {p.get('cliques', 0)}")
-                    
                     # Exibir as 3 fotos da vitrine se existirem
                     st.write("🖼️ **Vitrine:**")
                     fv = [p.get('f1'), p.get('f2'), p.get('f3')]
@@ -439,64 +408,44 @@ with menu_abas[3]:
                     for i, f_data in enumerate(fv):
                         if f_data:
                             cols_f[i].image(f"data:image/png;base64,{f_data}", use_container_width=True)
-
                 with c3:
                     st.write("⚡ **Ações Rápidas**")
-                    
                     # Aprovação
                     if not p.get('aprovado'):
                         if st.button("✅ APROVAR AGORA", key=f"apr_{pid}", use_container_width=True):
                             db.collection("profissionais").document(pid).update({"aprovado": True})
                             st.rerun()
-                    
                     # Verificado/Elite
                     is_ver = p.get('verificado', False)
                     label_ver = "💎 REMOVER ELITE" if is_ver else "🌟 TORNAR ELITE"
                     if st.button(label_ver, key=f"ver_{pid}", use_container_width=True):
                         db.collection("profissionais").document(pid).update({"verificado": not is_ver})
                         st.rerun()
-
                     # Adicionar Saldo (Pacote de 10)
                     if st.button("➕ ADD 10 SALDO", key=f"plus_{pid}", use_container_width=True):
                         db.collection("profissionais").document(pid).update({"saldo": p.get('saldo', 0) + 10})
                         st.rerun()
-
                     # Botão de Exclusão (Cuidado!)
                     if st.button("🗑️ EXCLUIR", key=f"del_{pid}", use_container_width=True):
                         db.collection("profissionais").document(pid).delete()
                         st.rerun()
-
     elif access_adm != "":
         st.error("🚫 Acesso negado. Chave incorreta.")
     else:
         st.info("Aguardando Chave Mestra para liberar os controles.")
-
-# ==============================================================================
-# ABA 5: FEEDBACK
-# ==============================================================================
+# ============================================================================== 
+# ABA 5: FEEDBACK 
+# ============================================================================== 
 with menu_abas[4]:
     st.header("⭐ Avalie a Plataforma")
     st.write("Sua opinião nos ajuda a melhorar.")
-    
     nota = st.slider("Nota", 1, 5, 5)
     comentario = st.text_area("O que podemos melhorar?")
-    
     if st.button("Enviar Feedback"):
         st.success("Obrigado! Sua mensagem foi enviada para nossa equipe.")
         # Em produção, salvaria em uma coleção 'feedbacks'
 
-# ------------------------------------------------------------------------------
-# FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
-# ------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------ 
+# FINALIZAÇÃO (DO ARQUIVO ORIGINAL) 
+# ------------------------------------------------------------------------------ 
 finalizar_e_alinhar_layout()
-
-
-
-
-
-
-
-
-
-
-
