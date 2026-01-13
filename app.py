@@ -289,19 +289,39 @@ with menu_abas[0]:
     with c_b2:
         raio_km = st.select_slider("Raio (KM)", options=[1, 5, 10, 20, 50, 100, 500], value=50)
 
-    # --------------------------------------------------------------------------
-    # 2. MOTOR DE BUSCA E IA
-    # --------------------------------------------------------------------------
-    if termo_busca:
-        # Aciona a IA para entender a intenção do usuário
-        cat_ia = processar_ia_blindada(termo_busca)
-        
-        try:
-            if cat_ia != "NAO_ENCONTRADO":
-                st.info(f"✨ IA GeralJá: Localizando especialistas em **{cat_ia}**")
-                # Busca filtrada por categoria mapeada pela IA
-                query = db.collection("prof
-                
+    # -------------------------------------------------------------------------- 
+# 2. MOTOR DE BUSCA E IA 
+# -------------------------------------------------------------------------- 
+if termo_busca:
+    # Aciona a IA para entender a intenção do usuário
+    cat_ia = processar_ia_blindada(termo_busca)
+    
+    try:
+        if cat_ia != "NAO_ENCONTRADO":
+            st.info(f"✨ IA GeralJá: Localizando especialistas em **{cat_ia}**")
+            
+            # Busca filtrada por categoria mapeada pela IA
+            query = db.collection("profissionais").where("area", "==", cat_ia)
+            
+            # Adicionar mais contexto à busca
+            if localizacao:
+                query = query.where("localizacao", "==", localizacao)
+            
+            # Executar a busca
+            resultados = query.stream()
+            
+            # Exibir os resultados
+            if resultados:
+                st.write("Resultados:")
+                for resultado in resultados:
+                    st.write(resultado.to_dict())
+            else:
+                st.write("Nenhum resultado encontrado.")
+        else:
+            st.write("Não foi possível entender a sua busca.")
+    except Exception as e:
+        st.write(f"Erro: {e}")
+              
 #============================================================================== 
 # ABA 2: 👤 MEU PAINEL (LOGIN PERSISTENTE + VITRINE DE FOTOS) 
 # ============================================================================== 
@@ -639,6 +659,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
