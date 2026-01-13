@@ -434,7 +434,6 @@ with menu_abas[0]:
                 db.collection("profissionais").document(pid).update({
                     "cliques": p.get('cliques', 0) + 1
                 })
-                
 # --------------------------------------------------------------------------
     # SUB-ABA: EDIÇÃO DO CADASTRO (COMPLETA)
     # --------------------------------------------------------------------------
@@ -533,8 +532,7 @@ with menu_abas[0]:
                         st.rerun()
 
                     except Exception as e:
-                        st.error(f"Erro ao atualizar: {e}")
-
+                        st.error(f"Erro ao atualizar: {e}")                
 # ==============================================================================
 # ABA 3: MEU PERFIL (VITRINE LUXUOSA ESTILO INSTA)
 # ==============================================================================
@@ -769,6 +767,7 @@ with menu_abas[4]:
     if st.button("Enviar Feedback"):
         st.success("Obrigado! Sua mensagem foi enviada para nossa equipe.")
         # Em produção, salvaria em uma coleção 'feedbacks'
+
 
 
 
