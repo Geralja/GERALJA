@@ -575,33 +575,129 @@ with menu_abas[2]:
 
         st.divider()
 
-        # --- EDIÇÃO DE DADOS (TURBINADA) ---
-        with st.expander("⚙️ CONFIGURAÇÕES DA VITRINE", expanded=False):
-            with st.form("edit_v2"):
-                st.markdown("#### ✨ Informações Públicas")
-                new_foto = st.file_uploader("Trocar Foto de Perfil", type=["jpg", "png", "jpeg"])
-                n_nome = st.text_input("Nome da Vitrine", value=d.get('nome'))
-                n_desc = st.text_area("Bio (O que você faz de melhor?)", value=d.get('descricao'))
+# --------------------------------------------------------------------------
+# SUB-ABA: EDIÇÃO DO CADASTRO (VERSÃO PREMIUM ROBUSTA - CORRIGIDA)
+# --------------------------------------------------------------------------
+
+with sub_aba_editar:
+    # O ERRO ESTAVA AQUI: Todo o conteúdo abaixo precisa de 4 espaços de recuo
+    st.markdown("### 🛠️ Gerenciar Minha Vitrine")
+    
+    # Sistema de Logout Caso esteja Logado
+    if 'editando_id' in st.session_state:
+        if st.button("🚪 Sair da Edição", key="btn_logout_edit"):
+            del st.session_state['editando_id']
+            st.rerun()
+
+    # ÁREA DE LOGIN
+    if 'editando_id' not in st.session_state:
+        with st.container(border=True):
+            st.markdown("#### 🔑 Login de Acesso")
+            login_tel = st.text_input("WhatsApp Cadastrado (Apenas números)", key="login_tel_edit")
+            login_senha = st.text_input("Senha de Acesso", type="password", key="login_pass_edit")
+            
+            if st.button("🔓 ACESSAR MEU PERFIL", key="btn_login_edit", use_container_width=True):
+                tel_clean = re.sub(r'\D', '', login_tel)
+                if not tel_clean or not login_senha:
+                    st.warning("⚠️ Preencha todos os campos.")
+                else:
+                    try:
+                        user_doc = db.collection("profissionais").document(tel_clean).get()
+                        if user_doc.exists:
+                            dados = user_doc.to_dict()
+                            if str(dados.get('senha')) == str(login_senha):
+                                st.session_state['editando_id'] = tel_clean
+                                st.success("✅ Acesso liberado!")
+                                time.sleep(0.5)
+                                st.rerun()
+                            else:
+                                st.error("❌ Senha incorreta!")
+                        else:
+                            st.error("❌ Profissional não encontrado!")
+                    except Exception as e:
+                        st.error(f"⚠️ Erro ao conectar ao banco: {e}")
+
+    # FORMULÁRIO DE EDIÇÃO
+    else:
+        pid = st.session_state['editando_id']
+        try:
+            doc_snapshot = db.collection("profissionais").document(pid).get()
+            if not doc_snapshot.exists:
+                st.error("Perfil não encontrado.")
+                del st.session_state['editando_id']
+                st.stop()
+            
+            d = doc_snapshot.to_dict()
+            
+            with st.form("form_edicao_final", clear_on_submit=False):
+                st.info(f"📍 Editando agora: **{d.get('nome')}**")
                 
                 col_e1, col_e2 = st.columns(2)
-                n_area = col_e1.selectbox("Categoria", CATEGORIAS_OFICIAIS, index=CATEGORIAS_OFICIAIS.index(d.get('area', 'Ajudante Geral')))
-                n_tipo = col_e2.radio("Tipo", ["👤 Profissional", "🏢 Comércio/Loja"], index=0 if d.get('tipo') == "👤 Profissional" else 1, horizontal=True)
-
-                if st.form_submit_button("💾 ATUALIZAR MINHA VITRINE", use_container_width=True):
-                    up = {
-                        "nome": n_nome, "area": n_area, "descricao": n_desc, "tipo": n_tipo
-                    }
-                    if new_foto:
-                        up["foto_b64"] = converter_img_b64(new_foto)
+                with col_e1:
+                    novo_nome = st.text_input("Nome/Empresa", value=d.get('nome'))
+                    novo_telefone = st.text_input("Alterar WhatsApp (ID)", value=d.get('telefone'))
+                with col_e2:
+                    idx_area = 0
+                    if d.get('area') in CATEGORIAS_OFICIAIS:
+                        idx_area = CATEGORIAS_OFICIAIS.index(d.get('area'))
                     
-                    doc_ref.update(up)
-                    st.success("Vitrine atualizada! 🚀")
-                    time.sleep(1)
-                    st.rerun()
+                    nova_area = st.selectbox("Especialidade", CATEGORIAS_OFICIAIS, index=idx_area)
+                    nova_senha = st.text_input("Senha de Acesso", value=d.get('senha'))
 
-        if st.button("LOGOUT", type="secondary"):
-            st.session_state.auth = False
-            st.rerun()
+                nova_desc = st.text_area("Descrição", value=d.get('descricao'), height=150)
+
+                st.markdown("---")
+                st.write("📷 **Atualizar Portfólio**")
+                fe1, fe2 = st.columns(2)
+                with fe1:
+                    up_f1 = st.file_uploader("Foto 1", type=['jpg', 'png', 'jpeg'], key="up_f1")
+                    up_f2 = st.file_uploader("Foto 2", type=['jpg', 'png', 'jpeg'], key="up_f2")
+                with fe2:
+                    up_f3 = st.file_uploader("Foto 3", type=['jpg', 'png', 'jpeg'], key="up_f3")
+                    up_f4 = st.file_uploader("Foto 4", type=['jpg', 'png', 'jpeg'], key="up_f4")
+
+                if st.form_submit_button("💾 SALVAR ALTERAÇÕES", use_container_width=True):
+                    with st.spinner("🚀 Salvando..."):
+                        try:
+                            # 1. Preparação
+                            atuais_limpas = {
+                                "nome": novo_nome.upper().strip(),
+                                "area": nova_area,
+                                "descricao": nova_desc.strip(),
+                                "senha": str(nova_senha),
+                                "telefone": re.sub(r'\D', '', novo_telefone)
+                            }
+
+                            # 2. Fotos
+                            for key, file in [("f1", up_f1), ("f2", up_f2), ("f3", up_f3), ("f4", up_f4)]:
+                                if file:
+                                    atuais_limpas[key] = IA_MESTRE.converter_img_b64(file)
+
+                            novo_id = atuais_limpas["telefone"]
+
+                            # 3. Migração de ID se o telefone mudar
+                            if novo_id != pid:
+                                if db.collection("profissionais").document(novo_id).get().exists:
+                                    st.error("❌ Este número já está em uso.")
+                                else:
+                                    dados_completos = d.copy()
+                                    dados_completos.update(atuais_limpas)
+                                    db.collection("profissionais").document(novo_id).set(dados_completos)
+                                    db.collection("profissionais").document(pid).delete()
+                                    st.session_state['editando_id'] = novo_id
+                                    st.success("✅ Perfil atualizado!")
+                                    time.sleep(1)
+                                    st.rerun()
+                            else:
+                                db.collection("profissionais").document(pid).update(atuais_limpas)
+                                st.success("✅ Dados atualizados!")
+                                time.sleep(1)
+                                st.rerun()
+
+                        except Exception as e:
+                            st.error(f"❌ Erro: {e}")
+        except Exception as e:
+            st.error(f"❌ Falha: {e}")
 # ==============================================================================
 # ABA 4: 👑 PAINEL DE CONTROLE MASTER (TURBINADO)
 # ==============================================================================
@@ -742,6 +838,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
