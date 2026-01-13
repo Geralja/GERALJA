@@ -270,71 +270,90 @@ if comando == "abracadabra":
 
 menu_abas = st.tabs(lista_abas)
 # ==============================================================================
-# --- ABA 1: BUSCA (SISTEMA GPS + RANKING ELITE + VITRINE) ---
+# --- ABA 1: VITRINE (SISTEMA DE BUSCA E RANKING DE ELITE) ---
 # ==============================================================================
 with menu_abas[0]:
-    st.markdown("### 🔍 Encontre Profissionais no GeralJá")
+    st.markdown("### 🔍 O que você procura hoje?")
     
-    # --- 1. MOTOR DE BUSCA (Sempre Visível) ---
-    c1, c2 = st.columns([3, 1])
-    with c1:
-        termo_busca = st.text_input("O que você precisa?", placeholder="Ex: Pedreiro, Mecânico, Pizza...", key="input_busca_elite")
-    with c2:
-        raio_km = st.select_slider("Raio (km)", options=[1, 5, 10, 50, 100, 500], value=50)
+    # --- INPUTS DE BUSCA ---
+    termo_busca = st.text_input("", placeholder="Digite: Pedreiro, Encanador, Pizza...", key="input_busca_direta")
+    
+    col_raio, col_info = st.columns([2, 1])
+    with col_raio:
+        raio_km = st.select_slider("Raio de distância (KM)", options=[1, 5, 10, 50, 100, 500], value=50, key="slider_vitrine")
+    with col_info:
+        st.write("") # Espaçador
+        if termo_busca:
+            st.caption(f"Filtrando no raio de {raio_km}km")
 
-    # --- 2. LÓGICA DE IA E FILTRAGEM ---
+    st.markdown("---")
+
+    # --- LÓGICA DE PROCESSAMENTO ---
     if termo_busca:
         try:
-            # Aciona a IA para entender a intenção
-            cat_ia = processar_ia_blindada(termo_busca)
+            # 1. IA DE MAPEAMENTO
+            try:
+                cat_ia = processar_ia_blindada(termo_busca)
+            except:
+                cat_ia = termo_busca.capitalize()
+
+            # 2. BUSCA NO FIREBASE (Apenas Aprovados)
+            profs_ref = db.collection("profissionais").where("aprovado", "==", True).stream()
             
-            # Feedback da IA
-            if cat_ia != "NAO_ENCONTRADO":
-                st.info(f"✨ IA: Buscando especialistas em **{cat_ia}**")
-                # Busca segura no Firebase
-                query = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
-            else:
-                st.warning("🤖 IA: Categoria não identificada. Buscando por termo aproximado...")
-                query = db.collection("profissionais").where("aprovado", "==", True).stream()
-
             lista_resultados = []
+            termo_min = cat_ia.lower()
 
-            # --- 3. PROCESSAMENTO DOS CARDS (SOMA DAS REGRAS) ---
-            for doc in query:
-                try:
-                    p = doc.to_dict()
-                    p['id'] = doc.id
-                    
-                    # Cálculo de Distância Blindado
-                    dist = calcular_distancia_real(LAT_REF, LON_REF, p.get('lat', LAT_REF), p.get('lon', LON_REF))
+            for doc in profs_ref:
+                p = doc.to_dict()
+                p['id'] = doc.id # O ID é o WhatsApp
+                
+                # Critérios de Busca (Área ou Nome)
+                area_p = str(p.get('area', '')).lower()
+                nome_p = str(p.get('nome', '')).lower()
+
+                if termo_min in area_p or termo_min in nome_p:
+                    # Cálculo de distância com proteção contra dados nulos
+                    lat_p = p.get('lat', LAT_REF)
+                    lon_p = p.get('lon', LON_REF)
+                    dist = calcular_distancia_real(LAT_REF, LON_REF, lat_p, lon_p)
                     
                     if dist <= raio_km:
                         p['dist'] = dist
-                        # Cálculo de Ranking (Elite + Saldo)
-                        score = (10000 if p.get('verificado') else 0) + (float(p.get('saldo', 0)) * 100)
-                        p['score_rank'] = score
+                        
+                        # --- CÁLCULO DE RANKING ELITE ---
+                        # Verificado ganha 10.000 pontos, cada GeralCone (saldo) ganha 100 pontos
+                        score = (10000 if p.get('verificado', False) else 0) + (float(p.get('saldo', 0)) * 100)
+                        p['ranking_score'] = score
+                        
                         lista_resultados.append(p)
-                except:
-                    continue
 
-            # Ordenação: Quem é Elite/Tem Saldo primeiro, depois os mais perto
-            lista_resultados.sort(key=lambda x: (-x['score_rank'], x['dist']))
+            # 3. EXIBIÇÃO ORGANIZADA
+            if lista_resultados:
+                # ORDENAÇÃO: 1º Score de Ranking (Maior), 2º Distância (Menor)
+                lista_resultados.sort(key=lambda x: (-x['ranking_score'], x['dist']))
 
-            # --- 4. EXIBIÇÃO DA VITRINE ---
-            if not lista_resultados:
-                st.error("❌ Nenhum profissional encontrado neste raio de busca.")
-            else:
+                st.subheader(f"📍 Profissionais de {cat_ia} encontrados:")
+                
                 for prof in lista_resultados:
-                    # Usa a função de card para renderizar o visual "foda"
-                    exibir_card_profissional(prof, prof['id'])
+                    # Tenta usar a função visual de card, se falhar mostra o básico blindado
+                    try:
+                        exibir_card_profissional(prof, prof['id'])
+                    except Exception as e:
+                        # Fallback de segurança caso a função de card dê erro
+                        with st.container():
+                            st.write(f"👤 **{prof.get('nome')}**")
+                            st.caption(f"⭐ Rank: {prof.get('ranking_score')} | 📍 {prof.get('dist'):.1f} km")
+                            st.write(f"📞 WhatsApp: {prof.get('id')}")
+                            st.write("---")
+            else:
+                st.warning(f"Nenhum profissional de '{cat_ia}' encontrado nesta região.")
 
         except Exception as e:
-            st.error(f"Erro ao carregar vitrine: {e}")
+            st.error(f"Erro no motor de busca: {e}")
     else:
-        # Tela de espera (quando não há busca)
-        st.write("---")
-        st.info("👆 Digite acima o serviço ou profissional que você deseja encontrar.")
-        st.image("https://img.freepik.com/vetores-premium/servicos-de-reparo-e-manutencao-de-casa-trabalhadores-profissionais-equipe-de-personagens-de-desenho-animado_165488-2965.jpg", use_container_width=True)
+        # TELA DE ESPERA LIMPA (Sem a imagem de 'alinhão')
+        st.info("💡 Digite uma profissão ou nome acima para ver os melhores da sua região.")
+        st.caption("Os profissionais Verificados e com saldo GeralCones aparecem primeiro no topo!")
                 
 # ==============================================================================
 # --- ABA 2: CADASTRO (BLINDAGEM DE DUPLICADOS + 4 FOTOS + BÔNUS) ---
@@ -660,6 +679,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
