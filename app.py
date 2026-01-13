@@ -345,7 +345,7 @@ with menu_abas[1]:
 # ==============================================================================
 # ABA 2: 📝 CADASTRO TURBINADO E BLINDADO
 # ==============================================================================
-with menu_abas[0]:
+with menu_abas[2]:
     st.header("🚀 Seja um Parceiro GeralJá")
     st.write("Cadastre seu serviço e seja encontrado por clientes próximos!")
     
@@ -650,6 +650,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
