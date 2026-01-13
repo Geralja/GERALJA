@@ -40,6 +40,7 @@ class MotorGeralJa:
         t_clean = MotorGeralJa.normalizar(termo)
         
 @staticmethod
+    
     def processar_intencao(termo):
         """
         Dicionário Mestre de Sinônimos com Normalização.
@@ -836,6 +837,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
