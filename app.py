@@ -433,87 +433,6 @@ with menu_abas[0]:
                 db.collection("profissionais").document(pid).update({
                     "cliques": p.get('cliques', 0) + 1
                 })
-                
-# ...
-# FORMULÁRIO DE EDIÇÃO (ROBUSTO)
-else:
-    pid = st.session_state['editando_id']
-    try:
-        # Busca sempre os dados mais frescos do banco
-        doc_snapshot = db.collection("profissionais").document(pid).get()
-        if not doc_snapshot.exists:
-            st.error("Perfil não encontrado no servidor.")
-            del st.session_state['editando_id']
-            st.stop()
-        d = doc_snapshot.to_dict()
-        with st.form("form_edicao_final", clear_on_submit=False):
-            st.info(f"📍 Editando agora: **{d.get('nome')}**")
-            col_e1, col_e2 = st.columns(2)
-            with col_e1:
-                novo_nome = st.text_input("Nome/Empresa", value=d.get('nome'))
-                novo_telefone = st.text_input("Alterar WhatsApp (ID)", value=d.get('telefone'), help="Se mudar o número, seu ID de login também mudará.")
-            with col_e2:
-                # Fallback seguro para especialidade caso a categoria tenha sido excluída
-                idx_area = 0
-                if d.get('area') in CATEGORIAS_OFICIAIS:
-                    idx_area = CATEGORIAS_OFICIAIS.index(d.get('area'))
-                nova_area = st.selectbox("Especialidade", CATEGORIAS_OFICIAIS, index=idx_area)
-                nova_senha = st.text_input("Senha de Acesso", value=d.get('senha'))
-                nova_desc = st.text_area("Descrição do Serviço", value=d.get('descricao'), height=150)
-            st.markdown("---")
-            st.write("📷 **Atualizar Portfólio Visual**")
-            st.caption("Apenas envie fotos novas se desejar substituir as atuais.")
-            fe1, fe2 = st.columns(2)
-            with fe1:
-                up_f1 = st.file_uploader("Trocar Foto 1 (Principal)", type=['jpg', 'png', 'jpeg'], key="up_f1")
-                up_f2 = st.file_uploader("Trocar Foto 2", type=['jpg', 'png', 'jpeg'], key="up_f2")
-            with fe2:
-                up_f3 = st.file_uploader("Trocar Foto 3", type=['jpg', 'png', 'jpeg'], key="up_f3")
-                up_f4 = st.file_uploader("Trocar Foto 4", type=['jpg', 'png', 'jpeg'], key="up_f4")
-            if st.form_submit_button("💾 SALVAR TODAS AS ALTERAÇÕES", use_container_width=True):
-                with st.spinner("🚀 Processando e otimizando dados..."):
-                    try:
-                        # 1. Preparação das Atualizações
-                        atualizacoes = {
-                            "nome": novo_nome.upper().strip(),
-                            "area": nova_area,
-                            "descricao": nova_desc.strip(),
-                            "senha": str(nova_senha),
-                            "telefone": re.sub(r'\\D', '', novo_telefone)
-                        }
-                        # 2. Processamento de Imagens com Validação
-                        for key, file in zip(["f1", "f2", "f3", "f4"], [up_f1, up_f2, up_f3, up_f4]):
-                            if file:
-                                atualizacoes[key] = IA_MESTRE.converter_img_b64(file)
-                        novo_id = atualizacoes["telefone"]
-                        # 3. Lógica de Migração (Se o Telefone mudar)
-                        if novo_id != pid:
-                            if not novo_id or len(novo_id) < 10:
-                                st.error("❌ O novo telefone inserido é inválido.")
-                                st.stop()
-                            if db.collection("profissionais").document(novo_id).get().exists:
-                                st.error("❌ Este novo telefone já está em uso por outra conta.")
-                            else:
-                                # Migração completa: Copia dados antigos + Novas atualizações
-                                dados_completos = d.copy()
-                                dados_completos.update(atualizacoes)
-                                # Grava o novo, deleta o velho (Transação manual simulada)
-                                db.collection("profissionais").document(novo_id).set(dados_completos)
-                                db.collection("profissionais").document(pid).delete()
-                                st.session_state['editando_id'] = novo_id
-                                st.success("✅ Perfil migrado para o novo número!")
-                                time.sleep(1)
-                                st.rerun()
-                        else:
-                            # Update simples
-                            db.collection("profissionais").document(pid).update(atualizacoes)
-                            st.success("✅ Informações atualizadas com sucesso!")
-                            time.sleep(1)
-                            st.rerun()
-                    except Exception as e:
-                        st.error(f"❌ Erro ao salvar alterações: {e}")
-    except Exception as e:
-        st.error(f"❌ Falha crítica ao carregar formulário: {e}")
 
 # ==============================================================================
 # ABA 3: MEU PERFIL (VITRINE LUXUOSA ESTILO INSTA)
@@ -754,6 +673,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
