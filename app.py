@@ -271,117 +271,36 @@ if comando == "abracadabra":
 menu_abas = st.tabs(lista_abas)
 
 # ==============================================================================
-# ABA 1: 🔍 VITRINE DE PROFISSIONAIS (COMPLETA)
+# ABA 1: 🔍 VITRINE DE PROFISSIONAIS (EDIÇÃO BLINDADA COM IA)
 # ==============================================================================
 with menu_abas[0]:
     st.markdown("### 🏙️ Encontre Profissionais Próximos")
     
-    # 1. BARRA DE BUSCA E FILTRO
+    # --------------------------------------------------------------------------
+    # 1. INTERFACE DE BUSCA
+    # --------------------------------------------------------------------------
     c_b1, c_b2 = st.columns([3, 1])
-    termo_busca = c_b1.text_input("O que você precisa hoje?", placeholder="Ex: Encanador, Pizza, Advogado...", key="main_search_final")
-    raio_km = c_b2.select_slider("Raio (KM)", options=[1, 5, 10, 20, 50, 100], value=20)
-    
-    # Definição de Cores para evitar erro de variável inexistente
-    card_bg = "#FFFFFF"
-    border_color = "#E2E8F0"
-    txt_color = "#1E293B"
+    with c_b1:
+        termo_busca = st.text_input(
+            "O que você precisa hoje?", 
+            placeholder="Ex: 'meu cano estourou', 'quero pizza', 'pintor'...", 
+            key="main_search_v3"
+        )
+    with c_b2:
+        raio_km = st.select_slider("Raio (KM)", options=[1, 5, 10, 20, 50, 100, 500], value=50)
 
-    # 2. LOGICA DE BUSCA
+    # --------------------------------------------------------------------------
+    # 2. MOTOR DE BUSCA E IA
+    # --------------------------------------------------------------------------
     if termo_busca:
+        # Aciona a IA para entender a intenção do usuário
+        cat_ia = processar_ia_blindada(termo_busca)
+        
         try:
-            # Tenta usar a IA para categorizar a busca
-            cat_ia = processar_ia_avancada(termo_busca) 
-            st.info(f"✨ IA GeralJá: Buscando por categorias relacionadas a **{cat_ia}**")
-        except:
-            cat_ia = termo_busca # Se a função de IA não existir, usa o termo direto
-        
-        # Busca no Firebase (Apenas ativos e da categoria)
-        profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
-        
-        lista_ranking = []
-
-        for p_doc in profs:
-            p = p_doc.to_dict()
-            p['id'] = p_doc.id 
-            
-            # Cálculo de Distância (Garanta que LAT_REF e LON_REF existam no seu código global)
-            # Se não tiver GPS, a distância será 0.0
-            try:
-                dist = calcular_distancia_real(LAT_REF, LON_REF, p.get('lat', 0), p.get('lon', 0))
-            except:
-                dist = 0.0
-            
-            if dist <= raio_km:
-                p['dist'] = dist
-                # Cálculo de Ranking (Elite primeiro)
-                score = 0
-                score += 5000 if p.get('verificado') else 0
-                score += (p.get('saldo', 0) * 20)
-                p['score_rank'] = score
-                lista_ranking.append(p)
-
-        # Ordenar por Score e depois por Distância
-        lista_ranking.sort(key=lambda x: (-x['score_rank'], x['dist']))
-
-        # 3. EXIBIÇÃO DA VITRINE
-        if not lista_ranking:
-            st.warning("Nenhum profissional encontrado nesta categoria dentro do raio selecionado.")
-        else:
-            for p in lista_ranking:
-                pid = p['id']
-                is_elite = p.get('verificado') and p.get('saldo', 0) > 0
-                cor_status = "#FFD700" if is_elite else "#0047AB"
-                
-                # Tratamento de Imagens (Evita que o src base64 quebre o HTML)
-                f1 = p.get('f1', '')
-                f2 = p.get('f2', '')
-                f3 = p.get('f3', '')
-
-                # HTML DO CARD (O segredo está no st.markdown com unsafe_allow_html=True)
-                st.markdown(f"""
-                <div style="background:{card_bg}; border-radius:20px; margin-bottom:25px; border:1px solid {border_color}; box-shadow:0 4px 12px rgba(0,0,0,0.08); overflow:hidden;">
-                    
-                    <div style="padding:8px 15px; background:#F8FAFC; border-bottom:1px solid #EDF2F7; display:flex; justify-content:space-between;">
-                        <span style="font-size:12px; font-weight:bold; color:#64748B;">📍 A {p['dist']:.1f} KM DE VOCÊ</span>
-                        <span style="font-size:12px; font-weight:bold; color:#D97706;">{"🏆 ELITE" if is_elite else ""}</span>
-                    </div>
-
-                    <div style="padding:15px; display:flex; align-items:center; gap:15px;">
-                        <img src="data:image/jpeg;base64,{f1}" style="width:55px; height:55px; border-radius:50%; object-fit:cover; border:2px solid {cor_status}; background:#EEE;">
-                        <div>
-                            <h4 style="margin:0; color:{txt_color};">{p.get('nome','').upper()} {"☑️" if p.get('verificado') else ""}</h4>
-                            <small style="color:{cor_status}; font-weight:bold;">{p.get('area','').upper()}</small>
-                        </div>
-                    </div>
-
-                    <div style="display:flex; gap:4px; height:180px; padding:0 10px;">
-                        <div style="flex:2;">
-                            <img src="data:image/jpeg;base64,{f1}" style="width:100%; height:100%; object-fit:cover; border-radius:10px 0 0 10px; background:#EEE;">
-                        </div>
-                        <div style="flex:1; display:flex; flex-direction:column; gap:4px;">
-                            <img src="data:image/jpeg;base64,{f2}" style="width:100%; height:50%; object-fit:cover; border-radius:0 10px 0 0; background:#EEE;" onerror="this.src='https://via.placeholder.com/150?text=Sem+Foto'">
-                            <img src="data:image/jpeg;base64,{f3}" style="width:100%; height:50%; object-fit:cover; border-radius:0 0 10px 0; background:#EEE;" onerror="this.src='https://via.placeholder.com/150?text=Sem+Foto'">
-                        </div>
-                    </div>
-
-                    <div style="padding:15px;">
-                        <p style="font-size:14px; color:#4A5568; margin:0;">{p.get('descricao', '')[:150]}...</p>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-
-                # BOTÃO DE AÇÃO (Fora do Markdown para funcionar o clique)
-                if st.button(f"🟢 FALAR COM {p.get('nome','').split()[0].upper()}", key=f"btn_{pid}", use_container_width=True):
-                    # Lógica de cobrança de saldo
-                    if p.get('saldo', 0) > 0:
-                        db.collection("profissionais").document(pid).update({"saldo": p.get('saldo') - 1})
-                    
-                    # Link do WhatsApp
-                    msg = "Olá, vi seu perfil no GeralJá e gostaria de um orçamento!"
-                    link = f"https://wa.me/55{pid}?text={msg.replace(' ', '%20')}"
-                    st.markdown(f'<meta http-equiv="refresh" content="0;URL={link}">', unsafe_allow_html=True)
-                
-                st.write("---")
+            if cat_ia != "NAO_ENCONTRADO":
+                st.info(f"✨ IA GeralJá: Localizando especialistas em **{cat_ia}**")
+                # Busca filtrada por categoria mapeada pela IA
+                query = db.collection("prof
                 
 #============================================================================== 
 # ABA 2: 👤 MEU PAINEL (LOGIN PERSISTENTE + VITRINE DE FOTOS) 
@@ -720,6 +639,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
