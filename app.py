@@ -401,60 +401,54 @@ with menu_abas[0]:
                 """, unsafe_allow_html=True)
                 
 # ==============================================================================
-# ABA 2: 👤 MEU PAINEL (COM TRAVA DE SEGURANÇA REFORÇADA)
+# ABA 2: 👤 MEU PAINEL (COM TRAVA DE SENHA)
 # ==============================================================================
-with menu_abas[1]:
+with menu_abas[1]: # Aqui ele usa a variável 'menu_abas' que criamos acima
     st.subheader("🛠️ Gerenciar meu Perfil")
     
-    # Seção de Login para acessar o Painel
+    # Campo de Entrada para Login
     col_l1, col_l2 = st.columns(2)
-    acesso_whatsapp = col_l1.text_input("Seu WhatsApp (Login)", placeholder="Apenas números", key="login_zap")
-    acesso_senha = col_l2.text_input("Sua Senha", type="password", key="login_pass")
+    acesso_whatsapp = col_l1.text_input("Seu WhatsApp (ID)", placeholder="Apenas números", key="zap_login")
+    acesso_senha = col_l2.text_input("Sua Senha", type="password", key="pass_login")
 
     if acesso_whatsapp and acesso_senha:
-        # Busca o profissional no Firebase
+        # Busca o profissional no banco pelo WhatsApp
         doc_ref = db.collection("profissionais").document(acesso_whatsapp).get()
         
         if doc_ref.exists:
             dados_p = doc_ref.to_dict()
-            # Puxa a senha gravada (converte para string para evitar erro de tipo)
             senha_no_banco = str(dados_p.get("senha", ""))
             
-            # --- VALIDAÇÃO DE ACESSO ---
+            # VERIFICAÇÃO DE SEGURANÇA
             if acesso_senha == senha_no_banco:
-                st.success(f"✅ Autenticado: {dados_p.get('nome')}")
+                st.success(f"✅ Bem-vindo, {dados_p.get('nome')}!")
                 
-                # Mantenha o saldo e status visíveis no topo do painel
-                c_s1, c_s2 = st.columns(2)
-                c_s1.metric("Meu Saldo", f"R$ {dados_p.get('saldo', 0):.2f}")
-                status_sel = "✅ Ativo" if dados_p.get("aprovado") else "⏳ Pendente"
-                c_s2.metric("Status", status_sel)
-
-                # --------------------------------------------------------------
-                # BLOCO DE EDIÇÃO (COLE O SEU CÓDIGO ORIGINAL AQUI DENTRO)
-                # --------------------------------------------------------------
-                with st.expander("📝 ALTERAR MEUS DADOS E FOTOS", expanded=True):
-                    st.warning("⚠️ Lembre-se de clicar em 'Salvar Alterações' no final.")
+                # --- AQUI VOCÊ COLA O SEU CÓDIGO DE EDIÇÃO QUE JÁ FUNCIONAVA ---
+                with st.expander("📝 Editar Meus Dados", expanded=True):
+                    # Exemplo de campos (Mantenha os seus originais aqui dentro)
+                    novo_nome = st.text_input("Nome Profissional", value=dados_p.get('nome'))
+                    nova_desc = st.text_area("Descrição", value=dados_p.get('descricao'))
                     
-                    # AQUI VOCÊ MANTÉM OS SEUS INPUTS ORIGINAIS:
-                    # nome = st.text_input("Nome", value=dados_p.get('nome'))
-                    # desc = st.text_area("Descrição", value=dados_p.get('descricao'))
-                    # area = st.selectbox("Categoria", options=LISTA_AREAS, index=...)
-                    # f1 = st.file_uploader("Foto 1", ...)
-                    
-                    st.info("Insira aqui todo o seu código de formulário de edição que já funcionava.")
-
-                # --------------------------------------------------------------
+                    if st.button("Salvar Alterações"):
+                        db.collection("profissionais").document(acesso_whatsapp).update({
+                            "nome": novo_nome,
+                            "descricao": nova_desc
+                        })
+                        st.success("Dados atualizados!")
+                        st.rerun()
+                
             else:
-                st.error("❌ Senha incorreta. Acesso negado.")
+                st.error("❌ Senha incorreta. Tente novamente.")
         else:
-            st.error("❌ Este WhatsApp não foi encontrado na nossa base.")
-    
-    # --- SEÇÃO DE NOVO CADASTRO (FICA FORA DO LOGIN) ---
+            st.warning("⚠️ Este WhatsApp não está cadastrado.")
+    else:
+        st.info("💡 Insira seu WhatsApp e Senha para acessar seu painel.")
+
+    # --- SEÇÃO DE NOVO CADASTRO (FORA DO LOGIN) ---
     st.divider()
     with st.expander("✨ Não tem conta? Cadastre-se agora!"):
-        st.write("Preencha os dados abaixo para criar sua vitrine.")
-        # Cole aqui o seu código de NOVO CADASTRO, garantindo que ele peça uma 'senha'
+        # Coloque aqui seu formulário de NOVO CADASTRO
+        st.write("Crie sua vitrine preenchendo os dados abaixo.")
 # ==============================================================================
 # ABA 3: MEU PERFIL (VITRINE LUXUOSA ESTILO INSTA)
 # ==============================================================================
@@ -694,6 +688,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
