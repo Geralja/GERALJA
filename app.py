@@ -1,7 +1,7 @@
 # ============================================================================== 
 # GERALJÁ: CRIANDO SOLUÇÕES - VERSÃO FINAL CORRIGIDA 
 # ============================================================================== 
-import streamlit as st
+import streamlit as st 
 import firebase_admin
 from firebase_admin import credentials, firestore
 import base64
@@ -162,7 +162,8 @@ IA_MESTRE = MotorGeralJa()
 #     st.stop()
 
 # --- FUNÇÕES DE SUPORTE (Mantenha fora de blocos IF/ELSE para funcionar no app todo) ---
-# def buscar_opcoes_dinamicas(documento, pad
+# def buscar_opcoes_dinamicas(documento, padrao):
+#     """ Busca listas de categorias ou tipos na cole
 # ==============================================================================
 # --- ABA 2: CADASTRO (BLINDAGEM DE DUPLICADOS + 4 FOTOS + BÔNUS) ---
 # ==============================================================================
@@ -488,6 +489,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
