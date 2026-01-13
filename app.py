@@ -346,29 +346,27 @@ menu_abas = st.tabs(lista_abas)
 with menu_abas[0]:
     st.markdown("### 🔍 O que você procura hoje?")
     
-    # --- INPUTS DE BUSCA ---
     termo_busca = st.text_input("", placeholder="Digite: Pedreiro, Encanador, Pizza...", key="input_busca_direta")
     
     col_raio, col_info = st.columns([2, 1])
     with col_raio:
         raio_km = st.select_slider("Raio de distância (KM)", options=[1, 5, 10, 50, 100, 500], value=50, key="slider_vitrine")
     with col_info:
-        st.write("") # Espaçador
+        st.write("") 
         if termo_busca:
             st.caption(f"📍 Buscando em {raio_km}km")
 
     st.markdown("---")
 
-    # --- LÓGICA DE PROCESSAMENTO ---
     if termo_busca:
         try:
-            # 1. IA DE MAPEAMENTO (BLINDADA)
+            # 1. IA DE MAPEAMENTO (Ajustado para o nome avançada)
             try:
-                cat_ia = processar_ia_blindada(termo_busca)
+                cat_ia = processar_ia_avancada(termo_busca)
             except:
                 cat_ia = termo_busca.capitalize()
 
-            # 2. BUSCA NO FIREBASE (Apenas Aprovados)
+            # 2. BUSCA NO FIREBASE
             profs_ref = db.collection("profissionais").where("aprovado", "==", True).stream()
             
             lista_resultados = []
@@ -378,15 +376,17 @@ with menu_abas[0]:
                 p = doc.to_dict()
                 p['id'] = doc.id 
                 
-                # Filtro de texto (Área ou Nome)
                 area_p = str(p.get('area', '')).lower()
                 nome_p = str(p.get('nome', '')).lower()
 
+                # Filtro inteligente: busca na área ou no nome
                 if termo_min in area_p or termo_min in nome_p:
-                    # Cálculo de distância blindado
-                    lat_p = p.get('lat', LAT_REF)
-                    lon_p = p.get('lon', LON_REF)
-                    dist = calcular_distancia_real(LAT_REF, LON_REF, lat_p, lon_p)
+                    # LOCALIZAÇÃO (Usando suas variáveis globais)
+                    lat_p = p.get('lat', LAT_PADRAO)
+                    lon_p = p.get('lon', LON_PADRAO)
+                    
+                    # Chama a sua função de cálculo
+                    dist = calcular_distancia(LAT_PADRAO, LON_PADRAO, lat_p, lon_p)
                     
                     if dist <= raio_km:
                         p['dist'] = dist
@@ -397,13 +397,13 @@ with menu_abas[0]:
 
             # 3. EXIBIÇÃO ORGANIZADA
             if lista_resultados:
-                # Ordenação de Luxo: Quem tem mais pontos no topo, depois os mais próximos
+                # ORDENAÇÃO: Score alto primeiro, depois os mais perto
                 lista_resultados.sort(key=lambda x: (-x['ranking_score'], x['dist']))
 
                 st.subheader(f"✨ Melhores especialistas em {cat_ia}:")
                 
                 for prof in lista_resultados:
-                    # CHAMADA DA FUNÇÃO DE LUXO
+                    # Usa a função de card bonitão que definimos
                     exibir_card_profissional(prof, prof['id'])
             else:
                 st.warning(f"❌ Nenhum profissional de '{cat_ia}' encontrado nesta região.")
@@ -411,37 +411,7 @@ with menu_abas[0]:
         except Exception as e:
             st.error(f"Erro no motor de busca: {e}")
     else:
-        # TELA DE ESPERA LIMPA
         st.info("👋 Digite o que você precisa para ver os profissionais de elite.")
-        st.caption("🚀 Profissionais Verificados e com saldo GeralCones aparecem no topo!")
-        # --- LÓGICA DE PROCESSAMENTO ---
-if termo_busca:
-    try:
-        # 1. IA DE MAPEAMENTO (Busca Inteligente)
-        try:
-            cat_ia = processar_ia_blindada(termo_busca)
-        except:
-            cat_ia = termo_busca.capitalize()
-
-        # 2. BUSCA NO FIREBASE
-        # Aqui você busca os profissionais que atendem a cat_ia ou o termo_busca
-        docs = db.collection("profissionais").where("area", "==", cat_ia).stream()
-        
-        encontrou = False
-        for doc in docs:
-            encontrou = True
-            p = doc.to_dict()
-            pid = doc.id
-            
-            # 3. EXIBIÇÃO DO CARD (Chama a função de luxo)
-            # Apenas chame a função, NÃO use st.write() antes dela
-            exibir_card_profissional(p, pid)
-
-        if not encontrou:
-            st.warning(f"Nenhum profissional encontrado para '{termo_busca}'.")
-
-    except Exception as e:
-        st.error(f"Erro no processamento: {e}")
                 
 # ==============================================================================
 # --- ABA 2: CADASTRO (BLINDAGEM DE DUPLICADOS + 4 FOTOS + BÔNUS) ---
@@ -767,4 +737,5 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
