@@ -167,35 +167,105 @@ with menu_abas[1]:
             })
             st.success("Cadastro enviado! Aguarde a aprovação do Admin.")
 
-# ABA 2: MEU PERFIL (EDIÇÃO E GESTÃO)
+# ==============================================================================
+# ABA 3: MEU PERFIL (VITRINE LUXUOSA ESTILO INSTA)
+# ==============================================================================
 with menu_abas[2]:
     if 'auth' not in st.session_state: st.session_state.auth = False
     
     if not st.session_state.auth:
-        az, ap = st.text_input("Seu WhatsApp"), st.text_input("Sua Senha", type="password")
-        if st.button("LOGAR NO PAINEL"):
-            u = db.collection("profissionais").document(az).get()
-            if u.exists and u.to_dict().get('senha') == ap:
-                st.session_state.auth, st.session_state.user_id = True, az
-                st.rerun()
-            else: st.error("🚫 Acesso negado. Verifique os dados.")
+        st.markdown("<h2 style='text-align:center;'>🔐 Portal do Parceiro</h2>", unsafe_allow_html=True)
+        with st.container():
+            l_zap = st.text_input("WhatsApp (ID)", key="login_zap")
+            l_pw = st.text_input("Senha", type="password", key="login_pw")
+            if st.button("ENTRAR NA MINHA VITRINE", use_container_width=True):
+                if l_zap:
+                    doc_ref = db.collection("profissionais").document(l_zap)
+                    doc = doc_ref.get()
+                    if doc.exists and doc.to_dict().get('senha') == l_pw:
+                        st.session_state.auth = True
+                        st.session_state.user_id = l_zap
+                        st.rerun()
+                    else:
+                        st.error("❌ Credenciais inválidas.")
     else:
-        p_ref = db.collection("profissionais").document(st.session_state.user_id)
-        p = p_ref.get().to_dict()
-        st.header(f"Bem-vindo, {p['nome']}!")
-        st.metric("Saldo Disponível", f"{p.get('saldo', 0)} 🪙")
+        uid = st.session_state.user_id
+        doc_ref = db.collection("profissionais").document(uid)
+        d = doc_ref.get().to_dict()
         
-        with st.expander("🛠️ EDITAR MEU PERFIL"):
-            n_nome = st.text_input("Nome Comercial", p['nome'])
-            n_bio = st.text_area("Descrição do Serviço", p.get('bio', ''))
-            if st.button("SALVAR DADOS"):
-                p_ref.update({"nome": n_nome, "bio": n_bio})
-                st.success("Atualizado!")
-        
-        if st.button("LOGOUT"):
+        # --- HEADER ESTILO INSTAGRAM ---
+        st.markdown(f"""
+            <div style="display: flex; align-items: center; gap: 20px; padding: 20px; background: white; border-radius: 20px; border: 1px solid #E2E8F0; margin-bottom: 20px;">
+                <div style="position: relative;">
+                    <img src="data:image/png;base64,{d.get('foto_b64', '')}" 
+                         style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #E1306C;"
+                         onerror="this.src='https://ui-avatars.com/api/?name={d.get('nome')}&background=random'">
+                    <div style="position: absolute; bottom: 5px; right: 5px; background: #22C55E; width: 15px; height: 15px; border-radius: 50%; border: 2px solid white;"></div>
+                </div>
+                <div style="flex-grow: 1;">
+                    <h2 style="margin: 0; font-size: 22px;">{d.get('nome')}</h2>
+                    <p style="margin: 0; color: #64748B; font-size: 14px;">@{d.get('area').lower().replace(' ', '')}</p>
+                    <div style="display: flex; gap: 15px; margin-top: 10px;">
+                        <div style="text-align: center;"><b style="display: block;">{d.get('cliques', 0)}</b><small style="color: #64748B;">Cliques</small></div>
+                        <div style="text-align: center;"><b style="display: block;">⭐ {d.get('rating', 5.0)}</b><small style="color: #64748B;">Nota</small></div>
+                        <div style="text-align: center;"><b style="display: block;">{d.get('saldo', 0)}</b><small style="color: #64748B;">Moedas</small></div>
+                    </div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+
+        # --- DASHBOARD DE PERFORMANCE (LUXUOSA) ---
+        col_m1, col_m2, col_m3 = st.columns(3)
+        col_m1.metric("Visibilidade", f"{d.get('cliques', 0)} rkt", "Aumento de 12%")
+        col_m2.metric("Saldo Atual", f"{d.get('saldo', 0)} 🪙")
+        col_m3.metric("Status Perfil", "Elite" if d.get('elite') else "Padrão")
+
+        # --- LOJA DE DESTAQUES (GRID VISUAL) ---
+        st.markdown("### 💎 Impulsione sua Vitrine")
+        with st.container():
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                st.markdown("<div style='background: linear-gradient(135deg, #FFD700, #FFA500); padding: 15px; border-radius: 15px; color: white; text-align: center;'><b>BRONZE</b><br>10 🪙<br>R$ 25</div>", unsafe_allow_html=True)
+                if st.button("Comprar 10", key="buy_10", use_container_width=True):
+                     st.markdown(f'<meta http-equiv="refresh" content="0;URL=https://wa.me/{ZAP_ADMIN}?text=Quero 10 moedas para ID: {uid}">', unsafe_allow_html=True)
+            with c2:
+                st.markdown("<div style='background: linear-gradient(135deg, #C0C0C0, #808080); padding: 15px; border-radius: 15px; color: white; text-align: center;'><b>PRATA</b><br>30 🪙<br>R$ 60</div>", unsafe_allow_html=True)
+                if st.button("Comprar 30", key="buy_30", use_container_width=True):
+                     st.markdown(f'<meta http-equiv="refresh" content="0;URL=https://wa.me/{ZAP_ADMIN}?text=Quero 30 moedas para ID: {uid}">', unsafe_allow_html=True)
+            with c3:
+                st.markdown("<div style='background: linear-gradient(135deg, #FFD700, #D4AF37); padding: 15px; border-radius: 15px; color: white; text-align: center;'><b>OURO</b><br>100 🪙<br>R$ 150</div>", unsafe_allow_html=True)
+                if st.button("Comprar 100", key="buy_100", use_container_width=True):
+                     st.markdown(f'<meta http-equiv="refresh" content="0;URL=https://wa.me/{ZAP_ADMIN}?text=Quero 100 moedas para ID: {uid}">', unsafe_allow_html=True)
+
+        st.divider()
+
+        # --- EDIÇÃO DE DADOS (TURBINADA) ---
+        with st.expander("⚙️ CONFIGURAÇÕES DA VITRINE", expanded=False):
+            with st.form("edit_v2"):
+                st.markdown("#### ✨ Informações Públicas")
+                new_foto = st.file_uploader("Trocar Foto de Perfil", type=["jpg", "png", "jpeg"])
+                n_nome = st.text_input("Nome da Vitrine", value=d.get('nome'))
+                n_desc = st.text_area("Bio (O que você faz de melhor?)", value=d.get('descricao'))
+                
+                col_e1, col_e2 = st.columns(2)
+                n_area = col_e1.selectbox("Categoria", CATEGORIAS_OFICIAIS, index=CATEGORIAS_OFICIAIS.index(d.get('area', 'Ajudante Geral')))
+                n_tipo = col_e2.radio("Tipo", ["👤 Profissional", "🏢 Comércio/Loja"], index=0 if d.get('tipo') == "👤 Profissional" else 1, horizontal=True)
+
+                if st.form_submit_button("💾 ATUALIZAR MINHA VITRINE", use_container_width=True):
+                    up = {
+                        "nome": n_nome, "area": n_area, "descricao": n_desc, "tipo": n_tipo
+                    }
+                    if new_foto:
+                        up["foto_b64"] = converter_img_b64(new_foto)
+                    
+                    doc_ref.update(up)
+                    st.success("Vitrine atualizada! 🚀")
+                    time.sleep(1)
+                    st.rerun()
+
+        if st.button("LOGOUT", type="secondary"):
             st.session_state.auth = False
             st.rerun()
-
 # ABA 3: ADMIN (TOTAL POWER)
 with menu_abas[3]:
     st.subheader("🔒 Terminal Supremo")
@@ -243,4 +313,5 @@ if len(menu_abas) > 5:
 
 # RODAPÉ
 st.markdown(f'<div style="text-align:center; padding:30px; color:#94A3B8; font-size:12px;">GERALJÁ v20.0 © {datetime.datetime.now().year}</div>', unsafe_allow_html=True)
+
 
