@@ -520,53 +520,49 @@ with menu_abas[1]:
                     except Exception as e:
                         st.error(f"❌ Erro ao cadastrar: {e}")
 
-
     # --------------------------------------------------------------------------
     # SUB-ABA: EDIÇÃO DO CADASTRO (A VOLTA DA EDIÇÃO)
     # --------------------------------------------------------------------------
-   # ...
-# Adicionando a opção de editar o cadastro
-st.markdown("---")
-st.write("⚙️ **Editar Cadastro**")
-with st.expander("Clique aqui para editar seu cadastro"):
-    with st.form("form_editar_cadastro", clear_on_submit=True):
-        # Carregar os dados atuais
-        doc_ref = db.collection("profissionais").document(tel_id).get()
-        dados = doc_ref.to_dict()
-        # Campos de edição
-        nome_edit = st.text_input("Nome Completo ou Empresa", value=dados['nome'])
-        telefone_edit = st.text_input("WhatsApp (DDD + Número)", value=dados['telefone'])
-        area_edit = st.selectbox("Sua Especialidade", CATEGORIAS_OFICIAIS, index=CATEGORIAS_OFICIAIS.index(dados['area']))
-        cidade_edit = st.text_input("Cidade / UF", value=dados['cidade'])
-        descricao_edit = st.text_area("Descrição (O que você faz?)", value=dados['descricao'])
-        # Fotos
-        f_col1, f_col2 = st.columns(2)
-        with f_col1:
-            f1_file = st.file_uploader("Foto 1 (Perfil/Principal)", type=['jpg', 'jpeg', 'png'], key="edit_f1")
-            f2_file = st.file_uploader("Foto 2 (Opcional)", type=['jpg', 'jpeg', 'png'], key="edit_f2")
-        with f_col2:
-            f3_file = st.file_uploader("Foto 3 (Opcional)", type=['jpg', 'jpeg', 'png'], key="edit_f3")
-            f4_file = st.file_uploader("Foto 4 (Opcional)", type=['jpg', 'jpeg', 'png'], key="edit_f4")
-        # Botão de salvar
-        if st.form_submit_button("Salvar Alterações"):
-            # Atualizar os dados
-            img1 = converter_img_b64(f1_file) if f1_file else dados['f1']
-            img2 = converter_img_b64(f2_file) if f2_file else dados.get('f2', '')
-            img3 = converter_img_b64(f3_file) if f3_file else dados.get('f3', '')
-            img4 = converter_img_b64(f4_file) if f4_file else dados.get('f4', '')
-            db.collection("profissionais").document(tel_id).update({
-                "nome": nome_edit,
-                "telefone": telefone_edit,
-                "area": area_edit,
-                "cidade": cidade_edit,
-                "descricao": descricao_edit,
-                "f1": img1,
-                "f2": img2,
-                "f3": img3,
-                "f4": img4
-            })
-            st.success("Cadastro atualizado com sucesso!")
-            st.rerun()
+    with sub_aba_editar:
+        st.markdown("#### 🔑 Login para Edição")
+        login_tel = st.text_input("WhatsApp Cadastrado", key="login_tel")
+        login_senha = st.text_input("Senha de Acesso", type="password", key="login_pass")
+        
+        if st.button("🔓 ACESSAR MEU PERFIL"):
+            tel_clean = re.sub(r'\D', '', login_tel)
+            user_doc = db.collection("profissionais").document(tel_clean).get()
+            
+            if user_doc.exists:
+                dados = user_doc.to_dict()
+                # 1. VALIDAÇÃO DA SENHA (DANDO ACESSO AGORA)
+                if str(dados.get('senha')) == login_senha:
+                    st.session_state['editando_id'] = tel_clean
+                    st.success("Acesso liberado! Altere seus dados abaixo:")
+                else:
+                    st.error("❌ Senha incorreta!")
+            else:
+                st.error("❌ Profissional não encontrado!")
+
+        # FORMULÁRIO DE EDIÇÃO (SÓ APARECE APÓS LOGIN)
+        if 'editando_id' in st.session_state:
+            pid = st.session_state['editando_id']
+            dados_atuais = db.collection("profissionais").document(pid).get().to_dict()
+            
+            with st.form("form_edicao"):
+                st.info(f"Editando Perfil: {dados_atuais.get('nome')}")
+                novo_nome = st.text_input("Nome", value=dados_atuais.get('nome'))
+                nova_area = st.selectbox("Especialidade", CATEGORIAS_OFICIAIS, index=CATEGORIAS_OFICIAIS.index(dados_atuais.get('area')) if dados_atuais.get('area') in CATEGORIAS_OFICIAIS else 0)
+                nova_desc = st.text_area("Descrição", value=dados_atuais.get('descricao'))
+                
+                if st.form_submit_button("💾 SALVAR ALTERAÇÕES"):
+                    db.collection("profissionais").document(pid).update({
+                        "nome": novo_nome.upper(),
+                        "area": nova_area,
+                        "descricao": nova_desc
+                    })
+                    st.success("✅ Perfil atualizado!")
+                    del st.session_state['editando_id'] # Fecha a edição após salvar
+                    st.rerun()
 # ==============================================================================
 # ABA 3: MEU PERFIL (VITRINE LUXUOSA ESTILO INSTA)
 # ==============================================================================
@@ -801,6 +797,7 @@ with menu_abas[4]:
     if st.button("Enviar Feedback"):
         st.success("Obrigado! Sua mensagem foi enviada para nossa equipe.")
         # Em produção, salvaria em uma coleção 'feedbacks'
+
 
 
 
