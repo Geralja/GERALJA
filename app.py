@@ -1,133 +1,168 @@
-import streamlit as st
-import firebase_admin
-from firebase_admin import credentials, firestore
-import base64
-import json
-import math
-import re
-import time
-import pandas as pd
-import unicodedata
-import pytz
-from datetime import datetime
+# ============================================================================== 
+# GERALJÁ: CRIANDO SOLUÇÕES - VERSÃO FINAL CORRIGIDA 
+# ============================================================================== 
+import streamlit as st 
+# import firebase_admin
+# from firebase_admin import credentials, firestore
+# import base64
+# import json
+# import math
+# import re
+# import time
+# import pandas as pd
+# import unicodedata
+# import pytz
+# from datetime import datetime
 
-# [1] CONFIGURAÇÃO DA PÁGINA
+# [2] CONFIGURAÇÃO INICIAL (Sempre antes de qualquer comando de UI)
 st.set_page_config(page_title="GeralJá v3.0", layout="wide")
-
-LAT_PADRAO = -23.5505 
+LAT_PADRAO = -23.5505
 LON_PADRAO = -46.6333
 
-# ==============================================================================
-# [2] MOTOR MESTRE GERALJÁ (O ÚNICO CÉREBRO)
-# ==============================================================================
+# [3] O MOTOR MESTRE
+# ============================================================================== 
+# MOTOR MESTRE GERALJÁ v3.0 - O ORQUESTRADOR FINAL 
+# ============================================================================== 
 class MotorGeralJa:
     @staticmethod
     def normalizar(texto):
-        if not texto: return ""
+        """Remove acentos e padroniza o texto (IA Utils)"""
+        if not texto:
+            return ""
         return "".join(c for c in unicodedata.normalize('NFD', str(texto)) 
-                       if unicodedata.category(c) != 'Mn').lower().strip()
+                      if unicodedata.category(c) != 'Mn').lower().strip()
 
     @staticmethod
     def processar_intencao(termo):
-        if not termo: return "NAO_ENCONTRADO"
+        """Versão turbinada que usa Normalização e Conceitos Expandidos"""
+        if not termo:
+            return "NAO_ENCONTRADO"
         t_clean = MotorGeralJa.normalizar(termo)
+        # MAPA EXPANDIDO: Mais palavras-chave para não perder nenhum cliente
         mapa = {
-            "Pintor": ["pint", "parede", "tinta", "grafite", "verniz", "massa"],
-            "Encanador": ["cano", "vazamento", "pia", "esgoto", "torneira", "hidraulico"],
-            "Eletricista": ["luz", "fio", "tomada", "disjuntor", "choque", "curto"],
-            "Mecânico": ["carro", "motor", "pneu", "freio", "revisao", "oleo", "oficina"],
-            "Alimentação": ["fome", "comida", "pizza", "lanche", "marmita", "restaurante"],
-            "Pedreiro": ["obra", "reforma", "cimento", "tijolo", "telhado", "piso", "constru"],
-            "Limpeza": ["faxina", "limpar", "casa", "diarista", "lavar"],
-            "Ar Condicionado": ["gelar", "ar", "climatiza", "split"],
-            "Marido de Aluguel": ["conserto", "montagem", "pendurar", "furo", "reparo"]
+            "Pintor": ["pint", "parede", "tinta", "grafite", "verniz", "massa corrida", "textura"],
+            "Encanador": ["cano", "vazamento", "pia", "esgoto", "torneira", "hidraulico", "caixa d'agua", "desentup"],
+            "Eletricista": ["luz", "fio", "tomada", "disjuntor", "choque", "curto", "padrao", "eletrica", "lampada"],
+            "Mecânico": ["carro", "motor", "pneu", "freio", "revisao", "oleo", "suspensao", "oficina", "alinhamento"],
+            "Alimentação": ["fome", "comida", "pizza", "lanche", "marmita", "restaurante", "doce", "salgado", "bolo"],
+            "Pedreiro": ["obra", "reforma", "cimento", "tijolo", "telhado", "piso", "azulejo", "alicerce", "constru"],
+            "Limpeza": ["faxina", "limpar", "casa", "diarista", "organiza", "lavar", "pos-obra"],
+            "Ar Condicionado": ["gelar", "ar", "climatiza", "split", "instalacao ar"],
+            "Marido de Aluguel": ["conserto", "montagem", "pendurar", "furo", "reparos gerais"]
         }
+        # Busca por radical (Pega "pintar", "pintura" e "pintor" apenas com "pint")
         for categoria, palavras in mapa.items():
             for p in palavras:
+                # Se o radical da palavra-chave estiver no termo buscado
                 if MotorGeralJa.normalizar(p) in t_clean:
                     return categoria
+        # Se não achar no mapa, tenta retornar o termo original para ver se bate com o banco
         return termo.capitalize()
 
     @staticmethod
     def calcular_distancia(lat1, lon1, lat2, lon2):
+        """Cálculo preciso com conversão de tipos e limpeza de erro"""
         try:
-            l1, o1, l2, o2 = float(lat1), float(lon1), float(lat2), float(lon2)
-            if l1 == 0 or l2 == 0: return 999.0
-            R = 6371
-            dlat, dlon = math.radians(l2-l1), math.radians(o2-o1)
-            a = math.sin(dlat/2)**2 + math.cos(math.radians(l1)) * math.cos(math.radians(l2)) * math.sin(dlon/2)**2
-            return round(R * (2 * math.atan2(math.sqrt(a), math.sqrt(1-a))), 1)
-        except: return 999.0
+            # Converte tudo para float caso venha como texto do banco/input
+            l1, o1 = float(lat1), float(lon1)
+            l2, o2 = float(lat2), float(lon2)
+            # Se for coordenada 0,0 provavelmente está errado, joga pra longe
+            if l1 == 0 or l2 == 0:
+                return 999.0
+            R = 6371 # Raio da Terra em KM
+            dlat = math.radians(l2 - l1)
+            dlon = math.radians(o2 - o1)
+            a = math.sin(dlat/2)**2 + math.cos(math.radians(l1)) * \
+                math.cos(math.radians(l2)) * math.sin(dlon/2)**2
+            c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+            return round(R * c, 1)
+        except (ValueError, TypeError, Exception):
+            # Se qualquer dado falhar, retorna 999km para o profissional ir pro fim da lista
+            return 999.0
 
     @staticmethod
     def renderizar_vitrine(p, pid):
-        # Lógica de fotos
-        fotos = []
-        for i in range(1, 5):
-            f = p.get(f'f{i}', '')
-            if len(str(f)) > 100: fotos.append(f"data:image/jpeg;base64,{f}")
-        
-        img_principal = fotos[0] if fotos else "https://via.placeholder.com/400"
+        """Design Luxo Blindado"""
+        foto = p.get('f1', '')
+        img = f"data:image/jpeg;base64,{foto}" if len(foto) > 100 else "https://via.placeholder.com/400"
         dist = p.get('dist', 0.0)
-        cor_borda = "#FFD700" if p.get('verificado') else "#E2E8F0"
-
         html = f"""
-        <div style="background:white; border-radius:20px; margin-bottom:20px; border:2px solid {cor_borda}; box-shadow:0 8px 20px rgba(0,0,0,0.08); overflow:hidden;">
-            <div style="padding:15px; display:flex; align-items:center; gap:12px;">
-                <div style="width:50px; height:50px; border-radius:50%; background:url('{img_principal}') center/cover; border:2px solid #FFD700;"></div>
+        <div style="border-radius:20px; padding:15px; background:white; box-shadow:0px 4px 15px rgba(0,0,0,0.1); margin-bottom:20px; border-left: 8px solid #FFD700;">
+            <div style="display:flex; align-items:center; gap:15px;">
+                <img src="{img}" style="width:70px; height:70px; border-radius:50%; object-fit:cover; border:2px solid #FFD700;">
                 <div>
-                    <h4 style="margin:0;">{p.get('nome', '').upper()} {'✅' if p.get('verificado') else ''}</h4>
-                    <small style="color:#FF4B4B; font-weight:bold;">📍 {dist:.1f} KM DE VOCÊ</small>
+                    <h3 style="margin:0; font-size:18px; color:#1A1C23;">{p.get('nome', 'Profissional').upper()} {'✅' if p.get('verificado') else ''}</h3>
+                    <span style="color:#FF4B4B; font-weight:bold; font-size:13px;">📍 a {dist:.1f} km de você</span>
                 </div>
             </div>
-            <div style="padding:15px; background:#F8FAFC;">
-                <p style="font-size:14px; color:#444;"><b>{p.get('area', 'Serviços')}</b>: {p.get('descricao', '')[:120]}...</p>
-            </div>
+            <p style="margin-top:10px; color:#555; font-size:14px;">{p.get('area', 'Geral')} • {p.get('descricao', '')[:110]}...</p>
         </div>
         """
         st.markdown(html, unsafe_allow_html=True)
-        if st.button(f"🟢 CONTATAR {p.get('nome', '').split()[0].upper()}", key=f"btn_{pid}"):
-            st.link_button("🚀 ABRIR WHATSAPP", f"https://wa.me/55{p.get('whatsapp', pid)}")
+        if st.button(f"Falar com {p.get('nome', '').split()[0]}", key=f"btn_{pid}", use_container_width=True):
+            st.link_button("🚀 Abrir WhatsApp", f"https://wa.me/55{p.get('whatsapp', pid)}")
 
+    @staticmethod
+    def finalizar_layout():
+        """O VARREDOR (Seu rodapé automático agora dentro do mestre)"""
+        st.write("---")
+        fechamento_estilo = """
+        <style>
+        .main .block-container {
+            padding-bottom: 5rem !important;
+        }
+        .footer-clean {
+            text-align: center;
+            padding: 20px;
+            opacity: 0.7;
+            font-size: 0.8rem;
+            width: 100%;
+            color: gray;
+        }
+        </style>
+        <div class="footer-clean">
+            <p>🎯 <b>GeralJá</b> - Sistema de Inteligência Local</p>
+            <p>v3.0 | © 2026 Todos os direitos reservados</p>
+        </div>
+        """
+        st.markdown(fechamento_estilo, unsafe_allow_html=True)
+
+# INSTANCIAÇÃO
 IA_MESTRE = MotorGeralJa()
 
-# ==============================================================================
-# [3] CONEXÃO FIREBASE
-# ==============================================================================
-@st.cache_resource
-def conectar():
-    if not firebase_admin._apps:
-        try:
-            if "FIREBASE_BASE64" in st.secrets:
-                decoded = base64.b64decode(st.secrets["FIREBASE_BASE64"]).decode("utf-8")
-                cred = credentials.Certificate(json.loads(decoded))
-                return firebase_admin.initialize_app(cred)
-        except Exception as e:
-            st.error(f"Erro Firebase: {e}"); st.stop()
-    return firebase_admin.get_app()
+# ------------------------------------------------------------------------------ 
+# 2. CAMADA DE PERSISTÊNCIA (FIREBASE) 
+# ------------------------------------------------------------------------------ 
+# @st.cache_resource
+# def conectar_banco_master():
+#     if not firebase_admin._apps:
+#         try:
+#             # Tenta pegar dos secrets do Streamlit
+#             if "FIREBASE_BASE64" in st.secrets:
+#                 b64_key = st.secrets["FIREBASE_BASE64"]
+#                 decoded_json = base64.b64decode(b64_key).decode("utf-8")
+#                 cred_dict = json.loads(decoded_json)
+#                 cred = credentials.Certificate(cred_dict)
+#                 return firebase_admin.initialize_app(cred)
+#             else:
+#                 # Fallback para desenvolvimento local (se houver arquivo json)
+#                 # cred = credentials.Certificate("serviceAccountKey.json")
+#                 # return firebase_admin.initialize_app(cred)
+#                 st.warning("⚠️ Configure a secret FIREBASE_BASE64 para conectar ao banco.")
+#                 return None
+#         except Exception as e:
+#             st.error(f"❌ FALHA NA INFRAESTRUTURA: {e}")
+#             st.stop()
+#     return firebase_admin.get_app()
+# app_engine = conectar_banco_master()
+# if app_engine:
+#     db = firestore.client()
+# else:
+#     st.error("Erro ao conectar ao Firebase. Verifique suas configurações.")
+#     st.stop()
 
-if conectar(): db = firestore.client()
-
-# ==============================================================================
-# [4] INTERFACE (BUSCA)
-# ==============================================================================
-st.markdown('<h1 style="text-align:center; color:#0047AB;">GERAL<span style="color:#FF8C00;">JÁ</span></h1>', unsafe_allow_html=True)
-abas = st.tabs(["🔍 BUSCAR", "🚀 CADASTRAR"])
-
-with abas[0]:
-    busca = st.text_input("O que você precisa?", placeholder="Ex: consertar vazamento")
-    if busca:
-        categoria = IA_MESTRE.processar_intencao(busca)
-        st.subheader(f"Resultados para: {categoria}")
-        
-        profs = db.collection("profissionais").where("aprovado", "==", True).stream()
-        for doc in profs:
-            p = doc.to_dict()
-            # O Motor faz o cálculo
-            p['dist'] = IA_MESTRE.calcular_distancia(LAT_PADRAO, LON_PADRAO, p.get('lat'), p.get('lon'))
-            # O Motor desenha o card
-            IA_MESTRE.renderizar_vitrine(p, doc.id)
-                
+# --- FUNÇÕES DE SUPORTE (Mantenha fora de blocos IF/ELSE para funcionar no app todo) ---
+# def buscar_opcoes_dinamicas(documento, pad
 # ==============================================================================
 # --- ABA 2: CADASTRO (BLINDAGEM DE DUPLICADOS + 4 FOTOS + BÔNUS) ---
 # ==============================================================================
@@ -452,6 +487,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
