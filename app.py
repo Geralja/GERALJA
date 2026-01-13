@@ -37,7 +37,22 @@ try:
     from streamlit_js_eval import streamlit_js_eval, get_geolocation
 except ImportError:
     pass
-
+def calcular_distancia(lat1, lon1, lat2, lon2):
+    """
+    Calcula a distância entre dois pontos (Haversine)
+    """
+    try:
+        if not all([lat1, lon1, lat2, lon2]):
+            return 999.0 # Se não tiver coord, joga pra longe
+        
+        R = 6371  # Raio da Terra em KM
+        dlat = math.radians(lat2 - lat1)
+        dlon = math.radians(lon2 - lon1)
+        a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+        return R * c
+    except:
+        return 999.0
 # ------------------------------------------------------------------------------
 # 1. CONFIGURAÇÃO DE AMBIENTE E PERFORMANCE
 # ------------------------------------------------------------------------------
@@ -751,6 +766,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
