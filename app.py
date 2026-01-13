@@ -1,254 +1,508 @@
-# ============================================================================== 
-# GERALJÁ: CRIANDO SOLUÇÕES - VERSÃO FINAL CORRIGIDA 
-# ============================================================================== 
+# ==============================================================================
+# GERALJÁ: CRIANDO SOLUÇÕES
+# ==============================================================================
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, firestore
 import base64
 import json
+import datetime
 import math
 import re
 import time
 import pandas as pd
 import unicodedata
-import pytz
 from datetime import datetime
+import pytz
 
-# [2] CONFIGURAÇÃO INICIAL (Sempre antes de qualquer comando de UI)
-st.set_page_config(page_title="GeralJá v3.0", layout="wide")
-LAT_PADRAO = -23.5505
-LON_PADRAO = -46.6333
+# Tenta importar bibliotecas extras do arquivo original, se não tiver, segue sem quebrar
+try:
+    from streamlit_js_eval import streamlit_js_eval, get_geolocation
+except ImportError:
+    pass
 
-# [3] O MOTOR MESTRE
-# ============================================================================== 
-# MOTOR MESTRE GERALJÁ v3.0 - O ORQUESTRADOR FINAL 
-# ============================================================================== 
-class MotorGeralJa:
-    @staticmethod
-    def normalizar(texto):
-        """Remove acentos e padroniza o texto (IA Utils)"""
-        if not texto:
-            return ""
-        return "".join(c for c in unicodedata.normalize('NFD', str(texto)) 
-                      if unicodedata.category(c) != 'Mn').lower().strip()
+# ------------------------------------------------------------------------------
+# 1. CONFIGURAÇÃO DE AMBIENTE E PERFORMANCE
+# ------------------------------------------------------------------------------
+st.set_page_config(
+    page_title="GeralJá | Criando Soluções",
+    page_icon="🇧🇷",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
 
-    @staticmethod
-    def processar_intencao(termo):
-        """Versão turbinada que usa Normalização e Conceitos Expandidos"""
-        if not termo:
-            return "NAO_ENCONTRADO"
-        t_clean = MotorGeralJa.normalizar(termo)
-        # MAPA EXPANDIDO: Mais palavras-chave para não perder nenhum cliente
-        mapa = {
-            "Pintor": ["pint", "parede", "tinta", "grafite", "verniz", "massa corrida", "textura"],
-            "Encanador": ["cano", "vazamento", "pia", "esgoto", "torneira", "hidraulico", "caixa d'agua", "desentup"],
-            "Eletricista": ["luz", "fio", "tomada", "disjuntor", "choque", "curto", "padrao", "eletrica", "lampada"],
-            "Mecânico": ["carro", "motor", "pneu", "freio", "revisao", "oleo", "suspensao", "oficina", "alinhamento"],
-            "Alimentação": ["fome", "comida", "pizza", "lanche", "marmita", "restaurante", "doce", "salgado", "bolo"],
-            "Pedreiro": ["obra", "reforma", "cimento", "tijolo", "telhado", "piso", "azulejo", "alicerce", "constru"],
-            "Limpeza": ["faxina", "limpar", "casa", "diarista", "organiza", "lavar", "pos-obra"],
-            "Ar Condicionado": ["gelar", "ar", "climatiza", "split", "instalacao ar"],
-            "Marido de Aluguel": ["conserto", "montagem", "pendurar", "furo", "reparos gerais"]
-        }
-        # Busca por radical (Pega "pintar", "pintura" e "pintor" apenas com "pint")
-        for categoria, palavras in mapa.items():
-            for p in palavras:
-                # Se o radical da palavra-chave estiver no termo buscado
-                if MotorGeralJa.normalizar(p) in t_clean:
-                    return categoria
-        # Se não achar no mapa, tenta retornar o termo original para ver se bate com o banco
-        return termo.capitalize()
+# --- FUNCIONALIDADE DO ARQUIVO: TEMA MANUAL ---
+if 'tema_claro' not in st.session_state:
+    st.session_state.tema_claro = False
 
-    @staticmethod
-    def calcular_distancia(lat1, lon1, lat2, lon2):
-        """Cálculo preciso com conversão de tipos e limpeza de erro"""
-        try:
-            # Converte tudo para float caso venha como texto do banco/input
-            l1, o1 = float(lat1), float(lon1)
-            l2, o2 = float(lat2), float(lon2)
-            # Se for coordenada 0,0 provavelmente está errado, joga pra longe
-            if l1 == 0 or l2 == 0:
-                return 999.0
-            R = 6371 # Raio da Terra em KM
-            dlat = math.radians(l2 - l1)
-            dlon = math.radians(o2 - o1)
-            a = math.sin(dlat/2)**2 + math.cos(math.radians(l1)) * \
-                math.cos(math.radians(l2)) * math.sin(dlon/2)**2
-            c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
-            return round(R * c, 1)
-        except (ValueError, TypeError, Exception):
-            # Se qualquer dado falhar, retorna 999km para o profissional ir pro fim da lista
-            return 999.0
+# --- GERENCIADOR DE TEMA (MODO NOITE LUXO) ---
+if 'modo_noite' not in st.session_state:
+    st.session_state.modo_noite = False
 
-    @staticmethod
-    def renderizar_vitrine(p, pid):
-        """Design Luxo Blindado"""
-        foto = p.get('f1', '')
-        img = f"data:image/jpeg;base64,{foto}" if len(foto) > 100 else "https://via.placeholder.com/400"
-        dist = p.get('dist', 0.0)
-        html = f"""
-        <div style="border-radius:20px; padding:15px; background:white; box-shadow:0px 4px 15px rgba(0,0,0,0.1); margin-bottom:20px; border-left: 8px solid #FFD700;">
-            <div style="display:flex; align-items:center; gap:15px;">
-                <img src="{img}" style="width:70px; height:70px; border-radius:50%; object-fit:cover; border:2px solid #FFD700;">
-                <div>
-                    <h3 style="margin:0; font-size:18px; color:#1A1C23;">{p.get('nome', 'Profissional').upper()} {'✅' if p.get('verificado') else ''}</h3>
-                    <span style="color:#FF4B4B; font-weight:bold; font-size:13px;">📍 a {dist:.1f} km de você</span>
-                </div>
-            </div>
-            <p style="margin-top:10px; color:#555; font-size:14px;">{p.get('area', 'Geral')} • {p.get('descricao', '')[:110]}...</p>
-        </div>
-        """
-        st.markdown(html, unsafe_allow_html=True)
-        if st.button(f"Falar com {p.get('nome', '').split()[0]}", key=f"btn_{pid}", use_container_width=True):
-            st.link_button("🚀 Abrir WhatsApp", f"https://wa.me/55{p.get('whatsapp', pid)}")
+# Botão discreto no topo
+col_theme, _ = st.columns([1, 10])
+with col_theme:
+    st.session_state.modo_noite = st.toggle("🌙 Modo Noite", value=st.session_state.modo_noite)
 
-    @staticmethod
-    def finalizar_layout():
-        """O VARREDOR (Seu rodapé automático agora dentro do mestre)"""
-        st.write("---")
-        fechamento_estilo = """
+if st.session_state.modo_noite:
+    st.markdown("""
         <style>
-        .main .block-container {
-            padding-bottom: 5rem !important;
-        }
-        .footer-clean {
-            text-align: center;
-            padding: 20px;
-            opacity: 0.7;
-            font-size: 0.8rem;
-            width: 100%;
-            color: gray;
-        }
+            /* Fundo Total Escuro */
+            .stApp, .stAppViewContainer, .stMain {
+                background-color: #0E1117 !important;
+            }
+            
+            /* Textos em Branco */
+            h1, h2, h3, h4, h5, h6, p, span, label, .stMarkdown, .stCaption {
+                color: #FFFFFF !important;
+            }
+
+            /* Cartões e Inputs Escuros com Borda Fina */
+            .stTextInput input, .stSelectbox div, .stTextArea textarea, .stNumberInput input {
+                background-color: #1A1C23 !important;
+                color: #FFFFFF !important;
+                border: 1px solid #30363D !important;
+            }
+
+            /* Abas (Tabs) */
+            button[data-baseweb="tab"] p {
+                color: #FFFFFF !important;
+            }
+            
+            /* Ajuste para os cards brancos da vitrine não "gritarem" no fundo preto */
+            div[style*="background: white"], div[style*="background: #FFFFFF"] {
+                background-color: #161B22 !important;
+                border: 1px solid #30363D !important;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
+# Mantém os menus escondidos
+st.markdown("""
+    <style>
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        header {visibility: hidden;}
+    </style>
+""", unsafe_allow_html=True)
+# ------------------------------------------------------------------------------
+# 2. CAMADA DE PERSISTÊNCIA (FIREBASE)
+# ------------------------------------------------------------------------------
+@st.cache_resource
+def conectar_banco_master():
+    if not firebase_admin._apps:
+        try:
+            # Tenta pegar dos secrets do Streamlit
+            if "FIREBASE_BASE64" in st.secrets:
+                b64_key = st.secrets["FIREBASE_BASE64"]
+                decoded_json = base64.b64decode(b64_key).decode("utf-8")
+                cred_dict = json.loads(decoded_json)
+                cred = credentials.Certificate(cred_dict)
+                return firebase_admin.initialize_app(cred)
+            else:
+                # Fallback para desenvolvimento local (se houver arquivo json)
+                # cred = credentials.Certificate("serviceAccountKey.json")
+                # return firebase_admin.initialize_app(cred)
+                st.warning("⚠️ Configure a secret FIREBASE_BASE64 para conectar ao banco.")
+                return None
+        except Exception as e:
+            st.error(f"❌ FALHA NA INFRAESTRUTURA: {e}")
+            st.stop()
+    return firebase_admin.get_app()
+
+app_engine = conectar_banco_master()
+
+if app_engine:
+    db = firestore.client()
+else:
+    st.error("Erro ao conectar ao Firebase. Verifique suas configurações.")
+    st.stop()
+
+# --- FUNÇÕES DE SUPORTE (Mantenha fora de blocos IF/ELSE para funcionar no app todo) ---
+
+def buscar_opcoes_dinamicas(documento, padrao):
+    """
+    Busca listas de categorias ou tipos na coleção 'configuracoes'.
+    """
+    try:
+        doc = db.collection("configuracoes").document(documento).get()
+        if doc.exists:
+            dados = doc.to_dict()
+            return dados.get("lista", padrao)
+        return padrao
+    except Exception as e:
+        # Se houver erro ou o banco estiver vazio, retorna a lista padrão
+        return padrao
+
+# --- PROSSEGUIR COM O RESTANTE DO CÓDIGO ---
+
+# ------------------------------------------------------------------------------
+# 3. POLÍTICAS E CONSTANTES
+# ------------------------------------------------------------------------------
+PIX_OFICIAL = "11991853488"
+ZAP_ADMIN = "5511991853488"
+CHAVE_ADMIN = "mumias"
+LAT_REF = -23.5505
+LON_REF = -46.6333
+
+CATEGORIAS_OFICIAIS = [
+    "Encanador", "Eletricista", "Pintor", "Pedreiro", "Gesseiro", "Telhadista", 
+    "Serralheiro", "Vidraceiro", "Marceneiro", "Marmoraria", "Calhas e Rufos", 
+    "Dedetização", "Desentupidora", "Piscineiro", "Jardineiro", "Limpeza de Estofados",
+    "Mecânico", "Borracheiro", "Guincho 24h", "Estética Automotiva", "Lava Jato", 
+    "Auto Elétrica", "Funilaria e Pintura", "Som e Alarme", "Moto Peças", "Auto Peças",
+    "Loja de Roupas", "Calçados", "Loja de Variedades", "Relojoaria", "Joalheria", 
+    "Ótica", "Armarinho/Aviamentos", "Papelaria", "Floricultura", "Bazar", 
+    "Material de Construção", "Tintas", "Madeireira", "Móveis", "Eletrodomésticos",
+    "Pizzaria", "Lanchonete", "Restaurante", "Confeitaria", "Padaria", "Açaí", 
+    "Sorveteria", "Adega", "Doceria", "Hortifruti", "Açougue", "Pastelaria", 
+    "Churrascaria", "Hamburgueria", "Comida Japonesa", "Cafeteria",
+    "Farmácia", "Barbearia/Salão", "Manicure/Pedicure", "Estética Facial", 
+    "Tatuagem/Piercing", "Fitness", "Academia", "Fisioterapia", "Odontologia", 
+    "Clínica Médica", "Psicologia", "Nutricionista", "TI", "Assistência Técnica", 
+    "Celulares", "Informática", "Refrigeração", "Técnico de Fogão", "Técnico de Lavadora", 
+    "Eletrônicos", "Chaveiro", "Montador", "Freteiro", "Carreto", "Motoboy/Entregas",
+    "Pet Shop", "Veterinário", "Banho e Tosa", "Adestrador", "Agropecuária",
+    "Aulas Particulares", "Escola Infantil", "Reforço Escolar", "Idiomas", 
+    "Advocacia", "Contabilidade", "Imobiliária", "Seguros", "Ajudante Geral", 
+    "Diarista", "Cuidador de Idosos", "Babá", "Outro (Personalizado)"
+]
+
+CONCEITOS_EXPANDIDOS = {
+    "pizza": "Pizzaria", "pizzaria": "Pizzaria", "fome": "Pizzaria", "massa": "Pizzaria",
+    "lanche": "Lanchonete", "hamburguer": "Lanchonete", "burger": "Lanchonete", "salgado": "Lanchonete",
+    "comida": "Restaurante", "almoco": "Restaurante", "marmita": "Restaurante", "jantar": "Restaurante",
+    "doce": "Confeitaria", "bolo": "Confeitaria", "pao": "Padaria", "padaria": "Padaria",
+    "acai": "Açaí", "sorvete": "Sorveteria", "cerveja": "Adega", "bebida": "Adega",
+    "roupa": "Loja de Roupas", "moda": "Loja de Roupas", "sapato": "Calçados", "tenis": "Calçados",
+    "presente": "Loja de Variedades", "relogio": "Relojoaria", "joia": "Joalheria",
+    "remedio": "Farmácia", "farmacia": "Farmácia", "cabelo": "Barbearia/Salão", "unha": "Barbearia/Salão",
+    "celular": "Assistência Técnica", "iphone": "Assistência Técnica", "computador": "TI", "pc": "TI",
+    "geladeira": "Refrigeração", "ar condicionado": "Refrigeração", "fogao": "Técnico de Fogão",
+    "tv": "Eletrônicos", "pet": "Pet Shop", "racao": "Pet Shop", "cachorro": "Pet Shop",
+    "vazamento": "Encanador", "cano": "Encanador", "curto": "Eletricista", "luz": "Eletricista",
+    "pintar": "Pintor", "parede": "Pintor", "reforma": "Pedreiro", "piso": "Pedreiro",
+    "telhado": "Telhadista", "solda": "Serralheiro", "vidro": "Vidraceiro", "chave": "Chaveiro",
+    "carro": "Mecânico", "motor": "Mecânico", "pneu": "Borracheiro", "guincho": "Guincho 24h",
+    "frete": "Freteiro", "mudanca": "Freteiro", "faxina": "Diarista", "limpeza": "Diarista",
+    "jardim": "Jardineiro", "piscina": "Piscineiro"
+}
+
+# ------------------------------------------------------------------------------
+# 4. MOTORES DE IA E UTILS
+# ------------------------------------------------------------------------------
+def normalizar_para_ia(texto):
+    if not texto: return ""
+    return "".join(c for c in unicodedata.normalize('NFD', str(texto)) 
+                   if unicodedata.category(c) != 'Mn').lower().strip()
+
+def processar_ia_avancada(texto):
+    if not texto: return "Vazio"
+    t_clean = normalizar_para_ia(texto)
+    for chave, categoria in CONCEITOS_EXPANDIDOS.items():
+        if re.search(rf"\b{normalizar_para_ia(chave)}\b", t_clean):
+            return categoria
+    for cat in CATEGORIAS_OFICIAIS:
+        if normalizar_para_ia(cat) in t_clean:
+            return cat
+    return "NAO_ENCONTRADO"
+
+def calcular_distancia_real(lat1, lon1, lat2, lon2):
+    try:
+        if None in [lat1, lon1, lat2, lon2]: return 999.0
+        R = 6371 
+        dlat, dlon = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
+        a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
+        return round(R * (2 * math.atan2(math.sqrt(a), math.sqrt(1-a))), 1)
+    except: return 999.0
+
+def converter_img_b64(file):
+    if file is None: return ""
+    try: return base64.b64encode(file.read()).decode()
+    except: return ""
+
+# --- FUNCIONALIDADE DO ARQUIVO: O VARREDOR (Rodapé Automático) ---
+def finalizar_e_alinhar_layout():
+    """
+    Esta função atua como um ímã. Puxa o conteúdo e limpa o rodapé.
+    """
+    st.write("---")
+    fechamento_estilo = """
+        <style>
+            .main .block-container { padding-bottom: 5rem !important; }
+            .footer-clean {
+                text-align: center;
+                padding: 20px;
+                opacity: 0.7;
+                font-size: 0.8rem;
+                width: 100%;
+                color: gray;
+            }
         </style>
         <div class="footer-clean">
             <p>🎯 <b>GeralJá</b> - Sistema de Inteligência Local</p>
+            <p>Conectando quem precisa com quem sabe fazer.</p>
             <p>v3.0 | © 2026 Todos os direitos reservados</p>
         </div>
-        """
-        st.markdown(fechamento_estilo, unsafe_allow_html=True)
+    """
+    st.markdown(fechamento_estilo, unsafe_allow_html=True)
 
-# INSTANCIAÇÃO
-IA_MESTRE = MotorGeralJa()
+# ------------------------------------------------------------------------------
+# 5. DESIGN SYSTEM
+# ------------------------------------------------------------------------------
+st.markdown("""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+    * { font-family: 'Inter', sans-serif; }
+    .stApp { background-color: #F8FAFC; }
+    .header-container { background: white; padding: 40px 20px; border-radius: 0 0 50px 50px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border-bottom: 8px solid #FF8C00; margin-bottom: 25px; }
+    .logo-azul { color: #0047AB; font-weight: 900; font-size: 50px; letter-spacing: -2px; }
+    .logo-laranja { color: #FF8C00; font-weight: 900; font-size: 50px; letter-spacing: -2px; }
+</style>
+""", unsafe_allow_html=True)
 
-# ------------------------------------------------------------------------------ 
-# 2. CAMADA DE PERSISTÊNCIA (FIREBASE) 
-# ------------------------------------------------------------------------------ 
-# @st.cache_resource
-# def conectar_banco_master():
-#     if not firebase_admin._apps:
-#         try:
-#             # Tenta pegar dos secrets do Streamlit
-#             if "FIREBASE_BASE64" in st.secrets:
-#                 b64_key = st.secrets["FIREBASE_BASE64"]
-#                 decoded_json = base64.b64decode(b64_key).decode("utf-8")
-#                 cred_dict = json.loads(decoded_json)
-#                 cred = credentials.Certificate(cred_dict)
-#                 return firebase_admin.initialize_app(cred)
-#             else:
-#                 # Fallback para desenvolvimento local (se houver arquivo json)
-#                 # cred = credentials.Certificate("serviceAccountKey.json")
-#                 # return firebase_admin.initialize_app(cred)
-#                 st.warning("⚠️ Configure a secret FIREBASE_BASE64 para conectar ao banco.")
-#                 return None
-#         except Exception as e:
-#             st.error(f"❌ FALHA NA INFRAESTRUTURA: {e}")
-#             st.stop()
-#     return firebase_admin.get_app()
-# app_engine = conectar_banco_master()
-# if app_engine:
-#     db = firestore.client()
-# else:
-#     st.error("Erro ao conectar ao Firebase. Verifique suas configurações.")
-#     st.stop()
+st.markdown('<div class="header-container"><span class="logo-azul">GERAL</span><span class="logo-laranja">JÁ</span><br><small style="color:#64748B; font-weight:700;">BRASIL ELITE EDITION</small></div>', unsafe_allow_html=True)
 
-# --- FUNÇÕES DE SUPORTE (Mantenha fora de blocos IF/ELSE para funcionar no app todo) ---
-# def buscar_opcoes_dinamicas(documento, pad
+lista_abas = ["🔍 BUSCAR", "🚀 CADASTRAR", "👤 MEU PERFIL", "👑 ADMIN", "⭐ FEEDBACK"]
+comando = st.sidebar.text_input("Comando Secreto", type="password")
+if comando == "abracadabra":
+    lista_abas.append("📊 FINANCEIRO")
+
+menu_abas = st.tabs(lista_abas)
 # ==============================================================================
-# --- ABA 2: CADASTRO (BLINDAGEM DE DUPLICADOS + 4 FOTOS + BÔNUS) ---
+# --- ABA 1: BUSCA (SISTEMA GPS + RANKING ELITE + VITRINE) ---
 # ==============================================================================
+with menu_abas[0]:
+    st.markdown("### 🏙️ O que você precisa?")
+    
+    # --- MOTOR DE LOCALIZAÇÃO EM TEMPO REAL ---
+    with st.expander("📍 Sua Localização (GPS)", expanded=False):
+        loc = get_geolocation()
+        if loc:
+            minha_lat = loc['coords']['latitude']
+            minha_lon = loc['coords']['longitude']
+            st.success(f"Localização detectada!")
+        else:
+            minha_lat = LAT_REF
+            minha_lon = LON_REF
+            st.warning("GPS desativado. Usando localização padrão (SP).")
 
-with menu_abas[1]:
-    st.markdown("### 🚀 Cadastro de Profissional Elite")
-    st.info("🎁 BÔNUS: Novos cadastros ganham **10 GeralCones** de saldo inicial!")
-
-    with st.form("form_cadastro_blindado_v4", clear_on_submit=True):
-        col1, col2 = st.columns(2)
-        with col1:
-            nome = st.text_input("Nome Completo ou Empresa", placeholder="Ex: João Silva Pinturas")
-            telefone = st.text_input("WhatsApp (DDD + Número)", help="Apenas números. Ex: 11999998888")
-            area = st.selectbox("Sua Especialidade", CATEGORIAS_OFICIAIS)
+    c1, c2 = st.columns([3, 1])
+    termo_busca = c1.text_input("Ex: 'Cano estourado' ou 'Pizza'", key="main_search")
+    raio_km = c2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 20, 50, 100, 500, 2000], value=10)
+    
+    if termo_busca:
+        # Processamento via IA para identificar a categoria
+        cat_ia = processar_ia_avancada(termo_busca)
+        st.info(f"✨ IA: Buscando por **{cat_ia}** próximo a você")
         
-        with col2:
-            cidade = st.text_input("Cidade / UF", placeholder="Ex: São Paulo / SP")
-            senha_acesso = st.text_input("Crie uma Senha", type="password", help="Para editar seu perfil no futuro")
-
-        descricao = st.text_area("Descrição (O que você faz?)", placeholder="Conte um pouco sobre sua experiência e serviços...")
+        # Lógica de Horário em tempo real
+        from datetime import datetime
+        import pytz
+        import re
+        from urllib.parse import quote
         
-        st.markdown("---")
-        st.write("📷 **Portfólio de Fotos** (Mostre seu trabalho)")
+        fuso = pytz.timezone('America/Sao_Paulo')
+        hora_atual = datetime.now(fuso).strftime('%H:%M')
+
+        # Busca no Firebase (Filtra apenas aprovados e da categoria certa)
+        profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
         
-        # Grid de fotos 2x2 para ficar bonito no form
-        f_col1, f_col2 = st.columns(2)
-        with f_col1:
-            f1_file = st.file_uploader("Foto 1 (Perfil/Principal)", type=['jpg', 'jpeg', 'png'], key="cad_f1")
-            f2_file = st.file_uploader("Foto 2 (Opcional)", type=['jpg', 'jpeg', 'png'], key="cad_f2")
-        with f_col2:
-            f3_file = st.file_uploader("Foto 3 (Opcional)", type=['jpg', 'jpeg', 'png'], key="cad_f3")
-            f4_file = st.file_uploader("Foto 4 (Opcional)", type=['jpg', 'jpeg', 'png'], key="cad_f4")
-
-        submit = st.form_submit_button("🚀 FINALIZAR E GANHAR 10 GERALCONES")
-
-        if submit:
-            # 1. LIMPEZA E FORMATAÇÃO DO ID
-            tel_id = re.sub(r'\D', '', telefone)
+        lista_ranking = []
+        for p_doc in profs:
+            p = p_doc.to_dict()
+            p['id'] = p_doc.id
             
-            # --- REGRAS DE OURO (VALIDAÇÃO) ---
-            if not nome or len(tel_id) < 10:
-                st.error("❌ Nome e WhatsApp válidos são obrigatórios!")
-            elif not f1_file:
-                st.error("❌ Envie pelo menos a Foto Principal para atrair clientes!")
-            else:
-                try:
-                    with st.spinner("Validando Cadastro Único..."):
-                        # 2. BLINDAGEM CONTRA DUPLICADOS
-                        doc_ref = db.collection("profissionais").document(tel_id).get()
+            # CALCULA DISTÂNCIA REAL (GPS vs Profissional)
+            dist = calcular_distancia_real(minha_lat, minha_lon, p.get('lat', LAT_REF), p.get('lon', LON_REF))
+            
+            if dist <= raio_km:
+                p['dist'] = dist
+                # MOTOR DE SCORE ELITE (Ranking)
+                score = 0
+                score += 500 if p.get('verificado', False) else 0
+                score += (p.get('saldo', 0) * 10)
+                score += (p.get('rating', 5) * 20)
+                p['score_elite'] = score
+                lista_ranking.append(p)
+
+        # Ordenação: Elite primeiro (maior score), depois os mais próximos (menor distância)
+        lista_ranking.sort(key=lambda x: (-x['score_elite'], x['dist']))
+
+        if not lista_ranking:
+            st.markdown(f"""
+            <div style="background-color: #FFF4E5; padding: 20px; border-radius: 15px; border-left: 5px solid #FF8C00;">
+                <h3 style="color: #856404;">🔍 Essa profissão ainda não foi preenchida nesta região.</h3>
+                <p style="color: #856404;">Compartilhe o <b>GeralJá</b> e ajude a crescer sua rede local!</p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            link_share = "https://wa.me/?text=Ei!%20Procurei%20um%20serviço%20no%20GeralJá%20e%20vi%20que%20ainda%20temos%20vagas!%20Cadastre-se:%20https://geralja.streamlit.app"
+            st.markdown(f'<a href="{link_share}" target="_blank" style="text-decoration:none;"><div style="background:#22C55E; color:white; padding:15px; border-radius:10px; text-align:center; font-weight:bold; margin-top:10px;">📲 COMPARTILHAR NO WHATSAPP</div></a>', unsafe_allow_html=True)
+        
+        else:
+            # --- RENDERIZAÇÃO DOS CARDS (LOOP) ---
+            for p in lista_ranking:
+                pid = p['id']
+                is_elite = p.get('verificado') and p.get('saldo', 0) > 0
+                
+                with st.container():
+                    # Cores dinâmicas baseadas no tipo de conta
+                    cor_borda = "#FFD700" if is_elite else ("#FF8C00" if p.get('tipo') == "🏢 Comércio/Loja" else "#0047AB")
+                    bg_card = "#FFFDF5" if is_elite else "#FFFFFF"
+                    
+                    st.markdown(f"""
+                    <div style="border-left: 8px solid {cor_borda}; padding: 15px; background: {bg_card}; border-radius: 15px; margin-bottom: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                        <span style="font-size: 12px; color: gray; font-weight: bold;">📍 a {p['dist']:.1f} km de você {" | 🏆 DESTAQUE" if is_elite else ""}</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    col_img, col_txt = st.columns([1, 4])
+                    with col_img:
+                        foto = p.get('foto_url', 'https://via.placeholder.com/150')
+                        st.markdown(f'<img src="{foto}" style="width:75px; height:75px; border-radius:50%; object-fit:cover; border:3px solid {cor_borda}">', unsafe_allow_html=True)
+                    
+                    with col_txt:
+                        nome_exibicao = p.get('nome', '').upper()
+                        if p.get('verificado', False): nome_exibicao += " <span style='color:#1DA1F2;'>☑️</span>"
                         
-                        if doc_ref.exists:
-                            st.warning(f"⚠️ Atenção! O número {tel_id} já está cadastrado no sistema.")
-                            st.info("Use a aba de edição ou entre em contato com o suporte.")
-                        else:
-                            # 3. CONVERSÃO DE IMAGENS (SOMA DA FOTO 4)
-                            img1 = converter_img_b64(f1_file)
-                            img2 = converter_img_b64(f2_file) if f2_file else ""
-                            img3 = converter_img_b64(f3_file) if f3_file else ""
-                            img4 = converter_img_b64(f4_file) if f4_file else ""
+                        status_loja = ""
+                        if p.get('tipo') == "🏢 Comércio/Loja":
+                            h_ab, h_fe = p.get('h_abre', '08:00'), p.get('h_fecha', '18:00')
+                            status_loja = " 🟢 <b style='color:green;'>ABERTO</b>" if h_ab <= hora_atual <= h_fe else " 🔴 <b style='color:red;'>FECHADO</b>"
+                        
+                        st.markdown(f"**{nome_exibicao}** {status_loja}", unsafe_allow_html=True)
+                        st.caption(f"{p.get('descricao', '')[:120]}...")
 
-                            # 4. ESTRUTURA DE DADOS COM BÔNUS DE 10 GERALCONES
-                            dados_prof = {
-                                "nome": nome.strip().upper(),
-                                "telefone": tel_id,
-                                "area": area,
-                                "descricao": descricao,
-                                "cidade": cidade.strip(),
-                                "senha": senha_acesso,
-                                "f1": img1, "f2": img2, "f3": img3, "f4": img4,
-                                "aprovado": False,  # Entra para análise do admin
-                                "verificado": False,
-                                "saldo": 10.0,      # <--- BÔNUS GERALCONES AQUI
-                                "lat": LAT_REF, 
-                                "lon": LON_REF,
-                                "data_cadastro": datetime.now(pytz.timezone('America/Sao_Paulo')).strftime("%d/%m/%Y %H:%M")
-                            }
+                    # Vitrine de Fotos do Portfólio
+                    if p.get('portfolio_imgs'):
+                        cols_v = st.columns(3)
+                        for i, img_b64 in enumerate(p.get('portfolio_imgs')[:3]):
+                            cols_v[i].image(img_b64, use_container_width=True)
 
-                            # 5. SALVAMENTO FINAL
-                            db.collection("profissionais").document(tel_id).set(dados_prof)
-                            
-                            st.balloons()
-                            st.success(f"🎊 PARABÉNS! {nome}, você ganhou 10 GeralCones!")
-                            st.info("Seu perfil foi enviado para aprovação. Em breve você estará na vitrine!")
-                            
-                except Exception as e:
-                    st.error(f"❌ Erro Técnico ao cadastrar: {e}")
+                    # --- LÓGICA DO BOTÃO DE WHATSAPP (AQUI DENTRO DO LOOP) ---
+                    nome_curto = p.get('nome', 'Profissional').split()[0].upper()
+                    
+                    # Limpeza do número de telefone (ID do documento)
+                    numero_limpo = re.sub(r'\D', '', str(pid))
+                    if not numero_limpo.startswith('55'):
+                        numero_limpo = f"55{numero_limpo}"
+                    
+                    texto_zap = quote(f"Olá {p.get('nome')}, vi seu perfil no GeralJá!")
+                    link_final = f"https://wa.me/{numero_limpo}?text={texto_zap}"
+
+                    # --- BOTÃO ÚNICO (VISUAL TOP + ABRE SEMPRE) ---
+                    import re
+                    from urllib.parse import quote
+                    
+                    # 1. Preparação dos dados
+                    num_limpo = re.sub(r'\D', '', str(pid))
+                    if not num_limpo.startswith('55'): num_limpo = f"55{num_limpo}"
+                    texto_zap = quote(f"Olá {p.get('nome')}, vi seu perfil no GeralJá!")
+                    link_final = f"https://wa.me/{num_limpo}?text={texto_zap}"
+                    nome_btn = p.get('nome', 'Profissional').split()[0].upper()
+                    
+                    # 2. BOTÃO HTML (Ocupa o lugar do st.button)
+                    # Este botão abre o WhatsApp instantaneamente e não é bloqueado
+                    st.markdown(f"""
+                        <a href="{link_final}" target="_blank" style="text-decoration: none;">
+                            <div style="
+                                background-color: #25D366;
+                                color: white;
+                                padding: 15px;
+                                border-radius: 12px;
+                                text-align: center;
+                                font-weight: bold;
+                                font-size: 18px;
+                                box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+                                transition: 0.3s;
+                                cursor: pointer;
+                                margin-top: 10px;
+                            ">
+                                💬 FALAR COM {nome_btn}
+                            </div>
+                        </a>
+                    """, unsafe_allow_html=True)
+                    
+                    # 3. LÓGICA DE DÉBITO E SEGURANÇA
+                # Verifica se tem saldo antes de processar
+                if p.get('saldo', 0) <= 0:
+                    continue  # <--- AGORA ESTÁ DENTRO DO IF (4 espaços)
+
+                # Se passou pelo if acima, registra o clique/visualização
+                db.collection("profissionais").document(pid).update({
+                    "cliques": p.get('cliques', 0) + 1
+                })
+                
+# ==============================================================================
+# ABA 2: 📝 CADASTRO TURBINADO E BLINDADO
+# ==============================================================================
+with menu_abas[1]:
+    st.header("🚀 Seja um Parceiro GeralJá")
+    st.write("Cadastre seu serviço e seja encontrado por clientes próximos!")
+    
+    # Função interna para usar a chave que você salvou nos Secrets
+    def obter_coords_google(endereco):
+        api_key = st.secrets["GOOGLE_MAPS_API_KEY"]
+        url = f"https://maps.googleapis.com/maps/api/geocode/json?address={endereco}&key={api_key}"
+        try:
+            response = requests.get(url).json()
+            if response['status'] == 'OK':
+                loc = response['results'][0]['geometry']['location']
+                end_formatado = response['results'][0]['formatted_address']
+                return loc['lat'], loc['lng'], end_formatado
+        except:
+            pass
+        return None, None, None
+
+    with st.form("reg_preciso"):
+        col_c1, col_c2 = st.columns(2)
+        r_n = col_c1.text_input("Nome Completo")
+        r_z = col_c2.text_input("WhatsApp (Apenas números)", help="Ex: 11999999999")
+        
+        # CAMPO CRUCIAL: O endereço que o Google vai ler
+        r_endereco = st.text_input("Endereço de Atendimento", placeholder="Rua, Número, Bairro, Cidade - Estado")
+        
+        col_c3, col_c4 = st.columns(2)
+        r_s = col_c3.text_input("Crie uma Senha", type="password")
+        r_a = col_c4.selectbox("Sua Especialidade Principal", CATEGORIAS_OFICIAIS)
+        
+        r_d = st.text_area("Descreva seus serviços")
+        
+        st.info("📌 Sua localização será usada para mostrar seus serviços aos clientes mais próximos.")
+        
+        if st.form_submit_button("FINALIZAR MEU CADASTRO", use_container_width=True):
+            if len(r_z) < 10 or not r_endereco:
+                st.error("⚠️ Nome, WhatsApp e Endereço são obrigatórios!")
+            else:
+                # MÁGICA DO GOOGLE ACONTECENDO AQUI
+                lat, lon, endereco_real = obter_coords_google(r_endereco)
+                
+                if lat and lon:
+                    try:
+                        db.collection("profissionais").document(r_z).set({
+                            "nome": r_n,
+                            "whatsapp": r_z,
+                            "senha": r_s,
+                            "area": r_a,
+                            "descricao": r_d,
+                            "endereco_digitado": r_endereco,
+                            "endereco_oficial": endereco_real, # Endereço corrigido pelo Google
+                            "lat": lat,
+                            "lon": lon,
+                            "saldo": BONUS_WELCOME,
+                            "cliques": 0,
+                            "rating": 5.0,
+                            "aprovado": False,
+                            "data_registro": datetime.datetime.now()
+                        })
+                        st.success(f"✅ Cadastro enviado! Localizamos você em: {endereco_real}")
+                        st.balloons()
+                    except Exception as e:
+                        st.error(f"Erro ao salvar no banco: {e}")
+                else:
+                    st.error("❌ Não conseguimos validar este endereço no mapa. Tente incluir o número da casa e a cidade.")
+
 # ==============================================================================
 # ABA 3: MEU PERFIL (VITRINE LUXUOSA ESTILO INSTA)
 # ==============================================================================
@@ -488,6 +742,14 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
+
+
+
+
+
+
+
 
 
 
