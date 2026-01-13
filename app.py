@@ -271,99 +271,101 @@ if comando == "abracadabra":
 menu_abas = st.tabs(lista_abas)
 
 # ==============================================================================
-# ABA 1: 🔍 VITRINE ELITE (RESOLVENDO O NAMEERROR)
+# ABA 1: 🔍 BUSCA AVANÇADA COM VITRINE TURBINADA
 # ==============================================================================
 with menu_abas[0]:
-    # 1. Barra de busca e Filtros
-    termo_busca = st.text_input("🔍 O que você precisa hoje?", key="main_search_input", placeholder="Ex: Pizzaria, Encanador...")
+    st.markdown("### 🏙️ O que você precisa?")
+    c_b1, c_b2 = st.columns([3, 1])
+    termo_busca = c_b1.text_input("Ex: 'Cano estourado' ou 'Pizza'", key="main_search")
+    raio_km = c_b2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 20, 50, 100], value=5)
     
-    categorias_chips = ["Todos", "Pedreiro", "Mecânico", "Pizzaria", "Beleza", "Saúde", "Outros"]
-    sel_cat = st.pills("Categorias", categorias_chips, default="Todos")
-
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    # 2. BUSCA DE DADOS NO FIREBASE (CRIANDO A LISTA_RANKING)
-    lista_ranking = []
-    try:
-        # Busca apenas profissionais aprovados
-        query = db.collection("profissionais").where("aprovado", "==", True).stream()
+    if termo_busca:
+        # 1. IA E FILTRAGEM
+        cat_ia = processar_ia_avancada(termo_busca) # Sua função de IA
+        st.info(f"✨ IA: Buscando por **{cat_ia}**")
         
-        for doc in query:
-            p = doc.to_dict()
-            p['id'] = doc.id
+        # Busca no Firebase (Filtro base)
+        query = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
+        
+        lista_ranking = []
+        hora_atual = datetime.now(pytz.timezone('America/Sao_Paulo')).strftime('%H:%M')
+
+        for p_doc in query:
+            p = p_doc.to_dict()
+            p['id'] = p_doc.id
             
-            # Lógica de Filtro
-            match_termo = termo_busca.lower() in p.get('nome', '').lower() or \
-                          termo_busca.lower() in p.get('area', '').lower()
-            match_cat = (sel_cat == "Todos" or p.get('area') == sel_cat)
+            # 2. CÁLCULO DE DISTÂNCIA REAL
+            dist = calcular_distancia_real(LAT_REF, LON_REF, p.get('lat', LAT_REF), p.get('lon', LON_REF))
             
-            if match_termo and match_cat:
-                # Aqui você pode adicionar lógica de distância no futuro
-                p['dist'] = p.get('distancia', 0.0) 
+            if dist <= raio_km:
+                p['dist'] = dist
+                # SCORE ELITE: Verificação (500) + Saldo (10x) + Rating (20x)
+                score = (500 if p.get('verificado') else 0) + (p.get('saldo', 0) * 10) + (p.get('rating', 5) * 20)
+                p['score_elite'] = score
                 lista_ranking.append(p)
+
+        # Ordena: Maior Score primeiro, se empatar, o mais perto vence
+        lista_ranking.sort(key=lambda x: (-x['score_elite'], x['dist']))
+
+        if not lista_ranking:
+            st.warning("Ninguém por perto ainda... Compartilhe o GeralJá!")
+        else:
+            for p in lista_ranking:
+                pid = p['id']
+                is_elite = p.get('verificado') and p.get('saldo', 0) > 0
+                cor_p = "#FFD700" if is_elite else ("#FF8C00" if p.get('tipo') == "🏢 Comércio/Loja" else "#0047AB")
                 
-        # Ordenação básica (quem tem mais saldo/moedas aparece primeiro)
-        lista_ranking = sorted(lista_ranking, key=lambda x: x.get('saldo', 0), reverse=True)
+                # --- LAYOUT VITRINE LUXO (MOSAICO) ---
+                st.markdown(f"""
+                <div style="background:{card_bg}; border-radius:25px; margin-bottom:20px; border:1px solid {border_color}; box-shadow:0 10px 20px rgba(0,0,0,0.05); overflow:hidden;">
+                    <div style="padding:12px 18px; display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.02);">
+                        <span style="font-size:11px; font-weight:bold; color:#64748B;">📍 {p['dist']:.1f} KM DE VOCÊ</span>
+                        <span style="font-size:11px; font-weight:bold; color:#D97706;">{"🏆 DESTAQUE ELITE" if is_elite else ""}</span>
+                    </div>
 
-    except Exception as e:
-        st.error(f"Erro ao conectar com o banco: {e}")
+                    <div style="padding:15px; display:flex; align-items:center; gap:12px;">
+                        <img src="data:image/jpeg;base64,{p.get('f1', '')}" style="width:55px; height:55px; border-radius:50%; object-fit:cover; border:2px solid {cor_p};">
+                        <div>
+                            <h4 style="margin:0; color:{txt_color};">{p.get('nome').upper()} {'☑️' if p.get('verificado') else ''}</h4>
+                            <small style="color:{cor_p}; font-weight:bold;">{p.get('area').upper()}</small>
+                        </div>
+                    </div>
 
-    # 3. RENDERIZAÇÃO DA VITRINE (AGORA COM A LISTA DEFINIDA)
-    if not lista_ranking:
-        st.info("Nenhum profissional encontrado para esta busca.")
-    else:
-        for p in lista_ranking:
-            pid = p['id']
-            is_elite = p.get('verificado', False)
-            cor_destaque = "#FFD700" if is_elite else "#0047AB"
-
-            # --- CARD DESIGN INSTA ---
-            st.markdown(f"""
-                <div style="background: {card_bg}; border-radius: 25px; margin-bottom: 30px; border: 1px solid {border_color}; box-shadow: 0 10px 20px rgba(0,0,0,0.05); overflow: hidden;">
-                    
-                    <div style="padding: 15px; display: flex; align-items: center; justify-content: space-between;">
-                        <div style="display: flex; align-items: center;">
-                            <div style="width: 45px; height: 45px; background: {cor_destaque}; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">
-                                {p.get('nome')[0].upper()}
+                    <div style="display:flex; gap:4px; height:180px; padding:0 10px;">
+                        <div style="flex:2; overflow:hidden; border-radius:12px 4px 4px 12px;">
+                            <img src="data:image/jpeg;base64,{p.get('f1', '')}" style="width:100%; height:100%; object-fit:cover;">
+                        </div>
+                        <div style="flex:1; display:flex; flex-direction:column; gap:4px;">
+                            <div style="flex:1; overflow:hidden; border-radius:4px 12px 4px 4px;">
+                                <img src="data:image/jpeg;base64,{p.get('f2', '')}" style="width:100%; height:100%; object-fit:cover;">
                             </div>
-                            <div style="margin-left: 12px;">
-                                <b style="font-size: 16px; color: {txt_color};">{p.get('nome').upper()}</b>
-                                { ' <span style="color:#1DA1F2;">☑️</span>' if is_elite else '' }<br>
-                                <small style="color: #94A3B8;">{p.get('area').upper()} • 📍 {p.get('dist', 0):.1f} km</small>
+                            <div style="flex:1; overflow:hidden; border-radius:4px 4px 12px 4px;">
+                                <img src="data:image/jpeg;base64,{p.get('f3', '')}" style="width:100%; height:100%; object-fit:cover;">
                             </div>
                         </div>
                     </div>
 
-                    <div style="display: flex; gap: 4px; height: 220px; padding: 0 10px;">
-                        <div style="flex: 2; overflow: hidden; border-radius: 15px 5px 5px 15px;">
-                            <img src="data:image/jpeg;base64,{p.get('f1', '')}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='https://via.placeholder.com/400x400?text=Foto+1'">
-                        </div>
-                        <div style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
-                            <div style="flex: 1; overflow: hidden; border-radius: 5px 15px 5px 5px;">
-                                <img src="data:image/jpeg;base64,{p.get('f2', '')}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='https://via.placeholder.com/200x200?text=Foto+2'">
-                            </div>
-                            <div style="flex: 1; overflow: hidden; border-radius: 5px 5px 15px 5px;">
-                                <img src="data:image/jpeg;base64,{p.get('f3', '')}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.src='https://via.placeholder.com/200x200?text=Foto+3'">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div style="padding: 15px;">
-                        <p style="font-size: 14px; color: {txt_color}; line-height: 1.4;">{p.get('descricao', '')[:120]}...</p>
+                    <div style="padding:15px;">
+                        <p style="font-size:13px; color:#475569; margin:0;">{p.get('descricao', '')[:120]}...</p>
                     </div>
                 </div>
-            """, unsafe_allow_html=True)
-            
-            # Botões de ação
-            c1, c2 = st.columns(2)
-            with c1:
-                if st.button(f"🔎 DETALHES", key=f"btn_det_{pid}", use_container_width=True):
-                    st.toast("Carregando perfil...")
-            with c2:
-                link_wa = f"https://wa.me/55{p.get('whatsapp')}?text=Vim%20pelo%20GeralJá"
-                st.link_button("🟢 WHATSAPP", link_wa, use_container_width=True)
-            
-            st.markdown("<br>", unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
+
+                # BOTÃO DE AÇÃO (Com desconto de saldo)
+                if st.button(f"🟢 CHAMAR AGORA: {p.get('nome').split()[0]}", key=f"btn_{pid}", use_container_width=True):
+                    # Sistema de Leads: Desconta saldo e soma clique
+                    if p.get('saldo', 0) > 0:
+                        db.collection("profissionais").document(pid).update({
+                            "saldo": p.get('saldo') - 1,
+                            "cliques": p.get('cliques', 0) + 1
+                        })
+                    
+                    # Redirecionamento Direto
+                    zap_msg = f"Olá {p.get('nome')}, vi seu perfil no GeralJá e preciso de um orçamento!"
+                    link_final = f"https://wa.me/55{pid}?text={zap_msg.replace(' ', '%20')}"
+                    st.markdown(f'<meta http-equiv="refresh" content="0;URL={link_final}">', unsafe_allow_html=True)
+                
+                st.markdown("<br>", unsafe_allow_html=True)
                 
 #============================================================================== 
 # ABA 2: 👤 MEU PAINEL (LOGIN PERSISTENTE + VITRINE DE FOTOS) 
@@ -702,6 +704,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
