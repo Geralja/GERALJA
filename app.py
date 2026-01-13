@@ -414,6 +414,34 @@ with menu_abas[0]:
         # TELA DE ESPERA LIMPA
         st.info("👋 Digite o que você precisa para ver os profissionais de elite.")
         st.caption("🚀 Profissionais Verificados e com saldo GeralCones aparecem no topo!")
+        # --- LÓGICA DE PROCESSAMENTO ---
+if termo_busca:
+    try:
+        # 1. IA DE MAPEAMENTO (Busca Inteligente)
+        try:
+            cat_ia = processar_ia_avancada(termo_busca)
+        except:
+            cat_ia = termo_busca.capitalize()
+
+        # 2. BUSCA NO FIREBASE
+        # Aqui você busca os profissionais que atendem a cat_ia ou o termo_busca
+        docs = db.collection("profissionais").where("area", "==", cat_ia).stream()
+        
+        encontrou = False
+        for doc in docs:
+            encontrou = True
+            p = doc.to_dict()
+            pid = doc.id
+            
+            # 3. EXIBIÇÃO DO CARD (Chama a função de luxo)
+            # Apenas chame a função, NÃO use st.write() antes dela
+            exibir_card_profissional(p, pid)
+
+        if not encontrou:
+            st.warning(f"Nenhum profissional encontrado para '{termo_busca}'.")
+
+    except Exception as e:
+        st.error(f"Erro no processamento: {e}")
                 
 # ==============================================================================
 # --- ABA 2: CADASTRO (BLINDAGEM DE DUPLICADOS + 4 FOTOS + BÔNUS) ---
@@ -739,3 +767,4 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
