@@ -1,18 +1,18 @@
 # ============================================================================== 
 # GERALJÁ: CRIANDO SOLUÇÕES - VERSÃO FINAL CORRIGIDA 
 # ============================================================================== 
-import streamlit as st 
-# import firebase_admin
-# from firebase_admin import credentials, firestore
-# import base64
-# import json
-# import math
-# import re
-# import time
-# import pandas as pd
-# import unicodedata
-# import pytz
-# from datetime import datetime
+import streamlit as st
+import firebase_admin
+from firebase_admin import credentials, firestore
+import base64
+import json
+import math
+import re
+import time
+import pandas as pd
+import unicodedata
+import pytz
+from datetime import datetime
 
 # [2] CONFIGURAÇÃO INICIAL (Sempre antes de qualquer comando de UI)
 st.set_page_config(page_title="GeralJá v3.0", layout="wide")
@@ -166,6 +166,7 @@ IA_MESTRE = MotorGeralJa()
 # ==============================================================================
 # --- ABA 2: CADASTRO (BLINDAGEM DE DUPLICADOS + 4 FOTOS + BÔNUS) ---
 # ==============================================================================
+
 with menu_abas[1]:
     st.markdown("### 🚀 Cadastro de Profissional Elite")
     st.info("🎁 BÔNUS: Novos cadastros ganham **10 GeralCones** de saldo inicial!")
@@ -487,6 +488,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
