@@ -1,7 +1,3 @@
-# ==============================================================================
-# GERALJÁ: CRIANDO SOLUÇÕES - VERSÃO FINAL CORRIGIDA
-# ==============================================================================
-# [1] IMPORTS QUE VOCÊ MANDOU
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, firestore
@@ -15,503 +11,122 @@ import unicodedata
 import pytz
 from datetime import datetime
 
-# [2] CONFIGURAÇÃO INICIAL (Sempre antes de qualquer comando de UI)
+# [1] CONFIGURAÇÃO DA PÁGINA
 st.set_page_config(page_title="GeralJá v3.0", layout="wide")
 
 LAT_PADRAO = -23.5505 
 LON_PADRAO = -46.6333
 
-# [3] O MOTOR MESTRE # ==============================================================================
-# MOTOR MESTRE GERALJÁ v3.0 - O ORQUESTRADOR FINAL
 # ==============================================================================
-
+# [2] MOTOR MESTRE GERALJÁ (O ÚNICO CÉREBRO)
+# ==============================================================================
 class MotorGeralJa:
     @staticmethod
     def normalizar(texto):
-        """Remove acentos e padroniza o texto (IA Utils)"""
         if not texto: return ""
         return "".join(c for c in unicodedata.normalize('NFD', str(texto)) 
                        if unicodedata.category(c) != 'Mn').lower().strip()
 
     @staticmethod
     def processar_intencao(termo):
-        """Versão turbinada que usa Normalização e Conceitos Expandidos"""
         if not termo: return "NAO_ENCONTRADO"
         t_clean = MotorGeralJa.normalizar(termo)
-        
-@staticmethod
-    
-    def processar_intencao(termo):
-        """
-        Dicionário Mestre de Sinônimos com Normalização.
-        Capaz de entender gírias, variações e necessidades específicas.
-        """
-        if not termo: return "NAO_ENCONTRADO"
-        
-        # Limpa o termo de busca (remove acentos e espaços)
-        t_clean = MotorGeralJa.normalizar(termo)
-        
-        # MAPA EXPANDIDO: Mais palavras-chave para não perder nenhum cliente
         mapa = {
-            "Pintor": ["pint", "parede", "tinta", "grafite", "verniz", "massa corrida", "textura"],
-            "Encanador": ["cano", "vazamento", "pia", "esgoto", "torneira", "hidraulico", "caixa d'agua", "desentup"],
-            "Eletricista": ["luz", "fio", "tomada", "disjuntor", "choque", "curto", "padrao", "eletrica", "lampada"],
-            "Mecânico": ["carro", "motor", "pneu", "freio", "revisao", "oleo", "suspensao", "oficina", "alinhamento"],
-            "Alimentação": ["fome", "comida", "pizza", "lanche", "marmita", "restaurante", "doce", "salgado", "bolo"],
-            "Pedreiro": ["obra", "reforma", "cimento", "tijolo", "telhado", "piso", "azulejo", "alicerce", "constru"],
-            "Limpeza": ["faxina", "limpar", "casa", "diarista", "organiza", "lavar", "pos-obra"],
-            "Ar Condicionado": ["gelar", "ar", "climatiza", "split", "instalacao ar"],
-            "Marido de Aluguel": ["conserto", "montagem", "pendurar", "furo", "reparos gerais"]
+            "Pintor": ["pint", "parede", "tinta", "grafite", "verniz", "massa"],
+            "Encanador": ["cano", "vazamento", "pia", "esgoto", "torneira", "hidraulico"],
+            "Eletricista": ["luz", "fio", "tomada", "disjuntor", "choque", "curto"],
+            "Mecânico": ["carro", "motor", "pneu", "freio", "revisao", "oleo", "oficina"],
+            "Alimentação": ["fome", "comida", "pizza", "lanche", "marmita", "restaurante"],
+            "Pedreiro": ["obra", "reforma", "cimento", "tijolo", "telhado", "piso", "constru"],
+            "Limpeza": ["faxina", "limpar", "casa", "diarista", "lavar"],
+            "Ar Condicionado": ["gelar", "ar", "climatiza", "split"],
+            "Marido de Aluguel": ["conserto", "montagem", "pendurar", "furo", "reparo"]
         }
-        
-        # Busca por radical (Pega "pintar", "pintura" e "pintor" apenas com "pint")
-        for categoria, palavras in mapa.items():
-            for p in palavras:
-                # Se o radical da palavra-chave estiver no termo buscado
-                if MotorGeralJa.normalizar(p) in t_clean:
-                    return categoria
-                    
-        # Se não achar no mapa, tenta retornar o termo original para ver se bate com o banco
-        return termo.capitalize()
-        
         for categoria, palavras in mapa.items():
             for p in palavras:
                 if MotorGeralJa.normalizar(p) in t_clean:
                     return categoria
         return termo.capitalize()
 
-@staticmethod
+    @staticmethod
     def calcular_distancia(lat1, lon1, lat2, lon2):
-        """Cálculo preciso com conversão de tipos e limpeza de erro"""
         try:
-            # Converte tudo para float caso venha como texto do banco/input
-            l1, o1 = float(lat1), float(lon1)
-            l2, o2 = float(lat2), float(lon2)
-            
-            # Se for coordenada 0,0 provavelmente está errado, joga pra longe
+            l1, o1, l2, o2 = float(lat1), float(lon1), float(lat2), float(lon2)
             if l1 == 0 or l2 == 0: return 999.0
-            
-            R = 6371  # Raio da Terra em KM
-            dlat = math.radians(l2 - l1)
-            dlon = math.radians(o2 - o1)
-            
-            a = math.sin(dlat/2)**2 + math.cos(math.radians(l1)) * \
-                math.cos(math.radians(l2)) * math.sin(dlon/2)**2
-            
-            c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
-            return round(R * c, 1)
-        except (ValueError, TypeError, Exception):
-            # Se qualquer dado falhar, retorna 999km para o profissional ir pro fim da lista
-            return 999.0
-
-    @staticmethod
-    def renderizar_vitrine(p, pid):
-        """Design Luxo Blindado"""
-        foto = p.get('f1', '')
-        img = f"data:image/jpeg;base64,{foto}" if len(foto) > 100 else "https://via.placeholder.com/400"
-        dist = p.get('dist', 0.0)
-        
-        html = f"""
-        <div style="border-radius:20px; padding:15px; background:white; box-shadow:0px 4px 15px rgba(0,0,0,0.1); margin-bottom:20px; border-left: 8px solid #FFD700;">
-            <div style="display:flex; align-items:center; gap:15px;">
-                <img src="{img}" style="width:70px; height:70px; border-radius:50%; object-fit:cover; border:2px solid #FFD700;">
-                <div>
-                    <h3 style="margin:0; font-size:18px; color:#1A1C23;">{p.get('nome', 'Profissional').upper()} {'✅' if p.get('verificado') else ''}</h3>
-                    <span style="color:#FF4B4B; font-weight:bold; font-size:13px;">📍 a {dist:.1f} km de você</span>
-                </div>
-            </div>
-            <p style="margin-top:10px; color:#555; font-size:14px;">{p.get('area', 'Geral')} • {p.get('descricao', '')[:110]}...</p>
-        </div>
-        """
-        st.markdown(html, unsafe_allow_html=True)
-        if st.button(f"Falar com {p.get('nome', '').split()[0]}", key=f"btn_{pid}", use_container_width=True):
-            st.link_button("🚀 Abrir WhatsApp", f"https://wa.me/55{p.get('whatsapp', pid)}")
-
-    @staticmethod
-    def finalizar_layout():
-        """O VARREDOR (Seu rodapé automático agora dentro do mestre)"""
-        st.write("---")
-        fechamento_estilo = """
-            <style>
-                .main .block-container { padding-bottom: 5rem !important; }
-                .footer-clean { text-align: center; padding: 20px; opacity: 0.7; font-size: 0.8rem; width: 100%; color: gray; }
-            </style>
-            <div class="footer-clean">
-                <p>🎯 <b>GeralJá</b> - Sistema de Inteligência Local</p>
-                <p>v3.0 | © 2026 Todos os direitos reservados</p>
-            </div>
-        """
-        st.markdown(fechamento_estilo, unsafe_allow_html=True)
-
-# INSTANCIAÇÃO
-IA_MESTRE = MotorGeralJa()
-class MotorGeralJa:
-    @staticmethod
-    def normalizar(texto):
-        if not texto: return ""
-        return "".join(c for c in unicodedata.normalize('NFD', str(texto)) 
-                       if unicodedata.category(c) != 'Mn').lower().strip()
-
-    @staticmethod
-    def processar_intencao(termo):
-        if not termo: return "NAO_ENCONTRADO"
-        t_clean = MotorGeralJa.normalizar(termo)
-        mapa = {
-            "Pintor": ["pinta", "parede", "tinta", "grafite"],
-            "Encanador": ["cano", "vazamento", "pia", "esgoto", "torneira"],
-            "Eletricista": ["luz", "fio", "tomada", "disjuntor", "choque"],
-            "Mecânico": ["carro", "motor", "pneu", "freio", "revisao"],
-            "Alimentação": ["fome", "comida", "pizza", "lanche", "marmita"],
-            "Pedreiro": ["obra", "reforma", "cimento", "tijolo", "telhado"]
-        }
-        for categoria, palavras in mapa.items():
-            for p in palavras:
-                if MotorGeralJa.normalizar(p) in t_clean:
-                    return categoria
-        return termo.capitalize()
-
-    @staticmethod
-    def calcular_distancia(lat1, lon1, lat2, lon2):
-        try:
-            if None in [lat1, lon1, lat2, lon2]: return 999.0
-            R = 6371 
-            dlat, dlon = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
-            a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * \
-                math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
+            R = 6371
+            dlat, dlon = math.radians(l2-l1), math.radians(o2-o1)
+            a = math.sin(dlat/2)**2 + math.cos(math.radians(l1)) * math.cos(math.radians(l2)) * math.sin(dlon/2)**2
             return round(R * (2 * math.atan2(math.sqrt(a), math.sqrt(1-a))), 1)
         except: return 999.0
 
     @staticmethod
     def renderizar_vitrine(p, pid):
-        foto = p.get('f1', '')
-        img = f"data:image/jpeg;base64,{foto}" if len(foto) > 100 else "https://via.placeholder.com/400"
-        dist = p.get('dist', 0.0)
+        # Lógica de fotos
+        fotos = []
+        for i in range(1, 5):
+            f = p.get(f'f{i}', '')
+            if len(str(f)) > 100: fotos.append(f"data:image/jpeg;base64,{f}")
         
+        img_principal = fotos[0] if fotos else "https://via.placeholder.com/400"
+        dist = p.get('dist', 0.0)
+        cor_borda = "#FFD700" if p.get('verificado') else "#E2E8F0"
+
         html = f"""
-        <div style="border-radius:20px; padding:15px; background:white; box-shadow:0px 4px 15px rgba(0,0,0,0.1); margin-bottom:20px; border-left: 8px solid #FFD700;">
-            <div style="display:flex; align-items:center; gap:15px;">
-                <img src="{img}" style="width:70px; height:70px; border-radius:50%; object-fit:cover; border:2px solid #FFD700;">
+        <div style="background:white; border-radius:20px; margin-bottom:20px; border:2px solid {cor_borda}; box-shadow:0 8px 20px rgba(0,0,0,0.08); overflow:hidden;">
+            <div style="padding:15px; display:flex; align-items:center; gap:12px;">
+                <div style="width:50px; height:50px; border-radius:50%; background:url('{img_principal}') center/cover; border:2px solid #FFD700;"></div>
                 <div>
-                    <h3 style="margin:0; font-size:18px; color:#1A1C23;">{p.get('nome', 'Profissional').upper()} {'✅' if p.get('verificado') else ''}</h3>
-                    <span style="color:#FF4B4B; font-weight:bold; font-size:13px;">📍 a {dist:.1f} km de você</span>
+                    <h4 style="margin:0;">{p.get('nome', '').upper()} {'✅' if p.get('verificado') else ''}</h4>
+                    <small style="color:#FF4B4B; font-weight:bold;">📍 {dist:.1f} KM DE VOCÊ</small>
                 </div>
             </div>
-            <p style="margin-top:10px; color:#555; font-size:14px;">{p.get('area', 'Geral')} • {p.get('descricao', '')[:110]}...</p>
+            <div style="padding:15px; background:#F8FAFC;">
+                <p style="font-size:14px; color:#444;"><b>{p.get('area', 'Serviços')}</b>: {p.get('descricao', '')[:120]}...</p>
+            </div>
         </div>
         """
         st.markdown(html, unsafe_allow_html=True)
-        if st.button(f"Falar com {p.get('nome', '').split()[0]}", key=f"btn_{pid}", use_container_width=True):
-            zap = p.get('whatsapp', pid)
-            st.link_button("🚀 Abrir WhatsApp", f"https://wa.me/55{zap}")
+        if st.button(f"🟢 CONTATAR {p.get('nome', '').split()[0].upper()}", key=f"btn_{pid}"):
+            st.link_button("🚀 ABRIR WHATSAPP", f"https://wa.me/55{p.get('whatsapp', pid)}")
 
-    @staticmethod
-    def finalizar_layout():
-        st.write("---")
-        fechamento_estilo = """
-            <style>
-                .main .block-container { padding-bottom: 5rem !important; }
-                .footer-clean { text-align: center; padding: 20px; opacity: 0.7; font-size: 0.8rem; width: 100%; color: gray; }
-            </style>
-            <div class="footer-clean">
-                <p>🎯 <b>GeralJá</b> - Sistema de Inteligência Local</p>
-                <p>v3.0 | © 2026 Todos os direitos reservados</p>
-            </div>
-        """
-        st.markdown(fechamento_estilo, unsafe_allow_html=True)
-
-# LIGA O MOTOR
 IA_MESTRE = MotorGeralJa()
-# ------------------------------------------------------------------------------
-# 2. CAMADA DE PERSISTÊNCIA (FIREBASE)
-# ------------------------------------------------------------------------------
+
+# ==============================================================================
+# [3] CONEXÃO FIREBASE
+# ==============================================================================
 @st.cache_resource
-def conectar_banco_master():
+def conectar():
     if not firebase_admin._apps:
         try:
-            # Tenta pegar dos secrets do Streamlit
             if "FIREBASE_BASE64" in st.secrets:
-                b64_key = st.secrets["FIREBASE_BASE64"]
-                decoded_json = base64.b64decode(b64_key).decode("utf-8")
-                cred_dict = json.loads(decoded_json)
-                cred = credentials.Certificate(cred_dict)
+                decoded = base64.b64decode(st.secrets["FIREBASE_BASE64"]).decode("utf-8")
+                cred = credentials.Certificate(json.loads(decoded))
                 return firebase_admin.initialize_app(cred)
-            else:
-                # Fallback para desenvolvimento local (se houver arquivo json)
-                # cred = credentials.Certificate("serviceAccountKey.json")
-                # return firebase_admin.initialize_app(cred)
-                st.warning("⚠️ Configure a secret FIREBASE_BASE64 para conectar ao banco.")
-                return None
         except Exception as e:
-            st.error(f"❌ FALHA NA INFRAESTRUTURA: {e}")
-            st.stop()
+            st.error(f"Erro Firebase: {e}"); st.stop()
     return firebase_admin.get_app()
 
-app_engine = conectar_banco_master()
+if conectar(): db = firestore.client()
 
-if app_engine:
-    db = firestore.client()
-else:
-    st.error("Erro ao conectar ao Firebase. Verifique suas configurações.")
-    st.stop()
+# ==============================================================================
+# [4] INTERFACE (BUSCA)
+# ==============================================================================
+st.markdown('<h1 style="text-align:center; color:#0047AB;">GERAL<span style="color:#FF8C00;">JÁ</span></h1>', unsafe_allow_html=True)
+abas = st.tabs(["🔍 BUSCAR", "🚀 CADASTRAR"])
 
-# --- FUNÇÕES DE SUPORTE (Mantenha fora de blocos IF/ELSE para funcionar no app todo) ---
-
-def buscar_opcoes_dinamicas(documento, padrao):
-    """
-    Busca listas de categorias ou tipos na coleção 'configuracoes'.
-    """
-    try:
-        doc = db.collection("configuracoes").document(documento).get()
-        if doc.exists:
-            dados = doc.to_dict()
-            return dados.get("lista", padrao)
-        return padrao
-    except Exception as e:
-        # Se houver erro ou o banco estiver vazio, retorna a lista padrão
-        return padrao
-
-def exibir_card_profissional(p, pid):
-    # 1. Configurações de Elite e Cores
-    saldo = float(p.get('saldo', 0))
-    is_elite = p.get('verificado', False) and saldo > 0
-    cor_borda = "#FFD700" if is_elite else "#E2E8F0"
-    
-    # 2. Processamento das 4 Fotos (Blindagem de Base64)
-    fotos = []
-    for i in range(1, 5):
-        f = p.get(f'f{i}', '')
-        if len(str(f)) > 100: # Verifica se a imagem existe/é válida
-            fotos.append(f"data:image/jpeg;base64,{f}")
-    
-    # Se não houver fotos, usa um placeholder elegante
-    img_principal = fotos[0] if len(fotos) > 0 else "https://via.placeholder.com/400x400?text=GeralJa"
-
-    # 3. HTML Estilo Instagram (Design de Luxo)
-    st.markdown(f"""
-    <div style="background:white; border-radius:20px; margin-bottom:20px; border:2px solid {cor_borda}; box-shadow:0 8px 20px rgba(0,0,0,0.08); overflow:hidden;">
-        <div style="padding:12px 15px; display:flex; justify-content:space-between; align-items:center; background:#F8FAFC;">
-            <div style="display:flex; align-items:center; gap:10px;">
-                <div style="width:40px; height:40px; border-radius:50%; background:url('{img_principal}') center/cover; border:2px solid {cor_borda};"></div>
-                <div>
-                    <h4 style="margin:0; font-size:15px; color:#1E293B;">{p.get('nome', '').upper()} {"☑️" if p.get('verificado') else ""}</h4>
-                    <small style="color:#64748B;">📍 {p.get('dist', 0):.1f} KM DE VOCÊ</small>
-                </div>
-            </div>
-            {"<span style='background:#FFD700; color:black; padding:3px 10px; border-radius:12px; font-size:10px; font-weight:900;'>ELITE</span>" if is_elite else ""}
-        </div>
-
-        <div style="display:grid; grid-template-columns: 2.5fr 1fr; gap:4px; height:240px; padding:5px;">
-            <div style="background:url('{img_principal}') center/cover; border-radius:12px 0 0 12px;"></div>
-            <div style="display:grid; grid-template-rows: repeat(3, 1fr); gap:4px;">
-                <div style="background:url('{fotos[1] if len(fotos)>1 else img_principal}') center/cover; border-radius:0 12px 0 0;"></div>
-                <div style="background:url('{fotos[2] if len(fotos)>2 else img_principal}') center/cover;"></div>
-                <div style="background:url('{fotos[3] if len(fotos)>3 else img_principal}') center/cover; border-radius:0 0 12px 0;"></div>
-            </div>
-        </div>
-
-        <div style="padding:15px;">
-            <span style="background:#F1F5F9; color:#475569; padding:2px 8px; border-radius:6px; font-size:11px; font-weight:bold; text-transform:uppercase;">{p.get('area', 'Serviços')}</span>
-            <p style="margin-top:10px; color:#334155; font-size:14px; line-height:1.4;">{p.get('descricao', '')[:150]}...</p>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # 4. Botão WhatsApp Integrado (Com desconto de saldo)
-    if st.button(f"🟢 FALAR COM {p.get('nome','').split()[0].upper()}", key=f"wa_v_{pid}", use_container_width=True):
-        if saldo > 0:
-            try: db.collection("profissionais").document(pid).update({"saldo": firestore.Increment(-1)})
-            except: pass
+with abas[0]:
+    busca = st.text_input("O que você precisa?", placeholder="Ex: consertar vazamento")
+    if busca:
+        categoria = IA_MESTRE.processar_intencao(busca)
+        st.subheader(f"Resultados para: {categoria}")
         
-        msg = f"Olá {p.get('nome','')}, vi seu perfil de {p.get('area')} no GeralJá e gostaria de um orçamento!"
-        link_zap = f"https://wa.me/55{pid}?text={msg.replace(' ', '%20')}"
-        st.link_button("🚀 ABRIR WHATSAPP AGORA", link_zap, use_container_width=True)
-    st.markdown("---")
-# ------------------------------------------------------------------------------
-# 3. POLÍTICAS E CONSTANTES
-# ------------------------------------------------------------------------------
-PIX_OFICIAL = "11991853488"
-ZAP_ADMIN = "5511991853488"
-CHAVE_ADMIN = "mumias"
-LAT_REF = -23.5505
-LON_REF = -46.6333
-
-CATEGORIAS_OFICIAIS = [
-    "Encanador", "Eletricista", "Pintor", "Pedreiro", "Gesseiro", "Telhadista", 
-    "Serralheiro", "Vidraceiro", "Marceneiro", "Marmoraria", "Calhas e Rufos", 
-    "Dedetização", "Desentupidora", "Piscineiro", "Jardineiro", "Limpeza de Estofados",
-    "Mecânico", "Borracheiro", "Guincho 24h", "Estética Automotiva", "Lava Jato", 
-    "Auto Elétrica", "Funilaria e Pintura", "Som e Alarme", "Moto Peças", "Auto Peças",
-    "Loja de Roupas", "Calçados", "Loja de Variedades", "Relojoaria", "Joalheria", 
-    "Ótica", "Armarinho/Aviamentos", "Papelaria", "Floricultura", "Bazar", 
-    "Material de Construção", "Tintas", "Madeireira", "Móveis", "Eletrodomésticos",
-    "Pizzaria", "Lanchonete", "Restaurante", "Confeitaria", "Padaria", "Açaí", 
-    "Sorveteria", "Adega", "Doceria", "Hortifruti", "Açougue", "Pastelaria", 
-    "Churrascaria", "Hamburgueria", "Comida Japonesa", "Cafeteria",
-    "Farmácia", "Barbearia/Salão", "Manicure/Pedicure", "Estética Facial", 
-    "Tatuagem/Piercing", "Fitness", "Academia", "Fisioterapia", "Odontologia", 
-    "Clínica Médica", "Psicologia", "Nutricionista", "TI", "Assistência Técnica", 
-    "Celulares", "Informática", "Refrigeração", "Técnico de Fogão", "Técnico de Lavadora", 
-    "Eletrônicos", "Chaveiro", "Montador", "Freteiro", "Carreto", "Motoboy/Entregas",
-    "Pet Shop", "Veterinário", "Banho e Tosa", "Adestrador", "Agropecuária",
-    "Aulas Particulares", "Escola Infantil", "Reforço Escolar", "Idiomas", 
-    "Advocacia", "Contabilidade", "Imobiliária", "Seguros", "Ajudante Geral", 
-    "Diarista", "Cuidador de Idosos", "Babá", "Outro (Personalizado)"
-]
-
-CONCEITOS_EXPANDIDOS = {
-    "pizza": "Pizzaria", "pizzaria": "Pizzaria", "fome": "Pizzaria", "massa": "Pizzaria",
-    "lanche": "Lanchonete", "hamburguer": "Lanchonete", "burger": "Lanchonete", "salgado": "Lanchonete",
-    "comida": "Restaurante", "almoco": "Restaurante", "marmita": "Restaurante", "jantar": "Restaurante",
-    "doce": "Confeitaria", "bolo": "Confeitaria", "pao": "Padaria", "padaria": "Padaria",
-    "acai": "Açaí", "sorvete": "Sorveteria", "cerveja": "Adega", "bebida": "Adega",
-    "roupa": "Loja de Roupas", "moda": "Loja de Roupas", "sapato": "Calçados", "tenis": "Calçados",
-    "presente": "Loja de Variedades", "relogio": "Relojoaria", "joia": "Joalheria",
-    "remedio": "Farmácia", "farmacia": "Farmácia", "cabelo": "Barbearia/Salão", "unha": "Barbearia/Salão",
-    "celular": "Assistência Técnica", "iphone": "Assistência Técnica", "computador": "TI", "pc": "TI",
-    "geladeira": "Refrigeração", "ar condicionado": "Refrigeração", "fogao": "Técnico de Fogão",
-    "tv": "Eletrônicos", "pet": "Pet Shop", "racao": "Pet Shop", "cachorro": "Pet Shop",
-    "vazamento": "Encanador", "cano": "Encanador", "curto": "Eletricista", "luz": "Eletricista",
-    "pintar": "Pintor", "parede": "Pintor", "reforma": "Pedreiro", "piso": "Pedreiro",
-    "telhado": "Telhadista", "solda": "Serralheiro", "vidro": "Vidraceiro", "chave": "Chaveiro",
-    "carro": "Mecânico", "motor": "Mecânico", "pneu": "Borracheiro", "guincho": "Guincho 24h",
-    "frete": "Freteiro", "mudanca": "Freteiro", "faxina": "Diarista", "limpeza": "Diarista",
-    "jardim": "Jardineiro", "piscina": "Piscineiro"
-}
-
-# --- FUNCIONALIDADE DO ARQUIVO: O VARREDOR (Rodapé Automático) ---
-def finalizar_e_alinhar_layout():
-    """
-    Esta função atua como um ímã. Puxa o conteúdo e limpa o rodapé.
-    """
-    st.write("---")
-    fechamento_estilo = """
-        <style>
-            .main .block-container { padding-bottom: 5rem !important; }
-            .footer-clean {
-                text-align: center;
-                padding: 20px;
-                opacity: 0.7;
-                font-size: 0.8rem;
-                width: 100%;
-                color: gray;
-            }
-        </style>
-        <div class="footer-clean">
-            <p>🎯 <b>GeralJá</b> - Sistema de Inteligência Local</p>
-            <p>Conectando quem precisa com quem sabe fazer.</p>
-            <p>v3.0 | © 2026 Todos os direitos reservados</p>
-        </div>
-    """
-    st.markdown(fechamento_estilo, unsafe_allow_html=True)
-
-# ------------------------------------------------------------------------------
-# 5. DESIGN SYSTEM
-# ------------------------------------------------------------------------------
-st.markdown("""
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-    * { font-family: 'Inter', sans-serif; }
-    .stApp { background-color: #F8FAFC; }
-    .header-container { background: white; padding: 40px 20px; border-radius: 0 0 50px 50px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border-bottom: 8px solid #FF8C00; margin-bottom: 25px; }
-    .logo-azul { color: #0047AB; font-weight: 900; font-size: 50px; letter-spacing: -2px; }
-    .logo-laranja { color: #FF8C00; font-weight: 900; font-size: 50px; letter-spacing: -2px; }
-</style>
-""", unsafe_allow_html=True)
-
-st.markdown('<div class="header-container"><span class="logo-azul">GERAL</span><span class="logo-laranja">JÁ</span><br><small style="color:#64748B; font-weight:700;">BRASIL ELITE EDITION</small></div>', unsafe_allow_html=True)
-
-lista_abas = ["🔍 BUSCAR", "🚀 CADASTRAR", "👤 MEU PERFIL", "👑 ADMIN", "⭐ FEEDBACK"]
-comando = st.sidebar.text_input("Comando Secreto", type="password")
-if comando == "abracadabra":
-    lista_abas.append("📊 FINANCEIRO")
-
-menu_abas = st.tabs(lista_abas)
-# ==============================================================================
-# --- ABA 1: VITRINE (SISTEMA DE BUSCA E RANKING DE ELITE) ---
-# ==============================================================================
-# --- ABA 0: VITRINE INTELIGENTE ---
-with menu_abas[0]:
-    # Design de cabeçalho impactante
-    st.markdown("<h2 style='text-align: center;'>🔍 O que você procura hoje?</h2>", unsafe_allow_html=True)
-    
-    # Input principal
-    termo_busca = st.text_input("", placeholder="Ex: 'alguém para arrumar meu telhado' ou 'pizza artesanal'", key="input_busca_direta")
-    
-    # Filtros em colunas
-    col_raio, col_ordenacao = st.columns([2, 2])
-    with col_raio:
-        raio_km = st.select_slider("📍 Raio de distância", options=[5, 10, 25, 50, 100, 500], value=50)
-    with col_ordenacao:
-        modo_ordem = st.selectbox("⭐ Priorizar por", ["Melhores Avaliados", "Mais Próximos", "Destaques (Patrocinados)"])
-
-    st.markdown("---")
-
-    if termo_busca:
-        with st.spinner("🧠 IA Analisando sua necessidade..."):
-            try:
-                # 1. MAPEAMENTO DE INTENÇÃO (IA)
-                try:
-                    # Tenta converter 'telhado' em 'Pedreiro' ou 'Manutenção'
-                    cat_ia = processar_ia_avancada(termo_busca)
-                except:
-                    cat_ia = termo_busca.capitalize()
-
-                # 2. BUSCA MULTI-FILTRO NO FIREBASE
-                # Buscamos apenas ativos. O filtro de categoria/distância fazemos no Python para mais flexibilidade
-                profs_ref = db.collection("profissionais").where("aprovado", "==", True).stream()
-                
-                lista_resultados = []
-                termo_min = cat_ia.lower()
-
-                for doc in profs_ref:
-                    p = doc.to_dict()
-                    p['id'] = doc.id 
-                    
-                    # Lógica de match (Nome, Área ou Descrição)
-                    texto_alvo = f"{p.get('area', '')} {p.get('nome', '')} {p.get('descricao', '')}".lower()
-                    
-                    if termo_min in texto_alvo:
-                        # Cálculo de distância real
-                        dist = calcular_distancia(LAT_PADRAO, LON_PADRAO, p.get('lat', LAT_PADRAO), p.get('lon', LON_PADRAO))
-                        
-                        if dist <= raio_km:
-                            p['dist'] = dist
-                            
-                            # 3. MOTOR DE RANKING (A "Mágica" do Negócio)
-                            # Verificados ganham 1000 pontos
-                            # Cada R$ 1.00 de saldo (GeralCones) ganha 100 pontos
-                            # Rating (estrelas) ganha 500 pontos por estrela
-                            score = (10000 if p.get('verificado', False) else 0)
-                            score += (float(p.get('saldo', 0)) * 100)
-                            score += (float(p.get('rating', 5.0)) * 500)
-                            
-                            p['ranking_score'] = score
-                            lista_resultados.append(p)
-
-                # 4. EXIBIÇÃO ORGANIZADA
-                if lista_resultados:
-                    # Ordenação dinâmica baseada no selectbox
-                    if modo_ordem == "Destaques (Patrocinados)":
-                        lista_resultados.sort(key=lambda x: -x['ranking_score'])
-                    elif modo_ordem == "Mais Próximos":
-                        lista_resultados.sort(key=lambda x: x['dist'])
-                    else:
-                        lista_resultados.sort(key=lambda x: -x.get('rating', 0))
-
-                    st.success(f"Encontramos {len(lista_resultados)} especialistas para você!")
-                    
-                    # Grid de exibição
-                    for prof in lista_resultados:
-                        exibir_card_profissional(prof, prof['id'])
-                else:
-                    st.warning(f"Ainda não temos profissionais para '{cat_ia}' nesta região.")
-                    st.button("Quero ser o primeiro desta categoria! 🚀")
-
-            except Exception as e:
-                st.error(f"Erro no motor de busca: {e}")
-    else:
-        # Vitrine vazia (Exibir sugestões)
-        st.info("Sugestões: Eletricista, Encanador, Diarista, Mecânico...")
+        profs = db.collection("profissionais").where("aprovado", "==", True).stream()
+        for doc in profs:
+            p = doc.to_dict()
+            # O Motor faz o cálculo
+            p['dist'] = IA_MESTRE.calcular_distancia(LAT_PADRAO, LON_PADRAO, p.get('lat'), p.get('lon'))
+            # O Motor desenha o card
+            IA_MESTRE.renderizar_vitrine(p, doc.id)
                 
 # ==============================================================================
 # --- ABA 2: CADASTRO (BLINDAGEM DE DUPLICADOS + 4 FOTOS + BÔNUS) ---
@@ -837,6 +452,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
