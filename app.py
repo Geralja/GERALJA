@@ -294,6 +294,7 @@ def converter_img_b64(file):
 
 # --- FUNCIONALIDADE DO ARQUIVO: O VARREDOR (Rodapé Automático) ---
 def finalizar_e_alinhar_layout():
+    
     # --- LÓGICA DE PROCESSAMENTO ---
 if termo_busca:
     try:
@@ -749,6 +750,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
