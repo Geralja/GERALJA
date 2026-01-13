@@ -270,158 +270,223 @@ if comando == "abracadabra":
 
 menu_abas = st.tabs(lista_abas)
 
-# --- ABA 1: BUSCA (UNIFICADA E ÚNICA COM FILTRO NACIONAL) ---
+# ==============================================================================
+# ABA 1: BUSCAR (IA + GPS + RANKING ELITE + VITRINE LUXO)
+# ==============================================================================
 with menu_abas[0]:
-    st.markdown("### ??? Qual problema resolveremos agora?")
-    c_city, c_term, c_raio = st.columns([1, 2, 1])
-    busca_cidade = c_city.text_input("Sua Cidade", placeholder="Ex: Rio de Janeiro")
-    termo_busca = c_term.text_input("Ex: 'Cano estourado', 'Pintar casa'", key="main_search")
-    raio_km = c_raio.select_slider("Raio (KM)", options=[1, 5, 10, 20, 50, 100, "Brasil"], value=50, key="main_raio")
+    st.markdown("### 🏙️ O que você precisa?")
+    
+    # --- 1. MOTOR DE LOCALIZAÇÃO (GPS) ---
+    with st.expander("📍 Sua Localização (GPS)", expanded=False):
+        loc = get_geolocation()
+        if loc:
+            minha_lat = loc['coords']['latitude']
+            minha_lon = loc['coords']['longitude']
+            st.success(f"Localização detectada!")
+        else:
+            minha_lat = LAT_REF
+            minha_lon = LON_REF
+            st.warning("GPS desativado. Usando localização padrão (SP).")
+
+    # --- 2. INPUTS DE BUSCA ---
+    c1, c2 = st.columns([3, 1])
+    termo_busca = c1.text_input("Ex: 'Cano estourado' ou 'Pizza'", key="main_search", placeholder="Busque qualquer serviço...")
+    raio_km = c2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 20, 50, 100, 500], value=10)
     
     if termo_busca:
+        # Processamento via IA para identificar a categoria
         cat_ia = processar_ia_avancada(termo_busca)
-        st.info(f"? IA: Buscando profissionais em **{cat_ia}**.")
+        st.info(f"✨ IA: Buscando por **{cat_ia}** próximo a você")
+        
+        import datetime
+        import pytz
+        import re
+        from urllib.parse import quote
+        
+        fuso = pytz.timezone('America/Sao_Paulo')
+        hora_atual = datetime.datetime.now(fuso).strftime('%H:%M')
+
+        # 3. BUSCA NO BANCO (Apenas aprovados da categoria)
         profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
-        lista = []
+        
+        lista_ranking = []
         for p_doc in profs:
             p = p_doc.to_dict()
             p['id'] = p_doc.id
             
-            # Lógica de Filtro Nacional vs Raio em SP
-            if raio_km == "Brasil":
-                lista.append(p)
-            elif busca_cidade and busca_cidade.lower() in p.get('cidade', '').lower():
-                lista.append(p)
-            else:
-                dist = calcular_distancia_real(LAT_REF_SP, LON_REF_SP, p.get('lat', LAT_REF_SP), p.get('lon', LON_REF_SP))
-                if dist <= (raio_km if isinstance(raio_km, int) else 999):
-                    p['dist'] = dist
-                    lista.append(p)
+            # CÁLCULO DE DISTÂNCIA REAL
+            dist = calcular_distancia_real(minha_lat, minha_lon, p.get('lat', LAT_REF), p.get('lon', LON_REF))
+            
+            if dist <= raio_km:
+                p['dist'] = dist
+                # MOTOR DE SCORE ELITE (Ranking: Verificado + Saldo + Nota)
+                score = 0
+                score += 500 if p.get('verificado', False) else 0
+                score += (p.get('saldo', 0) * 10)
+                score += (p.get('rating', 5) * 20)
+                p['score_elite'] = score
+                lista_ranking.append(p)
+
+        # Ordenação: Maior Score primeiro, depois os mais próximos
+        lista_ranking.sort(key=lambda x: (-x['score_elite'], x['dist']))
+
+        if not lista_ranking:
+            st.warning("Nenhum profissional encontrado nesta categoria por perto.")
+            link_share = "https://wa.me/?text=Ei!%20Procurei%20um%20serviço%20no%20GeralJá%20e%20vi%20que%20ainda%20precisamos%20de%20profissionais!%20https://geralja.streamlit.app"
+            st.markdown(f'<a href="{link_share}" target="_blank" style="text-decoration:none;"><div style="background:#22C55E; color:white; padding:15px; border-radius:10px; text-align:center; font-weight:bold;">📲 CONVIDAR PROFISSIONAIS</div></a>', unsafe_allow_html=True)
         
-        # Ordenação: Se tiver distância, ordena por ela. Se não, pelo nome.
-        lista.sort(key=lambda x: x.get('dist', 0))
-        
-        if not lista:
-            st.warning("?? Nenhum profissional encontrado neste raio ou cidade.")
         else:
-            for pro in lista:
-                with st.container():
-                    dist_txt = f"{pro['dist']} KM" if 'dist' in pro else pro.get('cidade', 'Brasil')
-                    st.markdown(f"""
-                    <div class="pro-card">
-                        <img src="{pro.get('foto_url') or 'https://api.dicebear.com/7.x/avataaars/svg?seed='+pro['id']}" class="pro-img">
-                        <div style="flex-grow:1;">
-                            <span class="badge-dist">?? {dist_txt}</span><span class="badge-area">?? {pro['area']}</span>
-                            <h2 style="margin:10px 0; color:#1E293B;">{pro.get('nome', 'Profissional').upper()}</h2>
-                            <p style="color:#475569; font-size:14px;">{pro.get('descricao')}</p>
-                        </div>
+            # --- 4. RENDERIZAÇÃO DA VITRINE LUXO ---
+            for p in lista_ranking:
+                pid = p['id']
+                is_elite = p.get('verificado') and p.get('saldo', 0) > 0
+                
+                # Definição de Cores
+                cor_borda = "#FFD700" if is_elite else ("#FF8C00" if p.get('tipo') == "🏢 Comércio/Loja" else "#0047AB")
+                bg_card = "#FFFDF5" if is_elite else "#FFFFFF"
+                
+                st.markdown(f"""
+                <div style="border: 1px solid #E2E8F0; border-left: 8px solid {cor_borda}; padding: 15px; background: {bg_card}; border-radius: 20px; margin-bottom: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+                    <div style="display:flex; justify-content: space-between; margin-bottom: 10px;">
+                        <span style="font-size: 11px; color: #64748B; font-weight: bold; background: #F1F5F9; padding: 4px 8px; border-radius: 10px;">📍 a {p['dist']:.1f} km</span>
+                        <span style="font-size: 11px; color: #D97706; font-weight: bold;">{"🏆 DESTAQUE ELITE" if is_elite else ""}</span>
                     </div>
-                    """, unsafe_allow_html=True)
-                    if pro.get('saldo', 0) >= TAXA_CONTATO:
-                        if st.button(f"CONTATAR {pro['nome'].split()[0].upper()}", key=f"btn_{pro['id']}"):
-                            db.collection("profissionais").document(pro['id']).update({"saldo": firestore.Increment(-TAXA_CONTATO), "cliques": firestore.Increment(1)})
-                            st.balloons()
-                            st.markdown(f'<a href="https://wa.me/55{pro["whatsapp"]}" class="btn-zap">ABRIR WHATSAPP</a>', unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
 
-              
-#============================================================================== 
-# ABA 2: 👤 MEU PAINEL (LOGIN PERSISTENTE + VITRINE DE FOTOS) 
-# ============================================================================== 
+                col_img, col_txt = st.columns([1, 4])
+                with col_img:
+                    # Foto Principal
+                    foto_perfil = p.get('foto_b64')
+                    src_principal = f"data:image/png;base64,{foto_perfil}" if foto_perfil else f"https://ui-avatars.com/api/?name={p.get('nome')}&background=random"
+                    st.markdown(f'<img src="{src_principal}" style="width:75px; height:75px; border-radius:50%; object-fit:cover; border:3px solid {cor_borda}">', unsafe_allow_html=True)
+                
+                with col_txt:
+                    nome_ex = p.get('nome', '').upper()
+                    if p.get('verificado'): nome_ex += " ☑️"
+                    
+                    status_loja = ""
+                    if p.get('tipo') == "🏢 Comércio/Loja":
+                        h_ab, h_fe = p.get('h_abre', '08:00'), p.get('h_fecha', '18:00')
+                        status_loja = " 🟢" if h_ab <= hora_atual <= h_fe else " 🔴"
+                    
+                    st.markdown(f"**{nome_ex}** {status_loja}")
+                    st.caption(f"{p.get('descricao', '')[:120]}...")
+
+                # --- VITRINE: GRID DE 3 FOTOS ---
+                # Puxa os campos f1, f2 e f3 do banco
+                fotos_v = [p.get('f1'), p.get('f2'), p.get('f3')]
+                fotos_validas = [f for f in fotos_v if f] # Filtra apenas as que existem
+                
+                if fotos_validas:
+                    st.write("") # Espaçador visual
+                    cols_v = st.columns(3)
+                    for i, img_data in enumerate(fotos_validas):
+                        with cols_v[i]:
+                            st.markdown(f"""
+                                <img src="data:image/png;base64,{img_data}" 
+                                     style="width:100%; height:85px; border-radius:12px; object-fit:cover; border:1px solid #eee;">
+                            """, unsafe_allow_html=True)
+
+                # --- BOTÃO WHATSAPP HTML (ESTÁVEL) ---
+                num_limpo = re.sub(r'\D', '', str(pid))
+                if not num_limpo.startswith('55'): num_limpo = '55' + num_limpo
+                link_zap = f"https://api.whatsapp.com/send?phone={num_limpo}&text={quote('Olá, vi sua vitrine no GeralJá!')}"
+                
+                st.markdown(f"""
+                    <a href="{link_zap}" target="_blank" style="text-decoration: none;">
+                        <div style="background:#25D366; color:white; padding:12px; border-radius:12px; text-align:center; font-weight:bold; margin-top:15px; box-shadow: 0 4px 10px rgba(37,211,102,0.2);">
+                            🚀 FALAR COM {p.get('nome').split()[0].upper()}
+                        </div>
+                    </a>
+                """, unsafe_allow_html=True)
+                
+# ==============================================================================
+# ABA 2: 📝 CADASTRO TURBINADO E BLINDADO
+# ==============================================================================
 with menu_abas[1]:
-    # Inicializa o estado de autenticação
-    if 'auth' not in st.session_state:
-        st.session_state.auth = False
-    if 'user_id' not in st.session_state:
-        st.session_state.user_id = None
+    st.markdown("### 🚀 Faça parte do GeralJá")
+    
+    # --- TRAVA DE SEGURANÇA PARA COORDENADAS (Evita erro na linha 89) ---
+    if 'minha_lat' not in locals():
+        minha_lat = -23.5505  # Valor padrão (SP)
+    if 'minha_lon' not in locals():
+        minha_lon = -46.6333  # Valor padrão (SP)
 
-    # --- SE NÃO ESTIVER LOGADO: MOSTRA LOGIN OU CADASTRO ---
-    if not st.session_state.auth:
-        tela = st.radio("Selecione:", ["Acessar Painel", "Criar Nova Vitrine (Grátis)"], horizontal=True)
+    # 1. BUSCA OPÇÕES DO ADMIN
+    lista_areas = buscar_opcoes_dinamicas("categorias", ["Serviços Gerais", "Manutenção"])
+    lista_tipos = buscar_opcoes_dinamicas("tipos", ["👤 Profissional Autônomo", "🏢 Comércio/Loja"])
 
-        if tela == "Acessar Painel":
-            st.markdown("### 🔑 Entrar")
-            l_zap = st.text_input("WhatsApp (Login)", placeholder="Apenas números", key="l_zap")
-            l_pw = st.text_input("Senha", type="password", key="l_pw")
-            if st.button("ACESSAR MINHA VITRINE"):
-                doc = db.collection("profissionais").document(l_zap).get()
-                if doc.exists and str(doc.to_dict().get('senha')) == l_pw:
-                    st.session_state.auth = True
-                    st.session_state.user_id = l_zap
-                    st.success("Login realizado!")
-                    st.rerun()
-                else:
-                    st.error("WhatsApp ou Senha incorretos.")
+    with st.form("form_cadastro_luxo", clear_on_submit=True):
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            nome_c = st.text_input("Nome Completo ou Nome do Negócio*", placeholder="Como os clientes te acharão")
+            zap_c = st.text_input("WhatsApp (com DDD)*", placeholder="Ex: 11999999999")
+            area_c = st.selectbox("Sua Especialidade*", options=sorted(lista_areas))
+            tipo_c = st.selectbox("Tipo de Atendimento*", options=lista_tipos)
+        
+        with col2:
+            st.markdown("📍 **Sua Localização**")
+            lat_c = st.number_input("Latitude", value=float(minha_lat), format="%.6f")
+            lon_c = st.number_input("Longitude", value=float(minha_lon), format="%.6f")
+            st.caption("Ajuste manualmente se o GPS não marcar seu local exato.")
 
-        else:
-            # --- FORMULÁRIO DE CADASTRO COMPLETO (TURBINADO) ---
-            st.markdown("### 🚀 Criar Vitrine Profissional")
-            with st.form("cad_completo", clear_on_submit=True):
-                c1, c2 = st.columns(2)
-                c_nome = c1.text_input("Nome do Negócio/Profissional*")
-                c_zap = c2.text_input("WhatsApp (Será seu Login)*")
-                c3, c4 = st.columns(2)
-                c_cat = c3.selectbox("Categoria", CATEGORIAS_OFICIAIS)
-                c_pw = c4.text_input("Crie uma Senha*", type="password")
-                c_desc = st.text_area("Descrição do seu Trabalho")
-                st.markdown("#### 📸 Fotos da Vitrine")
-                col_f1, col_f2, col_f3 = st.columns(3)
-                f1 = col_f1.file_uploader("Foto 1 (Principal)", type=['jpg','png','jpeg'])
-                f2 = col_f2.file_uploader("Foto 2", type=['jpg','png','jpeg'])
-                f3 = col_f3.file_uploader("Foto 3", type=['jpg','png','jpeg'])
-                if st.form_submit_button("FINALIZAR E PUBLICAR"):
-                    if c_nome and c_zap and c_pw:
-                        def to_b64(f):
-                            return base64.b64encode(f.read()).decode() if f else None
-                        db.collection("profissionais").document(c_zap).set({
-                            "nome": c_nome.upper(),
-                            "senha": c_pw,
-                            "area": c_cat,
-                            "descricao": c_desc,
-                            "f1": to_b64(f1),
-                            "f2": to_b64(f2),
-                            "f3": to_b64(f3),
-                            "saldo": 0,
-                            "cliques": 0,
-                            "aprovado": False,
-                            "verificado": False,
-                            "data": datetime.now()
-                        })
-                        st.success("✅ Cadastro enviado! Aguarde aprovação.")
-                    else:
-                        st.error("Preencha os campos obrigatórios (*)")
+        st.divider()
+        desc_c = st.text_area("Descrição do Serviço (Sua Vitrine)*", placeholder="Conte o que você faz...")
 
-    # --- SE ESTIVER LOGADO: MOSTRA DASHBOARD DE EDIÇÃO ---
-    else:
-        dados = db.collection("profissionais").document(st.session_state.user_id).get().to_dict()
-        st.markdown(f"### ✨ Painel de: {dados.get('nome')}")
-        # Métrica Estilizada
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Moedas/Saldo", f"{dados.get('saldo', 0)} 🪙")
-        c2.metric("Interessados (Leads)", f"{dados.get('cliques', 0)} 👤")
-        status = "✅ ATIVO" if dados.get("aprovado") else "⏳ PENDENTE"
-        c3.metric("Status", status)
+        # --- SEÇÃO DE FOTOS ---
+        st.markdown("#### 📸 Sua Vitrine Visual (Até 4 fotos)")
+        c_perfil, c_v1, c_v2, c_v3 = st.columns(4)
+        
+        with c_perfil:
+            foto_perfil = st.file_uploader("Perfil", type=['jpg', 'png'], key="perf")
+        with c_v1:
+            f1 = st.file_uploader("Vitrine 1", type=['jpg', 'png'], key="v1")
+        with c_v2:
+            f2 = st.file_uploader("Vitrine 2", type=['jpg', 'png'], key="v2")
+        with c_v3:
+            f3 = st.file_uploader("Vitrine 3", type=['jpg', 'png'], key="v3")
 
-        # Edição de Perfil
-        with st.expander("📝 EDITAR MINHA VITRINE"):
-            with st.form("edit_f"):
-                e_nome = st.text_input("Nome", value=dados.get('nome'))
-                e_cat = st.selectbox("Categoria", CATEGORIAS_OFICIAIS, index=CATEGORIAS_OFICIAIS.index(dados.get('area', 'Ajudante Geral')))
-                e_desc = st.text_area("Descrição", value=dados.get('descricao'))
-                # Edição de fotos (opcional, mostra se já tem)
-                st.write("Deseja trocar as fotos? (Deixe em branco para manter as atuais)")
-                up1 = st.file_uploader("Trocar Foto 1", type=['jpg','png','jpeg'])
-                if st.form_submit_button("SALVAR ALTERAÇÕES"):
-                    update_dict = {"nome": e_nome, "area": e_cat, "descricao": e_desc}
-                    if up1:
-                        update_dict["f1"] = base64.b64encode(up1.read()).decode()
-                    db.collection("profissionais").document(st.session_state.user_id).update(update_dict)
-                    st.success("Atualizado!")
-                    st.rerun()
+        st.divider()
+        btn_enviar = st.form_submit_button("🚀 CRIAR MINHA VITRINE AGORA", use_container_width=True)
 
-        if st.button("🚪 SAIR DO PAINEL"):
-            st.session_state.auth = False
-            st.session_state.user_id = None
-            st.rerun()
+        if btn_enviar:
+            import datetime # Garante que o datetime funcione aqui dentro
+            
+            if not nome_c or not zap_c or not desc_c:
+                st.error("⚠️ Preencha Nome, WhatsApp e Descrição.")
+            else:
+                with st.spinner("Salvando sua vitrine..."):
+                    # Converte fotos (Função converter_img_b64 deve estar no topo do app)
+                    foto_b64 = converter_img_b64(foto_perfil) if foto_perfil else ""
+                    f1_b64 = converter_img_b64(f1) if f1 else ""
+                    f2_b64 = converter_img_b64(f2) if f2 else ""
+                    f3_b64 = converter_img_b64(f3) if f3 else ""
+
+                    novo_pro = {
+                        "nome": nome_c,
+                        "area": area_c,
+                        "tipo": tipo_c,
+                        "descricao": desc_c,
+                        "lat": lat_c,
+                        "lon": lon_c,
+                        "foto_b64": foto_b64,
+                        "f1": f1_b64,
+                        "f2": f2_b64,
+                        "f3": f3_b64,
+                        "aprovado": False,
+                        "verificado": False,
+                        "saldo": 0,
+                        "rating": 5.0,
+                        "cliques": 0,
+                        "data_cadastro": datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
+                    }
+
+                    # Salva usando o ZAP como ID (Blindagem contra duplicados)
+                    db.collection("profissionais").document(zap_c).set(novo_pro)
+                    
+                    st.balloons()
+                    st.success("✅ Cadastro enviado! Aguarde a aprovação do Admin.")
 # ==============================================================================
 # ABA 3: MEU PERFIL (VITRINE LUXUOSA ESTILO INSTA)
 # ==============================================================================
@@ -661,22 +726,6 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
