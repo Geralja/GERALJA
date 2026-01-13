@@ -436,73 +436,91 @@ with menu_abas[0]:
                 })
                 
 # ==============================================================================
-# ABA 2: 📝 CADASTRO TURBINADO E BLINDADO
+# --- ABA 2: CADASTRO (BLINDAGEM DE DUPLICADOS + 4 FOTOS + BÔNUS) ---
 # ==============================================================================
-with menu_abas[1]:
-    st.header("🚀 Seja um Parceiro GeralJá")
-    st.write("Cadastre seu serviço e seja encontrado por clientes próximos!")
-    
-    # Função interna para usar a chave que você salvou nos Secrets
-    def obter_coords_google(endereco):
-        api_key = st.secrets["GOOGLE_MAPS_API_KEY"]
-        url = f"https://maps.googleapis.com/maps/api/geocode/json?address={endereco}&key={api_key}"
-        try:
-            response = requests.get(url).json()
-            if response['status'] == 'OK':
-                loc = response['results'][0]['geometry']['location']
-                end_formatado = response['results'][0]['formatted_address']
-                return loc['lat'], loc['lng'], end_formatado
-        except:
-            pass
-        return None, None, None
 
-    with st.form("reg_preciso"):
-        col_c1, col_c2 = st.columns(2)
-        r_n = col_c1.text_input("Nome Completo")
-        r_z = col_c2.text_input("WhatsApp (Apenas números)", help="Ex: 11999999999")
+with menu_abas[1]:
+    st.markdown("### 🚀 Cadastro de Profissional Elite")
+    st.info("🎁 BÔNUS: Novos cadastros ganham **10 GeralCones** de saldo inicial!")
+
+    with st.form("form_cadastro_blindado_v4", clear_on_submit=True):
+        col1, col2 = st.columns(2)
+        with col1:
+            nome = st.text_input("Nome Completo ou Empresa", placeholder="Ex: João Silva Pinturas")
+            telefone = st.text_input("WhatsApp (DDD + Número)", help="Apenas números. Ex: 11999998888")
+            area = st.selectbox("Sua Especialidade", CATEGORIAS_OFICIAIS)
         
-        # CAMPO CRUCIAL: O endereço que o Google vai ler
-        r_endereco = st.text_input("Endereço de Atendimento", placeholder="Rua, Número, Bairro, Cidade - Estado")
+        with col2:
+            cidade = st.text_input("Cidade / UF", placeholder="Ex: São Paulo / SP")
+            senha_acesso = st.text_input("Crie uma Senha", type="password", help="Para editar seu perfil no futuro")
+
+        descricao = st.text_area("Descrição (O que você faz?)", placeholder="Conte um pouco sobre sua experiência e serviços...")
         
-        col_c3, col_c4 = st.columns(2)
-        r_s = col_c3.text_input("Crie uma Senha", type="password")
-        r_a = col_c4.selectbox("Sua Especialidade Principal", CATEGORIAS_OFICIAIS)
+        st.markdown("---")
+        st.write("📷 **Portfólio de Fotos** (Mostre seu trabalho)")
         
-        r_d = st.text_area("Descreva seus serviços")
-        
-        st.info("📌 Sua localização será usada para mostrar seus serviços aos clientes mais próximos.")
-        
-        if st.form_submit_button("FINALIZAR MEU CADASTRO", use_container_width=True):
-            if len(r_z) < 10 or not r_endereco:
-                st.error("⚠️ Nome, WhatsApp e Endereço são obrigatórios!")
+        # Grid de fotos 2x2 para ficar bonito no form
+        f_col1, f_col2 = st.columns(2)
+        with f_col1:
+            f1_file = st.file_uploader("Foto 1 (Perfil/Principal)", type=['jpg', 'jpeg', 'png'], key="cad_f1")
+            f2_file = st.file_uploader("Foto 2 (Opcional)", type=['jpg', 'jpeg', 'png'], key="cad_f2")
+        with f_col2:
+            f3_file = st.file_uploader("Foto 3 (Opcional)", type=['jpg', 'jpeg', 'png'], key="cad_f3")
+            f4_file = st.file_uploader("Foto 4 (Opcional)", type=['jpg', 'jpeg', 'png'], key="cad_f4")
+
+        submit = st.form_submit_button("🚀 FINALIZAR E GANHAR 10 GERALCONES")
+
+        if submit:
+            # 1. LIMPEZA E FORMATAÇÃO DO ID
+            tel_id = re.sub(r'\D', '', telefone)
+            
+            # --- REGRAS DE OURO (VALIDAÇÃO) ---
+            if not nome or len(tel_id) < 10:
+                st.error("❌ Nome e WhatsApp válidos são obrigatórios!")
+            elif not f1_file:
+                st.error("❌ Envie pelo menos a Foto Principal para atrair clientes!")
             else:
-                # MÁGICA DO GOOGLE ACONTECENDO AQUI
-                lat, lon, endereco_real = obter_coords_google(r_endereco)
-                
-                if lat and lon:
-                    try:
-                        db.collection("profissionais").document(r_z).set({
-                            "nome": r_n,
-                            "whatsapp": r_z,
-                            "senha": r_s,
-                            "area": r_a,
-                            "descricao": r_d,
-                            "endereco_digitado": r_endereco,
-                            "endereco_oficial": endereco_real, # Endereço corrigido pelo Google
-                            "lat": lat,
-                            "lon": lon,
-                            "saldo": BONUS_WELCOME,
-                            "cliques": 0,
-                            "rating": 5.0,
-                            "aprovado": False,
-                            "data_registro": datetime.datetime.now()
-                        })
-                        st.success(f"✅ Cadastro enviado! Localizamos você em: {endereco_real}")
-                        st.balloons()
-                    except Exception as e:
-                        st.error(f"Erro ao salvar no banco: {e}")
-                else:
-                    st.error("❌ Não conseguimos validar este endereço no mapa. Tente incluir o número da casa e a cidade.")
+                try:
+                    with st.spinner("Validando Cadastro Único..."):
+                        # 2. BLINDAGEM CONTRA DUPLICADOS
+                        doc_ref = db.collection("profissionais").document(tel_id).get()
+                        
+                        if doc_ref.exists:
+                            st.warning(f"⚠️ Atenção! O número {tel_id} já está cadastrado no sistema.")
+                            st.info("Use a aba de edição ou entre em contato com o suporte.")
+                        else:
+                            # 3. CONVERSÃO DE IMAGENS (SOMA DA FOTO 4)
+                            img1 = converter_img_b64(f1_file)
+                            img2 = converter_img_b64(f2_file) if f2_file else ""
+                            img3 = converter_img_b64(f3_file) if f3_file else ""
+                            img4 = converter_img_b64(f4_file) if f4_file else ""
+
+                            # 4. ESTRUTURA DE DADOS COM BÔNUS DE 10 GERALCONES
+                            dados_prof = {
+                                "nome": nome.strip().upper(),
+                                "telefone": tel_id,
+                                "area": area,
+                                "descricao": descricao,
+                                "cidade": cidade.strip(),
+                                "senha": senha_acesso,
+                                "f1": img1, "f2": img2, "f3": img3, "f4": img4,
+                                "aprovado": False,  # Entra para análise do admin
+                                "verificado": False,
+                                "saldo": 10.0,      # <--- BÔNUS GERALCONES AQUI
+                                "lat": LAT_REF, 
+                                "lon": LON_REF,
+                                "data_cadastro": datetime.now(pytz.timezone('America/Sao_Paulo')).strftime("%d/%m/%Y %H:%M")
+                            }
+
+                            # 5. SALVAMENTO FINAL
+                            db.collection("profissionais").document(tel_id).set(dados_prof)
+                            
+                            st.balloons()
+                            st.success(f"🎊 PARABÉNS! {nome}, você ganhou 10 GeralCones!")
+                            st.info("Seu perfil foi enviado para aprovação. Em breve você estará na vitrine!")
+                            
+                except Exception as e:
+                    st.error(f"❌ Erro Técnico ao cadastrar: {e}")
 
 # ==============================================================================
 # ABA 3: MEU PERFIL (VITRINE LUXUOSA ESTILO INSTA)
@@ -738,6 +756,7 @@ with menu_abas[4]:
     if st.button("Enviar Feedback"):
         st.success("Obrigado! Sua mensagem foi enviada para nossa equipe.")
         # Em produção, salvaria em uma coleção 'feedbacks'
+
 
 
 
