@@ -434,74 +434,142 @@ with menu_abas[0]:
                     "cliques": p.get('cliques', 0) + 1
                 })
                 
-# ==============================================================================
-# ABA 2: 📝 CADASTRO TURBINADO E BLINDADO
-# ==============================================================================
-with menu_abas[1]:
-    st.header("🚀 Seja um Parceiro GeralJá")
-    st.write("Cadastre seu serviço e seja encontrado por clientes próximos!")
-    
-    # Função interna para usar a chave que você salvou nos Secrets
-    def obter_coords_google(endereco):
-        api_key = st.secrets["GOOGLE_MAPS_API_KEY"]
-        url = f"https://maps.googleapis.com/maps/api/geocode/json?address={endereco}&key={api_key}"
-        try:
-            response = requests.get(url).json()
-            if response['status'] == 'OK':
-                loc = response['results'][0]['geometry']['location']
-                end_formatado = response['results'][0]['formatted_address']
-                return loc['lat'], loc['lng'], end_formatado
-        except:
-            pass
-        return None, None, None
+# --------------------------------------------------------------------------
+    # SUB-ABA: EDIÇÃO DO CADASTRO (VERSÃO PREMIUM ROBUSTA)
+    # --------------------------------------------------------------------------
+    with sub_aba_editar:
+        st.markdown("### 🛠️ Gerenciar Minha Vitrine")
+        
+        # Sistema de Logout Caso esteja Logado
+        if 'editando_id' in st.session_state:
+            if st.button("🚪 Sair da Edição", key="btn_logout_edit"):
+                del st.session_state['editando_id']
+                st.rerun()
 
-    with st.form("reg_preciso"):
-        col_c1, col_c2 = st.columns(2)
-        r_n = col_c1.text_input("Nome Completo")
-        r_z = col_c2.text_input("WhatsApp (Apenas números)", help="Ex: 11999999999")
-        
-        # CAMPO CRUCIAL: O endereço que o Google vai ler
-        r_endereco = st.text_input("Endereço de Atendimento", placeholder="Rua, Número, Bairro, Cidade - Estado")
-        
-        col_c3, col_c4 = st.columns(2)
-        r_s = col_c3.text_input("Crie uma Senha", type="password")
-        r_a = col_c4.selectbox("Sua Especialidade Principal", CATEGORIAS_OFICIAIS)
-        
-        r_d = st.text_area("Descreva seus serviços")
-        
-        st.info("📌 Sua localização será usada para mostrar seus serviços aos clientes mais próximos.")
-        
-        if st.form_submit_button("FINALIZAR MEU CADASTRO", use_container_width=True):
-            if len(r_z) < 10 or not r_endereco:
-                st.error("⚠️ Nome, WhatsApp e Endereço são obrigatórios!")
-            else:
-                # MÁGICA DO GOOGLE ACONTECENDO AQUI
-                lat, lon, endereco_real = obter_coords_google(r_endereco)
+        # ÁREA DE LOGIN (SÓ APARECE SE NÃO ESTIVER LOGADO)
+        if 'editando_id' not in st.session_state:
+            with st.container(border=True):
+                st.markdown("#### 🔑 Login de Acesso")
+                login_tel = st.text_input("WhatsApp Cadastrado (Apenas números)", key="login_tel_edit")
+                login_senha = st.text_input("Senha de Acesso", type="password", key="login_pass_edit")
                 
-                if lat and lon:
-                    try:
-                        db.collection("profissionais").document(r_z).set({
-                            "nome": r_n,
-                            "whatsapp": r_z,
-                            "senha": r_s,
-                            "area": r_a,
-                            "descricao": r_d,
-                            "endereco_digitado": r_endereco,
-                            "endereco_oficial": endereco_real, # Endereço corrigido pelo Google
-                            "lat": lat,
-                            "lon": lon,
-                            "saldo": BONUS_WELCOME,
-                            "cliques": 0,
-                            "rating": 5.0,
-                            "aprovado": False,
-                            "data_registro": datetime.datetime.now()
-                        })
-                        st.success(f"✅ Cadastro enviado! Localizamos você em: {endereco_real}")
-                        st.balloons()
-                    except Exception as e:
-                        st.error(f"Erro ao salvar no banco: {e}")
-                else:
-                    st.error("❌ Não conseguimos validar este endereço no mapa. Tente incluir o número da casa e a cidade.")
+                if st.button("🔓 ACESSAR MEU PERFIL", key="btn_login_edit", use_container_width=True):
+                    tel_clean = re.sub(r'\D', '', login_tel)
+                    if not tel_clean or not login_senha:
+                        st.warning("⚠️ Preencha todos os campos para acessar.")
+                    else:
+                        try:
+                            user_doc = db.collection("profissionais").document(tel_clean).get()
+                            if user_doc.exists:
+                                dados = user_doc.to_dict()
+                                # Validação robusta de senha (converte ambos para string para evitar erro de tipo)
+                                if str(dados.get('senha')) == str(login_senha):
+                                    st.session_state['editando_id'] = tel_clean
+                                    st.success("✅ Acesso liberado!")
+                                    time.sleep(0.5)
+                                    st.rerun()
+                                else:
+                                    st.error("❌ Senha incorreta!")
+                            else:
+                                st.error("❌ Profissional não encontrado!")
+                        except Exception as e:
+                            st.error(f"⚠️ Erro ao conectar ao banco: {e}")
+
+        # FORMULÁRIO DE EDIÇÃO (ROBUSTO)
+        else:
+            pid = st.session_state['editando_id']
+            try:
+                # Busca sempre os dados mais frescos do banco
+                doc_snapshot = db.collection("profissionais").document(pid).get()
+                if not doc_snapshot.exists:
+                    st.error("Perfil não encontrado no servidor.")
+                    del st.session_state['editando_id']
+                    st.stop()
+                
+                d = doc_snapshot.to_dict()
+                
+                with st.form("form_edicao_final", clear_on_submit=False):
+                    st.info(f"📍 Editando agora: **{d.get('nome')}**")
+                    
+                    col_e1, col_e2 = st.columns(2)
+                    with col_e1:
+                        novo_nome = st.text_input("Nome/Empresa", value=d.get('nome'))
+                        novo_telefone = st.text_input("Alterar WhatsApp (ID)", value=d.get('telefone'), help="Se mudar o número, seu ID de login também mudará.")
+                    with col_e2:
+                        # Fallback seguro para especialidade caso a categoria tenha sido excluída
+                        idx_area = 0
+                        if d.get('area') in CATEGORIAS_OFICIAIS:
+                            idx_area = CATEGORIAS_OFICIAIS.index(d.get('area'))
+                        
+                        nova_area = st.selectbox("Especialidade", CATEGORIAS_OFICIAIS, index=idx_area)
+                        nova_senha = st.text_input("Senha de Acesso", value=d.get('senha'))
+
+                    nova_desc = st.text_area("Descrição do Serviço", value=d.get('descricao'), height=150)
+
+                    st.markdown("---")
+                    st.write("📷 **Atualizar Portfólio Visual**")
+                    st.caption("Apenas envie fotos novas se desejar substituir as atuais.")
+                    
+                    fe1, fe2 = st.columns(2)
+                    with fe1:
+                        up_f1 = st.file_uploader("Trocar Foto 1 (Principal)", type=['jpg', 'png', 'jpeg'], key="up_f1")
+                        up_f2 = st.file_uploader("Trocar Foto 2", type=['jpg', 'png', 'jpeg'], key="up_f2")
+                    with fe2:
+                        up_f3 = st.file_uploader("Trocar Foto 3", type=['jpg', 'png', 'jpeg'], key="up_f3")
+                        up_f4 = st.file_uploader("Trocar Foto 4", type=['jpg', 'png', 'jpeg'], key="up_f4")
+
+                    if st.form_submit_button("💾 SALVAR TODAS AS ALTERAÇÕES", use_container_width=True):
+                        with st.spinner("🚀 Processando e otimizando dados..."):
+                            try:
+                                # 1. Preparação das Atualizações
+                                atualizacoes = {
+                                    "nome": novo_nome.upper().strip(),
+                                    "area": nova_area,
+                                    "descricao": nova_desc.strip(),
+                                    "senha": str(nova_senha),
+                                    "telefone": re.sub(r'\D', '', novo_telefone)
+                                }
+
+                                # 2. Processamento de Imagens com Validação
+                                for key, file in [("f1", up_f1), ("f2", up_f2), ("f3", up_f3), ("f4", up_f4)]:
+                                    if file:
+                                        # Chama a função do seu Motor (ajustado para IA_MESTRE)
+                                        atualizacoes[key] = IA_MESTRE.converter_img_b64(file)
+
+                                novo_id = atualizacoes["telefone"]
+
+                                # 3. Lógica de Migração (Se o Telefone mudar)
+                                if novo_id != pid:
+                                    if not novo_id or len(novo_id) < 10:
+                                        st.error("❌ O novo telefone inserido é inválido.")
+                                        st.stop()
+                                        
+                                    if db.collection("profissionais").document(novo_id).get().exists:
+                                        st.error("❌ Este novo telefone já está em uso por outra conta.")
+                                    else:
+                                        # Migração completa: Copia dados antigos + Novas atualizações
+                                        dados_completos = d.copy()
+                                        dados_completos.update(atualizacoes)
+                                        
+                                        # Grava o novo, deleta o velho (Transação manual simulada)
+                                        db.collection("profissionais").document(novo_id).set(dados_completos)
+                                        db.collection("profissionais").document(pid).delete()
+                                        
+                                        st.session_state['editando_id'] = novo_id
+                                        st.success("✅ Perfil migrado para o novo número!")
+                                        time.sleep(1)
+                                        st.rerun()
+                                else:
+                                    # Update simples
+                                    db.collection("profissionais").document(pid).update(atualizacoes)
+                                    st.success("✅ Informações atualizadas com sucesso!")
+                                    time.sleep(1)
+                                    st.rerun()
+
+                            except Exception as e:
+                                st.error(f"❌ Erro ao salvar alterações: {e}")
+            except Exception as e:
+                st.error(f"❌ Falha crítica ao carregar formulário: {e}")
 
 # ==============================================================================
 # ABA 3: MEU PERFIL (VITRINE LUXUOSA ESTILO INSTA)
@@ -742,6 +810,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
