@@ -347,6 +347,7 @@ with menu_abas[0]:
     st.markdown("### 🔍 O que você procura hoje?")
     
 # --- LÓGICA DE PROCESSAMENTO ---
+
 if termo_busca:
     try:
         # 1. IA DE MAPEAMENTO (Busca Inteligente)
@@ -768,6 +769,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
