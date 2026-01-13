@@ -401,91 +401,112 @@ with menu_abas[0]:
                 """, unsafe_allow_html=True)
                 
 # ==============================================================================
-# ABA 2: 👤 LOGIN & CADASTRO DE VITRINE (TURBINADO)
+# ABA 2: 👤 MEU PAINEL (LOGIN PERSISTENTE + VITRINE DE FOTOS)
 # ==============================================================================
 with menu_abas[1]:
-    escolha = st.radio("Selecione uma opção:", ["Fazer Login", "Criar Nova Vitrine (Grátis)"], horizontal=True)
+    # Inicializa o estado de autenticação
+    if 'auth' not in st.session_state: 
+        st.session_state.auth = False
+    if 'user_id' not in st.session_state: 
+        st.session_state.user_id = None
 
-    if escolha == "Criar Nova Vitrine (Grátis)":
-        st.markdown("### 🚀 Cadastre sua Vitrine Profissional")
-        
-        with st.form("form_cadastro_v3", clear_on_submit=False):
-            # Identificação Básica
-            col1, col2 = st.columns(2)
-            nome_vitrine = col1.text_input("Nome do seu Negócio / Nome Profissional*", placeholder="Ex: João Mecânico")
-            whatsapp_id = col2.text_input("Seu WhatsApp (Apenas números)*", placeholder="DDD + Número")
+    # --- SE NÃO ESTIVER LOGADO: MOSTRA LOGIN OU CADASTRO ---
+    if not st.session_state.auth:
+        tela = st.radio("Selecione:", ["Acessar Painel", "Criar Nova Vitrine (Grátis)"], horizontal=True)
+
+        if tela == "Acessar Painel":
+            st.markdown("### 🔑 Entrar")
+            l_zap = st.text_input("WhatsApp (Login)", placeholder="Apenas números", key="l_zap")
+            l_pw = st.text_input("Senha", type="password", key="l_pw")
             
-            # Segurança e Segmento
-            col3, col4 = st.columns(2)
-            segmento_tipo = col3.selectbox("Segmento*", ["👤 Profissional Liberal", "🏢 Comércio/Loja"])
-            senha_acesso = col4.text_input("Crie uma Senha para editar sua vitrine*", type="password")
-            
-            # Conteúdo da Vitrine
-            categoria_atuacao = st.selectbox("Categoria*", ["Pedreiro", "Mecânico", "Pizzaria", "Beleza", "Saúde", "Outros"])
-            descricao_bio = st.text_area("Descrição da sua Vitrine (O que você faz?)", placeholder="Ex: Especialista em reparos elétricos com 10 anos de experiência...")
-
-            # --- SEÇÃO DE FOTOS DA VITRINE ---
-            st.markdown("#### 📸 Fotos dos seus Serviços/Produtos")
-            st.caption("Adicione até 3 fotos para mostrar seu trabalho aos clientes.")
-            
-            c_f1, c_f2, c_f3 = st.columns(3)
-            pic1 = c_f1.file_uploader("Foto de Perfil/Logo", type=['jpg', 'png', 'jpeg'], key="pic1")
-            pic2 = c_f2.file_uploader("Trabalho 01", type=['jpg', 'png', 'jpeg'], key="pic2")
-            pic3 = c_f3.file_uploader("Trabalho 02", type=['jpg', 'png', 'jpeg'], key="pic3")
-
-            submit_btn = st.form_submit_button("🚀 CRIAR MINHA VITRINE AGORA")
-
-            if submit_btn:
-                if not nome_vitrine or not whatsapp_id or not senha_acesso:
-                    st.error("❌ Nome, WhatsApp e Senha são obrigatórios!")
+            if st.button("ACESSAR MINHA VITRINE"):
+                doc = db.collection("profissionais").document(l_zap).get()
+                if doc.exists and str(doc.to_dict().get('senha')) == l_pw:
+                    st.session_state.auth = True
+                    st.session_state.user_id = l_zap
+                    st.success("Login realizado!")
+                    st.rerun()
                 else:
-                    # Função para transformar imagem em texto (Base64) para o banco
-                    def processar_imagem(arquivo):
-                        if arquivo:
-                            return base64.b64encode(arquivo.read()).decode()
-                        return None
+                    st.error("WhatsApp ou Senha incorretos.")
 
-                    # Criando o pacote de dados
-                    novo_perfil = {
-                        "nome": nome_vitrine.upper(),
-                        "whatsapp": whatsapp_id,
-                        "senha": senha_acesso,
-                        "tipo": segmento_tipo,
-                        "area": categoria_atuacao,
-                        "descricao": descricao_bio,
-                        "foto_perfil": processar_imagem(pic1),
-                        "f1": processar_imagem(pic2),
-                        "f2": processar_imagem(pic3),
-                        "aprovado": False,
-                        "saldo": 0,
-                        "data_cadastro": datetime.now()
-                    }
+        else:
+            # --- FORMULÁRIO DE CADASTRO COMPLETO (TURBINADO) ---
+            st.markdown("### 🚀 Criar Vitrine Profissional")
+            with st.form("cad_completo", clear_on_submit=True):
+                c1, c2 = st.columns(2)
+                c_nome = c1.text_input("Nome do Negócio/Profissional*")
+                c_zap = c2.text_input("WhatsApp (Será seu Login)*")
+                
+                c3, c4 = st.columns(2)
+                c_cat = c3.selectbox("Categoria", CATEGORIAS_OFICIAIS)
+                c_pw = c4.text_input("Crie uma Senha*", type="password")
+                
+                c_desc = st.text_area("Descrição do seu Trabalho")
+                
+                st.markdown("#### 📸 Fotos da Vitrine")
+                col_f1, col_f2, col_f3 = st.columns(3)
+                f1 = col_f1.file_uploader("Foto 1 (Principal)", type=['jpg','png','jpeg'])
+                f2 = col_f2.file_uploader("Foto 2", type=['jpg','png','jpeg'])
+                f3 = col_f3.file_uploader("Foto 3", type=['jpg','png','jpeg'])
 
-                    # Gravando no Firebase (ID é o WhatsApp)
-                    db.collection("profissionais").document(whatsapp_id).set(novo_perfil)
-                    
-                    st.balloons()
-                    st.success("✅ Vitrine enviada! Em breve ela estará disponível nas buscas.")
+                if st.form_submit_button("FINALIZAR E PUBLICAR"):
+                    if c_nome and c_zap and c_pw:
+                        def to_b64(f): return base64.b64encode(f.read()).decode() if f else None
+                        
+                        db.collection("profissionais").document(c_zap).set({
+                            "nome": c_nome.upper(),
+                            "senha": c_pw,
+                            "area": c_cat,
+                            "descricao": c_desc,
+                            "f1": to_b64(f1),
+                            "f2": to_b64(f2),
+                            "f3": to_b64(f3),
+                            "saldo": 0,
+                            "cliques": 0,
+                            "aprovado": False,
+                            "verificado": False,
+                            "data": datetime.now()
+                        })
+                        st.success("✅ Cadastro enviado! Aguarde aprovação.")
+                    else:
+                        st.error("Preencha os campos obrigatórios (*)")
 
+    # --- SE ESTIVER LOGADO: MOSTRA DASHBOARD DE EDIÇÃO ---
     else:
-        # --- LOGIN PARA EDIÇÃO ---
-        st.markdown("### 🔑 Acessar meu Painel")
-        col_lg1, col_lg2 = st.columns(2)
-        log_user = col_lg1.text_input("WhatsApp cadastrado", key="log_u")
-        log_pass = col_lg2.text_input("Senha", type="password", key="log_p")
+        dados = db.collection("profissionais").document(st.session_state.user_id).get().to_dict()
         
-        if log_user and log_pass:
-            # Busca no banco
-            doc = db.collection("profissionais").document(log_user).get()
-            if doc.exists:
-                dados = doc.to_dict()
-                if str(dados.get('senha')) == log_pass:
-                    st.success(f"Bem-vindo, {dados.get('nome')}!")
-                    # Aqui você pode adicionar os botões de editar que já tinha
-                else:
-                    st.error("Senha incorreta.")
-            else:
-                st.error("WhatsApp não cadastrado.")
+        st.markdown(f"### ✨ Painel de: {dados.get('nome')}")
+        
+        # Métrica Estilizada
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Moedas/Saldo", f"{dados.get('saldo', 0)} 🪙")
+        c2.metric("Interessados (Leads)", f"{dados.get('cliques', 0)} 👤")
+        status = "✅ ATIVO" if dados.get("aprovado") else "⏳ PENDENTE"
+        c3.metric("Status", status)
+
+        # Edição de Perfil
+        with st.expander("📝 EDITAR MINHA VITRINE"):
+            with st.form("edit_f"):
+                e_nome = st.text_input("Nome", value=dados.get('nome'))
+                e_cat = st.selectbox("Categoria", CATEGORIAS_OFICIAIS, index=CATEGORIAS_OFICIAIS.index(dados.get('area', 'Ajudante Geral')))
+                e_desc = st.text_area("Descrição", value=dados.get('descricao'))
+                
+                # Edição de fotos (opcional, mostra se já tem)
+                st.write("Deseja trocar as fotos? (Deixe em branco para manter as atuais)")
+                up1 = st.file_uploader("Trocar Foto 1", type=['jpg','png','jpeg'])
+                
+                if st.form_submit_button("SALVAR ALTERAÇÕES"):
+                    update_dict = {"nome": e_nome, "area": e_cat, "descricao": e_desc}
+                    if up1: update_dict["f1"] = base64.b64encode(up1.read()).decode()
+                    
+                    db.collection("profissionais").document(st.session_state.user_id).update(update_dict)
+                    st.success("Atualizado!")
+                    st.rerun()
+
+        if st.button("🚪 SAIR DO PAINEL"):
+            st.session_state.auth = False
+            st.session_state.user_id = None
+            st.rerun()
 # ==============================================================================
 # ABA 3: MEU PERFIL (VITRINE LUXUOSA ESTILO INSTA)
 # ==============================================================================
@@ -725,6 +746,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
