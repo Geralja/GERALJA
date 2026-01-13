@@ -401,83 +401,91 @@ with menu_abas[0]:
                 """, unsafe_allow_html=True)
                 
 # ==============================================================================
-# ABA 2: 👤 PAINEL DE ACESSO & CADASTRO TURBINADO
+# ABA 2: 👤 LOGIN & CADASTRO DE VITRINE (TURBINADO)
 # ==============================================================================
 with menu_abas[1]:
     escolha = st.radio("Selecione uma opção:", ["Fazer Login", "Criar Nova Vitrine (Grátis)"], horizontal=True)
 
     if escolha == "Criar Nova Vitrine (Grátis)":
-        st.markdown("### 🚀 Cadastre seu Negócio")
+        st.markdown("### 🚀 Cadastre sua Vitrine Profissional")
         
-        with st.form("form_cadastro_elite", clear_on_submit=True):
-            col_id1, col_id2 = st.columns(2)
-            nome_negocio = col_id1.text_input("Nome do Negócio ou Profissional*", placeholder="Ex: João Mecânico")
-            whatsapp_cad = col_id2.text_input("WhatsApp (Seu Login)*", placeholder="Apenas números com DDD")
+        with st.form("form_cadastro_v3", clear_on_submit=False):
+            # Identificação Básica
+            col1, col2 = st.columns(2)
+            nome_vitrine = col1.text_input("Nome do seu Negócio / Nome Profissional*", placeholder="Ex: João Mecânico")
+            whatsapp_id = col2.text_input("Seu WhatsApp (Apenas números)*", placeholder="DDD + Número")
             
-            col_seg1, col_seg2 = st.columns(2)
-            segmento = col_seg1.selectbox("Segmento*", ["👤 Profissional Liberal", "🏢 Comércio/Loja/Restaurante"])
-            senha_cad = col_seg2.text_input("Crie uma Senha de Acesso*", type="password")
+            # Segurança e Segmento
+            col3, col4 = st.columns(2)
+            segmento_tipo = col3.selectbox("Segmento*", ["👤 Profissional Liberal", "🏢 Comércio/Loja"])
+            senha_acesso = col4.text_input("Crie uma Senha para editar sua vitrine*", type="password")
             
-            categoria = st.selectbox("Categoria de Atuação*", ["Pedreiro", "Mecânico", "Pizzaria", "Advogado", "Manicure", "Outros"])
-            descricao = st.text_area("Descrição da sua Vitrine (O que você faz?)", placeholder="Conte detalhes do seu serviço...")
+            # Conteúdo da Vitrine
+            categoria_atuacao = st.selectbox("Categoria*", ["Pedreiro", "Mecânico", "Pizzaria", "Beleza", "Saúde", "Outros"])
+            descricao_bio = st.text_area("Descrição da sua Vitrine (O que você faz?)", placeholder="Ex: Especialista em reparos elétricos com 10 anos de experiência...")
 
-            # --- SEÇÃO VITRINE (UPLOAD DE FOTOS) ---
-            st.markdown("#### 📸 Fotos da sua Vitrine")
-            st.info("Dica: Fotos bem iluminadas atraem 3x mais clientes!")
+            # --- SEÇÃO DE FOTOS DA VITRINE ---
+            st.markdown("#### 📸 Fotos dos seus Serviços/Produtos")
+            st.caption("Adicione até 3 fotos para mostrar seu trabalho aos clientes.")
             
-            c_foto1, c_foto2, c_foto3 = st.columns(3)
-            f1 = c_foto1.file_uploader("Foto Principal", type=['jpg', 'png', 'jpeg'], key="f1")
-            f2 = c_foto2.file_uploader("Trabalho 01", type=['jpg', 'png', 'jpeg'], key="f2")
-            f3 = c_foto3.file_uploader("Trabalho 02", type=['jpg', 'png', 'jpeg'], key="f3")
+            c_f1, c_f2, c_f3 = st.columns(3)
+            pic1 = c_f1.file_uploader("Foto de Perfil/Logo", type=['jpg', 'png', 'jpeg'], key="pic1")
+            pic2 = c_f2.file_uploader("Trabalho 01", type=['jpg', 'png', 'jpeg'], key="pic2")
+            pic3 = c_f3.file_uploader("Trabalho 02", type=['jpg', 'png', 'jpeg'], key="pic3")
 
-            # --- CAMPOS ESPECÍFICOS PARA COMÉRCIO ---
-            if segmento == "🏢 Comércio/Loja/Restaurante":
-                st.markdown("#### 🕒 Horário de Funcionamento")
-                c_h1, c_h2 = st.columns(2)
-                h_abre = c_h1.text_input("Abre às:", value="08:00")
-                h_fecha = c_h2.text_input("Fecha às:", value="18:00")
+            submit_btn = st.form_submit_button("🚀 CRIAR MINHA VITRINE AGORA")
 
-            submit = st.form_submit_button("🚀 PUBLICAR MINHA VITRINE")
-
-            if submit:
-                if not nome_negocio or not whatsapp_cad or not senha_cad:
-                    st.error("Por favor, preencha todos os campos obrigatórios (*)")
+            if submit_btn:
+                if not nome_vitrine or not whatsapp_id or not senha_acesso:
+                    st.error("❌ Nome, WhatsApp e Senha são obrigatórios!")
                 else:
-                    # Função interna para converter imagem para Base64 (Blindagem de armazenamento)
-                    def converter_foto(file):
-                        if file:
-                            return base64.b64encode(file.read()).decode()
+                    # Função para transformar imagem em texto (Base64) para o banco
+                    def processar_imagem(arquivo):
+                        if arquivo:
+                            return base64.b64encode(arquivo.read()).decode()
                         return None
 
-                    dados_cadastro = {
-                        "nome": nome_negocio.upper(),
-                        "whatsapp": whatsapp_cad,
-                        "senha": senha_cad,
-                        "tipo": segmento,
-                        "area": categoria,
-                        "descricao": descricao,
-                        "f1": converter_foto(f1),
-                        "f2": converter_foto(f2),
-                        "f3": converter_foto(f3),
-                        "aprovado": False, # Passa pelo crivo do admin
+                    # Criando o pacote de dados
+                    novo_perfil = {
+                        "nome": nome_vitrine.upper(),
+                        "whatsapp": whatsapp_id,
+                        "senha": senha_acesso,
+                        "tipo": segmento_tipo,
+                        "area": categoria_atuacao,
+                        "descricao": descricao_bio,
+                        "foto_perfil": processar_imagem(pic1),
+                        "f1": processar_imagem(pic2),
+                        "f2": processar_imagem(pic3),
+                        "aprovado": False,
                         "saldo": 0,
-                        "verificado": False,
                         "data_cadastro": datetime.now()
                     }
-                    
-                    if segmento == "🏢 Comércio/Loja/Restaurante":
-                        dados_cadastro["h_abre"] = h_abre
-                        dados_cadastro["h_fecha"] = h_fecha
 
-                    # Salva no Firebase usando o WhatsApp como ID Único
-                    db.collection("profissionais").document(whatsapp_cad).set(dados_cadastro)
+                    # Gravando no Firebase (ID é o WhatsApp)
+                    db.collection("profissionais").document(whatsapp_id).set(novo_perfil)
                     
                     st.balloons()
-                    st.success("✅ Cadastro enviado com sucesso! Aguarde a ativação pelo administrador.")
+                    st.success("✅ Vitrine enviada! Em breve ela estará disponível nas buscas.")
 
     else:
-        # Aqui ficaria o código de Login que já fizemos antes
-        st.info("Área de Login: Digite seus dados para editar sua vitrine.")
+        # --- LOGIN PARA EDIÇÃO ---
+        st.markdown("### 🔑 Acessar meu Painel")
+        col_lg1, col_lg2 = st.columns(2)
+        log_user = col_lg1.text_input("WhatsApp cadastrado", key="log_u")
+        log_pass = col_lg2.text_input("Senha", type="password", key="log_p")
+        
+        if log_user and log_pass:
+            # Busca no banco
+            doc = db.collection("profissionais").document(log_user).get()
+            if doc.exists:
+                dados = doc.to_dict()
+                if str(dados.get('senha')) == log_pass:
+                    st.success(f"Bem-vindo, {dados.get('nome')}!")
+                    # Aqui você pode adicionar os botões de editar que já tinha
+                else:
+                    st.error("Senha incorreta.")
+            else:
+                st.error("WhatsApp não cadastrado.")
 # ==============================================================================
 # ABA 3: MEU PERFIL (VITRINE LUXUOSA ESTILO INSTA)
 # ==============================================================================
@@ -717,6 +725,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
