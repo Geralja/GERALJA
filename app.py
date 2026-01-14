@@ -434,174 +434,174 @@ with menu_abas[0]:
                     "cliques": p.get('cliques', 0) + 1
                 })
                 
-# ==============================================================================
-# ABA 2: 📝 CADASTRO TURBINADO E BLINDADO
-# ==============================================================================
-with menu_abas[1]:
-    st.header("🚀 Seja um Parceiro GeralJá")
-    st.write("Cadastre seu serviço e seja encontrado por clientes próximos!")
-    
-    # Função interna para usar a chave que você salvou nos Secrets
-    def obter_coords_google(endereco):
-        api_key = st.secrets["GOOGLE_MAPS_API_KEY"]
-        url = f"https://maps.googleapis.com/maps/api/geocode/json?address={endereco}&key={api_key}"
-        try:
-            response = requests.get(url).json()
-            if response['status'] == 'OK':
-                loc = response['results'][0]['geometry']['location']
-                end_formatado = response['results'][0]['formatted_address']
-                return loc['lat'], loc['lng'], end_formatado
-        except:
-            pass
-        return None, None, None
-
-    with st.form("reg_preciso"):
-        col_c1, col_c2 = st.columns(2)
-        r_n = col_c1.text_input("Nome Completo")
-        r_z = col_c2.text_input("WhatsApp (Apenas números)", help="Ex: 11999999999")
-        
-        # CAMPO CRUCIAL: O endereço que o Google vai ler
-        r_endereco = st.text_input("Endereço de Atendimento", placeholder="Rua, Número, Bairro, Cidade - Estado")
-        
-        col_c3, col_c4 = st.columns(2)
-        r_s = col_c3.text_input("Crie uma Senha", type="password")
-        r_a = col_c4.selectbox("Sua Especialidade Principal", CATEGORIAS_OFICIAIS)
-        
-        r_d = st.text_area("Descreva seus serviços")
-        
-        st.info("📌 Sua localização será usada para mostrar seus serviços aos clientes mais próximos.")
-        
-        if st.form_submit_button("FINALIZAR MEU CADASTRO", use_container_width=True):
-            if len(r_z) < 10 or not r_endereco:
-                st.error("⚠️ Nome, WhatsApp e Endereço são obrigatórios!")
-            else:
-                # MÁGICA DO GOOGLE ACONTECENDO AQUI
-                lat, lon, endereco_real = obter_coords_google(r_endereco)
-                
-                if lat and lon:
-                    try:
-                        db.collection("profissionais").document(r_z).set({
-                            "nome": r_n,
-                            "whatsapp": r_z,
-                            "senha": r_s,
-                            "area": r_a,
-                            "descricao": r_d,
-                            "endereco_digitado": r_endereco,
-                            "endereco_oficial": endereco_real, # Endereço corrigido pelo Google
-                            "lat": lat,
-                            "lon": lon,
-                            "saldo": BONUS_WELCOME,
-                            "cliques": 0,
-                            "rating": 5.0,
-                            "aprovado": False,
-                            "data_registro": datetime.datetime.now()
-                        })
-                        st.success(f"✅ Cadastro enviado! Localizamos você em: {endereco_real}")
-                        st.balloons()
-                    except Exception as e:
-                        st.error(f"Erro ao salvar no banco: {e}")
-                else:
-                    st.error("❌ Não conseguimos validar este endereço no mapa. Tente incluir o número da casa e a cidade.")
-
-# ==============================================================================
-# ABA 3: MEU PERFIL (VITRINE LUXUOSA ESTILO INSTA)
-# ==============================================================================
+# --- ABA 2: PAINEL DO PARCEIRO (VERSÃO COM TEMA MANUAL) ---
 with menu_abas[2]:
     if 'auth' not in st.session_state: st.session_state.auth = False
     
     if not st.session_state.auth:
-        st.markdown("<h2 style='text-align:center;'>🔐 Portal do Parceiro</h2>", unsafe_allow_html=True)
-        with st.container():
-            l_zap = st.text_input("WhatsApp (ID)", key="login_zap")
-            l_pw = st.text_input("Senha", type="password", key="login_pw")
-            if st.button("ENTRAR NA MINHA VITRINE", use_container_width=True):
-                if l_zap:
-                    doc_ref = db.collection("profissionais").document(l_zap)
-                    doc = doc_ref.get()
-                    if doc.exists and doc.to_dict().get('senha') == l_pw:
-                        st.session_state.auth = True
-                        st.session_state.user_id = l_zap
-                        st.rerun()
-                    else:
-                        st.error("❌ Credenciais inválidas.")
+        st.subheader("🚀 Acesso ao Painel")
+        col1, col2 = st.columns(2)
+        l_zap = col1.text_input("WhatsApp (números)", key="login_zap_v7")
+        l_pw = col2.text_input("Senha", type="password", key="login_pw_v7")
+        
+        if st.button("ENTRAR NO PAINEL", use_container_width=True, key="btn_entrar_v7"):
+            u = db.collection("profissionais").document(l_zap).get()
+            if u.exists and u.to_dict().get('senha') == l_pw:
+                st.session_state.auth, st.session_state.user_id = True, l_zap
+                st.rerun()
+            else: st.error("Dados incorretos.")
     else:
-        uid = st.session_state.user_id
-        doc_ref = db.collection("profissionais").document(uid)
+        doc_ref = db.collection("profissionais").document(st.session_state.user_id)
         d = doc_ref.get().to_dict()
         
-        # --- HEADER ESTILO INSTAGRAM ---
-        st.markdown(f"""
-            <div style="display: flex; align-items: center; gap: 20px; padding: 20px; background: white; border-radius: 20px; border: 1px solid #E2E8F0; margin-bottom: 20px;">
-                <div style="position: relative;">
-                    <img src="data:image/png;base64,{d.get('foto_b64', '')}" 
-                         style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #E1306C;"
-                         onerror="this.src='https://ui-avatars.com/api/?name={d.get('nome')}&background=random'">
-                    <div style="position: absolute; bottom: 5px; right: 5px; background: #22C55E; width: 15px; height: 15px; border-radius: 50%; border: 2px solid white;"></div>
-                </div>
-                <div style="flex-grow: 1;">
-                    <h2 style="margin: 0; font-size: 22px;">{d.get('nome')}</h2>
-                    <p style="margin: 0; color: #64748B; font-size: 14px;">@{d.get('area').lower().replace(' ', '')}</p>
-                    <div style="display: flex; gap: 15px; margin-top: 10px;">
-                        <div style="text-align: center;"><b style="display: block;">{d.get('cliques', 0)}</b><small style="color: #64748B;">Cliques</small></div>
-                        <div style="text-align: center;"><b style="display: block;">⭐ {d.get('rating', 5.0)}</b><small style="color: #64748B;">Nota</small></div>
-                        <div style="text-align: center;"><b style="display: block;">{d.get('saldo', 0)}</b><small style="color: #64748B;">Moedas</small></div>
-                    </div>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
+        # 1. MÉTRICAS (Usando colunas nativas para evitar conflito de CSS)
+        st.write(f"### Olá, {d.get('nome', 'Parceiro')}!")
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Saldo 🪙", f"{d.get('saldo', 0)}")
+        m2.metric("Cliques 🚀", f"{d.get('cliques', 0)}")
+        m3.metric("Status", "🟢 ATIVO" if d.get('aprovado') else "🟡 PENDENTE")
 
-        # --- DASHBOARD DE PERFORMANCE (LUXUOSA) ---
-        col_m1, col_m2, col_m3 = st.columns(3)
-        col_m1.metric("Visibilidade", f"{d.get('cliques', 0)} rkt", "Aumento de 12%")
-        col_m2.metric("Saldo Atual", f"{d.get('saldo', 0)} 🪙")
-        col_m3.metric("Status Perfil", "Elite" if d.get('elite') else "Padrão")
-
-        # --- LOJA DE DESTAQUES (GRID VISUAL) ---
-        st.markdown("### 💎 Impulsione sua Vitrine")
-        with st.container():
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                st.markdown("<div style='background: linear-gradient(135deg, #FFD700, #FFA500); padding: 15px; border-radius: 15px; color: white; text-align: center;'><b>BRONZE</b><br>10 🪙<br>R$ 25</div>", unsafe_allow_html=True)
-                if st.button("Comprar 10", key="buy_10", use_container_width=True):
-                     st.markdown(f'<meta http-equiv="refresh" content="0;URL=https://wa.me/{ZAP_ADMIN}?text=Quero 10 moedas para ID: {uid}">', unsafe_allow_html=True)
-            with c2:
-                st.markdown("<div style='background: linear-gradient(135deg, #C0C0C0, #808080); padding: 15px; border-radius: 15px; color: white; text-align: center;'><b>PRATA</b><br>30 🪙<br>R$ 60</div>", unsafe_allow_html=True)
-                if st.button("Comprar 30", key="buy_30", use_container_width=True):
-                     st.markdown(f'<meta http-equiv="refresh" content="0;URL=https://wa.me/{ZAP_ADMIN}?text=Quero 30 moedas para ID: {uid}">', unsafe_allow_html=True)
-            with c3:
-                st.markdown("<div style='background: linear-gradient(135deg, #FFD700, #D4AF37); padding: 15px; border-radius: 15px; color: white; text-align: center;'><b>OURO</b><br>100 🪙<br>R$ 150</div>", unsafe_allow_html=True)
-                if st.button("Comprar 100", key="buy_100", use_container_width=True):
-                     st.markdown(f'<meta http-equiv="refresh" content="0;URL=https://wa.me/{ZAP_ADMIN}?text=Quero 100 moedas para ID: {uid}">', unsafe_allow_html=True)
+        # 2. GPS (Função preservada)
+        if st.button("📍 ATUALIZAR LOCALIZAÇÃO GPS", use_container_width=True, key="gps_v7"):
+            loc = streamlit_js_eval(js_expressions="navigator.geolocation.getCurrentPosition(s => s)", key='gps_v7_eval')
+            if loc and 'coords' in loc:
+                doc_ref.update({"lat": loc['coords']['latitude'], "lon": loc['coords']['longitude']})
+                st.success("✅ Localização salva!")
+            else: st.info("Aguardando sinal... Clique novamente.")
 
         st.divider()
 
-        # --- EDIÇÃO DE DADOS (TURBINADA) ---
-        with st.expander("⚙️ CONFIGURAÇÕES DA VITRINE", expanded=False):
-            with st.form("edit_v2"):
-                st.markdown("#### ✨ Informações Públicas")
-                new_foto = st.file_uploader("Trocar Foto de Perfil", type=["jpg", "png", "jpeg"])
-                n_nome = st.text_input("Nome da Vitrine", value=d.get('nome'))
-                n_desc = st.text_area("Bio (O que você faz de melhor?)", value=d.get('descricao'))
-                
-                col_e1, col_e2 = st.columns(2)
-                n_area = col_e1.selectbox("Categoria", CATEGORIAS_OFICIAIS, index=CATEGORIAS_OFICIAIS.index(d.get('area', 'Ajudante Geral')))
-                n_tipo = col_e2.radio("Tipo", ["👤 Profissional", "🏢 Comércio/Loja"], index=0 if d.get('tipo') == "👤 Profissional" else 1, horizontal=True)
+        # 3. COMPRA DE MOEDAS (PIX - Variáveis oficiais preservadas)
+        with st.expander("💎 COMPRAR MOEDAS (PIX)", expanded=False):
+            st.warning(f"Chave PIX: {PIX_OFICIAL}")
+            c1, c2, c3 = st.columns(3)
+            if c1.button("10 Moedas", key="p10_v7"): st.code(PIX_OFICIAL)
+            if c2.button("50 Moedas", key="p50_v7"): st.code(PIX_OFICIAL)
+            if c3.button("100 Moedas", key="p100_v7"): st.code(PIX_OFICIAL)
+            
+            st.link_button("🚀 ENVIAR COMPROVANTE AGORA", f"https://wa.me/{ZAP_ADMIN}?text=Fiz o PIX: {st.session_state.user_id}", use_container_width=True)
 
-                if st.form_submit_button("💾 ATUALIZAR MINHA VITRINE", use_container_width=True):
+        # 4. EDIÇÃO DE PERFIL (FOTOS, HORÁRIOS E SEGMENTO)
+        with st.expander("📝 EDITAR MEU PERFIL & VITRINE", expanded=True):
+            with st.form("perfil_v7"):
+                n_nome = st.text_input("Nome Profissional", d.get('nome', ''))
+                
+                # --- VOLTANDO A FUNÇÃO DE MUDAR SEGMENTO ---
+                # Procura a categoria atual na lista para deixar selecionada
+                try:
+                    index_cat = CATEGORIAS_OFICIAIS.index(d.get('area', 'Ajudante Geral'))
+                except:
+                    index_cat = 0
+                n_area = st.selectbox("Mudar meu Segmento/Área", CATEGORIAS_OFICIAIS, index=index_cat)
+                # ------------------------------------------
+
+                n_desc = st.text_area("Descrição", d.get('descricao', ''))
+                n_cat = st.text_input("Link Catálogo/Instagram", d.get('link_catalogo', ''))
+                
+                h1, h2 = st.columns(2)
+                n_abre = h1.text_input("Abre às (ex: 08:00)", d.get('h_abre', '08:00'))
+                n_fecha = h2.text_input("Fecha às (ex: 18:00)", d.get('h_fecha', '18:00'))
+                
+                n_foto = st.file_uploader("Trocar Foto Perfil", type=['jpg','png','jpeg'], key="f_v7")
+                n_portfolio = st.file_uploader("Vitrine (Até 3 fotos)", type=['jpg','png','jpeg'], accept_multiple_files=True, key="p_v7")
+                
+                if st.form_submit_button("SALVAR ALTERAÇÕES", use_container_width=True):
+                    # Adicionei 'area' no dicionário de update
                     up = {
-                        "nome": n_nome, "area": n_area, "descricao": n_desc, "tipo": n_tipo
+                        "nome": n_nome, 
+                        "area": n_area, # <--- Agora ele salva a nova categoria!
+                        "descricao": n_desc, 
+                        "link_catalogo": n_cat, 
+                        "h_abre": n_abre, 
+                        "h_fecha": n_fecha
                     }
-                    if new_foto:
-                        up["foto_b64"] = converter_img_b64(new_foto)
+                    
+                    if n_foto: 
+                        up["foto_url"] = f"data:image/png;base64,{converter_img_b64(n_foto)}"
+                    
+                    if n_portfolio:
+                        up["portfolio_imgs"] = [f"data:image/png;base64,{converter_img_b64(f)}" for f in n_portfolio[:3]]
                     
                     doc_ref.update(up)
-                    st.success("Vitrine atualizada! 🚀")
-                    time.sleep(1)
+                    st.success("✅ Perfil e Segmento atualizados com sucesso!")
+                    time.sleep(1) # Pequena pausa para o usuário ver a mensagem
                     st.rerun()
+# --- ABA 1: CADASTRAR (SISTEMA DE ADMISSÃO DE ELITE) ---
+with menu_abas[1]:
+    st.markdown("### 🚀 Cadastro de Profissional")
+    st.info("Preencha os dados abaixo para entrar no ecossistema GeralJá.")
 
-        if st.button("LOGOUT", type="secondary"):
-            st.session_state.auth = False
-            st.rerun()
+    # Início do Formulário - O 'with' garante que tudo aqui dentro pertença ao botão de salvar
+    with st.form("form_novo_profissional", clear_on_submit=False):
+        col_id1, col_id2 = st.columns(2)
+        nome_input = col_id1.text_input("Nome do Profissional ou Loja", placeholder="Ex: João Mecânico")
+        zap_input = col_id2.text_input("WhatsApp (DDD + Número)", placeholder="Ex: 11991853488")
+        
+        col_id3, col_id4 = st.columns(2)
+        categoria_input = col_id3.selectbox("Sua Área Principal", CATEGORIAS_OFICIAIS)
+        senha_input = col_id4.text_input("Crie uma Senha", type="password", help="Para editar seu perfil depois")
+        
+        descricao_input = st.text_area("Descrição do Serviço", placeholder="Conte o que você faz, diferenciais e experiência...")
+        
+        tipo_input = st.radio("Tipo de Cadastro", ["👨‍🔧 Profissional Autônomo", "🏢 Comércio/Loja"], horizontal=True)
+        
+        foto_upload = st.file_uploader("Foto de Perfil ou Logo", type=['jpg', 'jpeg', 'png'])
+
+        st.markdown("---")
+        st.caption("📍 A sua localização atual será capturada automaticamente para te mostrar nos resultados próximos aos clientes.")
+        
+        # O BOTÃO DE SALVAR PRECISA ESTAR AQUI DENTRO DO FORM
+        btn_finalizar = st.form_submit_button("✅ FINALIZAR E SALVAR CADASTRO", use_container_width=True)
+
+    # Lógica que acontece APÓS o clique no botão
+    if btn_finalizar:
+        if not nome_input or not zap_input or not senha_input:
+            st.error("⚠️ ERRO: Nome, WhatsApp e Senha são obrigatórios!")
+        else:
+            with st.spinner("Conectando ao banco de dados..."):
+                try:
+                    # 1. Processamento da Imagem
+                    foto_final = ""
+                    if foto_upload:
+                        foto_final = f"data:image/png;base64,{converter_img_b64(foto_upload)}"
+                    
+                    # 2. Garantia de Localização (Se o GPS falhar, usa a LAT_REF/LON_REF que você definiu)
+                    # Use as variáveis que o seu script já detectou no topo da página
+                    lat_salvar = minha_lat if 'minha_lat' in locals() else LAT_REF
+                    lon_salvar = minha_lon if 'minha_lon' in locals() else LON_REF
+
+                    # 3. Montagem do Objeto (Sem apagar nada do que você já usa)
+                    novo_pro = {
+                        "nome": nome_input,
+                        "area": categoria_input,
+                        "descricao": descricao_input,
+                        "senha": senha_input,
+                        "tipo": tipo_input,
+                        "whatsapp": zap_input,
+                        "foto_url": foto_final,
+                        "saldo": BONUS_WELCOME, # Dá os 5 créditos iniciais
+                        "aprovado": True,        # Já nasce ativo conforme seu fluxo
+                        "verificado": False,
+                        "cliques": 0,
+                        "rating": 5,
+                        "lat": lat_salvar,
+                        "lon": lon_salvar,
+                        "data_cadastro": datetime.datetime.now().strftime("%d/%m/%Y")
+                    }
+
+                    # 4. Envio para o Firestore usando o WhatsApp como ID (Evita duplicados)
+                    db.collection("profissionais").document(zap_input).set(novo_pro)
+                    
+                    st.balloons()
+                    st.success(f"🎊 BEM-VINDO, {nome_input.upper()}! Seu cadastro foi concluído com sucesso.")
+                    st.info("💡 DICA: Vá na aba '👤 MEU PERFIL' para fazer login e ver seu saldo de moedas.")
+                    
+                    # Alerta para o Admin (Usando sua função existente)
+                    link_admin = enviar_alerta_admin(nome_input, categoria_input, zap_input)
+                    st.markdown(f'[📢 Avisar Administração via WhatsApp]({link_admin})')
+
+                except Exception as e:
+                    st.error(f"❌ Erro técnico ao salvar: {e}")
 # ==============================================================================
 # ABA 4: 👑 PAINEL DE CONTROLE MASTER (TURBINADO)
 # ==============================================================================
@@ -742,6 +742,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
