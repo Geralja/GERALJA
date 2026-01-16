@@ -133,6 +133,35 @@ def buscar_opcoes_dinamicas(documento, padrao):
     except Exception as e:
         # Se houver erro ou o banco estiver vazio, retorna a lista padrão
         return padrao
+        # ==========================================================
+# FUNÇÕES DE SUPORTE (COLE NO TOPO DO ARQUIVO)
+# ==========================================================
+import re
+from urllib.parse import quote
+
+def limpar_whatsapp(numero):
+    """Remove parênteses, espaços e traços do número."""
+    num = re.sub(r'\D', '', str(numero))
+    if not num.startswith('55') and len(num) >= 10:
+        num = f"55{num}"
+    return num
+
+def normalizar(texto):
+    """Remove acentos e deixa tudo em minúsculo para busca."""
+    import unicodedata
+    if not texto: return ""
+    return "".join(ch for ch in unicodedata.normalize('NFKD', texto) 
+                   if unicodedata.category(ch) != 'Mn').lower()
+
+# Verifique se você já tem a função de distância, senão adicione esta:
+def calcular_distancia_real(lat1, lon1, lat2, lon2):
+    import math
+    R = 6371  # Raio da Terra em KM
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    return R * c
 
 # --- PROSSEGUIR COM O RESTANTE DO CÓDIGO ---
 
@@ -694,6 +723,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
