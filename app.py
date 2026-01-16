@@ -270,169 +270,121 @@ if comando == "abracadabra":
 
 menu_abas = st.tabs(lista_abas)
 # ==============================================================================
-# --- ABA 1: BUSCA (SISTEMA GPS + RANKING ELITE + VITRINE) ---
+# --- ABA 1: BUSCA (GPS + SCORE ELITE + VITRINE SOCIAL V2.0) ---
 # ==============================================================================
 with menu_abas[0]:
     st.markdown("### 🏙️ O que você precisa?")
     
-    # --- MOTOR DE LOCALIZAÇÃO EM TEMPO REAL ---
+    # --- 1. MOTOR DE LOCALIZAÇÃO ---
     with st.expander("📍 Sua Localização (GPS)", expanded=False):
         loc = get_geolocation()
         if loc:
-            minha_lat = loc['coords']['latitude']
-            minha_lon = loc['coords']['longitude']
-            st.success(f"Localização detectada!")
+            minha_lat, minha_lon = loc['coords']['latitude'], loc['coords']['longitude']
+            st.success("Localização detectada!")
         else:
-            minha_lat = LAT_REF
-            minha_lon = LON_REF
-            st.warning("GPS desativado. Usando localização padrão (SP).")
+            minha_lat, minha_lon = LAT_REF, LON_REF
+            st.warning("GPS desativado. Usando padrão (SP).")
 
     c1, c2 = st.columns([3, 1])
-    termo_busca = c1.text_input("Ex: 'Cano estourado' ou 'Pizza'", key="main_search")
-    raio_km = c2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 20, 50, 100, 500, 2000], value=10)
+    termo_busca = c1.text_input("Ex: 'Cano estourado' ou 'Pizza'", key="main_search_v4")
+    raio_km = c2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 20, 50, 100, 500], value=10)
     
-    if termo_busca:
-        # Processamento via IA para identificar a categoria
-        cat_ia = processar_ia_avancada(termo_busca)
-        st.info(f"✨ IA: Buscando por **{cat_ia}** próximo a você")
-        
-        # Lógica de Horário em tempo real
-        from datetime import datetime
-        import pytz
-        import re
-        from urllib.parse import quote
-        
-        fuso = pytz.timezone('America/Sao_Paulo')
-        hora_atual = datetime.now(fuso).strftime('%H:%M')
+    # --- 2. CSS PARA VITRINE E MODAL (LIMPO E MODERNO) ---
+    st.markdown("""
+    <style>
+        .cartao-geral { background: white; border-radius: 20px; border-left: 8px solid var(--cor-borda); padding: 15px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .perfil-row { display: flex; gap: 15px; align-items: center; margin-bottom: 12px; }
+        .foto-perfil { width: 55px; height: 55px; border-radius: 50%; object-fit: cover; border: 2px solid #eee; }
+        .social-track { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 10px; scrollbar-width: none; }
+        .social-track::-webkit-scrollbar { display: none; }
+        .social-card { flex: 0 0 200px; height: 280px; border-radius: 12px; overflow: hidden; cursor: pointer; background: #000; }
+        .social-card img { width: 100%; height: 100%; object-fit: cover; transition: 0.3s; }
+        .btn-zap-footer { display: block; background: #25D366; color: white !important; text-align: center; padding: 15px; border-radius: 12px; font-weight: bold; text-decoration: none; margin-top: 10px; font-size: 16px; }
+    </style>
+    <script>
+    function abrirModal(src, link) {
+        document.getElementById('imgExpandida').src = src;
+        document.getElementById('linkZapModal').href = link;
+        document.getElementById('meuModal').style.display = 'flex';
+    }
+    function fecharModal() {
+        document.getElementById('meuModal').style.display = 'none';
+    }
+    </script>
+    """, unsafe_allow_html=True)
 
-        # Busca no Firebase (Filtra apenas aprovados e da categoria certa)
+    if termo_busca:
+        cat_ia = processar_ia_avancada(termo_busca)
+        st.info(f"✨ IA: Buscando por **{cat_ia}**")
+        
+        # Busca e Filtragem
         profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
         
         lista_ranking = []
         for p_doc in profs:
-            p = p_doc.to_dict()
-            p['id'] = p_doc.id
-            
-            # CALCULA DISTÂNCIA REAL (GPS vs Profissional)
+            p = p_doc.to_dict(); p['id'] = p_doc.id
             dist = calcular_distancia_real(minha_lat, minha_lon, p.get('lat', LAT_REF), p.get('lon', LON_REF))
             
             if dist <= raio_km:
                 p['dist'] = dist
-                # MOTOR DE SCORE ELITE (Ranking)
+                # SCORE ELITE
                 score = 0
-                score += 500 if p.get('verificado', False) else 0
+                score += 500 if p.get('verificado') else 0
                 score += (p.get('saldo', 0) * 10)
                 score += (p.get('rating', 5) * 20)
                 p['score_elite'] = score
                 lista_ranking.append(p)
 
-        # Ordenação: Elite primeiro (maior score), depois os mais próximos (menor distância)
         lista_ranking.sort(key=lambda x: (-x['score_elite'], x['dist']))
 
         if not lista_ranking:
-            st.markdown(f"""
-            <div style="background-color: #FFF4E5; padding: 20px; border-radius: 15px; border-left: 5px solid #FF8C00;">
-                <h3 style="color: #856404;">🔍 Essa profissão ainda não foi preenchida nesta região.</h3>
-                <p style="color: #856404;">Compartilhe o <b>GeralJá</b> e ajude a crescer sua rede local!</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            link_share = "https://wa.me/?text=Ei!%20Procurei%20um%20serviço%20no%20GeralJá%20e%20vi%20que%20ainda%20temos%20vagas!%20Cadastre-se:%20https://geralja.streamlit.app"
-            st.markdown(f'<a href="{link_share}" target="_blank" style="text-decoration:none;"><div style="background:#22C55E; color:white; padding:15px; border-radius:10px; text-align:center; font-weight:bold; margin-top:10px;">📲 COMPARTILHAR NO WHATSAPP</div></a>', unsafe_allow_html=True)
-        
+            st.warning("Nenhum profissional nesta região ainda.")
         else:
-            # --- RENDERIZAÇÃO DOS CARDS (LOOP) ---
             for p in lista_ranking:
-                pid = p['id']
+                # Definição de Cores e Link Zap
                 is_elite = p.get('verificado') and p.get('saldo', 0) > 0
+                cor_borda = "#FFD700" if is_elite else "#0047AB"
+                zap_limpo = limpar_whatsapp(p['id'])
+                link_zap = f"https://wa.me/{zap_limpo}?text=Olá, vi seu portfólio no GeralJá!"
                 
-                with st.container():
-                    # Cores dinâmicas baseadas no tipo de conta
-                    cor_borda = "#FFD700" if is_elite else ("#FF8C00" if p.get('tipo') == "🏢 Comércio/Loja" else "#0047AB")
-                    bg_card = "#FFFDF5" if is_elite else "#FFFFFF"
-                    
-                    st.markdown(f"""
-                    <div style="border-left: 8px solid {cor_borda}; padding: 15px; background: {bg_card}; border-radius: 15px; margin-bottom: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                        <span style="font-size: 12px; color: gray; font-weight: bold;">📍 a {p['dist']:.1f} km de você {" | 🏆 DESTAQUE" if is_elite else ""}</span>
+                # Montar Carrossel de Fotos (f1 até f10)
+                fotos_html = ""
+                for i in range(1, 11):
+                    f_data = p.get(f'f{i}')
+                    if f_data and len(str(f_data)) > 100:
+                        src = f_data if str(f_data).startswith("data") else f"data:image/jpeg;base64,{f_data}"
+                        fotos_html += f'<div class="social-card" onclick="abrirModal(\'{src}\', \'{link_zap}\')"><img src="{src}"></div>'
+
+                # RENDERIZAÇÃO DO CARD INTEGRADO
+                st.markdown(f"""
+                <div class="cartao-geral" style="--cor-borda: {cor_borda};">
+                    <div style="font-size: 11px; color: gray; margin-bottom: 10px;">
+                        📍 a {p['dist']:.1f} km de você {" | 🏆 ELITE" if is_elite else ""}
                     </div>
-                    """, unsafe_allow_html=True)
+                    <div class="perfil-row">
+                        <img src="{p.get('foto_url','')}" class="foto-perfil">
+                        <div>
+                            <h4 style="margin:0; color:#1e3a8a;">{p.get('nome','').upper()} {"☑️" if p.get('verificado') else ""}</h4>
+                            <p style="margin:0; color:#666; font-size:12px;">{p.get('descricao','')[:90]}...</p>
+                        </div>
+                    </div>
+                    <div class="social-track">{fotos_html}</div>
+                    <a href="{link_zap}" target="_blank" class="btn-zap-footer">💬 FALAR COM {p.get('nome','').split()[0].upper()}</a>
+                </div>
+                """.replace('\n', ' '), unsafe_allow_html=True)
 
-                    col_img, col_txt = st.columns([1, 4])
-                    with col_img:
-                        foto = p.get('foto_url', 'https://via.placeholder.com/150')
-                        st.markdown(f'<img src="{foto}" style="width:75px; height:75px; border-radius:50%; object-fit:cover; border:3px solid {cor_borda}">', unsafe_allow_html=True)
-                    
-                    with col_txt:
-                        nome_exibicao = p.get('nome', '').upper()
-                        if p.get('verificado', False): nome_exibicao += " <span style='color:#1DA1F2;'>☑️</span>"
-                        
-                        status_loja = ""
-                        if p.get('tipo') == "🏢 Comércio/Loja":
-                            h_ab, h_fe = p.get('h_abre', '08:00'), p.get('h_fecha', '18:00')
-                            status_loja = " 🟢 <b style='color:green;'>ABERTO</b>" if h_ab <= hora_atual <= h_fe else " 🔴 <b style='color:red;'>FECHADO</b>"
-                        
-                        st.markdown(f"**{nome_exibicao}** {status_loja}", unsafe_allow_html=True)
-                        st.caption(f"{p.get('descricao', '')[:120]}...")
+            # Estrutura Única do Modal no final do loop
+            st.markdown("""
+            <div id="meuModal" style="display:none; position:fixed; z-index:9999; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); align-items:center; justify-content:center; flex-direction:column;">
+                <span onclick="fecharModal()" style="position:absolute; top:20px; right:30px; color:white; font-size:40px; cursor:pointer;">&times;</span>
+                <img id="imgExpandida" style="max-width:90%; max-height:75%; border-radius:10px; border: 2px solid #fff;">
+                <a id="linkZapModal" href="#" target="_blank" style="margin-top:20px; background:#25D366; color:white; padding:15px 40px; border-radius:30px; text-decoration:none; font-weight:bold;">✅ CHAMAR NO WHATSAPP</a>
+            </div>
+            """.replace('\n', ' '), unsafe_allow_html=True)
 
-                    # Vitrine de Fotos do Portfólio
-                    if p.get('portfolio_imgs'):
-                        cols_v = st.columns(3)
-                        for i, img_b64 in enumerate(p.get('portfolio_imgs')[:3]):
-                            cols_v[i].image(img_b64, use_container_width=True)
-
-                    # --- LÓGICA DO BOTÃO DE WHATSAPP (AQUI DENTRO DO LOOP) ---
-                    nome_curto = p.get('nome', 'Profissional').split()[0].upper()
-                    
-                    # Limpeza do número de telefone (ID do documento)
-                    numero_limpo = re.sub(r'\D', '', str(pid))
-                    if not numero_limpo.startswith('55'):
-                        numero_limpo = f"55{numero_limpo}"
-                    
-                    texto_zap = quote(f"Olá {p.get('nome')}, vi seu perfil no GeralJá!")
-                    link_final = f"https://wa.me/{numero_limpo}?text={texto_zap}"
-
-                    # --- BOTÃO ÚNICO (VISUAL TOP + ABRE SEMPRE) ---
-                    import re
-                    from urllib.parse import quote
-                    
-                    # 1. Preparação dos dados
-                    num_limpo = re.sub(r'\D', '', str(pid))
-                    if not num_limpo.startswith('55'): num_limpo = f"55{num_limpo}"
-                    texto_zap = quote(f"Olá {p.get('nome')}, vi seu perfil no GeralJá!")
-                    link_final = f"https://wa.me/{num_limpo}?text={texto_zap}"
-                    nome_btn = p.get('nome', 'Profissional').split()[0].upper()
-                    
-                    # 2. BOTÃO HTML (Ocupa o lugar do st.button)
-                    # Este botão abre o WhatsApp instantaneamente e não é bloqueado
-                    st.markdown(f"""
-                        <a href="{link_final}" target="_blank" style="text-decoration: none;">
-                            <div style="
-                                background-color: #25D366;
-                                color: white;
-                                padding: 15px;
-                                border-radius: 12px;
-                                text-align: center;
-                                font-weight: bold;
-                                font-size: 18px;
-                                box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-                                transition: 0.3s;
-                                cursor: pointer;
-                                margin-top: 10px;
-                            ">
-                                💬 FALAR COM {nome_btn}
-                            </div>
-                        </a>
-                    """, unsafe_allow_html=True)
-                    
-                    # 3. LÓGICA DE DÉBITO E SEGURANÇA
-                # Verifica se tem saldo antes de processar
-                if p.get('saldo', 0) <= 0:
-                    continue  # <--- AGORA ESTÁ DENTRO DO IF (4 espaços)
-
-                # Se passou pelo if acima, registra o clique/visualização
-                db.collection("profissionais").document(pid).update({
-                    "cliques": p.get('cliques', 0) + 1
-                })
+            # Lógica de cobrança de cliques (opcional, manter se quiser descontar saldo)
+            if is_elite:
+                db.collection("profissionais").document(p['id']).update({"cliques": p.get('cliques', 0) + 1})
                 
 # --- ABA 2: PAINEL DO PARCEIRO (VERSÃO COM TEMA MANUAL) ---
 with menu_abas[2]:
@@ -742,6 +694,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
