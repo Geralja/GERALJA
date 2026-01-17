@@ -35,48 +35,6 @@ st.set_page_config(
 if 'tema_claro' not in st.session_state:
     st.session_state.tema_claro = False
 
-# --- GERENCIADOR DE TEMA (MODO NOITE LUXO) ---
-if 'modo_noite' not in st.session_state:
-    st.session_state.modo_noite = False
-
-# Botão discreto no topo
-col_theme, _ = st.columns([1, 10])
-with col_theme:
-    st.session_state.modo_noite = st.toggle("🌙 Modo Noite", value=st.session_state.modo_noite)
-
-if st.session_state.modo_noite:
-    st.markdown("""
-        <style>
-            /* Fundo Total Escuro */
-            .stApp, .stAppViewContainer, .stMain {
-                background-color: #0E1117 !important;
-            }
-            
-            /* Textos em Branco */
-            h1, h2, h3, h4, h5, h6, p, span, label, .stMarkdown, .stCaption {
-                color: #FFFFFF !important;
-            }
-
-            /* Cartões e Inputs Escuros com Borda Fina */
-            .stTextInput input, .stSelectbox div, .stTextArea textarea, .stNumberInput input {
-                background-color: #1A1C23 !important;
-                color: #FFFFFF !important;
-                border: 1px solid #30363D !important;
-            }
-
-            /* Abas (Tabs) */
-            button[data-baseweb="tab"] p {
-                color: #FFFFFF !important;
-            }
-            
-            /* Ajuste para os cards brancos da vitrine não "gritarem" no fundo preto */
-            div[style*="background: white"], div[style*="background: #FFFFFF"] {
-                background-color: #161B22 !important;
-                border: 1px solid #30363D !important;
-            }
-        </style>
-    """, unsafe_allow_html=True)
-
 # Mantém os menus escondidos
 st.markdown("""
     <style>
@@ -133,6 +91,40 @@ def buscar_opcoes_dinamicas(documento, padrao):
     except Exception as e:
         # Se houver erro ou o banco estiver vazio, retorna a lista padrão
         return padrao
+        # --- COLOCAR LOGO ABAIXO DA CONEXÃO DB ---
+
+if 'modo_noite' not in st.session_state:
+    st.session_state.modo_noite = True 
+
+# Layout do topo (Toggle)
+c_t1, c_t2 = st.columns([2, 8])
+with c_t1:
+    st.session_state.modo_noite = st.toggle("🌙 Modo Noite", value=st.session_state.modo_noite)
+
+# Bloco CSS Dinâmico
+estilo_dinamico = f"""
+<style>
+    /* Ajustes Mobile */
+    @media (max-width: 640px) {{
+        .main .block-container {{ padding: 1rem !important; }}
+        h1 {{ font-size: 1.8rem !important; }}
+    }}
+
+    /* Lógica de Cores */
+    .stApp {{
+        background-color: {"#0D1117" if st.session_state.modo_noite else "#F0F2F5"} !important;
+        color: {"#FFFFFF" if st.session_state.modo_noite else "#000000"} !important;
+    }}
+
+    /* Cards Adaptáveis */
+    div[data-testid="stVerticalBlock"] > div[style*="background"] {{
+        background-color: {"#161B22" if st.session_state.modo_noite else "#FFFFFF"} !important;
+        border: 1px solid {"#30363D" if st.session_state.modo_noite else "#E0E0E0"} !important;
+        border-radius: 18px !important;
+    }}
+</style>
+"""
+st.markdown(estilo_dinamico, unsafe_allow_html=True)
         # ==========================================================
 # FUNÇÕES DE SUPORTE (COLE NO TOPO DO ARQUIVO)
 # ==========================================================
@@ -723,6 +715,7 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
+
 
 
 
