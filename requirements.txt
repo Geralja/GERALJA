@@ -10,4 +10,4 @@ python-Levenshtein
 streamlit-js-eval==0.1.7
 groq
 Pillow
-pip install streamlit-google-auth
+streamlit-google-auth
