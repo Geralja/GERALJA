@@ -444,43 +444,15 @@ with menu_abas[2]:
 
         st.divider()
 
-# --- 3. LOJA TURBINADA DE MOEDAS (PIX) ---
-        with st.expander("💎 RECARREGAR SALDO E TURBINAR PERFIL", expanded=False):
-            st.markdown(f"""
-                <div style="background-color: #FFF4E5; padding: 15px; border-radius: 10px; border-left: 5px solid #FF8C00; margin-bottom: 20px;">
-                    <p style="margin: 0; color: #856404; font-weight: bold;">🔑 Chave PIX Oficial:</p>
-                    <code style="font-size: 16px; color: #1E293B;">{PIX_OFICIAL}</code>
-                </div>
-            """, unsafe_allow_html=True)
+        # 3. COMPRA DE MOEDAS (PIX)
+        with st.expander("💎 COMPRAR MOEDAS (PIX)", expanded=False):
+            st.warning(f"Chave PIX: {PIX_OFICIAL}")
+            c1, c2, c3 = st.columns(3)
+            if c1.button("10 Moedas", key="p10_v7"): st.code(PIX_OFICIAL)
+            if c2.button("50 Moedas", key="p50_v7"): st.code(PIX_OFICIAL)
+            if c3.button("100 Moedas", key="p100_v7"): st.code(PIX_OFICIAL)
+            st.link_button("🚀 ENVIAR COMPROVANTE AGORA", f"https://wa.me/{ZAP_ADMIN}?text=Fiz o PIX: {st.session_state.user_id}", use_container_width=True)
 
-            col_p1, col_p2, col_p3 = st.columns(3)
-            with col_p1:
-                st.markdown('<div style="text-align: center; border: 1px solid #E2E8F0; padding: 10px; border-radius: 10px; background: #FFF;"><h3>🥉</h3><p><b>10</b><br><small>MOEDAS</small></p></div>', unsafe_allow_html=True)
-                if st.button("🛒 R$ 10", key="p10_v8", use_container_width=True): st.code(PIX_OFICIAL)
-
-            with col_p2:
-                st.markdown('<div style="text-align: center; border: 2px solid #FF8C00; padding: 10px; border-radius: 10px; background: #FFF;"><span style="background:#FF8C00;color:white;padding:2px;border-radius:5px;font-size:10px;">TOP</span><h3>🥈</h3><p><b>55</b><br><small>MOEDAS</small></p></div>', unsafe_allow_html=True)
-                if st.button("🛒 R$ 50", key="p50_v8", use_container_width=True): st.code(PIX_OFICIAL)
-
-            with col_p3:
-                st.markdown('<div style="text-align: center; border: 1px solid #E2E8F0; padding: 10px; border-radius: 10px; background: #FFF;"><h3>🥇</h3><p><b>120</b><br><small>MOEDAS</small></p></div>', unsafe_allow_html=True)
-                if st.button("🛒 R$ 100", key="p100_v8", use_container_width=True): st.code(PIX_OFICIAL)
-
-            st.link_button("🚀 ENVIAR COMPROVANTE", f"https://wa.me/{ZAP_ADMIN}?text=Fiz o PIX: {st.session_state.user_id}", use_container_width=True)
-
-        # --- 4. EDIÇÃO DE PERFIL ---
-        with st.expander("📝 EDITAR MEU PERFIL & VITRINE", expanded=True):
-            with st.form("perfil_v8_final"):
-                n_nome = st.text_input("Nome Profissional", d.get('nome', ''))
-                # (... restante do seu formulário aqui ...)
-                if st.form_submit_button("SALVAR"):
-                    pass # Sua lógica de save
-
-    st.write("---")
-    st.link_button("🚀 ENVIAR COMPROVANTE AGORA", 
-                   f"https://wa.me/{ZAP_ADMIN}?text=Olá! Acabei de fazer o PIX para o pacote de moedas no GeralJá. Meu ID é: {st.session_state.user_id}", 
-                   use_container_width=True)
-        
         # 4. EDIÇÃO DE PERFIL
         with st.expander("📝 EDITAR MEU PERFIL & VITRINE", expanded=True):
             with st.form("perfil_v7"):
@@ -815,21 +787,3 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
