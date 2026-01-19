@@ -407,7 +407,7 @@ with menu_abas[0]:
             if is_elite:
                 db.collection("profissionais").document(p['id']).update({"cliques": p.get('cliques', 0) + 1})
                 
-# --- ABA 2: PAINEL DO PARCEIRO (VERSÃO COM TEMA MANUAL) ---
+# --- ABA 2: PAINEL DO PARCEIRO (VERSÃO ATUALIZADA) ---
 with menu_abas[2]:
     if 'auth' not in st.session_state: st.session_state.auth = False
     
@@ -427,14 +427,14 @@ with menu_abas[2]:
         doc_ref = db.collection("profissionais").document(st.session_state.user_id)
         d = doc_ref.get().to_dict()
         
-        # 1. MÉTRICAS (Usando colunas nativas para evitar conflito de CSS)
+        # 1. MÉTRICAS
         st.write(f"### Olá, {d.get('nome', 'Parceiro')}!")
         m1, m2, m3 = st.columns(3)
         m1.metric("Saldo 🪙", f"{d.get('saldo', 0)}")
         m2.metric("Cliques 🚀", f"{d.get('cliques', 0)}")
         m3.metric("Status", "🟢 ATIVO" if d.get('aprovado') else "🟡 PENDENTE")
 
-        # 2. GPS (Função preservada)
+        # 2. GPS
         if st.button("📍 ATUALIZAR LOCALIZAÇÃO GPS", use_container_width=True, key="gps_v7"):
             loc = streamlit_js_eval(js_expressions="navigator.geolocation.getCurrentPosition(s => s)", key='gps_v7_eval')
             if loc and 'coords' in loc:
@@ -444,29 +444,23 @@ with menu_abas[2]:
 
         st.divider()
 
-        # 3. COMPRA DE MOEDAS (PIX - Variáveis oficiais preservadas)
+        # 3. COMPRA DE MOEDAS (PIX)
         with st.expander("💎 COMPRAR MOEDAS (PIX)", expanded=False):
             st.warning(f"Chave PIX: {PIX_OFICIAL}")
             c1, c2, c3 = st.columns(3)
             if c1.button("10 Moedas", key="p10_v7"): st.code(PIX_OFICIAL)
             if c2.button("50 Moedas", key="p50_v7"): st.code(PIX_OFICIAL)
             if c3.button("100 Moedas", key="p100_v7"): st.code(PIX_OFICIAL)
-            
             st.link_button("🚀 ENVIAR COMPROVANTE AGORA", f"https://wa.me/{ZAP_ADMIN}?text=Fiz o PIX: {st.session_state.user_id}", use_container_width=True)
 
-        # 4. EDIÇÃO DE PERFIL (FOTOS, HORÁRIOS E SEGMENTO)
+        # 4. EDIÇÃO DE PERFIL
         with st.expander("📝 EDITAR MEU PERFIL & VITRINE", expanded=True):
             with st.form("perfil_v7"):
                 n_nome = st.text_input("Nome Profissional", d.get('nome', ''))
                 
-                # --- VOLTANDO A FUNÇÃO DE MUDAR SEGMENTO ---
-                # Procura a categoria atual na lista para deixar selecionada
-                try:
-                    index_cat = CATEGORIAS_OFICIAIS.index(d.get('area', 'Ajudante Geral'))
-                except:
-                    index_cat = 0
+                try: index_cat = CATEGORIAS_OFICIAIS.index(d.get('area', 'Ajudante Geral'))
+                except: index_cat = 0
                 n_area = st.selectbox("Mudar meu Segmento/Área", CATEGORIAS_OFICIAIS, index=index_cat)
-                # ------------------------------------------
 
                 n_desc = st.text_area("Descrição", d.get('descricao', ''))
                 n_cat = st.text_input("Link Catálogo/Instagram", d.get('link_catalogo', ''))
@@ -476,29 +470,40 @@ with menu_abas[2]:
                 n_fecha = h2.text_input("Fecha às (ex: 18:00)", d.get('h_fecha', '18:00'))
                 
                 n_foto = st.file_uploader("Trocar Foto Perfil", type=['jpg','png','jpeg'], key="f_v7")
-                n_portfolio = st.file_uploader("Vitrine (Até 3 fotos)", type=['jpg','png','jpeg'], accept_multiple_files=True, key="p_v7")
+                # 🚀 AJUSTE DA GÊNIA: Agora aceita 4 fotos na vitrine
+                n_portfolio = st.file_uploader("Vitrine (Até 4 fotos)", type=['jpg','png','jpeg'], accept_multiple_files=True, key="p_v7")
                 
                 if st.form_submit_button("SALVAR ALTERAÇÕES", use_container_width=True):
-                    # Adicionei 'area' no dicionário de update
                     up = {
-                        "nome": n_nome, 
-                        "area": n_area, # <--- Agora ele salva a nova categoria!
-                        "descricao": n_desc, 
-                        "link_catalogo": n_cat, 
-                        "h_abre": n_abre, 
-                        "h_fecha": n_fecha
+                        "nome": n_nome, "area": n_area, "descricao": n_desc, 
+                        "link_catalogo": n_cat, "h_abre": n_abre, "h_fecha": n_fecha
                     }
-                    
-                    if n_foto: 
-                        up["foto_url"] = f"data:image/png;base64,{converter_img_b64(n_foto)}"
-                    
+                    if n_foto: up["foto_url"] = f"data:image/png;base64,{converter_img_b64(n_foto)}"
                     if n_portfolio:
-                        up["portfolio_imgs"] = [f"data:image/png;base64,{converter_img_b64(f)}" for f in n_portfolio[:3]]
+                        # Limite de 4 fotos
+                        up["portfolio_imgs"] = [f"data:image/png;base64,{converter_img_b64(f)}" for f in n_portfolio[:4]]
                     
                     doc_ref.update(up)
-                    st.success("✅ Perfil e Segmento atualizados com sucesso!")
-                    time.sleep(1) # Pequena pausa para o usuário ver a mensagem
+                    st.success("✅ Perfil atualizado!")
+                    time.sleep(1); st.rerun()
+
+        # 5. SEGURANÇA E EXCLUSÃO (NOVO BLOCO)
+        with st.expander("🔐 SEGURANÇA E EXCLUSÃO DE DADOS"):
+            st.write("Deseja encerrar sua conta e apagar todos os seus dados?")
+            confirma_pw = st.text_input("Confirme sua SENHA para excluir", type="password", key="excluir_pw")
+            if st.button("❌ APAGAR MINHA CONTA DEFINITIVAMENTE", type="primary"):
+                if confirma_pw == d.get('senha'):
+                    doc_ref.delete()
+                    st.error("Dados removidos conforme LGPD. Saindo...")
+                    time.sleep(2)
+                    st.session_state.auth = False
                     st.rerun()
+                else:
+                    st.error("Senha incorreta!")
+
+        if st.button("SAIR DO PAINEL", use_container_width=True):
+            st.session_state.auth = False
+            st.rerun()
 # --- ABA 1: CADASTRAR (SISTEMA DE ADMISSÃO DE ELITE) ---
 with menu_abas[1]:
     st.markdown("### 🚀 Cadastro de Profissional")
@@ -782,6 +787,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
