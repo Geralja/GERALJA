@@ -52,7 +52,7 @@ def conectar_banco_master():
         try:
             # Tenta pegar dos secrets do Streamlit
             if "FIREBASE_BASE64" in st.secrets:
-                b64_key = st.secrets["FIREBASE_BASE64"]
+                b64_key = st.secrets["firebase"]["base64"]
                 decoded_json = base64.b64decode(b64_key).decode("utf-8")
                 cred_dict = json.loads(decoded_json)
                 cred = credentials.Certificate(cred_dict)
@@ -787,3 +787,4 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
