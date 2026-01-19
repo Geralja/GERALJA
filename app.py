@@ -14,7 +14,16 @@ import pandas as pd
 import unicodedata
 from datetime import datetime
 import pytz
+# --- CONFIGURAÇÕES DE AUTENTICAÇÃO (PUXANDO DO COFRE) ---
+try:
+    FB_CLIENT_ID = st.secrets["FB_CLIENT_ID"]
+    FB_CLIENT_SECRET = st.secrets["FB_CLIENT_SECRET"]
+    FIREBASE_API_KEY = st.secrets["FIREBASE_API_KEY"]
+except:
+    st.error("Erro: As chaves de segurança não foram encontradas no Secrets.")
 
+# URL do Handler (Pode ficar visível)
+HANDLER_URL = "https://geralja-5bb49.firebaseapp.com/__/auth/handler"
 # Tenta importar bibliotecas extras do arquivo original, se não tiver, segue sem quebrar
 try:
     from streamlit_js_eval import streamlit_js_eval, get_geolocation
@@ -801,6 +810,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
