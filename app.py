@@ -419,30 +419,49 @@ with menu_abas[0]:
             if is_elite:
                 db.collection("profissionais").document(p['id']).update({"cliques": p.get('cliques', 0) + 1})
                 
-# --- ABA 2: PAINEL DO PARCEIRO (VERSÃO ATUALIZADA) ---
+# ==============================================================================
+# ABA 2: 🚀 PAINEL DO PARCEIRO (COMPLETO COM FACEBOOK)
+# ==============================================================================
 with menu_abas[2]:
-    if 'auth' not in st.session_state: st.session_state.auth = False
-    with menu_abas[2]:
+    # --- 1. LÓGICA DE CAPTURA DO FACEBOOK (VERIFICA SE VOLTOU DA AUTH) ---
+    params = st.query_params
+    if "uid" in params and not st.session_state.get('auth'):
+        fb_uid = params["uid"]
+        # Busca no Firestore se esse ID já está vinculado a alguém
+        user_query = db.collection("profissionais").where("fb_uid", "==", fb_uid).limit(1).get()
+        
+        if user_query:
+            doc = user_query[0]
+            st.session_state.auth = True
+            st.session_state.user_id = doc.id
+            st.success(f"✅ Bem-vindo, {doc.to_dict().get('nome', 'Parceiro')}!")
+            time.sleep(1)
+            st.rerun()
+        else:
+            st.warning("⚠️ Conta do Facebook não vinculada. Entre com WhatsApp e vincule no perfil.")
+
+    # Inicializa o estado de autenticação se não existir
+    if 'auth' not in st.session_state: 
+        st.session_state.auth = False
+    
+    # --- 2. TELA DE LOGIN (CASO NÃO ESTEJA LOGADO) ---
     if not st.session_state.get('auth'):
         st.subheader("🚀 Acesso ao Painel")
         
-        # O LINK QUE CHAMA O FACEBOOK
+        # O LINK QUE CHAMA O FACEBOOK USANDO SUAS CHAVES DO COFRE
         link_auth = f"{HANDLER_URL}?apiKey={FIREBASE_API_KEY}&providerId=facebook.com"
         
-        # O BOTÃO VISUAL
+        # BOTÃO VISUAL FACEBOOK
         st.markdown(f"""
             <a href="{link_auth}" target="_self" style="text-decoration: none;">
-                <div style="background-color: #1877F2; color: white; padding: 12px; border-radius: 8px; text-align: center; font-weight: bold; margin-bottom: 20px;">
+                <div style="background-color: #1877F2; color: white; padding: 12px; border-radius: 8px; text-align: center; font-weight: bold; margin-bottom: 20px; font-family: sans-serif;">
                     🔵 ENTRAR COM FACEBOOK
                 </div>
             </a>
         """, unsafe_allow_html=True)
         
-        st.write("--- ou ---")
-        # Aqui continua seu código antigo de Zap e Senha...
-    
-    if not st.session_state.auth:
-        st.subheader("🚀 Acesso ao Painel")
+        st.write("--- ou use seus dados ---")
+        
         col1, col2 = st.columns(2)
         l_zap = col1.text_input("WhatsApp (números)", key="login_zap_v7")
         l_pw = col2.text_input("Senha", type="password", key="login_pw_v7")
@@ -452,29 +471,33 @@ with menu_abas[2]:
             if u.exists and u.to_dict().get('senha') == l_pw:
                 st.session_state.auth, st.session_state.user_id = True, l_zap
                 st.rerun()
-            else: st.error("Dados incorretos.")
+            else: 
+                st.error("Dados incorretos.")
+
+    # --- 3. PAINEL LOGADO (CASO ESTEJA AUTENTICADO) ---
     else:
         doc_ref = db.collection("profissionais").document(st.session_state.user_id)
         d = doc_ref.get().to_dict()
         
-        # 1. MÉTRICAS
+        # MÉTRICAS DO PROFISSIONAL
         st.write(f"### Olá, {d.get('nome', 'Parceiro')}!")
         m1, m2, m3 = st.columns(3)
         m1.metric("Saldo 🪙", f"{d.get('saldo', 0)}")
         m2.metric("Cliques 🚀", f"{d.get('cliques', 0)}")
         m3.metric("Status", "🟢 ATIVO" if d.get('aprovado') else "🟡 PENDENTE")
 
-        # 2. GPS
+        # ATUALIZAÇÃO DE GPS
         if st.button("📍 ATUALIZAR LOCALIZAÇÃO GPS", use_container_width=True, key="gps_v7"):
             loc = streamlit_js_eval(js_expressions="navigator.geolocation.getCurrentPosition(s => s)", key='gps_v7_eval')
             if loc and 'coords' in loc:
                 doc_ref.update({"lat": loc['coords']['latitude'], "lon": loc['coords']['longitude']})
                 st.success("✅ Localização salva!")
-            else: st.info("Aguardando sinal... Clique novamente.")
+            else: 
+                st.info("Aguardando sinal... Clique novamente.")
 
         st.divider()
 
-        # 3. COMPRA DE MOEDAS (PIX)
+        # COMPRA DE MOEDAS
         with st.expander("💎 COMPRAR MOEDAS (PIX)", expanded=False):
             st.warning(f"Chave PIX: {PIX_OFICIAL}")
             c1, c2, c3 = st.columns(3)
@@ -483,14 +506,16 @@ with menu_abas[2]:
             if c3.button("100 Moedas", key="p100_v7"): st.code(PIX_OFICIAL)
             st.link_button("🚀 ENVIAR COMPROVANTE AGORA", f"https://wa.me/{ZAP_ADMIN}?text=Fiz o PIX: {st.session_state.user_id}", use_container_width=True)
 
-        # 4. EDIÇÃO DE PERFIL
+        # EDIÇÃO DE PERFIL
         with st.expander("📝 EDITAR MEU PERFIL & VITRINE", expanded=True):
             with st.form("perfil_v7"):
                 n_nome = st.text_input("Nome Profissional", d.get('nome', ''))
                 
-                try: index_cat = CATEGORIAS_OFICIAIS.index(d.get('area', 'Ajudante Geral'))
+                # Busca as categorias dinâmicas do banco ou usa a padrão
+                cats = buscar_opcoes_dinamicas("categorias", ["Ajudante Geral"])
+                try: index_cat = cats.index(d.get('area', 'Ajudante Geral'))
                 except: index_cat = 0
-                n_area = st.selectbox("Mudar meu Segmento/Área", CATEGORIAS_OFICIAIS, index=index_cat)
+                n_area = st.selectbox("Mudar meu Segmento/Área", cats, index=index_cat)
 
                 n_desc = st.text_area("Descrição", d.get('descricao', ''))
                 n_cat = st.text_input("Link Catálogo/Instagram", d.get('link_catalogo', ''))
@@ -500,7 +525,6 @@ with menu_abas[2]:
                 n_fecha = h2.text_input("Fecha às (ex: 18:00)", d.get('h_fecha', '18:00'))
                 
                 n_foto = st.file_uploader("Trocar Foto Perfil", type=['jpg','png','jpeg'], key="f_v7")
-                # 🚀 AJUSTE DA GÊNIA: Agora aceita 4 fotos na vitrine
                 n_portfolio = st.file_uploader("Vitrine (Até 4 fotos)", type=['jpg','png','jpeg'], accept_multiple_files=True, key="p_v7")
                 
                 if st.form_submit_button("SALVAR ALTERAÇÕES", use_container_width=True):
@@ -510,21 +534,28 @@ with menu_abas[2]:
                     }
                     if n_foto: up["foto_url"] = f"data:image/png;base64,{converter_img_b64(n_foto)}"
                     if n_portfolio:
-                        # Limite de 4 fotos
+                        # Limite de 4 fotos na vitrine
                         up["portfolio_imgs"] = [f"data:image/png;base64,{converter_img_b64(f)}" for f in n_portfolio[:4]]
                     
                     doc_ref.update(up)
                     st.success("✅ Perfil atualizado!")
                     time.sleep(1); st.rerun()
 
-        # 5. SEGURANÇA E EXCLUSÃO (NOVO BLOCO)
+        # VINCULAR FACEBOOK (NOVO)
+        if not d.get('fb_uid'):
+            with st.expander("🔗 CONECTAR FACEBOOK"):
+                st.write("Vincule sua conta para entrar sem senha na próxima vez.")
+                vinc_link = f"{HANDLER_URL}?apiKey={FIREBASE_API_KEY}&providerId=facebook.com"
+                st.link_button("VINCULAR AGORA", vinc_link, use_container_width=True)
+
+        # SEGURANÇA E EXCLUSÃO
         with st.expander("🔐 SEGURANÇA E EXCLUSÃO DE DADOS"):
-            st.write("Deseja encerrar sua conta e apagar todos os seus dados?")
+            st.write("Deseja encerrar sua conta?")
             confirma_pw = st.text_input("Confirme sua SENHA para excluir", type="password", key="excluir_pw")
             if st.button("❌ APAGAR MINHA CONTA DEFINITIVAMENTE", type="primary"):
                 if confirma_pw == d.get('senha'):
                     doc_ref.delete()
-                    st.error("Dados removidos conforme LGPD. Saindo...")
+                    st.error("Dados removidos. Saindo...")
                     time.sleep(2)
                     st.session_state.auth = False
                     st.rerun()
@@ -828,6 +859,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
