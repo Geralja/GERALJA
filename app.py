@@ -50,19 +50,16 @@ st.markdown("""
 def conectar_banco_master():
     if not firebase_admin._apps:
         try:
-            # Tenta pegar dos secrets do Streamlit
-            if "FIREBASE_BASE64" in st.secrets:
+            # Pega do grupo [firebase] que configuramos no Secrets
+            if "firebase" in st.secrets and "base64" in st.secrets["firebase"]:
                 b64_key = st.secrets["firebase"]["base64"]
                 decoded_json = base64.b64decode(b64_key).decode("utf-8")
                 cred_dict = json.loads(decoded_json)
                 cred = credentials.Certificate(cred_dict)
                 return firebase_admin.initialize_app(cred)
             else:
-                # Fallback para desenvolvimento local (se houver arquivo json)
-                # cred = credentials.Certificate("serviceAccountKey.json")
-                # return firebase_admin.initialize_app(cred)
-                st.warning("⚠️ Configure a secret FIREBASE_BASE64 para conectar ao banco.")
-                return None
+                st.error("⚠️ Configuração 'firebase.base64' não encontrada nos Secrets.")
+                st.stop()
         except Exception as e:
             st.error(f"❌ FALHA NA INFRAESTRUTURA: {e}")
             st.stop()
@@ -787,4 +784,5 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
