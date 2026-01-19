@@ -500,6 +500,7 @@ with st.expander("💎 RECARREGAR SALDO E TURBINAR PERFIL", expanded=False):
     st.link_button("🚀 ENVIAR COMPROVANTE AGORA", 
                    f"https://wa.me/{ZAP_ADMIN}?text=Olá! Acabei de fazer o PIX para o pacote de moedas no GeralJá. Meu ID é: {st.session_state.user_id}", 
                    use_container_width=True)
+        
         # 4. EDIÇÃO DE PERFIL
         with st.expander("📝 EDITAR MEU PERFIL & VITRINE", expanded=True):
             with st.form("perfil_v7"):
@@ -834,6 +835,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
