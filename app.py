@@ -110,10 +110,10 @@ estilo_dinamico = f"""
         h1 {{ font-size: 1.8rem !important; }}
     }}
 
-    /* Lógica de Cores */
+  /* Lógica de Cores - Estilo Branco Neve */
     .stApp {{
-        background-color: {"#0D1117" if st.session_state.modo_noite else "#F0F2F5"} !important;
-        color: {"#FFFFFF" if st.session_state.modo_noite else "#000000"} !important;
+        background-color: {"#0D1117" if st.session_state.modo_noite else "#FFFAFA"} !important;
+        color: {"#FFFFFF" if st.session_state.modo_noite else "#1A1A1B"} !important;
     }}
 
     /* Cards Adaptáveis */
@@ -787,6 +787,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
