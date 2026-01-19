@@ -715,66 +715,6 @@ with menu_abas[4]:
 # FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
 # ------------------------------------------------------------------------------
 finalizar_e_alinhar_layout()
-# =========================================================
-# GERALJÁ - SISTEMA OPERACIONAL INTEGRADO (V1.0)
-# =========================================================
-import time
-from datetime import datetime
-import base64
-
-# --- 1. CONFIGURAÇÃO VISUAL ---
-st.markdown("<h1 style='text-align: center; color: #FF8C00;'>GeralJá</h1>", unsafe_allow_html=True)
-
-# --- 2. ÁREA DO PROFISSIONAL (PASSO 2) ---
-# Usando o e-mail do usuário autenticado (ou teste)
-user_mail = "usuario@teste.com" 
-
-tab_busca, tab_perfil, tab_seguranca = st.tabs(["🔍 Buscar Serviços", "👤 Meu Perfil (5 Fotos)", "🛡️ Proteção LGPD"])
-
-with tab_perfil:
-    st.subheader("Sua Vitrine no Grajaú")
-    perfil_ref = db.collection("profissionais").document(user_mail)
-    dados = perfil_ref.get().to_dict() or {}
-
-    with st.form("perfil_premium"):
-        nome = st.text_input("Nome do Negócio", value=dados.get("nome", ""))
-        zap = st.text_input("WhatsApp", value=dados.get("whatsapp", ""))
-        
-        st.write("🖼️ **Galeria (1 Perfil + 4 Vitrine)**")
-        f_perfil = st.file_uploader("Sua Foto/Logo", type=['jpg', 'png'])
-        col_v = st.columns(2)
-        v1 = col_v[0].file_uploader("Serviço 1", type=['jpg', 'png'])
-        v2 = col_v[1].file_uploader("Serviço 2", type=['jpg', 'png'])
-        
-        st.write("---")
-        senha = st.text_input("Senha de Segurança (Exclusão)", type="password", value=dados.get("senha", ""))
-        
-        if st.form_submit_button("💾 SALVAR PERFIL COMPLETO"):
-            # Lógica de salvamento aqui...
-            st.success("Dados salvos no Firebase do GeralJá!")
-
-with tab_seguranca:
-    # AQUI VAI O RODAPÉ BLINDADO QUE CRIAMOS
-    st.markdown("### 🛡️ IA de Proteção Ativa")
-    st.info("Sua conexão está criptografada e protegida contra ataques SQL e XSS.")
-    if st.checkbox("Desejo excluir meus dados"):
-        confirm = st.text_input("Digite sua senha de segurança:")
-        if st.button("EXCLUIR AGORA"):
-            st.error("Conta removida.")
-
-with tab_busca:
-    st.write("Onde a mágica acontece! A busca filtrará os profissionais cadastrados.")
-
-
-
-
-
-
-
-
-
-
-
 
 
 
