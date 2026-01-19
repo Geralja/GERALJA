@@ -15,6 +15,13 @@ import unicodedata
 from datetime import datetime
 import pytz
 
+# --- CONFIGURAÇÕES DE AUTENTICAÇÃO ---
+FB_CLIENT_ID = "1183015997272540"
+FB_CLIENT_SECRET = "f3b1af97f90c2881295c893a8573b167 
+
+FIREBASE_API_KEY = "SUA_API_KEY_DO_FIREBASE"
+HANDLER_URL = "https://geralja-5bb49.firebaseapp.com/__/auth/handler"
+
 # Tenta importar bibliotecas extras do arquivo original, se não tiver, segue sem quebrar
 try:
     from streamlit_js_eval import streamlit_js_eval, get_geolocation
@@ -280,6 +287,12 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.markdown('<div class="header-container"><span class="logo-azul">GERAL</span><span class="logo-laranja">JÁ</span><br><small style="color:#64748B; font-weight:700;">BRASIL ELITE EDITION</small></div>', unsafe_allow_html=True)
+
+# --- CONFIGURAÇÕES DE AUTENTICAÇÃO ---
+FB_CLIENT_ID = "SEU_ID_DO_APP"
+FB_CLIENT_SECRET = "SUA_CHAVE_SECRETA" # Aquela que você mandou
+FIREBASE_API_KEY = "SUA_API_KEY_DO_FIREBASE"
+HANDLER_URL = "https://geralja-5bb49.firebaseapp.com/__/auth/handler"
 
 lista_abas = ["🔍 BUSCAR", "🚀 CADASTRAR", "👤 MEU PERFIL", "👑 ADMIN", "⭐ FEEDBACK"]
 comando = st.sidebar.text_input("Comando Secreto", type="password")
@@ -795,6 +808,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
