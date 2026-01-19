@@ -422,6 +422,24 @@ with menu_abas[0]:
 # --- ABA 2: PAINEL DO PARCEIRO (VERSÃO ATUALIZADA) ---
 with menu_abas[2]:
     if 'auth' not in st.session_state: st.session_state.auth = False
+    with menu_abas[2]:
+    if not st.session_state.get('auth'):
+        st.subheader("🚀 Acesso ao Painel")
+        
+        # O LINK QUE CHAMA O FACEBOOK
+        link_auth = f"{HANDLER_URL}?apiKey={FIREBASE_API_KEY}&providerId=facebook.com"
+        
+        # O BOTÃO VISUAL
+        st.markdown(f"""
+            <a href="{link_auth}" target="_self" style="text-decoration: none;">
+                <div style="background-color: #1877F2; color: white; padding: 12px; border-radius: 8px; text-align: center; font-weight: bold; margin-bottom: 20px;">
+                    🔵 ENTRAR COM FACEBOOK
+                </div>
+            </a>
+        """, unsafe_allow_html=True)
+        
+        st.write("--- ou ---")
+        # Aqui continua seu código antigo de Zap e Senha...
     
     if not st.session_state.auth:
         st.subheader("🚀 Acesso ao Painel")
@@ -810,6 +828,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
