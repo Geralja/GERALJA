@@ -17,7 +17,7 @@ import pytz
 
 # --- CONFIGURAÇÕES DE AUTENTICAÇÃO ---
 FB_CLIENT_ID = "1183015997272540"
-FB_CLIENT_SECRET = "f3b1af97f90c2881295c893a8573b167 
+FB_CLIENT_SECRET = f3b1af97f90c2881295c893a8573b167 
 
 FIREBASE_API_KEY = "SUA_API_KEY_DO_FIREBASE"
 HANDLER_URL = "https://geralja-5bb49.firebaseapp.com/__/auth/handler"
@@ -808,6 +808,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
