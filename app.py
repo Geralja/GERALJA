@@ -446,7 +446,7 @@ with menu_abas[0]:
     """, unsafe_allow_html=True)
                 
 # ==============================================================================
-# ABA 2: 🚀 PAINEL DO PARCEIRO (COMPLETO COM FACEBOOK - VERSÃO SEGURA)
+# ABA 2: 🚀 PAINEL DO PARCEIRO (COMPLETO: FB + IMAGENS + FAQ + EXCLUSÃO)
 # ==============================================================================
 with menu_abas[2]:
     # 1. LÓGICA DE CAPTURA DO FACEBOOK
@@ -454,49 +454,35 @@ with menu_abas[2]:
     if "uid" in params and not st.session_state.get('auth'):
         fb_uid = params["uid"]
         user_query = db.collection("profissionais").where("fb_uid", "==", fb_uid).limit(1).get()
-        
         if user_query:
             doc = user_query[0]
             st.session_state.auth = True
             st.session_state.user_id = doc.id
-            st.success(f"✅ Bem-vindo, {doc.to_dict().get('nome', 'Parceiro')}!")
-            time.sleep(1)
-            st.rerun()
-        else:
-            st.warning("⚠️ Conta do Facebook não vinculada. Entre com WhatsApp e vincule no seu perfil.")
+            st.success(f"✅ Bem-vindo!")
+            time.sleep(1); st.rerun()
 
-    if 'auth' not in st.session_state: 
-        st.session_state.auth = False
+    if 'auth' not in st.session_state: st.session_state.auth = False
     
     # --- 2. TELA DE LOGIN ---
     if not st.session_state.get('auth'):
-        st.subheader("🚀 Acesso ao Painel do Profissional")
-        
+        st.subheader("🚀 Acesso ao Painel")
         FIREBASE_API_KEY = st.secrets.get("FIREBASE_API_KEY", "")
         HANDLER_URL = "https://sua-url-de-auth.vercel.app/api/auth" 
         link_auth = f"{HANDLER_URL}?apiKey={FIREBASE_API_KEY}&providerId=facebook.com"
         
-        st.markdown(f"""
-            <a href="{link_auth}" target="_self" style="text-decoration: none;">
-                <div style="background-color: #1877F2; color: white; padding: 12px; border-radius: 8px; text-align: center; font-weight: bold; margin-bottom: 20px; font-family: sans-serif;">
-                    🔵 ENTRAR COM FACEBOOK
-                </div>
-            </a>
-        """, unsafe_allow_html=True)
+        st.markdown(f'<a href="{link_auth}" target="_self" style="text-decoration:none;"><div style="background:#1877F2;color:white;padding:12px;border-radius:8px;text-align:center;font-weight:bold;margin-bottom:20px;">🔵 ENTRAR COM FACEBOOK</div></a>', unsafe_allow_html=True)
         
         st.write("--- ou use seus dados ---")
-        
         col1, col2 = st.columns(2)
-        l_zap = col1.text_input("WhatsApp (Login)", key="login_zap_v7")
-        l_pw = col2.text_input("Senha", type="password", key="login_pw_v7")
+        l_zap = col1.text_input("WhatsApp", key="login_zap_v8")
+        l_pw = col2.text_input("Senha", type="password", key="login_pw_v8")
         
-        if st.button("ENTRAR NO PAINEL", use_container_width=True, key="btn_entrar_v7"):
+        if st.button("ENTRAR NO PAINEL", use_container_width=True):
             u = db.collection("profissionais").document(l_zap).get()
             if u.exists and str(u.to_dict().get('senha')) == str(l_pw):
                 st.session_state.auth, st.session_state.user_id = True, l_zap
                 st.rerun()
-            else: 
-                st.error("❌ Dados incorretos ou usuário não encontrado.")
+            else: st.error("❌ Dados incorretos.")
 
     # --- 3. PAINEL LOGADO ---
     else:
@@ -509,51 +495,25 @@ with menu_abas[2]:
         m2.metric("Cliques 🚀", f"{d.get('cliques', 0)}")
         m3.metric("Status", "🟢 ATIVO" if d.get('aprovado') else "🟡 PENDENTE")
 
-        # ATUALIZAÇÃO DE GPS
-        from streamlit_js_eval import streamlit_js_eval
-        if st.button("📍 ATUALIZAR MINHA LOCALIZAÇÃO (GPS)", use_container_width=True, key="gps_v7"):
-            loc = streamlit_js_eval(js_expressions="navigator.geolocation.getCurrentPosition(s => s)", key='gps_v7_eval')
+        if st.button("📍 ATUALIZAR MEU GPS", use_container_width=True):
+            from streamlit_js_eval import streamlit_js_eval
+            loc = streamlit_js_eval(js_expressions="navigator.geolocation.getCurrentPosition(s => s)", key='gps_v8')
             if loc and 'coords' in loc:
                 doc_ref.update({"lat": loc['coords']['latitude'], "lon": loc['coords']['longitude']})
-                st.success("✅ Sua localização foi atualizada no mapa!")
-            else: 
-                st.info("🛰️ Tentando captar sinal GPS... Clique novamente em 3 segundos.")
+                st.success("✅ GPS Atualizado!")
 
-        st.divider()
-
-        # RECARGA
-        with st.expander("💎 RECARREGAR MOEDAS (PIX)", expanded=False):
-            PIX_CHAVE = st.secrets.get("PIX_OFICIAL", "Sua Chave Aqui")
-            st.warning(f"Chave PIX: {PIX_CHAVE}")
-            c1, c2, c3 = st.columns(3)
-            if c1.button("10 Moedas", key="p10_v7"): st.code(PIX_CHAVE)
-            if c2.button("50 Moedas", key="p50_v7"): st.code(PIX_CHAVE)
-            if c3.button("100 Moedas", key="p100_v7"): st.code(PIX_CHAVE)
-            st.link_button("🚀 ENVIAR COMPROVANTE", f"https://wa.me/{st.secrets.get('ZAP_ADMIN')}?text=Fiz o PIX: {st.session_state.user_id}", use_container_width=True)
-
-        # EDIÇÃO DE PERFIL E VITRINE
-        with st.expander("📝 EDITAR MEU PERFIL & VITRINE", expanded=True):
-            with st.form("perfil_v7"):
-                n_nome = st.text_input("Nome do Profissional", d.get('nome', ''))
-                n_area = st.selectbox("Mudar meu Segmento", CATEGORIAS_OFICIAIS, 
-                                     index=CATEGORIAS_OFICIAIS.index(d.get('area')) if d.get('area') in CATEGORIAS_OFICIAIS else 0)
-                n_desc = st.text_area("Descrição do seu serviço", d.get('descricao', ''))
-                n_cat = st.text_input("Link Catálogo/Instagram", d.get('link_catalogo', ''))
-                
-                h1, h2 = st.columns(2)
-                n_abre = h1.text_input("Abre às", d.get('h_abre', '08:00'))
-                n_fecha = h2.text_input("Fecha às", d.get('h_fecha', '18:00'))
-                
-                n_foto = st.file_uploader("Trocar Foto de Perfil", type=['jpg','png','jpeg'])
+        # EDIÇÃO DE PERFIL E VITRINE (COM COMPRESSÃO)
+        with st.expander("📝 EDITAR MEU PERFIL & VITRINE", expanded=False):
+            with st.form("perfil_v8"):
+                n_nome = st.text_input("Nome", d.get('nome', ''))
+                n_area = st.selectbox("Segmento", CATEGORIAS_OFICIAIS, index=CATEGORIAS_OFICIAIS.index(d.get('area')) if d.get('area') in CATEGORIAS_OFICIAIS else 0)
+                n_desc = st.text_area("Descrição", d.get('descricao', ''))
+                n_foto = st.file_uploader("Trocar Foto Perfil", type=['jpg','png','jpeg'])
                 n_portfolio = st.file_uploader("Vitrine (Máx 4 fotos)", type=['jpg','png','jpeg'], accept_multiple_files=True)
                 
-                if st.form_submit_button("💾 SALVAR TODAS AS ALTERAÇÕES", use_container_width=True):
-                    up = {
-                        "nome": n_nome, "area": n_area, "descricao": n_desc, 
-                        "link_catalogo": n_cat, "h_abre": n_abre, "h_fecha": n_fecha
-                    }
+                if st.form_submit_button("💾 SALVAR ALTERAÇÕES", use_container_width=True):
+                    up = {"nome": n_nome, "area": n_area, "descricao": n_desc}
                     
-                    # --- FUNÇÃO DE COMPACTAÇÃO (ESSENCIAL) ---
                     def tratar_img(arq, size=(800, 800)):
                         from PIL import Image
                         import io
@@ -564,28 +524,38 @@ with menu_abas[2]:
                         img.save(buf, format="JPEG", quality=50, optimize=True)
                         return f"data:image/jpeg;base64,{base64.b64encode(buf.getvalue()).decode()}"
 
-                    if n_foto:
-                        up["foto_url"] = tratar_img(n_foto, (300, 300))
-                    
+                    if n_foto: up["foto_url"] = tratar_img(n_foto, (300, 300))
                     if n_portfolio:
-                        # Limpa os slots de f1 a f4 e salva as novas
                         for i in range(1, 5): up[f'f{i}'] = None
                         for i, f in enumerate(n_portfolio[:4]):
                             up[f"f{i+1}"] = tratar_img(f)
                     
-                    try:
-                        doc_ref.update(up)
-                        st.success("✅ Perfil atualizado!")
-                        time.sleep(1); st.rerun()
-                    except Exception as e:
-                        st.error(f"Erro ao salvar: {e}")
+                    doc_ref.update(up)
+                    st.success("✅ Atualizado!"); time.sleep(1); st.rerun()
 
-        # VINCULAR REDE SOCIAL
+        # --- FAQ ---
+        with st.expander("❓ PERGUNTAS FREQUENTES"):
+            st.write("**Como ganho o selo Elite?**")
+            st.write("Mantenha seu saldo acima de 10 moedas e perfil completo.")
+            st.write("**Como funciona a cobrança?**")
+            st.write("Cada clique no seu WhatsApp desconta 1 moeda do seu saldo.")
+
+        # VINCULAR FACEBOOK
         if not d.get('fb_uid'):
             with st.expander("🔗 CONECTAR FACEBOOK"):
-                st.link_button("VINCULAR FACEBOOK AGORA", link_auth, use_container_width=True)
+                st.link_button("VINCULAR AGORA", link_auth, use_container_width=True)
 
         st.divider()
+
+        # REMOÇÃO DE CONTA
+        with st.expander("⚠️ ÁREA DE PERIGO"):
+            st.write("Ao excluir, todos os seus dados e saldo serão apagados permanentemente.")
+            if st.button("❌ EXCLUIR MINHA CONTA", use_container_width=True):
+                doc_ref.delete()
+                st.session_state.auth = False
+                st.error("Conta excluída.")
+                time.sleep(2); st.rerun()
+
         if st.button("🚪 SAIR DO PAINEL", use_container_width=True):
             st.session_state.auth = False
             st.rerun()
@@ -871,6 +841,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
