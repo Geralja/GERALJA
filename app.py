@@ -219,8 +219,10 @@ CONCEITOS_EXPANDIDOS = {
 # 4. MOTORES DE IA E UTILS
 # ------------------------------------------------------------------------------
 def normalizar_para_ia(texto):
-    if not texto: return ""
-    return "".join(c for c in unicodedata.normalize('NFD', str(texto)) 
+    if not texto:
+        return ""
+    # Remove acentos e deixa tudo em minúsculo
+    return "".join(c for c in unicodedata.normalize('NFD', str(texto))
                    if unicodedata.category(c) != 'Mn').lower().strip()
 
 def processar_ia_avancada(texto):
@@ -875,6 +877,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
