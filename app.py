@@ -570,7 +570,10 @@ with menu_abas[1]:
     st.markdown("### 🚀 Cadastro de Profissional")
     st.info("Preencha os dados abaixo para entrar no ecossistema GeralJá.")
 
-    # Início do Formulário - O 'with' garante que tudo aqui dentro pertença ao botão de salvar
+    # AQUI ESTÁ A SOLUÇÃO: Definimos a variável antes dela ser usada
+    BONUS_WELCOME = 20 
+
+    # Início do Formulário
     with st.form("form_novo_profissional", clear_on_submit=False):
         col_id1, col_id2 = st.columns(2)
         nome_input = col_id1.text_input("Nome do Profissional ou Loja", placeholder="Ex: João Mecânico")
@@ -589,10 +592,9 @@ with menu_abas[1]:
         st.markdown("---")
         st.caption("📍 A sua localização atual será capturada automaticamente para te mostrar nos resultados próximos aos clientes.")
         
-        # O BOTÃO DE SALVAR PRECISA ESTAR AQUI DENTRO DO FORM
         btn_finalizar = st.form_submit_button("✅ FINALIZAR E SALVAR CADASTRO", use_container_width=True)
 
-    # Lógica que acontece APÓS o clique no botão
+    # Lógica após o clique
     if btn_finalizar:
         if not nome_input or not zap_input or not senha_input:
             st.error("⚠️ ERRO: Nome, WhatsApp e Senha são obrigatórios!")
@@ -604,12 +606,11 @@ with menu_abas[1]:
                     if foto_upload:
                         foto_final = f"data:image/png;base64,{converter_img_b64(foto_upload)}"
                     
-                    # 2. Garantia de Localização (Se o GPS falhar, usa a LAT_REF/LON_REF que você definiu)
-                    # Use as variáveis que o seu script já detectou no topo da página
+                    # 2. Localização
                     lat_salvar = minha_lat if 'minha_lat' in locals() else LAT_REF
                     lon_salvar = minha_lon if 'minha_lon' in locals() else LON_REF
 
-                    # 3. Montagem do Objeto (Sem apagar nada do que você já usa)
+                    # 3. Montagem do Objeto
                     novo_pro = {
                         "nome": nome_input,
                         "area": categoria_input,
@@ -618,8 +619,8 @@ with menu_abas[1]:
                         "tipo": tipo_input,
                         "whatsapp": zap_input,
                         "foto_url": foto_final,
-                        "saldo": BONUS_WELCOME, # Dá os 5 créditos iniciais
-                        "aprovado": True,        # Já nasce ativo conforme seu fluxo
+                        "saldo": BONUS_WELCOME, # AGORA O VALOR É 20
+                        "aprovado": True,
                         "verificado": False,
                         "cliques": 0,
                         "rating": 5,
@@ -628,14 +629,13 @@ with menu_abas[1]:
                         "data_cadastro": datetime.datetime.now().strftime("%d/%m/%Y")
                     }
 
-                    # 4. Envio para o Firestore usando o WhatsApp como ID (Evita duplicados)
+                    # 4. Envio para o Firestore
                     db.collection("profissionais").document(zap_input).set(novo_pro)
                     
                     st.balloons()
-                    st.success(f"🎊 BEM-VINDO, {nome_input.upper()}! Seu cadastro foi concluído com sucesso.")
-                    st.info("💡 DICA: Vá na aba '👤 MEU PERFIL' para fazer login e ver seu saldo de moedas.")
+                    st.success(f"🎊 BEM-VINDO, {nome_input.upper()}! Você ganhou {BONUS_WELCOME} moedas de bônus!")
+                    st.info("💡 DICA: Vá na aba '👤 MEU PERFIL' para fazer login e ver seu saldo.")
                     
-                    # Alerta para o Admin (Usando sua função existente)
                     link_admin = enviar_alerta_admin(nome_input, categoria_input, zap_input)
                     st.markdown(f'[📢 Avisar Administração via WhatsApp]({link_admin})')
 
@@ -859,6 +859,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
