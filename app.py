@@ -333,7 +333,7 @@ if comando == "abracadabra":
 
 menu_abas = st.tabs(lista_abas)
 # ==============================================================================
-# --- ABA 0: BUSCA (IA GROQ + RAIO 3KM + VITRINE SOCIAL) ---
+# --- ABA 0: BUSCA (IA GROQ + RAIO 3KM + VITRINE SOCIAL V3.0) ---
 # ==============================================================================
 with menu_abas[0]:
     st.markdown("### 🏙️ O que você precisa?")
@@ -342,16 +342,16 @@ with menu_abas[0]:
     with st.expander("📍 Sua Localização (GPS)", expanded=False):
         loc = get_geolocation()
         if loc and 'coords' in loc:
-            minha_lat, minha_lon = loc['coords']['latitude'], loc['coords']['longitude']
-            st.success(f"Localização detectada!")
+            minha_lat = loc['coords']['latitude']
+            minha_lon = loc['coords']['longitude']
+            st.success("Localização detectada!")
         else:
             minha_lat, minha_lon = LAT_REF, LON_REF
             st.warning("GPS desativado. Usando padrão (Centro).")
 
     c1, c2 = st.columns([3, 1])
     termo_busca = c1.text_input("Ex: 'Cano estourado' ou 'Pizza'", key="main_search_v_groq")
-    
-    # ALTERADO: Raio padrão agora inicia em 3 KM conforme solicitado
+    # Raio padrão em 3 KM conforme solicitado
     raio_km = c2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 20, 50, 100, 500], value=3)
     
     # --- 2. CSS PARA VITRINE E MODAL ---
@@ -379,45 +379,70 @@ with menu_abas[0]:
     """, unsafe_allow_html=True)
 
     if termo_busca:
-        # 3. MOTOR DE IA GROQ (Processamento Avançado)
         cat_ia = processar_ia_avancada(termo_busca) 
         st.info(f"✨ IA Groq: Buscando por **{cat_ia}**")
         
-        # Busca no Firebase
         profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
         
         lista_ranking = []
         for p_doc in profs:
-            p = p_doc.to_dict(); p['id'] = p_doc.id
+            p = p_doc.to_dict()
+            p['id'] = p_doc.id
             dist = calcular_distancia_real(minha_lat, minha_lon, p.get('lat', LAT_REF), p.get('lon', LON_REF))
             
             if dist <= raio_km:
                 p['dist'] = dist
-                # Cálculo de Score Elite
                 score = 0
                 score += 1000 if p.get('verificado') else 0
                 score += (p.get('saldo', 0) * 10)
                 p['score_elite'] = score
                 lista_ranking.append(p)
 
-        # 4. ORDENAÇÃO: Mais perto primeiro, Elite como desempate
+        # ORDENAÇÃO: Mais perto primeiro (Precisão Geográfica)
         lista_ranking.sort(key=lambda x: (x['dist'], -x['score_elite']))
 
         if not lista_ranking:
-            st.warning(f"Nenhum profissional de '{cat_ia}' encontrado em {raio_km}km.")
+            st.warning(f"Ninguém de '{cat_ia}' encontrado em {raio_km}km.")
         else:
             for p in lista_ranking:
                 is_elite = p.get('verificado') and p.get('saldo', 0) > 0
                 cor_borda = "#FFD700" if is_elite else "#0047AB"
                 zap_limpo = limpar_whatsapp(p.get('whatsapp', p['id']))
-                link_zap = f"https://wa.me/{zap_limpo}?text=Olá, vi seu portfólio no GeralJá!"
+                link_zap = f"https://wa.me/{zap_limpo}?text=Olá, vi seu trabalho no GeralJá!"
                 
-                # Montar Fotos
+                # CORREÇÃO DA STRING: Montagem das fotos do portfólio
                 fotos_html = ""
                 for i in range(1, 11):
                     f_data = p.get(f'f{i}')
                     if f_data and len(str(f_data)) > 100:
-                        src = f_data if str(f_data).startswith("
+                        src = f_data if str(f_data).startswith("data") else f"data:image/jpeg;base64,{f_data}"
+                        fotos_html += f'<div class="social-card" onclick="abrirModal(\'{src}\', \'{link_zap}\')"><img src="{src}"></div>'
+
+                st.markdown(f"""
+                <div class="cartao-geral" style="--cor-borda: {cor_borda};">
+                    <div style="font-size: 11px; color: #0047AB; font-weight: bold; margin-bottom: 10px;">
+                        📍 a {p['dist']:.1f} km de você {" | 🏆 ELITE" if is_elite else ""}
+                    </div>
+                    <div class="perfil-row">
+                        <img src="{p.get('foto_url','')}" class="foto-perfil">
+                        <div>
+                            <h4 style="margin:0; color:#1e3a8a;">{p.get('nome','').upper()}</h4>
+                            <p style="margin:0; color:#666; font-size:12px;">{p.get('descricao','')[:100]}...</p>
+                        </div>
+                    </div>
+                    <div class="social-track">{fotos_html}</div>
+                    <a href="{link_zap}" target="_blank" class="btn-zap-footer">💬 CHAMAR AGORA</a>
+                </div>
+                """, unsafe_allow_html=True)
+
+    # Modal Único (Fora do Loop)
+    st.markdown("""
+    <div id="meuModal" style="display:none; position:fixed; z-index:9999; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); align-items:center; justify-content:center; flex-direction:column;">
+        <span onclick="fecharModal()" style="position:absolute; top:20px; right:30px; color:white; font-size:40px; cursor:pointer;">&times;</span>
+        <img id="imgExpandida" style="max-width:90%; max-height:75%; border-radius:10px;">
+        <a id="linkZapModal" href="#" target="_blank" style="margin-top:20px; background:#25D366; color:white; padding:15px 40px; border-radius:30px; text-decoration:none; font-weight:bold;">✅ WHATSAPP</a>
+    </div>
+    """, unsafe_allow_html=True)
                 
 # ==============================================================================
 # ABA 2: 🚀 PAINEL DO PARCEIRO (COMPLETO COM FACEBOOK)
@@ -842,6 +867,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
