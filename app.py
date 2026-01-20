@@ -1,6 +1,7 @@
 # ==============================================================================
 # GERALJÁ: CRIANDO SOLUÇÕES
 # ==============================================================================
+import datetime # Importa a biblioteca inteira
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, firestore
@@ -874,6 +875,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
