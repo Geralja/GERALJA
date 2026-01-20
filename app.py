@@ -1,19 +1,16 @@
 # ==============================================================================
 # GERALJÁ: CRIANDO SOLUÇÕES
 # ==============================================================================
-import datetime # Importa a biblioteca inteira
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, firestore
 import base64
 import json
-import datetime
 import math
 import re
 import time
 import pandas as pd
-import unicodedata
-from datetime import datetime
+from datetime import datetime  # <--- Deixe apenas este para datas
 import pytz
 # --- CONFIGURAÇÕES DE AUTENTICAÇÃO (PUXANDO DO COFRE) ---
 try:
@@ -875,6 +872,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
