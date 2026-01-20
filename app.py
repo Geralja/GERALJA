@@ -228,13 +228,41 @@ def normalizar_para_ia(texto):
 def processar_ia_avancada(texto):
     if not texto: return "Vazio"
     t_clean = normalizar_para_ia(texto)
+    
+    # --- 1. SEU CÓDIGO ATUAL (Rápido e sem custo) ---
     for chave, categoria in CONCEITOS_EXPANDIDOS.items():
         if re.search(rf"\b{normalizar_para_ia(chave)}\b", t_clean):
             return categoria
+    
     for cat in CATEGORIAS_OFICIAIS:
         if normalizar_para_ia(cat) in t_clean:
             return cat
-    return "NAO_ENCONTRADO"
+
+    # --- 2. O UPGRADE PARA NOTA 5.0 (IA Groq + Cache) ---
+    try:
+        # Primeiro checa se já perguntamos isso antes (Cache)
+        cache_ref = db.collection("cache_buscas").document(t_clean).get()
+        if cache_ref.exists:
+            return cache_ref.to_dict().get("categoria")
+
+        # Se não sabe, a IA "pensa" e resolve
+        from groq import Groq
+        client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+        prompt = f"O usuário buscou: '{texto}'. Categorias: {CATEGORIAS_OFICIAIS}. Responda apenas o NOME DA CATEGORIA."
+        
+        res = client.chat.completions.create(
+            messages=[{"role": "user", "content": prompt}],
+            model="llama3-8b-8192",
+            temperature=0.1
+        )
+        cat_ia = res.choices[0].message.content.strip()
+
+        # Salva no cache para não gastar mais tokens com esse termo
+        db.collection("cache_buscas").document(t_clean).set({"categoria": cat_ia})
+        return cat_ia
+
+    except:
+        return "NAO_ENCONTRADO" # Se tudo der errado
 
 def calcular_distancia_real(lat1, lon1, lat2, lon2):
     try:
@@ -844,6 +872,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
