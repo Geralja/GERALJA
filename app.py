@@ -565,107 +565,97 @@ with menu_abas[2]:
             st.session_state.auth = False
             st.rerun()
 
-# --- ABA 1: CADASTRAR (SISTEMA GERALJÁ REVISADO) ---
+# --- ABA 1: CADASTRAR & EDITAR (VERSÃO FINAL GERALJÁ) ---
 with menu_abas[1]:
-    st.markdown("### 🚀 Cadastro de Profissional")
+    st.markdown("### 🚀 Cadastro ou Edição de Profissional")
 
     # 1. BUSCA CATEGORIAS DINÂMICAS DO FIREBASE
     try:
         doc_cat = db.collection("configuracoes").document("categorias").get()
         if doc_cat.exists:
-            categorias_do_banco = doc_cat.to_dict().get("lista", [])
-            # Limpa espaços extras e ordena
-            CATEGORIAS_OFICIAIS = sorted([c.strip() for c in categorias_do_banco])
+            CATEGORIAS_OFICIAIS = doc_cat.to_dict().get("lista", ["Geral"])
         else:
-            CATEGORIAS_OFICIAIS = ["Geral", "Pedreiro", "Eletricista", "Locutor"]
+            CATEGORIAS_OFICIAIS = ["Pedreiro", "Locutor", "Eletricista", "Mecânico"]
     except:
-        CATEGORIAS_OFICIAIS = ["Geral", "Pedreiro", "Eletricista", "Locutor"]
+        CATEGORIAS_OFICIAIS = ["Pedreiro", "Locutor", "Eletricista", "Mecânico"]
 
-    # --- BOTÕES DE AUTENTICAÇÃO (VISUAL) ---
-    st.markdown("##### Cadastre-se rápido com:")
+    # 2. AUTENTICAÇÃO SOCIAL (Visual para análise da Meta)
+    st.markdown("##### Entre rápido com:")
     col_soc1, col_soc2 = st.columns(2)
     with col_soc1:
-        st.markdown('<div style="display:flex; align-items:center; justify-content:center; border:1px solid #dadce0; border-radius:8px; padding:8px; background:white;"><img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" width="18px" style="margin-right:10px;"><span style="color:#3c4043; font-weight:bold; font-size:14px;">Google</span></div>', unsafe_allow_html=True)
+        st.markdown(f'<a href="https://accounts.google.com/o/oauth2/v2/auth?client_id={st.secrets["google_auth"]["client_id"]}&response_type=code&scope=openid%20profile%20email&redirect_uri=https://geralja-zxiaj2ot56fuzgcz7xhcks.streamlit.app/" target="_self"><div style="display:flex; align-items:center; justify-content:center; border:1px solid #dadce0; border-radius:8px; padding:8px; background:white;"><img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" width="18px" style="margin-right:10px;"><span style="color:#3c4043; font-weight:bold; font-size:14px;">Google</span></div></a>', unsafe_allow_html=True)
     with col_soc2:
-        st.markdown('<div style="display:flex; align-items:center; justify-content:center; border-radius:8px; padding:8px; background:#1877F2;"><img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg" width="18px" style="margin-right:10px;"><span style="color:white; font-weight:bold; font-size:14px;">Facebook</span></div>', unsafe_allow_html=True)
+        st.markdown(f'<a href="https://www.facebook.com/v18.0/dialog/oauth?client_id={st.secrets["FB_CLIENT_ID"]}&redirect_uri=https://geralja-zxiaj2ot56fuzgcz7xhcks.streamlit.app/&scope=public_profile,email" target="_self"><div style="display:flex; align-items:center; justify-content:center; border-radius:8px; padding:8px; background:#1877F2;"><img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg" width="18px" style="margin-right:10px;"><span style="color:white; font-weight:bold; font-size:14px;">Facebook</span></div></a>', unsafe_allow_html=True)
     
     st.markdown("<br>", unsafe_allow_html=True)
-    st.info("💡 Complete os detalhes do seu serviço abaixo:")
-
     BONUS_WELCOME = 20 
 
-    # --- FORMULÁRIO DE CADASTRO/EDIÇÃO ---
-    with st.form("form_novo_profissional", clear_on_submit=False):
-        col_id1, col_id2 = st.columns(2)
-        nome_input = col_id1.text_input("Nome do Profissional ou Loja", placeholder="Ex: João Mecânico")
-        zap_input = col_id2.text_input("WhatsApp (DDD + Número)", placeholder="Ex: 11991853488")
+    # 3. FORMULÁRIO INTELIGENTE
+    with st.form("form_profissional", clear_on_submit=False):
+        st.caption("DICA: Se você já tem cadastro, use o mesmo WhatsApp para editar seus dados.")
+        col1, col2 = st.columns(2)
+        nome_input = col1.text_input("Nome do Profissional ou Loja")
+        zap_input = col2.text_input("WhatsApp (DDD + Número sem espaços)")
         
-        col_id3, col_id4 = st.columns(2)
-        # AGORA AS CATEGORIAS VEM DO FIREBASE!
-        categoria_input = col_id3.selectbox("Sua Área Principal (Serviços)", CATEGORIAS_OFICIAIS)
-        senha_input = col_id4.text_input("Crie uma Senha", type="password", help="Use para editar seu perfil no futuro")
+        col3, col4 = st.columns(2)
+        # Aqui estão as categorias para edição/cadastro
+        cat_input = col3.selectbox("Selecione sua Especialidade Principal", CATEGORIAS_OFICIAIS)
+        senha_input = col4.text_input("Sua Senha de Acesso", type="password", help="Necessária para salvar alterações")
         
-        descricao_input = st.text_area("Descrição do Serviço (O que você faz? Diferenciais?)")
-        tipo_input = st.radio("Tipo de Cadastro", ["👨‍🔧 Profissional Autônomo", "🏢 Comércio/Loja"], horizontal=True)
-        foto_upload = st.file_uploader("Foto de Perfil ou Logo da Loja", type=['jpg', 'jpeg', 'png'])
+        desc_input = st.text_area("Descrição Completa (Serviços, Horários, Diferenciais)")
+        tipo_input = st.radio("Tipo", ["👨‍🔧 Profissional Autônomo", "🏢 Comércio/Loja"], horizontal=True)
+        foto_upload = st.file_uploader("Atualizar Foto de Perfil ou Logo", type=['png', 'jpg', 'jpeg'])
+        
+        btn_acao = st.form_submit_button("✅ FINALIZAR: SALVAR OU ATUALIZAR", use_container_width=True)
 
-        st.markdown("---")
-        btn_finalizar = st.form_submit_button("✅ FINALIZAR E SALVAR CADASTRO", use_container_width=True)
-
-    # --- LÓGICA DE SALVAMENTO ---
-    if btn_finalizar:
+    # 4. LÓGICA DE SALVAMENTO E EDIÇÃO
+    if btn_acao:
         if not nome_input or not zap_input or not senha_input:
-            st.error("⚠️ Atenção: Nome, WhatsApp e Senha são obrigatórios!")
+            st.warning("⚠️ Nome, WhatsApp e Senha são obrigatórios para identificar seu perfil!")
         else:
             try:
-                with st.spinner("Processando..."):
-                    # Verifica se já existe para não zerar o saldo na edição acidental
+                with st.spinner("Sincronizando com o ecossistema GeralJá..."):
+                    # Verifica se o profissional já existe
                     doc_ref = db.collection("profissionais").document(zap_input)
-                    doc_existente = doc_ref.get()
+                    perfil_antigo = doc_ref.get()
                     
-                    # Processa Foto
-                    foto_final = ""
+                    # Processa Foto (mantém a antiga se não subir nova)
+                    foto_b64 = perfil_antigo.to_dict().get("foto_url", "") if perfil_antigo.exists else ""
                     if foto_upload:
-                        foto_final = f"data:image/png;base64,{base64.b64encode(foto_upload.read()).decode()}"
-                    elif doc_existente.exists:
-                        foto_final = doc_existente.to_dict().get("foto_url", "")
-
-                    # Localização
-                    lat_salvar = minha_lat if 'minha_lat' in locals() else LAT_REF
-                    lon_salvar = min_lon if 'minha_lon' in locals() else LON_REF
-
-                    # Monta o objeto (Se existir, mantém o saldo. Se for novo, ganha 20)
-                    saldo_atual = doc_existente.to_dict().get("saldo", BONUS_WELCOME) if doc_existente.exists else BONUS_WELCOME
+                        foto_b64 = f"data:image/png;base64,{base64.b64encode(foto_upload.read()).decode()}"
                     
-                    novo_pro = {
-                        "nome": nome_input,
-                        "area": categoria_input,
-                        "descricao": descricao_input,
-                        "senha": senha_input,
-                        "tipo": tipo_input,
-                        "whatsapp": zap_input,
-                        "foto_url": foto_final,
-                        "saldo": saldo_atual,
-                        "aprovado": True,
-                        "verificado": False,
-                        "cliques": doc_existente.to_dict().get("cliques", 0) if doc_existente.exists else 0,
-                        "rating": 5,
-                        "lat": lat_salvar,
-                        "lon": lon_salvar,
-                        "data_cadastro": datetime.now().strftime("%d/%m/%Y")
-                    }
+                    # Define Saldo (Dá 20 se for novo, mantém se for edição)
+                    saldo_final = perfil_antigo.to_dict().get("saldo", BONUS_WELCOME) if perfil_antigo.exists else BONUS_WELCOME
 
-                    # Salva/Atualiza
-                    doc_ref.set(novo_pro)
+                    # Monta o objeto final
+                    dados_pro = {
+                        "nome": nome_input,
+                        "whatsapp": zap_input,
+                        "area": cat_input,
+                        "senha": senha_input,
+                        "descricao": desc_input,
+                        "tipo": tipo_input,
+                        "foto_url": foto_b64,
+                        "saldo": saldo_final,
+                        "data_cadastro": datetime.now().strftime("%d/%m/%Y"),
+                        "aprovado": True,
+                        "cliques": perfil_antigo.to_dict().get("cliques", 0) if perfil_antigo.exists else 0,
+                        "rating": 5,
+                        "lat": minha_lat if 'minha_lat' in locals() else -23.55,
+                        "lon": minha_lon if 'minha_lon' in locals() else -46.63
+                    }
+                    
+                    # Salva ou Sobrescreve (Edição)
+                    doc_ref.set(dados_pro)
                     
                     st.balloons()
-                    if doc_existente.exists:
+                    if perfil_antigo.exists:
                         st.success(f"✅ Perfil de {nome_input} atualizado com sucesso!")
                     else:
-                        st.success(f"🎊 Bem-vindo! Você ganhou {BONUS_WELCOME} moedas de bônus!")
-                    
+                        st.success(f"🎊 Bem-vindo! Cadastro concluído e {BONUS_WELCOME} moedas creditadas!")
+                        
             except Exception as e:
-                st.error(f"❌ Erro ao salvar: {e}")
+                st.error(f"❌ Erro ao processar perfil: {e}")
 # ==============================================================================
 # ABA 4: 👑 PAINEL DE CONTROLE MASTER (AUTORIDADE MÁXIMA COMPLETA)
 # ==============================================================================
@@ -884,6 +874,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
