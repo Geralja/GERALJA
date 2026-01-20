@@ -10,10 +10,11 @@ import math
 import re
 import time
 import pandas as pd
-from datetime import datetime
+from datetime import datetime 
 import pytz
-from streamlit_js_eval import streamlit_js_eval, get_geolocation # Adicionei get_geolocation
+from streamlit_js_eval import streamlit_js_eval, get_geolocation
 import unicodedata
+from groq import Groq # <--- Novo
 
 # --- ADICIONE ESTES 3 PARA O NÍVEL 5.0 ---
 from groq import Groq                # Para a IA avançada
@@ -871,6 +872,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
