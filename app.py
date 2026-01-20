@@ -569,35 +569,30 @@ with menu_abas[2]:
 with menu_abas[1]:
     st.markdown("### 🚀 Cadastro de Profissional")
     
-    # --- NOVO: BOTÕES DE LOGIN SOCIAL ---
+    # --- BOTÕES DE AUTENTICAÇÃO (VISUAL PARA CRIAÇÃO DE CONTA) ---
     st.markdown("##### Cadastre-se rápido com:")
-    col_social1, col_social2 = st.columns(2)
+    col_soc1, col_soc2 = st.columns(2)
     
-    with col_social1:
-        # Botão estilizado do Google
+    with col_soc1:
         st.markdown("""
-            <a href="#" style="text-decoration:none;">
-                <div style="display:flex; align-items:center; justify-content:center; border:1px solid #dadce0; border-radius:4px; padding:10px; background:white; cursor:pointer;">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" width="20px" style="margin-right:10px;">
-                    <span style="color:#3c4043; font-weight:bold;">Google</span>
-                </div>
-            </a>
+            <div style="display:flex; align-items:center; justify-content:center; border:1px solid #dadce0; border-radius:8px; padding:8px; background:white; cursor:pointer;">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" width="18px" style="margin-right:10px;">
+                <span style="color:#3c4043; font-weight:bold; font-size:14px;">Google</span>
+            </div>
         """, unsafe_allow_html=True)
 
-    with col_social2:
-        # Botão estilizado do Facebook
+    with col_soc2:
         st.markdown("""
-            <a href="#" style="text-decoration:none;">
-                <div style="display:flex; align-items:center; justify-content:center; border-radius:4px; padding:10px; background:#1877F2; cursor:pointer;">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg" width="20px" style="margin-right:10px;">
-                    <span style="color:white; font-weight:bold;">Facebook</span>
-                </div>
-            </a>
+            <div style="display:flex; align-items:center; justify-content:center; border-radius:8px; padding:8px; background:#1877F2; cursor:pointer;">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg" width="18px" style="margin-right:10px;">
+                <span style="color:white; font-weight:bold; font-size:14px;">Facebook</span>
+            </div>
         """, unsafe_allow_html=True)
     
     st.markdown("<br>", unsafe_allow_html=True)
-    st.info("Ou preencha os dados abaixo manualmente:")
+    st.info("Ou preencha os dados para ganhar suas 20 moedas:")
 
+    # Define o bônus aqui para evitar o erro de 'not defined'
     BONUS_WELCOME = 20 
 
     # Início do Formulário
@@ -610,20 +605,57 @@ with menu_abas[1]:
         categoria_input = col_id3.selectbox("Sua Área Principal", CATEGORIAS_OFICIAIS)
         senha_input = col_id4.text_input("Crie uma Senha", type="password")
         
-        descricao_input = st.text_area("Descrição do Serviço")
+        descricao_input = st.text_area("Descrição do Serviço (O que você faz?)")
         tipo_input = st.radio("Tipo de Cadastro", ["👨‍🔧 Profissional Autônomo", "🏢 Comércio/Loja"], horizontal=True)
         foto_upload = st.file_uploader("Foto de Perfil ou Logo", type=['jpg', 'jpeg', 'png'])
 
         st.markdown("---")
         btn_finalizar = st.form_submit_button("✅ FINALIZAR E SALVAR CADASTRO", use_container_width=True)
 
-    # Lógica de salvamento (mesma de antes)
+    # --- LÓGICA DE SALVAMENTO (FORA DO FORM MAS DENTRO DA ABA) ---
     if btn_finalizar:
         if not nome_input or not zap_input or not senha_input:
-            st.error("⚠️ ERRO: Nome, WhatsApp e Senha são obrigatórios!")
+            st.error("⚠️ Nome, WhatsApp e Senha são obrigatórios!")
         else:
-            # ... (resto do seu código de salvamento enviado antes)
-            pass
+            try:
+                with st.spinner("Criando sua conta de elite..."):
+                    # Processa Foto
+                    foto_final = ""
+                    if foto_upload:
+                        foto_final = f"data:image/png;base64,{converter_img_b64(foto_upload)}"
+                    
+                    # Localização Segura
+                    lat_salvar = minha_lat if 'minha_lat' in locals() else LAT_REF
+                    lon_salvar = minha_lon if 'minha_lon' in locals() else LON_REF
+
+                    # Objeto para o Firebase
+                    novo_pro = {
+                        "nome": nome_input,
+                        "area": categoria_input,
+                        "descricao": descricao_input,
+                        "senha": senha_input,
+                        "tipo": tipo_input,
+                        "whatsapp": zap_input,
+                        "foto_url": foto_final,
+                        "saldo": BONUS_WELCOME,
+                        "aprovado": True,
+                        "verificado": False,
+                        "cliques": 0,
+                        "rating": 5,
+                        "lat": lat_salvar,
+                        "lon": lon_salvar,
+                        "data_cadastro": datetime.datetime.now().strftime("%d/%m/%Y")
+                    }
+
+                    # Salva no Banco
+                    db.collection("profissionais").document(zap_input).set(novo_pro)
+                    
+                    st.balloons()
+                    st.success(f"🎊 CONTA CRIADA! Você recebeu {BONUS_WELCOME} moedas!")
+                    st.success("Agora você já pode ser encontrado por clientes próximos!")
+                    
+            except Exception as e:
+                st.error(f"❌ Erro ao salvar: {e}")
 # ==============================================================================
 # ABA 4: 👑 PAINEL DE CONTROLE MASTER (AUTORIDADE MÁXIMA COMPLETA)
 # ==============================================================================
@@ -842,6 +874,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
