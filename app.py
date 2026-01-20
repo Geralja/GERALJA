@@ -10,8 +10,9 @@ import math
 import re
 import time
 import pandas as pd
-from datetime import datetime  # <--- Deixe apenas este para datas
+from datetime import datetime # Único import de data necessário
 import pytz
+from streamlit_js_eval import streamlit_js_eval # Para capturar localização real
 # --- CONFIGURAÇÕES DE AUTENTICAÇÃO (PUXANDO DO COFRE) ---
 try:
     FB_CLIENT_ID = st.secrets["FB_CLIENT_ID"]
@@ -564,10 +565,11 @@ with menu_abas[2]:
             st.session_state.auth = False
             st.rerun()
 # --- ABA 1: CADASTRAR (SISTEMA DE ADMISSÃO DE ELITE) ---
+# --- ABA 1: CADASTRAR (SISTEMA DE ADMISSÃO DE ELITE) ---
 with menu_abas[1]:
     st.markdown("### 🚀 Cadastro de Profissional")
     
-    # --- BOTÕES DE AUTENTICAÇÃO (VISUAL PARA CRIAÇÃO DE CONTA) ---
+    # --- BOTÕES DE AUTENTICAÇÃO (VISUAL PARA ANÁLISE DA META) ---
     st.markdown("##### Cadastre-se rápido com:")
     col_soc1, col_soc2 = st.columns(2)
     
@@ -588,9 +590,9 @@ with menu_abas[1]:
         """, unsafe_allow_html=True)
     
     st.markdown("<br>", unsafe_allow_html=True)
-    st.info("Ou preencha os dados para ganhar suas 20 moedas:")
+    st.info("💡 Ganhe **20 moedas de bônus** ao completar seu cadastro manual abaixo:")
 
-    # Define o bônus aqui para evitar o erro de 'not defined'
+    # Define o bônus de entrada
     BONUS_WELCOME = 20 
 
     # Início do Formulário
@@ -610,23 +612,23 @@ with menu_abas[1]:
         st.markdown("---")
         btn_finalizar = st.form_submit_button("✅ FINALIZAR E SALVAR CADASTRO", use_container_width=True)
 
-    # --- LÓGICA DE SALVAMENTO (FORA DO FORM MAS DENTRO DA ABA) ---
+    # --- LÓGICA DE SALVAMENTO (REVISADA PELA GÊNIA) ---
     if btn_finalizar:
         if not nome_input or not zap_input or not senha_input:
             st.error("⚠️ Nome, WhatsApp e Senha são obrigatórios!")
         else:
             try:
-                with st.spinner("Criando sua conta de elite..."):
-                    # Processa Foto
+                with st.spinner("Conectando ao ecossistema GeralJá..."):
+                    # 1. Processa Foto
                     foto_final = ""
                     if foto_upload:
-                        foto_final = f"data:image/png;base64,{converter_img_b64(foto_upload)}"
+                        foto_final = f"data:image/png;base64,{base64.b64encode(foto_upload.read()).decode()}"
                     
-                    # Localização Segura
+                    # 2. Localização Blindada
                     lat_salvar = minha_lat if 'minha_lat' in locals() else LAT_REF
                     lon_salvar = minha_lon if 'minha_lon' in locals() else LON_REF
 
-                    # Objeto para o Firebase
+                    # 3. Objeto para o Firebase (Correção da Data aqui!)
                     novo_pro = {
                         "nome": nome_input,
                         "area": categoria_input,
@@ -642,15 +644,15 @@ with menu_abas[1]:
                         "rating": 5,
                         "lat": lat_salvar,
                         "lon": lon_salvar,
-                        "data_cadastro": datetime.datetime.now().strftime("%d/%m/%Y")
+                        "data_cadastro": datetime.now().strftime("%d/%m/%Y") # <--- REMOVIDO O DUPLO DATETIME
                     }
 
-                    # Salva no Banco
+                    # 4. Salva no Banco de Dados
                     db.collection("profissionais").document(zap_input).set(novo_pro)
                     
                     st.balloons()
                     st.success(f"🎊 CONTA CRIADA! Você recebeu {BONUS_WELCOME} moedas!")
-                    st.success("Agora você já pode ser encontrado por clientes próximos!")
+                    st.info("Acesse a aba 'Meu Perfil' para gerenciar seus serviços.")
                     
             except Exception as e:
                 st.error(f"❌ Erro ao salvar: {e}")
@@ -872,6 +874,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
