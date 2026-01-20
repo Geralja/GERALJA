@@ -10,10 +10,15 @@ import math
 import re
 import time
 import pandas as pd
-from datetime import datetime # Único import de data necessário
+from datetime import datetime
 import pytz
-from streamlit_js_eval import streamlit_js_eval # Para capturar localização real
+from streamlit_js_eval import streamlit_js_eval, get_geolocation # Adicionei get_geolocation
 import unicodedata
+
+# --- ADICIONE ESTES 3 PARA O NÍVEL 5.0 ---
+from groq import Groq                # Para a IA avançada
+from fuzzywuzzy import process       # Para buscas com erros de digitação
+from urllib.parse import quote       # Para links de WhatsApp seguros
 # --- CONFIGURAÇÕES DE AUTENTICAÇÃO (PUXANDO DO COFRE) ---
 try:
     FB_CLIENT_ID = st.secrets["FB_CLIENT_ID"]
@@ -319,12 +324,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.markdown('<div class="header-container"><span class="logo-azul">GERAL</span><span class="logo-laranja">JÁ</span><br><small style="color:#64748B; font-weight:700;">BRASIL ELITE EDITION</small></div>', unsafe_allow_html=True)
-
-# --- CONFIGURAÇÕES DE AUTENTICAÇÃO ---
-FB_CLIENT_ID = "SEU_ID_DO_APP"
-FB_CLIENT_SECRET = "SUA_CHAVE_SECRETA" # Aquela que você mandou
-FIREBASE_API_KEY = "SUA_API_KEY_DO_FIREBASE"
-HANDLER_URL = "https://geralja-5bb49.firebaseapp.com/__/auth/handler"
 
 lista_abas = ["🔍 BUSCAR", "🚀 CADASTRAR", "👤 MEU PERFIL", "👑 ADMIN", "⭐ FEEDBACK"]
 comando = st.sidebar.text_input("Comando Secreto", type="password")
@@ -872,6 +871,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
