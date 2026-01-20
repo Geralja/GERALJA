@@ -13,6 +13,7 @@ import pandas as pd
 from datetime import datetime # Único import de data necessário
 import pytz
 from streamlit_js_eval import streamlit_js_eval # Para capturar localização real
+import unicodedata
 # --- CONFIGURAÇÕES DE AUTENTICAÇÃO (PUXANDO DO COFRE) ---
 try:
     FB_CLIENT_ID = st.secrets["FB_CLIENT_ID"]
@@ -874,6 +875,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
