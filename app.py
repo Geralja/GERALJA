@@ -424,12 +424,13 @@ with menu_abas[0]:
 # ==============================================================================
 # ABA 2: 🚀 PAINEL DO PARCEIRO (COMPLETO COM FACEBOOK)
 # ==============================================================================
+# --- ABA 2: PAINEL DE CONTROLE (VERSÃO TURBINADA COM GPS E VITRINE) ---
 with menu_abas[2]:
-    # --- 1. LÓGICA DE CAPTURA DO FACEBOOK (VERIFICA SE VOLTOU DA AUTH) ---
+    # 1. LÓGICA DE CAPTURA DO FACEBOOK (VERIFICA SE VOLTOU DA AUTH EXTERNA)
     params = st.query_params
     if "uid" in params and not st.session_state.get('auth'):
         fb_uid = params["uid"]
-        # Busca no Firestore se esse ID já está vinculado a alguém
+        # Busca no Firestore se esse ID já está vinculado
         user_query = db.collection("profissionais").where("fb_uid", "==", fb_uid).limit(1).get()
         
         if user_query:
@@ -440,7 +441,7 @@ with menu_abas[2]:
             time.sleep(1)
             st.rerun()
         else:
-            st.warning("⚠️ Conta do Facebook não vinculada. Entre com WhatsApp e vincule no perfil.")
+            st.warning("⚠️ Conta do Facebook não vinculada. Entre com WhatsApp e vincule no seu perfil.")
 
     # Inicializa o estado de autenticação se não existir
     if 'auth' not in st.session_state: 
@@ -448,12 +449,16 @@ with menu_abas[2]:
     
     # --- 2. TELA DE LOGIN (CASO NÃO ESTEJA LOGADO) ---
     if not st.session_state.get('auth'):
-        st.subheader("🚀 Acesso ao Painel")
+        st.subheader("🚀 Acesso ao Painel do Profissional")
         
-        # O LINK QUE CHAMA O FACEBOOK USANDO SUAS CHAVES DO COFRE
+        # Link do Facebook (Usando as chaves das suas Secrets)
+        # HANDLER_URL deve estar definida no seu código global ou substitua pela sua URL de auth
+        FIREBASE_API_KEY = st.secrets.get("FIREBASE_API_KEY", "")
+        HANDLER_URL = "https://sua-url-de-auth.vercel.app/api/auth" # Ajuste conforme seu handler
+        
         link_auth = f"{HANDLER_URL}?apiKey={FIREBASE_API_KEY}&providerId=facebook.com"
         
-        # BOTÃO VISUAL FACEBOOK
+        # Botão Visual Facebook
         st.markdown(f"""
             <a href="{link_auth}" target="_self" style="text-decoration: none;">
                 <div style="background-color: #1877F2; color: white; padding: 12px; border-radius: 8px; text-align: center; font-weight: bold; margin-bottom: 20px; font-family: sans-serif;">
@@ -465,109 +470,98 @@ with menu_abas[2]:
         st.write("--- ou use seus dados ---")
         
         col1, col2 = st.columns(2)
-        l_zap = col1.text_input("WhatsApp (números)", key="login_zap_v7")
+        l_zap = col1.text_input("WhatsApp (Login)", key="login_zap_v7")
         l_pw = col2.text_input("Senha", type="password", key="login_pw_v7")
         
         if st.button("ENTRAR NO PAINEL", use_container_width=True, key="btn_entrar_v7"):
             u = db.collection("profissionais").document(l_zap).get()
-            if u.exists and u.to_dict().get('senha') == l_pw:
+            if u.exists and str(u.to_dict().get('senha')) == str(l_pw):
                 st.session_state.auth, st.session_state.user_id = True, l_zap
                 st.rerun()
             else: 
-                st.error("Dados incorretos.")
+                st.error("❌ Dados incorretos ou usuário não encontrado.")
 
-    # --- 3. PAINEL LOGADO (CASO ESTEJA AUTENTICADO) ---
+    # --- 3. PAINEL LOGADO (PAINEL DE MÁXIMA PERFORMANCE) ---
     else:
         doc_ref = db.collection("profissionais").document(st.session_state.user_id)
         d = doc_ref.get().to_dict()
         
-        # MÉTRICAS DO PROFISSIONAL
+        # Cabeçalho e Métricas
         st.write(f"### Olá, {d.get('nome', 'Parceiro')}!")
         m1, m2, m3 = st.columns(3)
         m1.metric("Saldo 🪙", f"{d.get('saldo', 0)}")
         m2.metric("Cliques 🚀", f"{d.get('cliques', 0)}")
         m3.metric("Status", "🟢 ATIVO" if d.get('aprovado') else "🟡 PENDENTE")
 
-        # ATUALIZAÇÃO DE GPS
-        if st.button("📍 ATUALIZAR LOCALIZAÇÃO GPS", use_container_width=True, key="gps_v7"):
+        # ATUALIZAÇÃO DE GPS (Importante para aparecer no mapa perto do cliente)
+        from streamlit_js_eval import streamlit_js_eval
+        if st.button("📍 ATUALIZAR MINHA LOCALIZAÇÃO (GPS)", use_container_width=True, key="gps_v7"):
             loc = streamlit_js_eval(js_expressions="navigator.geolocation.getCurrentPosition(s => s)", key='gps_v7_eval')
             if loc and 'coords' in loc:
                 doc_ref.update({"lat": loc['coords']['latitude'], "lon": loc['coords']['longitude']})
-                st.success("✅ Localização salva!")
+                st.success("✅ Sua localização foi atualizada no mapa!")
             else: 
-                st.info("Aguardando sinal... Clique novamente.")
+                st.info("🛰️ Tentando captar sinal GPS... Clique novamente em 3 segundos.")
 
         st.divider()
 
-        # COMPRA DE MOEDAS
-        with st.expander("💎 COMPRAR MOEDAS (PIX)", expanded=False):
-            st.warning(f"Chave PIX: {PIX_OFICIAL}")
+        # ÁREA DE COMPRA DE MOEDAS
+        with st.expander("💎 RECARREGAR MOEDAS (PIX)", expanded=False):
+            PIX_CHAVE = st.secrets.get("PIX_OFICIAL", "Sua Chave Aqui")
+            st.warning(f"Chave PIX: {PIX_CHAVE}")
             c1, c2, c3 = st.columns(3)
-            if c1.button("10 Moedas", key="p10_v7"): st.code(PIX_OFICIAL)
-            if c2.button("50 Moedas", key="p50_v7"): st.code(PIX_OFICIAL)
-            if c3.button("100 Moedas", key="p100_v7"): st.code(PIX_OFICIAL)
-            st.link_button("🚀 ENVIAR COMPROVANTE AGORA", f"https://wa.me/{ZAP_ADMIN}?text=Fiz o PIX: {st.session_state.user_id}", use_container_width=True)
+            if c1.button("10 Moedas", key="p10_v7"): st.code(PIX_CHAVE)
+            if c2.button("50 Moedas", key="p50_v7"): st.code(PIX_CHAVE)
+            if c3.button("100 Moedas", key="p100_v7"): st.code(PIX_CHAVE)
+            st.link_button("🚀 ENVIAR COMPROVANTE AGORA", f"https://wa.me/{st.secrets.get('ZAP_ADMIN')}?text=Fiz o PIX para o WhatsApp: {st.session_state.user_id}", use_container_width=True)
 
-        # EDIÇÃO DE PERFIL
+        # EDIÇÃO DE PERFIL E VITRINE (Onde o cara brilha)
         with st.expander("📝 EDITAR MEU PERFIL & VITRINE", expanded=True):
             with st.form("perfil_v7"):
-                n_nome = st.text_input("Nome Profissional", d.get('nome', ''))
+                n_nome = st.text_input("Nome do Profissional", d.get('nome', ''))
                 
-                # Busca as categorias dinâmicas do banco ou usa a padrão
-                cats = buscar_opcoes_dinamicas("categorias", ["Ajudante Geral"])
-                try: index_cat = cats.index(d.get('area', 'Ajudante Geral'))
-                except: index_cat = 0
-                n_area = st.selectbox("Mudar meu Segmento/Área", cats, index=index_cat)
+                # Categorias dinâmicas que buscamos no banco
+                n_area = st.selectbox("Mudar meu Segmento", CATEGORIAS_OFICIAIS, 
+                                     index=CATEGORIAS_OFICIAIS.index(d.get('area')) if d.get('area') in CATEGORIAS_OFICIAIS else 0)
 
-                n_desc = st.text_area("Descrição", d.get('descricao', ''))
+                n_desc = st.text_area("Descrição do seu serviço", d.get('descricao', ''))
                 n_cat = st.text_input("Link Catálogo/Instagram", d.get('link_catalogo', ''))
                 
                 h1, h2 = st.columns(2)
-                n_abre = h1.text_input("Abre às (ex: 08:00)", d.get('h_abre', '08:00'))
-                n_fecha = h2.text_input("Fecha às (ex: 18:00)", d.get('h_fecha', '18:00'))
+                n_abre = h1.text_input("Abre às", d.get('h_abre', '08:00'))
+                n_fecha = h2.text_input("Fecha às", d.get('h_fecha', '18:00'))
                 
-                n_foto = st.file_uploader("Trocar Foto Perfil", type=['jpg','png','jpeg'], key="f_v7")
-                n_portfolio = st.file_uploader("Vitrine (Até 4 fotos)", type=['jpg','png','jpeg'], accept_multiple_files=True, key="p_v7")
+                n_foto = st.file_uploader("Trocar Foto de Perfil", type=['jpg','png','jpeg'], key="f_v7")
+                n_portfolio = st.file_uploader("Vitrine (Até 4 fotos dos seus serviços)", type=['jpg','png','jpeg'], accept_multiple_files=True, key="p_v7")
                 
-                if st.form_submit_button("SALVAR ALTERAÇÕES", use_container_width=True):
+                if st.form_submit_button("💾 SALVAR TODAS AS ALTERAÇÕES", use_container_width=True):
                     up = {
                         "nome": n_nome, "area": n_area, "descricao": n_desc, 
                         "link_catalogo": n_cat, "h_abre": n_abre, "h_fecha": n_fecha
                     }
-                    if n_foto: up["foto_url"] = f"data:image/png;base64,{converter_img_b64(n_foto)}"
+                    # Converte imagem se houver upload
+                    if n_foto:
+                        up["foto_url"] = f"data:image/png;base64,{base64.b64encode(n_foto.read()).decode()}"
+                    
                     if n_portfolio:
-                        # Limite de 4 fotos na vitrine
-                        up["portfolio_imgs"] = [f"data:image/png;base64,{converter_img_b64(f)}" for f in n_portfolio[:4]]
+                        # Processa até 4 fotos para não estourar o banco
+                        up["portfolio_imgs"] = [f"data:image/png;base64,{base64.b64encode(f.read()).decode()}" for f in n_portfolio[:4]]
                     
                     doc_ref.update(up)
-                    st.success("✅ Perfil atualizado!")
+                    st.success("✅ Perfil atualizado com sucesso!")
                     time.sleep(1); st.rerun()
 
-        # VINCULAR FACEBOOK (NOVO)
+        # VINCULAR REDE SOCIAL
         if not d.get('fb_uid'):
             with st.expander("🔗 CONECTAR FACEBOOK"):
-                st.write("Vincule sua conta para entrar sem senha na próxima vez.")
-                vinc_link = f"{HANDLER_URL}?apiKey={FIREBASE_API_KEY}&providerId=facebook.com"
-                st.link_button("VINCULAR AGORA", vinc_link, use_container_width=True)
+                st.write("Conecte sua conta para fazer login em 1 clique.")
+                st.link_button("VINCULAR FACEBOOK AGORA", link_auth, use_container_width=True)
 
-        # SEGURANÇA E EXCLUSÃO
-        with st.expander("🔐 SEGURANÇA E EXCLUSÃO DE DADOS"):
-            st.write("Deseja encerrar sua conta?")
-            confirma_pw = st.text_input("Confirme sua SENHA para excluir", type="password", key="excluir_pw")
-            if st.button("❌ APAGAR MINHA CONTA DEFINITIVAMENTE", type="primary"):
-                if confirma_pw == d.get('senha'):
-                    doc_ref.delete()
-                    st.error("Dados removidos. Saindo...")
-                    time.sleep(2)
-                    st.session_state.auth = False
-                    st.rerun()
-                else:
-                    st.error("Senha incorreta!")
-
-        if st.button("SAIR DO PAINEL", use_container_width=True):
+        # SAIR OU EXCLUIR
+        st.divider()
+        if st.button("🚪 SAIR DO PAINEL", use_container_width=True):
             st.session_state.auth = False
             st.rerun()
-
 # --- ABA 1: CADASTRAR & EDITAR (VERSÃO FINAL GERALJÁ) ---
 with menu_abas[1]:
     st.markdown("### 🚀 Cadastro ou Edição de Profissional")
@@ -877,6 +871,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
