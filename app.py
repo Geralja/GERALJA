@@ -564,6 +564,7 @@ with menu_abas[2]:
         if st.button("SAIR DO PAINEL", use_container_width=True):
             st.session_state.auth = False
             st.rerun()-
+
 # --- ABA 1: CADASTRAR (SISTEMA GERALJÁ REVISADO) ---
 with menu_abas[1]:
     st.markdown("### 🚀 Cadastro de Profissional")
@@ -883,6 +884,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
