@@ -509,11 +509,18 @@ with menu_abas[0]:
     </div>
     """, unsafe_allow_html=True)
                 
+import streamlit as st
+import base64
+import time
+import io
+from PIL import Image
+from datetime import datetime
+
 # ==============================================================================
 # ABA 2: 🚀 PAINEL DO PARCEIRO (COMPLETO: FB + IMAGENS + FAQ + EXCLUSÃO)
 # ==============================================================================
 with menu_abas[2]:
-    # 1. LÓGICA DE CAPTURA DO FACEBOOK
+    # 1. LÓGICA DE CAPTURA DO FACEBOOK (QUERY PARAMS)
     params = st.query_params
     if "uid" in params and not st.session_state.get('auth'):
         fb_uid = params["uid"]
@@ -523,18 +530,27 @@ with menu_abas[2]:
             st.session_state.auth = True
             st.session_state.user_id = doc.id
             st.success(f"✅ Bem-vindo!")
-            time.sleep(1); st.rerun()
+            time.sleep(1)
+            st.rerun()
 
-    if 'auth' not in st.session_state: st.session_state.auth = False
+    if 'auth' not in st.session_state: 
+        st.session_state.auth = False
     
     # --- 2. TELA DE LOGIN ---
     if not st.session_state.get('auth'):
         st.subheader("🚀 Acesso ao Painel")
         FIREBASE_API_KEY = st.secrets.get("FIREBASE_API_KEY", "")
+        # Ajuste a URL abaixo para o seu worker/handler de auth
         HANDLER_URL = "https://sua-url-de-auth.vercel.app/api/auth" 
         link_auth = f"{HANDLER_URL}?apiKey={FIREBASE_API_KEY}&providerId=facebook.com"
         
-        st.markdown(f'<a href="{link_auth}" target="_self" style="text-decoration:none;"><div style="background:#1877F2;color:white;padding:12px;border-radius:8px;text-align:center;font-weight:bold;margin-bottom:20px;">🔵 ENTRAR COM FACEBOOK</div></a>', unsafe_allow_html=True)
+        st.markdown(f'''
+            <a href="{link_auth}" target="_self" style="text-decoration:none;">
+                <div style="background:#1877F2;color:white;padding:12px;border-radius:8px;text-align:center;font-weight:bold;margin-bottom:20px;">
+                    🔵 ENTRAR COM FACEBOOK
+                </div>
+            </a>
+        ''', unsafe_allow_html=True)
         
         st.write("--- ou use seus dados ---")
         col1, col2 = st.columns(2)
@@ -546,7 +562,8 @@ with menu_abas[2]:
             if u.exists and str(u.to_dict().get('senha')) == str(l_pw):
                 st.session_state.auth, st.session_state.user_id = True, l_zap
                 st.rerun()
-            else: st.error("❌ Dados incorretos.")
+            else: 
+                st.error("❌ Dados incorretos.")
 
     # --- 3. PAINEL LOGADO ---
     else:
@@ -554,79 +571,111 @@ with menu_abas[2]:
         d = doc_ref.get().to_dict()
         
         st.write(f"### Olá, {d.get('nome', 'Parceiro')}!")
+        
+        # Dashboard de métricas
         m1, m2, m3 = st.columns(3)
         m1.metric("Saldo 🪙", f"{d.get('saldo', 0)}")
         m2.metric("Cliques 🚀", f"{d.get('cliques', 0)}")
         m3.metric("Status", "🟢 ATIVO" if d.get('aprovado') else "🟡 PENDENTE")
 
+        # Botão GPS
         if st.button("📍 ATUALIZAR MEU GPS", use_container_width=True):
             from streamlit_js_eval import streamlit_js_eval
             loc = streamlit_js_eval(js_expressions="navigator.geolocation.getCurrentPosition(s => s)", key='gps_v8')
             if loc and 'coords' in loc:
                 doc_ref.update({"lat": loc['coords']['latitude'], "lon": loc['coords']['longitude']})
-                st.success("✅ GPS Atualizado!")
+                st.success("✅ Localização GPS Atualizada!")
 
-        # EDIÇÃO DE PERFIL E VITRINE (COM COMPRESSÃO)
+        # --- EDIÇÃO DE PERFIL E VITRINE ---
         with st.expander("📝 EDITAR MEU PERFIL & VITRINE", expanded=False):
-            with st.form("perfil_v8"):
-                n_nome = st.text_input("Nome", d.get('nome', ''))
-                n_area = st.selectbox("Segmento", CATEGORIAS_OFICIAIS, index=CATEGORIAS_OFICIAIS.index(d.get('area')) if d.get('area') in CATEGORIAS_OFICIAIS else 0)
-                n_desc = st.text_area("Descrição", d.get('descricao', ''))
-                n_foto = st.file_uploader("Trocar Foto Perfil", type=['jpg','png','jpeg'])
-                n_portfolio = st.file_uploader("Vitrine (Máx 4 fotos)", type=['jpg','png','jpeg'], accept_multiple_files=True)
-                
-                if st.form_submit_button("💾 SALVAR ALTERAÇÕES", use_container_width=True):
-                    up = {"nome": n_nome, "area": n_area, "descricao": n_desc}
-                    
-                    def tratar_img(arq, size=(800, 800)):
-                        from PIL import Image
-                        import io
-                        img = Image.open(arq)
-                        if img.mode in ("RGBA", "P"): img = img.convert("RGB")
-                        img.thumbnail(size)
-                        buf = io.BytesIO()
-                        img.save(buf, format="JPEG", quality=50, optimize=True)
-                        return f"data:image/jpeg;base64,{base64.b64encode(buf.getvalue()).decode()}"
+            # Função de tratamento de imagem interna e robusta
+            def otimizar_imagem(arq, qualidade=50, size=(800, 800)):
+                try:
+                    img = Image.open(arq)
+                    if img.mode in ("RGBA", "P"): 
+                        img = img.convert("RGB")
+                    img.thumbnail(size)
+                    output = io.BytesIO()
+                    img.save(output, format="JPEG", quality=qualidade, optimize=True)
+                    return f"data:image/jpeg;base64,{base64.b64encode(output.getvalue()).decode()}"
+                except Exception as e:
+                    st.error(f"Erro ao processar imagem: {e}")
+                    return None
 
-                    if n_foto: up["foto_url"] = tratar_img(n_foto, (300, 300))
-                    if n_portfolio:
-                        for i in range(1, 5): up[f'f{i}'] = None
-                        for i, f in enumerate(n_portfolio[:4]):
-                            up[f"f{i+1}"] = tratar_img(f)
+            with st.form("perfil_v8"):
+                n_nome = st.text_input("Nome Comercial", d.get('nome', ''))
+                # CATEGORIAS_OFICIAIS deve estar definida no início do código globalmente
+                n_area = st.selectbox("Segmento", CATEGORIAS_OFICIAIS, 
+                                     index=CATEGORIAS_OFICIAIS.index(d.get('area')) if d.get('area') in CATEGORIAS_OFICIAIS else 0)
+                n_desc = st.text_area("Descrição do Serviço", d.get('descricao', ''))
+                
+                st.markdown("---")
+                st.write("📷 **Fotos**")
+                n_foto = st.file_uploader("Trocar Foto de Perfil", type=['jpg','png','jpeg'])
+                n_portfolio = st.file_uploader("Vitrine de Serviços (Máx 4 fotos)", type=['jpg','png','jpeg'], accept_multiple_files=True)
+                
+                if st.form_submit_button("💾 SALVAR TODAS AS ALTERAÇÕES", use_container_width=True):
+                    updates = {
+                        "nome": n_nome,
+                        "area": n_area,
+                        "descricao": n_desc
+                    }
                     
-                    doc_ref.update(up)
-                    st.success("✅ Atualizado!"); time.sleep(1); st.rerun()
+                    # Processa foto de perfil se houver upload
+                    if n_foto:
+                        img_base64 = otimizar_imagem(n_foto, qualidade=60, size=(300, 300))
+                        if img_base64:
+                            updates["foto_url"] = img_base64
+
+                    # Processa fotos da vitrine (f1, f2, f3, f4)
+                    if n_portfolio:
+                        # Limpa as fotos antigas da vitrine para subir as novas
+                        for i in range(1, 5):
+                            updates[f'f{i}'] = None
+                        
+                        for i, f in enumerate(n_portfolio[:4]):
+                            img_p_base64 = otimizar_imagem(f)
+                            if img_p_base64:
+                                updates[f"f{i+1}"] = img_p_base64
+                    
+                    # Envia para o Firebase
+                    doc_ref.update(updates)
+                    st.success("✅ Perfil e Vitrine atualizados com sucesso!")
+                    time.sleep(1)
+                    st.rerun()
 
         # --- FAQ ---
         with st.expander("❓ PERGUNTAS FREQUENTES"):
             st.write("**Como ganho o selo Elite?**")
-            st.write("Mantenha seu saldo acima de 10 moedas e perfil completo.")
+            st.write("Mantenha seu saldo acima de 10 moedas e perfil completo com fotos.")
             st.write("**Como funciona a cobrança?**")
-            st.write("Cada clique no seu WhatsApp desconta 1 moeda do seu saldo.")
+            st.write("Cada clique no seu botão de WhatsApp desconta 1 moeda do seu saldo atual.")
 
-        # VINCULAR FACEBOOK
+        # VINCULAR FACEBOOK (Caso ainda não tenha)
         if not d.get('fb_uid'):
             with st.expander("🔗 CONECTAR FACEBOOK"):
+                st.info("Conecte seu Facebook para fazer login rápido sem senha.")
                 st.link_button("VINCULAR AGORA", link_auth, use_container_width=True)
 
         st.divider()
 
-        # REMOÇÃO DE CONTA
-        with st.expander("⚠️ ÁREA DE PERIGO"):
-            st.write("Ao excluir, todos os seus dados e saldo serão apagados permanentemente.")
-            if st.button("❌ EXCLUIR MINHA CONTA", use_container_width=True):
-                doc_ref.delete()
+        # --- LOGOUT E EXCLUSÃO ---
+        col_out, col_del = st.columns(2)
+        
+        with col_out:
+            if st.button("🚪 SAIR DO PAINEL", use_container_width=True):
                 st.session_state.auth = False
-                st.error("Conta excluída.")
-                time.sleep(2); st.rerun()
-
-        if st.button("🚪 SAIR DO PAINEL", use_container_width=True):
-            st.session_state.auth = False
-            st.rerun()
-import streamlit as st
-import base64
-from datetime import datetime
-
+                st.rerun()
+                
+        with col_del:
+            with st.expander("⚠️ EXCLUIR CONTA"):
+                st.write("Atenção: Isso apaga todos os seus dados permanentemente.")
+                if st.button("CONFIRMAR EXCLUSÃO", type="secondary", use_container_width=True):
+                    doc_ref.delete()
+                    st.session_state.auth = False
+                    st.error("Sua conta foi removida do sistema.")
+                    time.sleep(2)
+                    st.rerun()
 # --- ABA 1: CADASTRAR & EDITAR (VERSÃO FINAL GERALJÁ CORRIGIDA) ---
 with menu_abas[1]:
     st.markdown("### 🚀 Cadastro ou Edição de Profissional")
@@ -1003,6 +1052,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
