@@ -651,110 +651,153 @@ with menu_abas[1]:
             except Exception as e:
                 st.error(f"❌ Erro ao processar perfil: {e}")
 # ==============================================================================
-# ABA 4: 👑 PAINEL DE CONTROLE MASTER (AUTORIDADE MÁXIMA COMPLETA)
+# ABA 4: 👑 TORRE DE CONTROLE MASTER (COMPLETA: GESTÃO DE REDE + CATEGORIAS)
 # ==============================================================================
 with menu_abas[3]:
-    st.markdown("## 👑 Central de Comando GeralJá")
+    import pytz
+    from datetime import datetime
+    import pandas as pd
+    import time
+
+    # 1. CONFIGURAÇÃO DE TEMPO E SEGURANÇA
+    fuso_br = pytz.timezone('America/Sao_Paulo')
+    agora_br = datetime.now(fuso_br)
     
-    # 1. SEGURANÇA (Puxando do Cofre)
-    CHAVE_MESTRA = st.secrets.get("CHAVE_ADMIN", "1234") # Fallback se não estiver nas secrets
-    ZAP_ADMIN_OFICIAL = st.secrets.get("ZAP_ADMIN", "5511999999999")
+    ADMIN_USER_OFICIAL = st.secrets.get("ADMIN_USER", "admin")
+    ADMIN_PASS_OFICIAL = st.secrets.get("ADMIN_PASS", "geralja2026")
 
-    access_adm = st.text_input("Chave Mestra de Segurança", type="password", key="auth_master_v10")
+    if 'admin_logado' not in st.session_state:
+        st.session_state.admin_logado = False
 
-    if access_adm == CHAVE_MESTRA:
-        # --- 2. COLETA DE DADOS REAL-TIME ---
-        try:
-            todos_profs_docs = list(db.collection("profissionais").stream())
-            profs_data = [p.to_dict() | {"id": p.id} for p in todos_profs_docs]
+    if not st.session_state.admin_logado:
+        st.markdown("### 🔐 Acesso Restrito à Diretoria")
+        with st.form("painel_login_adm"):
+            u = st.text_input("Usuário Administrativo")
+            p = st.text_input("Senha de Acesso", type="password")
+            if st.form_submit_button("ACESSAR TORRE DE CONTROLE", use_container_width=True):
+                if u == ADMIN_USER_OFICIAL and p == ADMIN_PASS_OFICIAL:
+                    st.session_state.admin_logado = True
+                    st.success("Acesso concedido!")
+                    time.sleep(1); st.rerun()
+                else:
+                    st.error("Credenciais inválidas.")
+    
+    else:
+        st.markdown(f"## 👑 Central de Comando GeralJá")
+        st.caption(f"🕒 {agora_br.strftime('%H:%M:%S')} | Poder de Edição Total Ativo")
+        
+        if st.button("🚪 Sair do Sistema", key="logout_adm"):
+            st.session_state.admin_logado = False
+            st.rerun()
+
+        # ----------------------------------------------------------------------
+        # 🟢 GESTÃO DE CATEGORIAS (ADICIONAR/REMOVER DO BANCO)
+        # ----------------------------------------------------------------------
+        st.divider()
+        with st.expander("📁 GERENCIAR LISTA DE CATEGORIAS", expanded=False):
+            doc_cat_ref = db.collection("configuracoes").document("categorias")
+            res_cat = doc_cat_ref.get()
             
-            lista_pendentes = [p for p in profs_data if not p.get('aprovado')]
-            qtd_pendentes = len(lista_pendentes)
+            # Puxa a lista dinâmica ou usa a CATEGORIAS_OFICIAIS atual
+            lista_atual = res_cat.to_dict().get("lista", CATEGORIAS_OFICIAIS) if res_cat.exists else CATEGORIAS_OFICIAIS
+            
+            c_cat1, c_cat2 = st.columns([3, 1])
+            nova_cat_input = c_cat1.text_input("Nova Profissão/Categoria:")
+            if c_cat2.button("➕ ADICIONAR", use_container_width=True):
+                if nova_cat_input and nova_cat_input not in lista_atual:
+                    lista_atual.append(nova_cat_input)
+                    lista_atual.sort()
+                    doc_cat_ref.set({"lista": lista_atual})
+                    st.success("Adicionada!"); time.sleep(0.5); st.rerun()
+            
+            st.write("---")
+            cat_del = st.selectbox("Remover Categoria Existente:", ["Selecione..."] + lista_atual)
+            if cat_del != "Selecione...":
+                if st.button(f"🗑️ EXCLUIR {cat_del}", type="secondary"):
+                    lista_atual.remove(cat_del)
+                    doc_cat_ref.set({"lista": lista_atual})
+                    st.error("Removida!"); time.sleep(0.5); st.rerun()
 
-            # --- 3. ALERTAS DE GESTÃO ---
-            if qtd_pendentes > 0:
-                st.error(f"🚨 **ATENÇÃO:** {qtd_pendentes} profissionais aguardando aprovação!")
-                msg_central = f"Olá! Central GeralJá, temos {qtd_pendentes} novos cadastros para revisar."
-                link_zap_central = f"https://wa.me/{ZAP_ADMIN_OFICIAL}?text={msg_central.replace(' ', '%20')}"
-                
-                col_alert_1, col_alert_2 = st.columns([3, 1])
-                col_alert_1.info(f"Fila: {', '.join([p.get('nome') for p in lista_pendentes])}")
-                col_alert_2.link_button("📲 AVISAR EQUIPE", link_zap_central, use_container_width=True, type="primary")
-                st.divider()
+        try:
+            # 2. COLETA DE DADOS
+            profs_ref = list(db.collection("profissionais").stream())
+            profs_data = [p.to_dict() | {"id": p.id} for p in profs_ref]
+            df = pd.DataFrame(profs_data)
 
-            # --- 4. DASHBOARD DE PERFORMANCE ---
-            st.markdown("### 📊 Performance da Rede")
-            c1, c2, c3, c4 = st.columns(4)
-            c1.metric("Total Parceiros", len(profs_data))
-            c2.metric("Cliques Totais", sum(p.get('cliques', 0) for p in profs_data))
-            c3.metric("Moedas no Sistema", f"💎 {sum(p.get('saldo', 0) for p in profs_data)}")
-            c4.metric("Aguardando", qtd_pendentes)
+            if not df.empty:
+                # Sincronizando campo 'area'
+                df['categoria_display'] = df['area'].fillna("Geral") if 'area' in df.columns else "Geral"
+                df = df.fillna({"nome": "Sem Nome", "aprovado": False, "saldo": 0, "cliques": 0})
 
+            # 3. MÉTRICAS
+            m1, m2, m3, m4 = st.columns(4)
+            m1.metric("Parceiros", len(df))
+            m2.metric("Pendentes", len(df[df['aprovado'] == False]) if not df.empty else 0)
+            m3.metric("Cliques", int(df['cliques'].sum()) if not df.empty else 0)
+            m4.metric("GeralCones", f"💎 {int(df['saldo'].sum())}" if not df.empty else 0)
+
+            # 4. GESTÃO INDIVIDUAL (FILTROS)
             st.divider()
+            f1, f2 = st.columns(2)
+            busca = f1.text_input("🔍 Buscar nome ou Zap:")
+            # Usa a lista atualizada do banco para o filtro
+            filtro_cat = f2.selectbox("Filtrar Exibição:", ["Todas"] + lista_atual)
 
-            # --- 5. GESTÃO DE CATEGORIAS (LIGADO AO FIREBASE) ---
-            with st.expander("⚙️ CONFIGURAÇÕES DO SISTEMA"):
-                st.write("**✨ Gerenciar Profissões Oficiais**")
-                # Usa a variável global que definimos antes
-                st.write(f"Categorias Atuais: {', '.join(CATEGORIAS_OFICIAIS)}")
-                
-                nova_cat = st.text_input("Nova Profissão", placeholder="Ex: Adestrador", key="add_cat_adm")
-                if st.button("➕ Adicionar à Base", use_container_width=True):
-                    if nova_cat and nova_cat not in CATEGORIAS_OFICIAIS:
-                        CATEGORIAS_OFICIAIS.append(nova_cat)
-                        db.collection("configuracoes").document("categorias").set({"lista": CATEGORIAS_OFICIAIS})
-                        st.success(f"'{nova_cat}' adicionada!"); st.rerun()
+            df_display = df.copy()
+            if busca:
+                df_display = df_display[df_display['nome'].str.contains(busca, case=False, na=False) | 
+                                        df_display['id'].str.contains(busca, na=False)]
+            if filtro_cat != "Todas":
+                df_display = df_display[df_display['categoria_display'] == filtro_cat]
 
-            # --- 6. GESTÃO DE MEMBROS (LISTAGEM INTELIGENTE) ---
-            st.subheader("📋 Gestão de Membros")
-            busca_p = st.text_input("🔍 Localizar por Nome ou WhatsApp")
-
-            for p in profs_data:
+            # 5. LISTAGEM COM TODAS AS FUNÇÕES
+            for _, p in df_display.iterrows():
                 pid = p['id']
-                nome_p = p.get('nome', 'Sem Nome').upper()
+                status = "🟢" if p.get('aprovado') else "🟡"
+                cat_atual = p.get('area', 'Geral')
                 
-                if busca_p.lower() in nome_p.lower() or busca_p in pid:
-                    status_cor = "🟢" if p.get('aprovado') else "🔴"
-                    elite = "🌟" if p.get('verificado') else ""
+                with st.expander(f"{status} {p.get('nome').upper()} - ({cat_atual})"):
+                    col_info, col_edit, col_btn = st.columns([2, 2, 1.2])
                     
-                    with st.expander(f"{status_cor} {elite} {nome_p} ({pid})"):
-                        c_a, c_b, c_c = st.columns([1, 2, 1.5])
+                    with col_info:
+                        st.write(f"**WhatsApp:** {pid}")
+                        st.write(f"**Saldo:** {p.get('saldo', 0)} 💎")
+                        st.write(f"**Cliques:** {p.get('cliques', 0)}")
+                    
+                    with col_edit:
+                        # ALTERAR CATEGORIA DO PROFISSIONAL
+                        try:
+                            idx = lista_atual.index(cat_atual)
+                        except:
+                            idx = 0
                         
-                        with c_a:
-                            foto = p.get('foto_url') or "https://via.placeholder.com/100"
-                            st.image(foto, width=100)
-                            st.caption(f"Senha: `{p.get('senha')}`")
+                        nova_cat = st.selectbox(f"Mudar para", lista_atual, index=idx, key=f"cat_{pid}")
+                        if st.button("💾 Salvar Categoria", key=f"save_cat_{pid}"):
+                            db.collection("profissionais").document(pid).update({"area": nova_cat})
+                            st.success("Salvo!"); time.sleep(0.5); st.rerun()
 
-                        with c_b:
-                            st.write(f"Saldo: **{p.get('saldo', 0)} 💎**")
-                            # Ajuste de Saldo
-                            val = st.number_input(f"Qtd", 1, 100, 10, key=f"v_{pid}")
-                            col_b1, col_b2 = st.columns(2)
-                            if col_b1.button(f"➕ Moedas", key=f"add_{pid}"):
-                                db.collection("profissionais").document(pid).update({"saldo": p.get('saldo', 0) + val})
+                    with col_btn:
+                        # Aprovação
+                        if not p.get('aprovado'):
+                            if st.button("✅ APROVAR", key=f"ok_{pid}", use_container_width=True, type="primary"):
+                                db.collection("profissionais").document(pid).update({"aprovado": True})
                                 st.rerun()
-                            if col_b2.button(f"➖ Moedas", key=f"rem_{pid}"):
-                                db.collection("profissionais").document(pid).update({"saldo": max(0, p.get('saldo', 0) - val)})
+                        else:
+                            if st.button("🚫 SUSPENDER", key=f"no_{pid}", use_container_width=True):
+                                db.collection("profissionais").document(pid).update({"aprovado": False})
                                 st.rerun()
+                        
+                        # Moedas e Banir
+                        col_sub1, col_sub2 = st.columns(2)
+                        if col_sub1.button("➕10", key=f"m10_{pid}"):
+                            db.collection("profissionais").document(pid).update({"saldo": p.get('saldo', 0) + 10})
+                            st.rerun()
+                        if col_sub2.button("🗑️", key=f"del_{pid}", help="Banir Profissional"):
+                            db.collection("profissionais").document(pid).delete()
+                            st.rerun()
 
-                        with c_c:
-                            if not p.get('aprovado'):
-                                if st.button("✅ APROVAR", key=f"ok_{pid}", use_container_width=True, type="primary"):
-                                    db.collection("profissionais").document(pid).update({"aprovado": True})
-                                    st.rerun()
-                            else:
-                                if st.button("🚫 DESATIVAR", key=f"no_{pid}", use_container_width=True):
-                                    db.collection("profissionais").document(pid).update({"aprovado": False})
-                                    st.rerun()
-                            
-                            if st.button("🗑️ BANIR", key=f"del_{pid}", use_container_width=True):
-                                db.collection("profissionais").document(pid).delete()
-                                st.rerun()
         except Exception as e:
-            st.error(f"Erro ao carregar Central: {e}")
-
-    elif access_adm != "":
-        st.error("🚨 Chave Mestra Incorreta!")
+            st.error(f"Erro na Torre de Controle: {e}")
 
 # ==============================================================================
 # ABA 5: FEEDBACK
@@ -841,6 +884,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
