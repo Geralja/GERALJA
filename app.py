@@ -1,4 +1,4 @@
-
+ 
 # ==============================================================================
 # GERALJÁ: CRIANDO SOLUÇÕES
 # ==============================================================================
@@ -623,7 +623,11 @@ with menu_abas[2]:
         if st.button("🚪 SAIR DO PAINEL", use_container_width=True):
             st.session_state.auth = False
             st.rerun()
-# --- ABA 1: CADASTRAR & EDITAR (VERSÃO FINAL GERALJÁ COM GOOGLE AUTH) ---
+import streamlit as st
+import base64
+from datetime import datetime
+
+# --- ABA 1: CADASTRAR & EDITAR (VERSÃO FINAL GERALJÁ CORRIGIDA) ---
 with menu_abas[1]:
     st.markdown("### 🚀 Cadastro ou Edição de Profissional")
 
@@ -641,12 +645,12 @@ with menu_abas[1]:
     dados_google = st.session_state.get("pre_cadastro", {})
     email_inicial = dados_google.get("email", "")
     nome_inicial = dados_google.get("nome", "")
+    foto_google = dados_google.get("foto", "")
 
     # Interface Visual de Login Social
     st.markdown("##### Entre rápido com:")
     col_soc1, col_soc2 = st.columns(2)
     
-    # Puxa as chaves das secrets com segurança para evitar o erro KeyError
     g_auth = st.secrets.get("google_auth", {})
     g_id = g_auth.get("client_id")
     g_uri = g_auth.get("redirect_uri", "https://geralja-zxiaj2ot56fuzgcz7xhcks.streamlit.app/")
@@ -695,6 +699,8 @@ with menu_abas[1]:
         
         desc_input = st.text_area("Descrição Completa (Serviços, Horários, Diferenciais)")
         tipo_input = st.radio("Tipo", ["👨‍🔧 Profissional Autônomo", "🏢 Comércio/Loja"], horizontal=True)
+        
+        # Componente de Upload
         foto_upload = st.file_uploader("Atualizar Foto de Perfil ou Logo", type=['png', 'jpg', 'jpeg'])
         
         btn_acao = st.form_submit_button("✅ FINALIZAR: SALVAR OU ATUALIZAR", use_container_width=True)
@@ -706,19 +712,30 @@ with menu_abas[1]:
         else:
             try:
                 with st.spinner("Sincronizando com o ecossistema GeralJá..."):
+                    # Referência do documento no Firebase
                     doc_ref = db.collection("profissionais").document(zap_input)
                     perfil_antigo = doc_ref.get()
-                    
-                    foto_b64 = perfil_antigo.to_dict().get("foto_url", "") if perfil_antigo.exists else ""
-                    if not foto_b64 and dados_google.get("foto"):
-                         foto_b64 = dados_google.get("foto")
-                    
-                    if foto_upload:
-                        import base64
-                        foto_b64 = f"data:image/png;base64,{base64.b64encode(foto_upload.read()).decode()}"
-                    
-                    saldo_final = perfil_antigo.to_dict().get("saldo", BONUS_WELCOME) if perfil_antigo.exists else BONUS_WELCOME
+                    dados_antigos = perfil_antigo.to_dict() if perfil_antigo.exists else {}
 
+                    # --- LÓGICA DE FOTO CORRIGIDA ---
+                    foto_b64 = dados_antigos.get("foto_url", "") # Mantém a antiga por padrão
+
+                    # Se o usuário subir uma foto nova agora
+                    if foto_upload is not None:
+                        file_ext = foto_upload.name.split('.')[-1]
+                        img_bytes = foto_upload.getvalue() # getvalue() é mais estável que read()
+                        encoded_img = base64.b64encode(img_bytes).decode()
+                        foto_b64 = f"data:image/{file_ext};base64,{encoded_img}"
+                    
+                    # Se não houver foto no banco E não houver upload, tenta pegar a do Google
+                    elif not foto_b64 and foto_google:
+                        foto_b64 = foto_google
+
+                    # --- LÓGICA DE SALDO E CLIQUES ---
+                    saldo_final = dados_antigos.get("saldo", BONUS_WELCOME)
+                    cliques_atuais = dados_antigos.get("cliques", 0)
+
+                    # --- MONTAGEM DO DICIONÁRIO ---
                     dados_pro = {
                         "nome": nome_input,
                         "whatsapp": zap_input,
@@ -731,22 +748,24 @@ with menu_abas[1]:
                         "saldo": saldo_final,
                         "data_cadastro": datetime.now().strftime("%d/%m/%Y"),
                         "aprovado": True,
-                        "cliques": perfil_antigo.to_dict().get("cliques", 0) if perfil_antigo.exists else 0,
+                        "cliques": cliques_atuais,
                         "rating": 5,
                         "lat": minha_lat if 'minha_lat' in locals() else -23.55,
                         "lon": minha_lon if 'minha_lon' in locals() else -46.63
                     }
                     
+                    # Salva no Banco de Dados
                     doc_ref.set(dados_pro)
                     
+                    # Limpa cache de pré-cadastro
                     if "pre_cadastro" in st.session_state:
                         del st.session_state["pre_cadastro"]
                     
                     st.balloons()
                     if perfil_antigo.exists:
-                        st.success(f"✅ Perfil de {nome_input} atualizado!")
+                        st.success(f"✅ Perfil de {nome_input} atualizado com sucesso!")
                     else:
-                        st.success(f"🎊 Bem-vindo! Cadastro concluído!")
+                        st.success(f"🎊 Bem-vindo ao GeralJá! Cadastro concluído!")
                         
             except Exception as e:
                 st.error(f"❌ Erro ao processar perfil: {e}")
@@ -984,6 +1003,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
