@@ -11,4 +11,6 @@ streamlit-js-eval==0.1.7
 groq
 Pillow
 streamlit-google-auth
+google-auth-oauthlib     
+gspread
 
