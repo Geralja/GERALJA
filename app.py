@@ -559,7 +559,7 @@ with menu_abas[2]:
         if st.button("🚪 SAIR DO PAINEL", use_container_width=True):
             st.session_state.auth = False
             st.rerun()
-# --- ABA 1: CADASTRAR & EDITAR (VERSÃO FINAL GERALJÁ) ---
+# --- ABA 1: CADASTRAR & EDITAR (VERSÃO FINAL GERALJÁ COM GOOGLE AUTH) ---
 with menu_abas[1]:
     st.markdown("### 🚀 Cadastro ou Edição de Profissional")
 
@@ -573,11 +573,18 @@ with menu_abas[1]:
     except:
         CATEGORIAS_OFICIAIS = ["Pedreiro", "Locutor", "Eletricista", "Mecânico"]
 
-    # 2. AUTENTICAÇÃO SOCIAL (Visual para análise da Meta)
+    # 2. VERIFICAÇÃO DE DADOS VINDOS DO GOOGLE AUTH
+    # Puxa os dados se o usuário acabou de logar pelo Google
+    dados_google = st.session_state.get("pre_cadastro", {})
+    email_inicial = dados_google.get("email", "")
+    nome_inicial = dados_google.get("nome", "")
+
+    # Interface Visual de Login Social (Mantida conforme seu código)
     st.markdown("##### Entre rápido com:")
     col_soc1, col_soc2 = st.columns(2)
     with col_soc1:
-        st.markdown(f'<a href="https://accounts.google.com/o/oauth2/v2/auth?client_id={st.secrets["google_auth"]["client_id"]}&response_type=code&scope=openid%20profile%20email&redirect_uri=https://geralja-zxiaj2ot56fuzgcz7xhcks.streamlit.app/" target="_self"><div style="display:flex; align-items:center; justify-content:center; border:1px solid #dadce0; border-radius:8px; padding:8px; background:white;"><img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" width="18px" style="margin-right:10px;"><span style="color:#3c4043; font-weight:bold; font-size:14px;">Google</span></div></a>', unsafe_allow_html=True)
+        # Aqui você pode manter seu link manual ou usar o componente que instalamos
+        st.markdown(f'<a href="https://accounts.google.com/o/oauth2/v2/auth?client_id={st.secrets["google_auth"]["client_id"]}&response_type=code&scope=openid%20profile%20email&redirect_uri={st.secrets["google_auth"]["redirect_uri"]}" target="_self"><div style="display:flex; align-items:center; justify-content:center; border:1px solid #dadce0; border-radius:8px; padding:8px; background:white;"><img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" width="18px" style="margin-right:10px;"><span style="color:#3c4043; font-weight:bold; font-size:14px;">Google</span></div></a>', unsafe_allow_html=True)
     with col_soc2:
         st.markdown(f'<a href="https://www.facebook.com/v18.0/dialog/oauth?client_id={st.secrets["FB_CLIENT_ID"]}&redirect_uri=https://geralja-zxiaj2ot56fuzgcz7xhcks.streamlit.app/&scope=public_profile,email" target="_self"><div style="display:flex; align-items:center; justify-content:center; border-radius:8px; padding:8px; background:#1877F2;"><img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg" width="18px" style="margin-right:10px;"><span style="color:white; font-weight:bold; font-size:14px;">Facebook</span></div></a>', unsafe_allow_html=True)
     
@@ -587,12 +594,16 @@ with menu_abas[1]:
     # 3. FORMULÁRIO INTELIGENTE
     with st.form("form_profissional", clear_on_submit=False):
         st.caption("DICA: Se você já tem cadastro, use o mesmo WhatsApp para editar seus dados.")
+        
         col1, col2 = st.columns(2)
-        nome_input = col1.text_input("Nome do Profissional ou Loja")
+        # Se veio do Google, o nome já vem preenchido
+        nome_input = col1.text_input("Nome do Profissional ou Loja", value=nome_inicial)
         zap_input = col2.text_input("WhatsApp (DDD + Número sem espaços)")
         
+        # CAMPO DE E-MAIL (Essencial para a ponte funcionar)
+        email_input = st.text_input("E-mail (Para login via Google)", value=email_inicial)
+        
         col3, col4 = st.columns(2)
-        # Aqui estão as categorias para edição/cadastro
         cat_input = col3.selectbox("Selecione sua Especialidade Principal", CATEGORIAS_OFICIAIS)
         senha_input = col4.text_input("Sua Senha de Acesso", type="password", help="Necessária para salvar alterações")
         
@@ -609,22 +620,25 @@ with menu_abas[1]:
         else:
             try:
                 with st.spinner("Sincronizando com o ecossistema GeralJá..."):
-                    # Verifica se o profissional já existe
                     doc_ref = db.collection("profissionais").document(zap_input)
                     perfil_antigo = doc_ref.get()
                     
-                    # Processa Foto (mantém a antiga se não subir nova)
+                    # Processa Foto (mantém a antiga, ou a do Google, ou a nova subida)
                     foto_b64 = perfil_antigo.to_dict().get("foto_url", "") if perfil_antigo.exists else ""
+                    if not foto_b64 and dados_google.get("foto"):
+                         foto_b64 = dados_google.get("foto") # Usa a do Google se for novo
+                    
                     if foto_upload:
+                        import base64
                         foto_b64 = f"data:image/png;base64,{base64.b64encode(foto_upload.read()).decode()}"
                     
-                    # Define Saldo (Dá 20 se for novo, mantém se for edição)
                     saldo_final = perfil_antigo.to_dict().get("saldo", BONUS_WELCOME) if perfil_antigo.exists else BONUS_WELCOME
 
-                    # Monta o objeto final
+                    # Monta o objeto final (AGORA COM CAMPO EMAIL)
                     dados_pro = {
                         "nome": nome_input,
                         "whatsapp": zap_input,
+                        "email": email_input, # <--- PONTE SALVA AQUI
                         "area": cat_input,
                         "senha": senha_input,
                         "descricao": desc_input,
@@ -639,8 +653,11 @@ with menu_abas[1]:
                         "lon": minha_lon if 'minha_lon' in locals() else -46.63
                     }
                     
-                    # Salva ou Sobrescreve (Edição)
                     doc_ref.set(dados_pro)
+                    
+                    # Limpa os dados temporários do Google após salvar
+                    if "pre_cadastro" in st.session_state:
+                        del st.session_state["pre_cadastro"]
                     
                     st.balloons()
                     if perfil_antigo.exists:
@@ -884,6 +901,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
