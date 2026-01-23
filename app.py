@@ -25,58 +25,24 @@ from urllib.parse import quote       # Para links de WhatsApp seguros
 try:
 import requests
 
-# 1. Recupera as chaves das Secrets
-FB_ID = st.secrets.get("FB_CLIENT_ID")
-FB_SECRET = st.secrets.get("FB_CLIENT_SECRET")
-REDIRECT_URI = "https://geralja-zxiaj2ot56fuzgcz7xhcks.streamlit.app/"
+# --- CONFIGURAÇÃO DE CHAVES ---
+try:
+    import requests  # Agora está dentro do recuo (4 espaços)
+    FB_ID = st.secrets["FB_CLIENT_ID"]
+    FB_SECRET = st.secrets["FB_CLIENT_SECRET"]
+    FIREBASE_API_KEY = st.secrets["FIREBASE_API_KEY"]
+    REDIRECT_URI = "https://geralja-zxiaj2ot56fuzgcz7xhcks.streamlit.app/"
+except Exception as e:
+    st.error(f"Erro: Chaves não encontradas no Secrets. ({e})")
+    st.stop()
 
-# 2. Captura o código que o Facebook envia pela URL
-query_params = st.query_params
+# O restante do código volta para o alinhamento normal (sem espaços no início)
+HANDLER_URL = "https://geralja-5bb49.firebaseapp.com/__/auth/handler"
 
-if "code" in query_params and not st.session_state.get('auth'):
-    fb_code = query_params["code"]
-    
-    try:
-        # Passo A: Troca o 'code' por un 'Access Token'
-        token_url = f"https://graph.facebook.com/v18.0/oauth/access_token?client_id={FB_ID}&redirect_uri={REDIRECT_URI}&client_secret={FB_SECRET}&code={fb_code}"
-        token_res = requests.get(token_url).json()
-        access_token = token_res.get("access_token")
-
-        if access_token:
-            # Passo B: Pega os dados do usuário (Nome, Email e Foto)
-            user_url = f"https://graph.facebook.com/me?fields=id,name,email,picture.type(large)&access_token={access_token}"
-            user_data = requests.get(user_url).json()
-            
-            # Passo C: Salva na sessão para usar no Cadastro
-            st.session_state["pre_cadastro"] = {
-                "nome": user_data.get("name"),
-                "email": user_data.get("email", ""),
-                "foto": user_data.get("picture", {}).get("data", {}).get("url", ""),
-                "fb_uid": user_data.get("id")
-            }
-            
-            # Verifica se ele já é cadastrado no seu Firebase
-            fb_uid = user_data.get("id")
-            user_query = db.collection("profissionais").where("fb_uid", "==", fb_uid).limit(1).get()
-            
-            if user_query:
-                doc = user_query[0]
-                st.session_state.auth = True
-                st.session_state.user_id = doc.id
-                st.success(f"✅ Bem-vindo de volta, {user_data.get('name')}!")
-            else:
-                st.warning("✨ Quase lá! Complete seu cadastro abaixo para aparecer no GeralJá.")
-                # Leva ele para a aba de cadastro
-                # st.session_state.aba_ativa = 1 
-            
-            # Limpa a URL para não ficar processando o login toda hora
-            st.query_params.clear()
-            time.sleep(1)
-            st.rerun()
-
-    except Exception as e:
-        st.error(f"Erro na automação do Facebook: {e}")
-
+try:
+    from streamlit_js_eval import streamlit_js_eval, get_geolocation
+except ImportError:
+    pass
 # URL do Handler (Pode ficar visível)
 HANDLER_URL = "https://geralja-5bb49.firebaseapp.com/__/auth/handler"
 # Tenta importar bibliotecas extras do arquivo original, se não tiver, segue sem quebrar
@@ -1100,6 +1066,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
