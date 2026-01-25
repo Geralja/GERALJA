@@ -550,61 +550,52 @@ with menu_abas[2]:
     if 'auth' not in st.session_state: 
         st.session_state.auth = False
     
-    # --- 2. TELA DE LOGIN (VERSÃO AUTOMATIZADA) ---
+   # --- 2. TELA DE LOGIN (VERSÃO FINAL SEM ERROS) ---
     if not st.session_state.get('auth'):
         st.subheader("🚀 Acesso ao Painel")
         
-        # Criamos o link direto usando suas chaves
+        # 1. Definição das variáveis de conexão
         fb_id = st.secrets.get("FB_CLIENT_ID", "")
         redirect_uri = "https://geralja-zxiaj2ot56fuzgcz7xhcks.streamlit.app/"
         
-        # Esta é a URL oficial que o Facebook aceita
+        # 2. Criamos as duas variáveis para matar o NameError de vez
         url_direta_fb = f"https://www.facebook.com/v18.0/dialog/oauth?client_id={fb_id}&redirect_uri={redirect_uri}&scope=public_profile,email"
+        link_auth = url_direta_fb 
         
-        # Botão Visual do Facebook
+        # 3. O Botão Visual (Usando target="_top" para o Facebook aceitar)
         st.markdown(f'''
             <a href="{url_direta_fb}" target="_top" style="text-decoration:none;">
-                <div style="background:#1877F2;color:white;padding:12px;border-radius:8px;text-align:center;font-weight:bold;display:flex;align-items:center;justify-content:center;cursor:pointer;">
+                <div style="background:#1877F2;color:white;padding:12px;border-radius:8px;text-align:center;font-weight:bold;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow: 0px 4px 6px rgba(0,0,0,0.1);">
                     <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg" width="20px" style="margin-right:10px;">
                     ENTRAR COM FACEBOOK
                 </div>
             </a>
         ''', unsafe_allow_html=True)
         
+        st.markdown("<br>", unsafe_allow_html=True)
         st.write("--- ou use seus dados ---")
+        
+        # 4. Formulário de Login Manual (Com chaves exclusivas)
         col1, col2 = st.columns(2)
-        l_zap = col1.text_input("WhatsApp", key="login_zap_v8")
-        l_pw = col2.text_input("Senha", type="password", key="login_pw_v8")
+        l_zap = col1.text_input("WhatsApp", key="login_zap_geralja_v10", placeholder="Ex: 11999999999")
+        l_pw = col2.text_input("Senha", type="password", key="login_pw_geralja_v10")
         
-        if st.button("ENTRAR NO PAINEL", use_container_width=True):
-            u = db.collection("profissionais").document(l_zap).get()
-            if u.exists and str(u.to_dict().get('senha')) == str(l_pw):
-                st.session_state.auth, st.session_state.user_id = True, l_zap
-                st.rerun()
-            else: 
-                st.error("❌ WhatsApp ou Senha incorretos.")
-        
-        st.markdown(f'''
-            <a href="{link_auth}" target="_self" style="text-decoration:none;">
-                <div style="background:#1877F2;color:white;padding:12px;border-radius:8px;text-align:center;font-weight:bold;margin-bottom:20px;">
-                    🔵 ENTRAR COM FACEBOOK
-                </div>
-            </a>
-        ''', unsafe_allow_html=True)
-        
-        st.write("--- ou use seus dados ---")
-        col1, col2 = st.columns(2)
-        l_zap = col1.text_input("WhatsApp", key="login_zap_v8")
-        l_pw = col2.text_input("Senha", type="password", key="login_pw_v8")
-        
-        if st.button("ENTRAR NO PAINEL", use_container_width=True):
-            u = db.collection("profissionais").document(l_zap).get()
-            if u.exists and str(u.to_dict().get('senha')) == str(l_pw):
-                st.session_state.auth, st.session_state.user_id = True, l_zap
-                st.rerun()
-            else: 
-                st.error("❌ Dados incorretos.")
-
+        if st.button("ENTRAR NO PAINEL", key="btn_entrar_geralja_v10", use_container_width=True):
+            try:
+                u = db.collection("profissionais").document(l_zap).get()
+                if u.exists:
+                    dados_user = u.to_dict()
+                    if str(dados_user.get('senha')) == str(l_pw):
+                        st.session_state.auth = True
+                        st.session_state.user_id = l_zap
+                        st.success("Login realizado com sucesso!")
+                        st.rerun()
+                    else:
+                        st.error("❌ Senha incorreta.")
+                else:
+                    st.error("❌ WhatsApp não cadastrado.")
+            except Exception as e:
+                st.error(f"Erro ao acessar banco de dados: {e}")
     # --- 3. PAINEL LOGADO ---
     else:
         doc_ref = db.collection("profissionais").document(st.session_state.user_id)
@@ -1092,6 +1083,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
