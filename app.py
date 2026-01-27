@@ -530,20 +530,72 @@ import io
 from PIL import Image
 from datetime import datetime
 
-# --- 3. PAINEL DO PARCEIRO LOGADO (VERSÃO ULTRA COMPLETA) ---
+# ==============================================================================
+# ABA 2: 🚀 PAINEL DO PARCEIRO (VERSÃO FINAL SUMARIZADA E COMPLETA)
+# ==============================================================================
+with menu_abas[2]:
+    import base64, io, time
+    from PIL import Image
+    from datetime import datetime
+
+    # 1. LÓGICA DE CAPTURA DO FACEBOOK (QUERY PARAMS)
+    params = st.query_params
+    if "uid" in params and not st.session_state.get('auth'):
+        fb_uid = params["uid"]
+        user_query = db.collection("profissionais").where("fb_uid", "==", fb_uid).limit(1).get()
+        if user_query:
+            doc = user_query[0]
+            st.session_state.auth = True
+            st.session_state.user_id = doc.id
+            st.success(f"✅ Bem-vindo!")
+            time.sleep(1)
+            st.rerun()
+
+    if 'auth' not in st.session_state: 
+        st.session_state.auth = False
+    
+    # --- 2. TELA DE LOGIN ---
+    if not st.session_state.get('auth'):
+        st.subheader("🚀 Acesso ao Painel")
+        
+        fb_id = st.secrets.get("FB_CLIENT_ID", "")
+        redirect_uri = "https://geralja-zxiaj2ot56fuzgcz7xhcks.streamlit.app/"
+        url_direta_fb = f"https://www.facebook.com/v18.0/dialog/oauth?client_id={fb_id}&redirect_uri={redirect_uri}&scope=public_profile,email"
+        
+        st.markdown(f'''<a href="{url_direta_fb}" target="_top" style="text-decoration:none;"><div style="background:#1877F2;color:white;padding:12px;border-radius:8px;text-align:center;font-weight:bold;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow: 0px 4px 6px rgba(0,0,0,0.1);"><img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg" width="20px" style="margin-right:10px;"> ENTRAR COM FACEBOOK</div></a>''', unsafe_allow_html=True)
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.write("--- ou use seus dados ---")
+        
+        col1, col2 = st.columns(2)
+        l_zap = col1.text_input("WhatsApp", key="login_zap_final", placeholder="DDD + Número").strip()
+        l_pw = col2.text_input("Senha", type="password", key="login_pw_final").strip()
+        
+        if st.button("ENTRAR NO PAINEL", key="btn_entrar_final", use_container_width=True):
+            u = db.collection("profissionais").document(l_zap).get()
+            if u.exists:
+                d_user = u.to_dict()
+                if str(d_user.get('senha')).strip() == l_pw:
+                    st.session_state.auth = True
+                    st.session_state.user_id = l_zap
+                    st.rerun()
+                else: st.error("❌ Senha incorreta.")
+            else: st.error("❌ WhatsApp não cadastrado.")
+
+    # --- 3. PAINEL LOGADO ---
     else:
         doc_ref = db.collection("profissionais").document(st.session_state.user_id)
         d = doc_ref.get().to_dict()
         
         st.write(f"### Olá, {d.get('nome', 'Parceiro')}! 👋")
         
-        # 🟢 DASHBOARD DE MÉTRICAS
+        # Dashboard de Métricas
         m1, m2, m3 = st.columns(3)
         m1.metric("Saldo 🪙", f"{d.get('saldo', 0)}")
         m2.metric("Cliques 🚀", f"{d.get('cliques', 0)}")
         m3.metric("Status", "🟢 ATIVO" if d.get('aprovado') else "🟡 PENDENTE")
 
-        # 📍 ATUALIZAÇÃO DE GPS
+        # Atualização de GPS
         if st.button("📍 ATUALIZAR MEU GPS", key="btn_gps_v20", use_container_width=True):
             from streamlit_js_eval import streamlit_js_eval
             loc = streamlit_js_eval(js_expressions="navigator.geolocation.getCurrentPosition(s => s)", key='gps_v20')
@@ -551,33 +603,25 @@ from datetime import datetime
                 doc_ref.update({"lat": loc['coords']['latitude'], "lon": loc['coords']['longitude']})
                 st.success("✅ Localização GPS Atualizada!")
 
-        # 📝 FORMULÁRIO DE EDIÇÃO COMPLETO
-        with st.expander("⚙️ CONFIGURAÇÕES E EDIÇÃO DE PERFIL", expanded=False):
-            with st.form("form_edicao_v20"):
-                st.write("--- **Dados Principais** ---")
-                n_nome = st.text_input("Nome Comercial / Nome do Profissional", d.get('nome'))
+        # --- SEÇÃO DE EDIÇÃO COMPLETA ---
+        with st.expander("📝 EDITAR MEU PERFIL & CATEGORIA"):
+            with st.form("perfil_v20_completo"):
+                n_nome = st.text_input("Nome Comercial", d.get('nome', ''))
                 
-                # Edição de Categoria (Segmento)
-                # CATEGORIAS_OFICIAIS deve estar carregada no topo do seu código
+                # Categoria Dinâmica
                 try:
+                    # Supõe que CATEGORIAS_OFICIAIS foi definida no início do app
                     idx_cat = CATEGORIAS_OFICIAIS.index(d.get('area')) if d.get('area') in CATEGORIAS_OFICIAIS else 0
-                except:
-                    idx_cat = 0
-                n_area = st.selectbox("Mudar minha Categoria/Especialidade", CATEGORIAS_OFICIAIS, index=idx_cat)
+                except: idx_cat = 0
+                n_area = st.selectbox("Mudar Segmento/Categoria", CATEGORIAS_OFICIAIS, index=idx_cat)
                 
-                n_tipo = st.radio("Mudar Tipo", ["👨‍🔧 Profissional Autônomo", "🏢 Comércio/Loja"], 
-                                 index=0 if "Profissional" in d.get('tipo', '') else 1, horizontal=True)
+                n_desc = st.text_area("Descrição do Serviço", d.get('descricao', ''), height=150)
                 
-                n_desc = st.text_area("Descrição do seu Serviço", d.get('descricao', ''), height=150)
+                st.write("--- **Imagens** ---")
+                n_foto = st.file_uploader("Trocar Foto de Perfil", type=['jpg','jpeg','png'])
+                n_vits = st.file_uploader("Atualizar Vitrine (Até 4 fotos)", type=['jpg','jpeg','png'], accept_multiple_files=True)
                 
-                st.write("--- **Atualizar Imagens** ---")
-                col_f1, col_f2 = st.columns(2)
-                n_foto = col_f1.file_uploader("Novo Avatar/Logo", type=['jpg','jpeg','png'])
-                n_vits = col_f2.file_uploader("Novas Fotos da Vitrine (Até 4)", type=['jpg','jpeg','png'], accept_multiple_files=True)
-                
-                st.info("💡 Dica: Ao subir novas fotos da vitrine, as antigas serão substituídas pelas novas.")
-
-                if st.form_submit_button("💾 SALVAR TODAS AS ALTERAÇÕES", use_container_width=True):
+                if st.form_submit_button("💾 SALVAR ALTERAÇÕES", use_container_width=True):
                     def otimizar(arq):
                         img = Image.open(arq).convert("RGB")
                         img.thumbnail((600, 600))
@@ -585,45 +629,35 @@ from datetime import datetime
                         img.save(buf, format="JPEG", quality=50)
                         return f"data:image/jpeg;base64,{base64.b64encode(buf.getvalue()).decode()}"
 
-                    upd = {
-                        "nome": n_nome,
-                        "area": n_area,
-                        "tipo": n_tipo,
-                        "descricao": n_desc
-                    }
+                    updates = {"nome": n_nome, "area": n_area, "descricao": n_desc}
+                    if n_foto: updates["foto_url"] = otimizar(n_foto)
+                    if n_vits: updates["vitrine"] = [otimizar(f) for f in n_vits[:4]]
                     
-                    if n_foto: upd["foto_url"] = otimizar(n_foto)
-                    if n_vits: upd["vitrine"] = [otimizar(f) for f in n_vits[:4]]
-                    
-                    doc_ref.update(upd)
-                    st.success("✅ Perfil atualizado com sucesso!")
+                    doc_ref.update(updates)
+                    st.success("✅ Perfil atualizado!")
                     time.sleep(1)
                     st.rerun()
 
-        # ❓ AJUDA E FAQ
+        # FAQ e Suporte
         with st.expander("❓ PERGUNTAS FREQUENTES"):
-            st.write("**Como mudar meu WhatsApp?**")
-            st.caption("Por segurança, o WhatsApp é seu ID fixo. Para mudar, entre em contato com o suporte.")
-            st.write("**Meu saldo acabou, o que acontece?**")
-            st.caption("Seu perfil continuará aparecendo, mas em posições inferiores e sem o selo de destaque.")
+            st.write("**Como funciona o saldo?** Cada clique no seu WhatsApp desconta 1 moeda.")
+            st.write("**Como ganhar o selo Elite?** Mantenha saldo positivo e fotos na vitrine.")
 
         st.divider()
 
-        # 🚪 SAIR E ⚠️ EXCLUIR
+        # Logout e Exclusão
         c_sair, c_del = st.columns(2)
-        
         with c_sair:
             if st.button("🚪 SAIR DO PAINEL", use_container_width=True):
                 st.session_state.auth = False
                 st.rerun()
-                
         with c_del:
-            with st.expander("🗑️ EXCLUIR MINHA CONTA"):
-                st.warning("Atenção: Esta ação é irreversível!")
-                if st.button("CONFIRMAR EXCLUSÃO DEFINITIVA", key="del_final", type="secondary", use_container_width=True):
+            with st.expander("🗑️ EXCLUIR CONTA"):
+                st.warning("Isso apagará seu perfil permanentemente.")
+                if st.button("CONFIRMAR EXCLUSÃO", key="del_final", type="secondary", use_container_width=True):
                     doc_ref.delete()
                     st.session_state.auth = False
-                    st.error("Conta excluída com sucesso.")
+                    st.error("Conta removida.")
                     time.sleep(2)
                     st.rerun()
 # --- ABA 1: CADASTRAR & EDITAR (COM VITRINE DE 4 FOTOS) ---
@@ -980,6 +1014,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
