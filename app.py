@@ -521,13 +521,141 @@ with menu_abas[0]:
 
                 <a href="{link_zap}" target="_blank" class="insta-btn">SOLICITAR ORÇAMENTO</a>
             </div>
-            """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)# ==============================================================================
+# --- ABA 0: BUSCA (IA GROQ + RAIO 3KM + ESTILO INSTAGRAM V4.0) ---
+# ==============================================================================
+with menu_abas[0]:
+    st.markdown("### 🏙️ O que você precisa?")
+    
+    # 1. MOTOR DE LOCALIZAÇÃO
+    with st.expander("📍 Sua Localização (GPS)", expanded=False):
+        loc = get_geolocation()
+        if loc and 'coords' in loc:
+            minha_lat, minha_lon = loc['coords']['latitude'], loc['coords']['longitude']
+            st.success("Localização detectada!")
+        else:
+            minha_lat, minha_lon = LAT_REF, LON_REF
+            st.warning("GPS desativado. Usando padrão (Centro).")
 
-    # Modal Único (Fora do Loop)
+    # 2. INPUTS DE BUSCA (Definidos antes de qualquer lógica para evitar NameError)
+    c1, c2 = st.columns([3, 1])
+    termo_busca = c1.text_input("Ex: 'Cano estourado' ou 'Pizza'", key="main_search_v_insta")
+    raio_km = c2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 20, 50, 100, 500], value=3)
+    
+    # 3. CSS ESTILO INSTAGRAM (SNAP CAROUSEL)
     st.markdown("""
-    <div id="meuModal" onclick="fecharInsta()">
-        <img id="imgExpandida" class="modal-content">
-        <div style="position:absolute; bottom:50px; color:white; font-weight:bold;">Clique fora para fechar</div>
+    <style>
+        .cartao-insta { 
+            background: white; border-radius: 24px; padding: 15px; 
+            margin-bottom: 25px; box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+            border: 1px solid #efefef; color: #111;
+        }
+        .insta-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+        .insta-avatar { width: 45px; height: 45px; border-radius: 50%; border: 2px solid #E1306C; padding: 2px; object-fit: cover; }
+        .insta-nome { font-weight: 700; color: #262626; font-size: 14px; }
+        
+        /* Carrossel com trava de deslize (Snap) */
+        .insta-carousel { 
+            display: flex; overflow-x: auto; scroll-snap-type: x mandatory; 
+            gap: 8px; border-radius: 12px; scrollbar-width: none; 
+        }
+        .insta-carousel::-webkit-scrollbar { display: none; }
+        
+        .insta-photo-box { 
+            flex: 0 0 100%; scroll-snap-align: center; 
+            aspect-ratio: 1 / 1; background: #fafafa; border-radius: 12px; overflow: hidden;
+        }
+        .insta-photo-box img { width: 100%; height: 100%; object-fit: cover; cursor: pointer; }
+
+        .insta-btn {
+            display: block; background: #25D366; color: white !important;
+            text-align: center; padding: 14px; border-radius: 12px;
+            font-weight: bold; text-decoration: none; margin-top: 15px; font-size: 16px;
+        }
+    </style>
+
+    <script>
+    function abrirInsta(src, link) {
+        window.parent.document.getElementById('imgExpandida').src = src;
+        window.parent.document.getElementById('linkZapModal').href = link;
+        window.parent.document.getElementById('meuModal').style.display = 'flex';
+    }
+    function fecharInsta() {
+        window.parent.document.getElementById('meuModal').style.display = 'none';
+    }
+    </script>
+    """, unsafe_allow_html=True)
+
+    # 4. LÓGICA DE BUSCA E RANKING
+    if termo_busca:
+        cat_ia = processar_ia_avancada(termo_busca) 
+        st.info(f"✨ IA Groq: Buscando por **{cat_ia}**")
+        
+        profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
+        
+        lista_ranking = []
+        for p_doc in profs:
+            p = p_doc.to_dict()
+            p['id'] = p_doc.id
+            dist = calcular_distancia_real(minha_lat, minha_lon, p.get('lat', LAT_REF), p.get('lon', LON_REF))
+            
+            if dist <= raio_km:
+                p['dist'] = dist
+                # Score Elite (Saldo e Verificação)
+                score = 1000 if p.get('verificado') else 0
+                score += (p.get('saldo', 0) * 10)
+                p['score_elite'] = score
+                lista_ranking.append(p)
+
+        # Ordenar por Distância
+        lista_ranking.sort(key=lambda x: x['dist'])
+
+        if not lista_ranking:
+            st.warning(f"Ninguém de '{cat_ia}' encontrado em {raio_km}km.")
+        else:
+            for p in lista_ranking:
+                is_elite = p.get('saldo', 0) > 10
+                zap_limpo = p.get('whatsapp', p['id'])
+                link_zap = f"https://wa.me/{zap_limpo}?text=Olá, vi seu trabalho no GeralJá!"
+                
+                # Montagem das fotos do Carrossel (Vitrine)
+                vitrine_lista = p.get('vitrine', [])
+                fotos_html = ""
+                for img_data in vitrine_lista:
+                    if img_data and len(str(img_data)) > 100:
+                        src = img_data if str(img_data).startswith("data") else f"data:image/jpeg;base64,{img_data}"
+                        fotos_html += f'<div class="insta-photo-box"><img src="{src}" onclick="abrirInsta(\'{src}\', \'{link_zap}\')"></div>'
+
+                # Renderização do Card Instagram
+                st.markdown(f"""
+                <div class="cartao-insta">
+                    <div class="insta-header">
+                        <img src="{p.get('foto_url','')}" class="insta-avatar">
+                        <div>
+                            <div class="insta-nome">{p.get('nome','').upper()} {" ✅" if is_elite else ""}</div>
+                            <div style="font-size:10px; color:#8e8e8e;">📍 a {p['dist']:.1f} km de você</div>
+                        </div>
+                    </div>
+                    
+                    <div class="insta-carousel">
+                        {fotos_html if fotos_html else '<div class="insta-photo-box" style="display:flex; align-items:center; justify-content:center; color:#ccc;">Sem fotos na vitrine</div>'}
+                    </div>
+
+                    <div style="padding: 12px 0;">
+                        <span style="font-weight:700; font-size:14px;">{p.get('nome')}</span>
+                        <span style="font-size:14px; color:#262626;"> {p.get('descricao','')[:150]}...</span>
+                    </div>
+
+                    <a href="{link_zap}" target="_blank" class="insta-btn">💬 CHAMAR NO WHATSAPP</a>
+                </div>
+                """, unsafe_allow_html=True)
+
+    # 5. MODAL ÚNICO (ESTILO INSTA)
+    st.markdown("""
+    <div id="meuModal" onclick="fecharInsta()" style="display:none; position:fixed; z-index:9999; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); align-items:center; justify-content:center; flex-direction:column;">
+        <span style="position:absolute; top:20px; right:30px; color:white; font-size:40px; cursor:pointer;">&times;</span>
+        <img id="imgExpandida" style="max-width:95%; max-height:80%; border-radius:10px; object-fit: contain;">
+        <a id="linkZapModal" href="#" target="_blank" style="margin-top:20px; background:#25D366; color:white; padding:15px 40px; border-radius:30px; text-decoration:none; font-weight:bold;">✅ CONTRATAR AGORA</a>
     </div>
     """, unsafe_allow_html=True)
 # ==============================================================================
@@ -1014,6 +1142,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
