@@ -707,115 +707,101 @@ with menu_abas[2]:
                     st.error("Sua conta foi removida do sistema.")
                     time.sleep(2)
                     st.rerun()
-# --- ABA 1: CADASTRAR & EDITAR (VERSÃO FINAL GERALJÁ CORRIGIDA) ---
+# --- ABA 1: CADASTRAR & EDITAR (COM VITRINE DE 4 FOTOS) ---
 with menu_abas[1]:
+    import base64
+    from datetime import datetime
+
     st.markdown("### 🚀 Cadastro ou Edição de Profissional")
 
-    # 1. BUSCA CATEGORIAS DINÂMICAS DO FIREBASE
+    # 1. BUSCA CATEGORIAS DINÂMICAS
     try:
         doc_cat = db.collection("configuracoes").document("categorias").get()
-        if doc_cat.exists:
-            CATEGORIAS_OFICIAIS = doc_cat.to_dict().get("lista", ["Geral"])
-        else:
-            CATEGORIAS_OFICIAIS = ["Pedreiro", "Locutor", "Eletricista", "Mecânico"]
+        CATEGORIAS_OFICIAIS = doc_cat.to_dict().get("lista", ["Geral"]) if doc_cat.exists else ["Pedreiro", "Locutor", "Eletricista", "Mecânico"]
     except:
         CATEGORIAS_OFICIAIS = ["Pedreiro", "Locutor", "Eletricista", "Mecânico"]
 
-    # 2. VERIFICAÇÃO DE DADOS VINDOS DO GOOGLE AUTH
-    dados_google = st.session_state.get("pre_cadastro", {})
-    email_inicial = dados_google.get("email", "")
-    nome_inicial = dados_google.get("nome", "")
-    foto_google = dados_google.get("foto", "")
+    # 2. DADOS SOCIAIS
+    dados_social = st.session_state.get("pre_cadastro", {})
+    email_inicial = dados_social.get("email", "")
+    nome_inicial = dados_social.get("nome", "")
+    foto_social = dados_social.get("foto", "")
 
-    # Interface Visual de Login Social
+    # Interface de Login Social
     st.markdown("##### Entre rápido com:")
     col_soc1, col_soc2 = st.columns(2)
-    
     g_auth = st.secrets.get("google_auth", {})
-    g_id = g_auth.get("client_id")
-    g_uri = g_auth.get("redirect_uri", "https://geralja-zxiaj2ot56fuzgcz7xhcks.streamlit.app/")
+    fb_id = st.secrets.get("FB_CLIENT_ID", "")
+    g_uri = "https://geralja-zxiaj2ot56fuzgcz7xhcks.streamlit.app/"
 
     with col_soc1:
-        if g_id:
-            url_google = f"https://accounts.google.com/o/oauth2/v2/auth?client_id={g_id}&response_type=code&scope=openid%20profile%20email&redirect_uri={g_uri}"
-            st.markdown(f'''
-                <a href="{url_google}" target="_self" style="text-decoration:none;">
-                    <div style="display:flex; align-items:center; justify-content:center; border:1px solid #dadce0; border-radius:8px; padding:8px; background:white;">
-                        <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" width="18px" style="margin-right:10px;">
-                        <span style="color:#3c4043; font-weight:bold; font-size:14px;">Google</span>
-                    </div>
-                </a>
-            ''', unsafe_allow_html=True)
-        else:
-            st.caption("⚠️ Google Auth não configurado")
-
-    with col_soc2:
-        fb_id = st.secrets.get("FB_CLIENT_ID", "")
-        st.markdown(f'''
-            <a href="https://www.facebook.com/v18.0/dialog/oauth?client_id={fb_id}&redirect_uri={g_uri}&scope=public_profile,email" target="_self" style="text-decoration:none;">
-                <div style="display:flex; align-items:center; justify-content:center; border-radius:8px; padding:8px; background:#1877F2;">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg" width="18px" style="margin-right:10px;">
-                    <span style="color:white; font-weight:bold; font-size:14px;">Facebook</span>
-                </div>
-            </a>
-        ''', unsafe_allow_html=True)
+        if g_auth.get("client_id"):
+            url_g = f"https://accounts.google.com/o/oauth2/v2/auth?client_id={g_auth.get('client_id')}&response_type=code&scope=openid%20profile%20email&redirect_uri={g_uri}"
+            st.markdown(f'<a href="{url_g}" target="_top" style="text-decoration:none;"><div style="display:flex; align-items:center; justify-content:center; border:1px solid #dadce0; border-radius:8px; padding:8px; background:white;"><img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" width="18px" style="margin-right:10px;"><span style="color:#3c4043; font-weight:bold; font-size:14px;">Google</span></div></a>', unsafe_allow_html=True)
     
-    st.markdown("<br>", unsafe_allow_html=True)
-    BONUS_WELCOME = 20 
+    with col_soc2:
+        if fb_id:
+            url_fb = f"https://www.facebook.com/v18.0/dialog/oauth?client_id={fb_id}&redirect_uri={g_uri}&scope=public_profile,email"
+            st.markdown(f'<a href="{url_fb}" target="_top" style="text-decoration:none;"><div style="display:flex; align-items:center; justify-content:center; border-radius:8px; padding:8px; background:#1877F2;"><img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg" width="18px" style="margin-right:10px;"><span style="color:white; font-weight:bold; font-size:14px;">Facebook</span></div></a>', unsafe_allow_html=True)
 
-    # 3. FORMULÁRIO INTELIGENTE
-    with st.form("form_profissional", clear_on_submit=False):
-        st.caption("DICA: Se você já tem cadastro, use o mesmo WhatsApp para editar seus dados.")
-        
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # 3. FORMULÁRIO COM VITRINE
+    with st.form("form_completo_v11", clear_on_submit=False):
         col1, col2 = st.columns(2)
         nome_input = col1.text_input("Nome do Profissional ou Loja", value=nome_inicial)
-        zap_input = col2.text_input("WhatsApp (DDD + Número sem espaços)")
+        zap_input = col2.text_input("WhatsApp (Somente Números)")
         
-        email_input = st.text_input("E-mail (Para login via Google)", value=email_inicial)
+        email_input = st.text_input("E-mail", value=email_inicial)
         
         col3, col4 = st.columns(2)
-        cat_input = col3.selectbox("Selecione sua Especialidade Principal", CATEGORIAS_OFICIAIS)
-        senha_input = col4.text_input("Sua Senha de Acesso", type="password", help="Necessária para salvar alterações")
+        cat_input = col3.selectbox("Especialidade Principal", CATEGORIAS_OFICIAIS)
+        senha_input = col4.text_input("Sua Senha de Acesso", type="password")
         
-        desc_input = st.text_area("Descrição Completa (Serviços, Horários, Diferenciais)")
+        desc_input = st.text_area("Descrição dos Serviços")
         tipo_input = st.radio("Tipo", ["👨‍🔧 Profissional Autônomo", "🏢 Comércio/Loja"], horizontal=True)
-        
-        # Componente de Upload
-        foto_upload = st.file_uploader("Atualizar Foto de Perfil ou Logo", type=['png', 'jpg', 'jpeg'])
-        
-        btn_acao = st.form_submit_button("✅ FINALIZAR: SALVAR OU ATUALIZAR", use_container_width=True)
 
-    # 4. LÓGICA DE SALVAMENTO E EDIÇÃO
+        st.divider()
+        st.write("🖼️ **Fotos do Perfil e Vitrine**")
+        foto_perfil_upload = st.file_uploader("Foto de Perfil (Avatar)", type=['png', 'jpg', 'jpeg'], key="perfil")
+        
+        st.write("Escolha até 4 fotos para mostrar seus trabalhos:")
+        col_f1, col_f2 = st.columns(2)
+        v1 = col_f1.file_uploader("Foto Vitrine 1", type=['png', 'jpg', 'jpeg'], key="v1")
+        v2 = col_f2.file_uploader("Foto Vitrine 2", type=['png', 'jpg', 'jpeg'], key="v2")
+        v3 = col_f1.file_uploader("Foto Vitrine 3", type=['png', 'jpg', 'jpeg'], key="v3")
+        v4 = col_f2.file_uploader("Foto Vitrine 4", type=['png', 'jpg', 'jpeg'], key="v4")
+
+        btn_acao = st.form_submit_button("✅ FINALIZAR CADASTRO / ATUALIZAR", use_container_width=True)
+
+    # 4. LÓGICA DE SALVAMENTO
     if btn_acao:
         if not nome_input or not zap_input or not senha_input:
             st.warning("⚠️ Nome, WhatsApp e Senha são obrigatórios!")
         else:
             try:
-                with st.spinner("Sincronizando com o ecossistema GeralJá..."):
-                    # Referência do documento no Firebase
+                with st.spinner("Processando fotos e salvando..."):
                     doc_ref = db.collection("profissionais").document(zap_input)
-                    perfil_antigo = doc_ref.get()
-                    dados_antigos = perfil_antigo.to_dict() if perfil_antigo.exists else {}
+                    res = doc_ref.get()
+                    dados_velhos = res.to_dict() if res.exists else {}
 
-                    # --- LÓGICA DE FOTO CORRIGIDA ---
-                    foto_b64 = dados_antigos.get("foto_url", "") # Mantém a antiga por padrão
+                    # Função interna para converter imagens
+                    def conv_img(upload, antiga):
+                        if upload:
+                            ext = upload.name.split('.')[-1]
+                            return f"data:image/{ext};base64,{base64.b64encode(upload.getvalue()).decode()}"
+                        return antiga
 
-                    # Se o usuário subir uma foto nova agora
-                    if foto_upload is not None:
-                        file_ext = foto_upload.name.split('.')[-1]
-                        img_bytes = foto_upload.getvalue() # getvalue() é mais estável que read()
-                        encoded_img = base64.b64encode(img_bytes).decode()
-                        foto_b64 = f"data:image/{file_ext};base64,{encoded_img}"
+                    # Processa Foto de Perfil
+                    foto_perfil_final = conv_img(foto_perfil_upload, dados_velhos.get("foto_url", foto_social))
                     
-                    # Se não houver foto no banco E não houver upload, tenta pegar a do Google
-                    elif not foto_b64 and foto_google:
-                        foto_b64 = foto_google
+                    # Processa Vitrine (Lista de 4 fotos)
+                    vitrine_atual = dados_velhos.get("vitrine", ["", "", "", ""])
+                    foto_v1 = conv_img(v1, vitrine_atual[0] if len(vitrine_atual) > 0 else "")
+                    foto_v2 = conv_img(v2, vitrine_atual[1] if len(vitrine_atual) > 1 else "")
+                    foto_v3 = conv_img(v3, vitrine_atual[2] if len(vitrine_atual) > 2 else "")
+                    foto_v4 = conv_img(v4, vitrine_atual[3] if len(vitrine_atual) > 3 else "")
 
-                    # --- LÓGICA DE SALDO E CLIQUES ---
-                    saldo_final = dados_antigos.get("saldo", BONUS_WELCOME)
-                    cliques_atuais = dados_antigos.get("cliques", 0)
-
-                    # --- MONTAGEM DO DICIONÁRIO ---
                     dados_pro = {
                         "nome": nome_input,
                         "whatsapp": zap_input,
@@ -824,31 +810,23 @@ with menu_abas[1]:
                         "senha": senha_input,
                         "descricao": desc_input,
                         "tipo": tipo_input,
-                        "foto_url": foto_b64,
-                        "saldo": saldo_final,
+                        "foto_url": foto_perfil_final,
+                        "vitrine": [foto_v1, foto_v2, foto_v3, foto_v4],
+                        "saldo": dados_velhos.get("saldo", 20),
                         "data_cadastro": datetime.now().strftime("%d/%m/%Y"),
                         "aprovado": True,
-                        "cliques": cliques_atuais,
+                        "cliques": dados_velhos.get("cliques", 0),
                         "rating": 5,
-                        "lat": minha_lat if 'minha_lat' in locals() else -23.55,
-                        "lon": minha_lon if 'minha_lon' in locals() else -46.63
+                        "lat": st.session_state.get('lat', -23.55),
+                        "lon": st.session_state.get('lon', -46.63)
                     }
-                    
-                    # Salva no Banco de Dados
+
                     doc_ref.set(dados_pro)
-                    
-                    # Limpa cache de pré-cadastro
-                    if "pre_cadastro" in st.session_state:
-                        del st.session_state["pre_cadastro"]
-                    
                     st.balloons()
-                    if perfil_antigo.exists:
-                        st.success(f"✅ Perfil de {nome_input} atualizado com sucesso!")
-                    else:
-                        st.success(f"🎊 Bem-vindo ao GeralJá! Cadastro concluído!")
-                        
+                    st.success("✅ Tudo pronto! Seu perfil com vitrine está no ar!")
+                    if "pre_cadastro" in st.session_state: del st.session_state["pre_cadastro"]
             except Exception as e:
-                st.error(f"❌ Erro ao processar perfil: {e}")
+                st.error(f"❌ Erro ao salvar: {e}")
 # ==============================================================================
 # ABA 4: 👑 TORRE DE CONTROLE MASTER (COMPLETA: GESTÃO DE REDE + CATEGORIAS)
 # ==============================================================================
@@ -1083,6 +1061,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
