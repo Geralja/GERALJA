@@ -412,17 +412,14 @@ if comando == "abracadabra":
 
 menu_abas = st.tabs(lista_abas)
 # ==============================================================================
-# --- ABA 0: BUSCA (IA GROQ + RAIO 3KM + ESTILO INSTAGRAM V4.0) ---
+# --- ABA 0: BUSCA (IA GROQ + VITRINE PREMIUM V5.0) ---
 # ==============================================================================
 with menu_abas[0]:
-    # 1. INICIALIZAÇÃO DE SEGURANÇA (Evita o NameError)
+    # 1. INICIALIZAÇÃO DE SEGURANÇA
     termo_busca = None 
-    
-    st.markdown("### 🏙️ O que você precisa?")
     
     # 2. MOTOR DE LOCALIZAÇÃO
     with st.expander("📍 Sua Localização (GPS)", expanded=False):
-        # Tenta pegar localização real, se não, usa a padrão
         try:
             loc = get_geolocation()
             if loc and 'coords' in loc:
@@ -434,39 +431,44 @@ with menu_abas[0]:
         except:
             minha_lat, minha_lon = LAT_REF, LON_REF
 
-    # 3. CRIAÇÃO DOS CAMPOS (AQUI A VARIÁVEL É DEFINIDA)
+    # 3. CAMPOS DE BUSCA
+    st.markdown("### 🏙️ O que você precisa?")
     c1, c2 = st.columns([3, 1])
-    termo_busca = c1.text_input("Ex: 'Cano estourado' ou 'Pizza'", key="input_busca_insta_v4")
-    raio_km = c2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 20, 50, 100, 500], value=3)
+    termo_busca = c1.text_input("Ex: 'Cano estourado' ou 'Pizza'", key="busca_insta_v5_final")
+    raio_km = c2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 20, 50, 100], value=3)
     
-    # 4. CSS ESTILO INSTAGRAM
+    # 4. CSS PREMIUM (FOTOS MENORES E SNAP-SCROLL)
     st.markdown("""
     <style>
         .cartao-insta { 
-            background: white; border-radius: 20px; padding: 15px; 
-            margin-bottom: 25px; box-shadow: 0 8px 16px rgba(0,0,0,0.06);
-            border: 1px solid #eee; color: #111;
+            background: white; border-radius: 20px; padding: 12px; 
+            margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border: 1px solid #f0f0f0; color: #111;
         }
-        .insta-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-        .insta-avatar { width: 44px; height: 44px; border-radius: 50%; border: 2px solid #E1306C; padding: 2px; object-fit: cover; }
-        .insta-nome { font-weight: 700; color: #262626; font-size: 14px; }
+        .insta-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .insta-avatar { width: 38px; height: 38px; border-radius: 50%; border: 2px solid #E1306C; padding: 1.5px; object-fit: cover; }
+        .insta-nome { font-weight: 700; color: #262626; font-size: 13px; }
         
+        /* Carrossel Estilo Portfólio (Aparece a pontinha da próxima foto) */
         .insta-carousel { 
             display: flex; overflow-x: auto; scroll-snap-type: x mandatory; 
-            gap: 8px; border-radius: 12px; scrollbar-width: none; 
+            gap: 10px; border-radius: 12px; scrollbar-width: none; padding: 5px 0;
         }
         .insta-carousel::-webkit-scrollbar { display: none; }
         
         .insta-photo-box { 
-            flex: 0 0 100%; scroll-snap-align: center; 
-            aspect-ratio: 1 / 1; background: #f0f0f0; border-radius: 12px; overflow: hidden;
+            flex: 0 0 82%; /* Ajuste aqui para o tamanho da foto */
+            scroll-snap-align: center; 
+            aspect-ratio: 4 / 3; /* Formato retangular mais profissional */
+            background: #f8f8f8; border-radius: 10px; overflow: hidden;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
         }
-        .insta-photo-box img { width: 100%; height: 100%; object-fit: cover; cursor: pointer; }
+        .insta-photo-box img { width: 100%; height: 100%; object-fit: cover; }
 
         .insta-btn {
             display: block; background: #25D366; color: white !important;
-            text-align: center; padding: 14px; border-radius: 12px;
-            font-weight: bold; text-decoration: none; margin-top: 15px;
+            text-align: center; padding: 12px; border-radius: 10px;
+            font-weight: bold; text-decoration: none; margin-top: 12px; font-size: 15px;
         }
     </style>
 
@@ -482,13 +484,11 @@ with menu_abas[0]:
     </script>
     """, unsafe_allow_html=True)
 
-    # 5. LÓGICA DE BUSCA (Só executa se houver texto)
+    # 5. LÓGICA DE EXIBIÇÃO
     if termo_busca:
-        # Chama a IA para entender o que o usuário quer
         cat_ia = processar_ia_avancada(termo_busca) 
         st.info(f"✨ Buscando por: **{cat_ia}**")
         
-        # Busca no Firebase
         profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
         
         lista_ranking = []
@@ -496,7 +496,6 @@ with menu_abas[0]:
             p = p_doc.to_dict()
             p['id'] = p_doc.id
             dist = calcular_distancia_real(minha_lat, minha_lon, p.get('lat', LAT_REF), p.get('lon', LON_REF))
-            
             if dist <= raio_km:
                 p['dist'] = dist
                 score = 1000 if p.get('verificado') else 0
@@ -504,16 +503,15 @@ with menu_abas[0]:
                 p['score_elite'] = score
                 lista_ranking.append(p)
 
-        # Ordenar: Mais perto primeiro
-        lista_ranking.sort(key=lambda x: x['dist'])
+        lista_ranking.sort(key=lambda x: (x['dist'], -x['score_elite']))
 
         if not lista_ranking:
-            st.warning(f"Nenhum profissional de '{cat_ia}' encontrado nesta área.")
+            st.warning("Nenhum profissional encontrado nesta área.")
         else:
             for p in lista_ranking:
                 is_elite = p.get('saldo', 0) > 10
                 zap_limpo = p.get('whatsapp', p['id'])
-                link_zap = f"https://wa.me/{zap_limpo}?text=Olá {p.get('nome')}, vi seu trabalho no GeralJá!"
+                link_zap = f"https://wa.me/{zap_limpo}?text=Olá {p.get('nome')}, vi seu portfólio no GeralJá!"
                 
                 # Fotos da Vitrine
                 vitrine_lista = p.get('vitrine', [])
@@ -521,9 +519,8 @@ with menu_abas[0]:
                 for img_data in vitrine_lista:
                     if img_data:
                         src = img_data if str(img_data).startswith("data") else f"data:image/jpeg;base64,{img_data}"
-                        fotos_html += f'<div class="insta-photo-box"><img src="{src}" onclick="abrirInsta(\'{src}\', \'{link_zap}\')"></div>'
+                        fotos_html += f'<div class="insta-photo-box" onclick="abrirInsta(\'{src}\', \'{link_zap}\')"><img src="{src}"></div>'
 
-                # Card HTML
                 st.markdown(f"""
                 <div class="cartao-insta">
                     <div class="insta-header">
@@ -534,22 +531,21 @@ with menu_abas[0]:
                         </div>
                     </div>
                     <div class="insta-carousel">
-                        {fotos_html if fotos_html else '<div class="insta-photo-box" style="display:flex; align-items:center; justify-content:center; color:#ccc;">Sem fotos</div>'}
+                        {fotos_html if fotos_html else '<div style="padding:40px; color:#ccc;">Sem fotos na vitrine</div>'}
                     </div>
-                    <div style="padding: 12px 0;">
-                        <span style="font-weight:700; font-size:14px;">{p.get('nome')}</span>
-                        <span style="font-size:14px; color:#262626;"> {p.get('descricao','')[:140]}...</span>
+                    <div style="padding: 10px 0;">
+                        <span style="font-size:13px; color:#444;">{p.get('descricao','')[:120]}...</span>
                     </div>
                     <a href="{link_zap}" target="_blank" class="insta-btn">💬 CHAMAR NO WHATSAPP</a>
                 </div>
                 """, unsafe_allow_html=True)
 
-    # 6. MODAL (FORA DO LOOP)
+    # 6. MODAL PREMIUM
     st.markdown("""
     <div id="meuModal" onclick="fecharInsta()" style="display:none; position:fixed; z-index:9999; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); align-items:center; justify-content:center; flex-direction:column;">
         <span style="position:absolute; top:20px; right:30px; color:white; font-size:40px; cursor:pointer;">&times;</span>
-        <img id="imgExpandida" style="max-width:90%; max-height:80%; border-radius:10px;">
-        <a id="linkZapModal" href="#" target="_blank" style="margin-top:20px; background:#25D366; color:white; padding:15px 40px; border-radius:30px; text-decoration:none; font-weight:bold;">✅ CONTRATAR AGORA</a>
+        <img id="imgExpandida" style="max-width:95%; max-height:75%; border-radius:12px; object-fit: contain; box-shadow: 0 0 20px rgba(255,255,255,0.1);">
+        <a id="linkZapModal" href="#" target="_blank" style="margin-top:20px; background:#25D366; color:white; padding:15px 40px; border-radius:30px; text-decoration:none; font-weight:bold; box-shadow: 0 4px 15px rgba(37,211,102,0.4);">✅ CONTRATAR AGORA</a>
     </div>
     """, unsafe_allow_html=True)
 # ==============================================================================
@@ -1036,6 +1032,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
