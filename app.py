@@ -412,17 +412,16 @@ if comando == "abracadabra":
 
 menu_abas = st.tabs(lista_abas)
 # ==============================================================================
-# --- ABA 0: BUSCA (IA GROQ + RAIO 3KM + VITRINE SOCIAL V3.0) ---
+# --- ABA 0: BUSCA (IA GROQ + RAIO 3KM + VITRINE SOCIAL V3.0 CORRIGIDA) ---
 # ==============================================================================
 with menu_abas[0]:
     st.markdown("### 🏙️ O que você precisa?")
     
-    # --- 1. MOTOR DE LOCALIZAÇÃO ---
+    # 1. MOTOR DE LOCALIZAÇÃO (MANTIDO)
     with st.expander("📍 Sua Localização (GPS)", expanded=False):
         loc = get_geolocation()
         if loc and 'coords' in loc:
-            minha_lat = loc['coords']['latitude']
-            minha_lon = loc['coords']['longitude']
+            minha_lat, minha_lon = loc['coords']['latitude'], loc['coords']['longitude']
             st.success("Localização detectada!")
         else:
             minha_lat, minha_lon = LAT_REF, LON_REF
@@ -430,10 +429,9 @@ with menu_abas[0]:
 
     c1, c2 = st.columns([3, 1])
     termo_busca = c1.text_input("Ex: 'Cano estourado' ou 'Pizza'", key="main_search_v_groq")
-    # Raio padrão em 3 KM conforme solicitado
     raio_km = c2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 20, 50, 100, 500], value=3)
     
-    # --- 2. CSS PARA VITRINE E MODAL ---
+    # 2. CSS PARA VITRINE E MODAL (MANTIDO)
     st.markdown("""
     <style>
         .cartao-geral { background: white; border-radius: 20px; border-left: 8px solid var(--cor-borda); padding: 15px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); color: #111; }
@@ -441,7 +439,7 @@ with menu_abas[0]:
         .foto-perfil { width: 55px; height: 55px; border-radius: 50%; object-fit: cover; border: 2px solid #eee; }
         .social-track { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 10px; scrollbar-width: none; }
         .social-track::-webkit-scrollbar { display: none; }
-        .social-card { flex: 0 0 200px; height: 280px; border-radius: 12px; overflow: hidden; cursor: pointer; background: #000; }
+        .social-card { flex: 0 0 160px; height: 220px; border-radius: 12px; overflow: hidden; cursor: pointer; background: #000; }
         .social-card img { width: 100%; height: 100%; object-fit: cover; transition: 0.3s; }
         .btn-zap-footer { display: block; background: #25D366; color: white !important; text-align: center; padding: 15px; border-radius: 12px; font-weight: bold; text-decoration: none; margin-top: 10px; font-size: 16px; }
     </style>
@@ -471,30 +469,30 @@ with menu_abas[0]:
             
             if dist <= raio_km:
                 p['dist'] = dist
-                score = 0
-                score += 1000 if p.get('verificado') else 0
+                score = 1000 if p.get('verificado') else 0
                 score += (p.get('saldo', 0) * 10)
                 p['score_elite'] = score
                 lista_ranking.append(p)
 
-        # ORDENAÇÃO: Mais perto primeiro (Precisão Geográfica)
+        # Ordenação: Proximidade
         lista_ranking.sort(key=lambda x: (x['dist'], -x['score_elite']))
 
         if not lista_ranking:
             st.warning(f"Ninguém de '{cat_ia}' encontrado em {raio_km}km.")
         else:
             for p in lista_ranking:
-                is_elite = p.get('verificado') and p.get('saldo', 0) > 0
+                is_elite = p.get('saldo', 0) > 10 # Critério Elite: Saldo > 10
                 cor_borda = "#FFD700" if is_elite else "#0047AB"
-                zap_limpo = limpar_whatsapp(p.get('whatsapp', p['id']))
+                zap_limpo = p.get('whatsapp', p['id'])
                 link_zap = f"https://wa.me/{zap_limpo}?text=Olá, vi seu trabalho no GeralJá!"
                 
-                # CORREÇÃO DA STRING: Montagem das fotos do portfólio
+                # --- LÓGICA DA VITRINE CORRIGIDA (LENDO A LISTA) ---
+                vitrine_lista = p.get('vitrine', [])
                 fotos_html = ""
-                for i in range(1, 11):
-                    f_data = p.get(f'f{i}')
-                    if f_data and len(str(f_data)) > 100:
-                        src = f_data if str(f_data).startswith("data") else f"data:image/jpeg;base64,{f_data}"
+                for img_data in vitrine_lista:
+                    if img_data and len(str(img_data)) > 100:
+                        # Garante que o Base64 está pronto para o HTML
+                        src = img_data if str(img_data).startswith("data") else f"data:image/jpeg;base64,{img_data}"
                         fotos_html += f'<div class="social-card" onclick="abrirModal(\'{src}\', \'{link_zap}\')"><img src="{src}"></div>'
 
                 st.markdown(f"""
@@ -514,7 +512,7 @@ with menu_abas[0]:
                 </div>
                 """, unsafe_allow_html=True)
 
-    # Modal Único (Fora do Loop)
+    # Modal Único (MANTIDO)
     st.markdown("""
     <div id="meuModal" style="display:none; position:fixed; z-index:9999; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); align-items:center; justify-content:center; flex-direction:column;">
         <span onclick="fecharModal()" style="position:absolute; top:20px; right:30px; color:white; font-size:40px; cursor:pointer;">&times;</span>
@@ -522,13 +520,6 @@ with menu_abas[0]:
         <a id="linkZapModal" href="#" target="_blank" style="margin-top:20px; background:#25D366; color:white; padding:15px 40px; border-radius:30px; text-decoration:none; font-weight:bold;">✅ WHATSAPP</a>
     </div>
     """, unsafe_allow_html=True)
-                
-import streamlit as st
-import base64
-import time
-import io
-from PIL import Image
-from datetime import datetime
 
 # ==============================================================================
 # ABA 2: 🚀 PAINEL DO PARCEIRO (VERSÃO FINAL SUMARIZADA E COMPLETA)
@@ -1014,6 +1005,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
