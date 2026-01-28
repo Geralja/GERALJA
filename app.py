@@ -571,7 +571,15 @@ with menu_abas[2]:
 
     if 'auth' not in st.session_state: 
         st.session_state.auth = False
-    
+    # --- ABA 1: PERFIL ---
+tipo_perfil = st.radio("Tipo de Perfil", ["Autônomo (Prestador)", "Comércio (Loja/Delivery)"], horizontal=True)
+
+if tipo_perfil == "Autônomo (Prestador)":
+    curriculo = st.text_area("Currículo / Experiência (Fale sobre sua formação e cursos)", height=150)
+    # Salve no firebase como p['tipo'] = 'autonomo' e p['curriculo'] = curriculo
+else:
+    recados = st.text_area("Mural da Loja (Recados, Promoções ou Avisos)", height=100)
+    # Salve no firebase como p['tipo'] = 'comercio' e p['recados'] = recados
     # --- 2. TELA DE LOGIN ---
     if not st.session_state.get('auth'):
         st.subheader("🚀 Acesso ao Painel")
@@ -1032,6 +1040,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
