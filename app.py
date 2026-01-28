@@ -484,11 +484,13 @@ with menu_abas[0]:
     </script>
     """, unsafe_allow_html=True)
 
-    # 5. LÓGICA DE EXIBIÇÃO
+# 5. LÓGICA DE EXIBIÇÃO (VERSÃO ANTIFALHA + MULTIPERFIL)
     if termo_busca:
+        # A IA decide a categoria (Garanta que a função processar_ia_avancada esteja com as travas que discutimos)
         cat_ia = processar_ia_avancada(termo_busca) 
         st.info(f"✨ Buscando por: **{cat_ia}**")
         
+        # Busca no Firebase (Filtro por categoria exata)
         profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
         
         lista_ranking = []
@@ -496,24 +498,29 @@ with menu_abas[0]:
             p = p_doc.to_dict()
             p['id'] = p_doc.id
             dist = calcular_distancia_real(minha_lat, minha_lon, p.get('lat', LAT_REF), p.get('lon', LON_REF))
+            
             if dist <= raio_km:
                 p['dist'] = dist
+                # Ranking: Verificados primeiro, depois saldo
                 score = 1000 if p.get('verificado') else 0
                 score += (p.get('saldo', 0) * 10)
                 p['score_elite'] = score
                 lista_ranking.append(p)
 
+        # Ordenação: Proximidade + Relevância
         lista_ranking.sort(key=lambda x: (x['dist'], -x['score_elite']))
 
         if not lista_ranking:
-            st.warning("Nenhum profissional encontrado nesta área.")
+            st.warning(f"Nenhum profissional de '{cat_ia}' encontrado nesta área.")
         else:
             for p in lista_ranking:
                 is_elite = p.get('saldo', 0) > 10
+                tipo = p.get('tipo', 'autonomo') # Pega o tipo do perfil
+                
                 zap_limpo = p.get('whatsapp', p['id'])
                 link_zap = f"https://wa.me/{zap_limpo}?text=Olá {p.get('nome')}, vi seu portfólio no GeralJá!"
                 
-                # Fotos da Vitrine
+                # Gerador de Fotos da Vitrine
                 vitrine_lista = p.get('vitrine', [])
                 fotos_html = ""
                 for img_data in vitrine_lista:
@@ -521,6 +528,17 @@ with menu_abas[0]:
                         src = img_data if str(img_data).startswith("data") else f"data:image/jpeg;base64,{img_data}"
                         fotos_html += f'<div class="insta-photo-box" onclick="abrirInsta(\'{src}\', \'{link_zap}\')"><img src="{src}"></div>'
 
+                # --- LÓGICA DE CONTEÚDO DINÂMICO ---
+                if tipo == 'comercio':
+                    cor_fundo = "#fff9f0" # Laranja clarinho
+                    titulo_extra = "📢 MURAL DA LOJA"
+                    texto_extra = p.get('recados', 'Confira nossas ofertas!')
+                else:
+                    cor_fundo = "#f0f4f8" # Azul clarinho
+                    titulo_extra = "📄 CURRÍCULO"
+                    texto_extra = p.get('curriculo', 'Experiência profissional comprovada.')
+
+                # Renderização do Card Premium
                 st.markdown(f"""
                 <div class="cartao-insta">
                     <div class="insta-header">
@@ -530,12 +548,20 @@ with menu_abas[0]:
                             <div style="font-size:10px; color:#8e8e8e;">📍 a {p['dist']:.1f} km de você</div>
                         </div>
                     </div>
+                    
                     <div class="insta-carousel">
                         {fotos_html if fotos_html else '<div style="padding:40px; color:#ccc;">Sem fotos na vitrine</div>'}
                     </div>
-                    <div style="padding: 10px 0;">
-                        <span style="font-size:13px; color:#444;">{p.get('descricao','')[:120]}...</span>
+
+                    <div style="background:{cor_fundo}; border-radius:10px; padding:10px; margin: 10px 0; border-left: 4px solid {'#ff9800' if tipo == 'comercio' else '#0047AB'};">
+                        <strong style="font-size:11px; color:{'#e65100' if tipo == 'comercio' else '#0047AB'};">{titulo_extra}</strong><br>
+                        <span style="font-size:13px; color:#333;">{texto_extra[:200]}</span>
                     </div>
+
+                    <div style="padding-bottom: 10px;">
+                        <span style="font-size:13px; color:#666;">{p.get('descricao','')[:100]}...</span>
+                    </div>
+
                     <a href="{link_zap}" target="_blank" class="insta-btn">💬 CHAMAR NO WHATSAPP</a>
                 </div>
                 """, unsafe_allow_html=True)
@@ -1027,6 +1053,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
