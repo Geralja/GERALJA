@@ -484,13 +484,13 @@ with menu_abas[0]:
     </script>
     """, unsafe_allow_html=True)
 
-# 5. LÓGICA DE EXIBIÇÃO (VERSÃO ANTIFALHA + MULTIPERFIL)
+# 5. LÓGICA DE EXIBIÇÃO (SISTEMA DE VITRINE DINÂMICA V5.1)
     if termo_busca:
-        # A IA decide a categoria (Garanta que a função processar_ia_avancada esteja com as travas que discutimos)
+        # A IA identifica a categoria (mesmo as novas que você add no Firebase)
         cat_ia = processar_ia_avancada(termo_busca) 
         st.info(f"✨ Buscando por: **{cat_ia}**")
         
-        # Busca no Firebase (Filtro por categoria exata)
+        # Busca no Firebase
         profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
         
         lista_ranking = []
@@ -501,13 +501,11 @@ with menu_abas[0]:
             
             if dist <= raio_km:
                 p['dist'] = dist
-                # Ranking: Verificados primeiro, depois saldo
                 score = 1000 if p.get('verificado') else 0
                 score += (p.get('saldo', 0) * 10)
                 p['score_elite'] = score
                 lista_ranking.append(p)
 
-        # Ordenação: Proximidade + Relevância
         lista_ranking.sort(key=lambda x: (x['dist'], -x['score_elite']))
 
         if not lista_ranking:
@@ -515,12 +513,12 @@ with menu_abas[0]:
         else:
             for p in lista_ranking:
                 is_elite = p.get('saldo', 0) > 10
-                tipo = p.get('tipo', 'autonomo') # Pega o tipo do perfil
+                tipo = p.get('tipo', 'autonomo')
                 
                 zap_limpo = p.get('whatsapp', p['id'])
                 link_zap = f"https://wa.me/{zap_limpo}?text=Olá {p.get('nome')}, vi seu portfólio no GeralJá!"
                 
-                # Gerador de Fotos da Vitrine
+                # Gerador de Fotos
                 vitrine_lista = p.get('vitrine', [])
                 fotos_html = ""
                 for img_data in vitrine_lista:
@@ -528,18 +526,16 @@ with menu_abas[0]:
                         src = img_data if str(img_data).startswith("data") else f"data:image/jpeg;base64,{img_data}"
                         fotos_html += f'<div class="insta-photo-box" onclick="abrirInsta(\'{src}\', \'{link_zap}\')"><img src="{src}"></div>'
 
-                # --- LÓGICA DE CONTEÚDO DINÂMICO ---
+                # Lógica de Cores e Textos
                 if tipo == 'comercio':
-                    cor_fundo = "#fff9f0" # Laranja clarinho
-                    titulo_extra = "📢 MURAL DA LOJA"
+                    cor_fundo, borda, titulo = "#fff9f0", "#ff9800", "📢 MURAL DA LOJA"
                     texto_extra = p.get('recados', 'Confira nossas ofertas!')
                 else:
-                    cor_fundo = "#f0f4f8" # Azul clarinho
-                    titulo_extra = "📄 CURRÍCULO"
+                    cor_fundo, borda, titulo = "#f0f4f8", "#0047AB", "📄 CURRÍCULO"
                     texto_extra = p.get('curriculo', 'Experiência profissional comprovada.')
 
-                # Renderização do Card Premium
-                st.markdown(f"""
+                # Renderização Final (Garantindo que o Streamlit processe o HTML)
+                card_html = f"""
                 <div class="cartao-insta">
                     <div class="insta-header">
                         <img src="{p.get('foto_url','')}" class="insta-avatar">
@@ -553,8 +549,8 @@ with menu_abas[0]:
                         {fotos_html if fotos_html else '<div style="padding:40px; color:#ccc;">Sem fotos na vitrine</div>'}
                     </div>
 
-                    <div style="background:{cor_fundo}; border-radius:10px; padding:10px; margin: 10px 0; border-left: 4px solid {'#ff9800' if tipo == 'comercio' else '#0047AB'};">
-                        <strong style="font-size:11px; color:{'#e65100' if tipo == 'comercio' else '#0047AB'};">{titulo_extra}</strong><br>
+                    <div style="background:{cor_fundo}; border-radius:10px; padding:10px; margin: 10px 0; border-left: 4px solid {borda};">
+                        <strong style="font-size:11px; color:{borda};">{titulo}</strong><br>
                         <span style="font-size:13px; color:#333;">{texto_extra[:200]}</span>
                     </div>
 
@@ -564,8 +560,8 @@ with menu_abas[0]:
 
                     <a href="{link_zap}" target="_blank" class="insta-btn">💬 CHAMAR NO WHATSAPP</a>
                 </div>
-                """, unsafe_allow_html=True)
-
+                """
+                st.markdown(card_html, unsafe_allow_html=True)
     # 6. MODAL PREMIUM
     st.markdown("""
     <div id="meuModal" onclick="fecharInsta()" style="display:none; position:fixed; z-index:9999; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); align-items:center; justify-content:center; flex-direction:column;">
@@ -1053,6 +1049,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
