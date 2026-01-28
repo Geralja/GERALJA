@@ -415,10 +415,7 @@ menu_abas = st.tabs(lista_abas)
 # --- ABA 0: BUSCA (IA GROQ + VITRINE PREMIUM V5.0) ---
 # ==============================================================================
 with menu_abas[0]:
-    # 1. INICIALIZAÇÃO DE SEGURANÇA
-    termo_busca = None 
-    
-    # 2. MOTOR DE LOCALIZAÇÃO
+    # 1. INICIALIZAÇÃO E GPS
     with st.expander("📍 Sua Localização (GPS)", expanded=False):
         try:
             loc = get_geolocation()
@@ -431,13 +428,13 @@ with menu_abas[0]:
         except:
             minha_lat, minha_lon = LAT_REF, LON_REF
 
-    # 3. CAMPOS DE BUSCA
+    # 2. CAMPOS DE BUSCA
     st.markdown("### 🏙️ O que você precisa?")
     c1, c2 = st.columns([3, 1])
     termo_busca = c1.text_input("Ex: 'Cano estourado' ou 'Pizza'", key="busca_insta_v5_final")
     raio_km = c2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 20, 50, 100], value=3)
     
-    # 4. CSS PREMIUM (FOTOS MENORES E SNAP-SCROLL)
+    # 3. CSS E JAVASCRIPT (SISTEMA DE MODAL E CARROSSEL)
     st.markdown("""
     <style>
         .cartao-insta { 
@@ -448,35 +445,33 @@ with menu_abas[0]:
         .insta-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
         .insta-avatar { width: 38px; height: 38px; border-radius: 50%; border: 2px solid #E1306C; padding: 1.5px; object-fit: cover; }
         .insta-nome { font-weight: 700; color: #262626; font-size: 13px; }
-        
-        /* Carrossel Estilo Portfólio (Aparece a pontinha da próxima foto) */
         .insta-carousel { 
             display: flex; overflow-x: auto; scroll-snap-type: x mandatory; 
             gap: 10px; border-radius: 12px; scrollbar-width: none; padding: 5px 0;
         }
         .insta-carousel::-webkit-scrollbar { display: none; }
-        
         .insta-photo-box { 
-            flex: 0 0 82%; /* Ajuste aqui para o tamanho da foto */
-            scroll-snap-align: center; 
-            aspect-ratio: 4 / 3; /* Formato retangular mais profissional */
-            background: #f8f8f8; border-radius: 10px; overflow: hidden;
+            flex: 0 0 82%; scroll-snap-align: center; 
+            aspect-ratio: 4 / 3; background: #f8f8f8; border-radius: 10px; overflow: hidden;
             box-shadow: 0 2px 6px rgba(0,0,0,0.08);
         }
-        .insta-photo-box img { width: 100%; height: 100%; object-fit: cover; }
-
+        .insta-photo-box img { width: 100%; height: 100%; object-fit: cover; cursor: pointer; }
         .insta-btn {
             display: block; background: #25D366; color: white !important;
             text-align: center; padding: 12px; border-radius: 10px;
             font-weight: bold; text-decoration: none; margin-top: 12px; font-size: 15px;
         }
     </style>
-
     <script>
     function abrirInsta(src, link) {
-        window.parent.document.getElementById('imgExpandida').src = src;
-        window.parent.document.getElementById('linkZapModal').href = link;
-        window.parent.document.getElementById('meuModal').style.display = 'flex';
+        const modal = window.parent.document.getElementById('meuModal');
+        const img = window.parent.document.getElementById('imgExpandida');
+        const btn = window.parent.document.getElementById('linkZapModal');
+        if(modal && img && btn) {
+            img.src = src;
+            btn.href = link;
+            modal.style.display = 'flex';
+        }
     }
     function fecharInsta() {
         window.parent.document.getElementById('meuModal').style.display = 'none';
@@ -484,13 +479,11 @@ with menu_abas[0]:
     </script>
     """, unsafe_allow_html=True)
 
-# 5. LÓGICA DE EXIBIÇÃO (SISTEMA DE VITRINE DINÂMICA V5.1)
+    # 4. LÓGICA DE BUSCA E RANKING
     if termo_busca:
-        # A IA identifica a categoria (mesmo as novas que você add no Firebase)
         cat_ia = processar_ia_avancada(termo_busca) 
-        st.info(f"✨ Buscando por: **{cat_ia}**")
+        st.info(f"✨ Categoria: **{cat_ia}**")
         
-        # Busca no Firebase
         profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
         
         lista_ranking = []
@@ -509,33 +502,30 @@ with menu_abas[0]:
         lista_ranking.sort(key=lambda x: (x['dist'], -x['score_elite']))
 
         if not lista_ranking:
-            st.warning(f"Nenhum profissional de '{cat_ia}' encontrado nesta área.")
+            st.warning(f"Nenhum resultado para '{cat_ia}' nesta distância.")
         else:
             for p in lista_ranking:
                 is_elite = p.get('saldo', 0) > 10
                 tipo = p.get('tipo', 'autonomo')
+                link_zap = f"https://wa.me/{p.get('whatsapp')}?text=Vi seu anúncio no GeralJá!"
                 
-                zap_limpo = p.get('whatsapp', p['id'])
-                link_zap = f"https://wa.me/{zap_limpo}?text=Olá {p.get('nome')}, vi seu portfólio no GeralJá!"
-                
-                # Gerador de Fotos
-                vitrine_lista = p.get('vitrine', [])
+                # Monta as fotos da vitrine
                 fotos_html = ""
-                for img_data in vitrine_lista:
+                for img_data in p.get('vitrine', []):
                     if img_data:
                         src = img_data if str(img_data).startswith("data") else f"data:image/jpeg;base64,{img_data}"
-                        fotos_html += f'<div class="insta-photo-box" onclick="abrirInsta(\'{src}\', \'{link_zap}\')"><img src="{src}"></div>'
+                        fotos_html += f'<div class="insta-photo-box"><img src="{src}" onclick="abrirInsta(\'{src}\', \'{link_zap}\')"></div>'
 
-                # Lógica de Cores e Textos
+                # Define as cores do box dinâmico
                 if tipo == 'comercio':
-                    cor_fundo, borda, titulo = "#fff9f0", "#ff9800", "📢 MURAL DA LOJA"
-                    texto_extra = p.get('recados', 'Confira nossas ofertas!')
+                    cor_f, borda, titulo = "#fff9f0", "#ff9800", "📢 MURAL DA LOJA"
+                    txt_extra = p.get('recados', 'Promoções e avisos em breve!')
                 else:
-                    cor_fundo, borda, titulo = "#f0f4f8", "#0047AB", "📄 CURRÍCULO"
-                    texto_extra = p.get('curriculo', 'Experiência profissional comprovada.')
+                    cor_f, borda, titulo = "#f0f4f8", "#0047AB", "📄 CURRÍCULO"
+                    txt_extra = p.get('curriculo', 'Experiência profissional informada.')
 
-                # Renderização Final (Garantindo que o Streamlit processe o HTML)
-                card_html = f"""
+                # RENDERIZAÇÃO DO CARD (SEM ST.WRITE, APENAS MARKDOWN)
+                st.markdown(f"""
                 <div class="cartao-insta">
                     <div class="insta-header">
                         <img src="{p.get('foto_url','')}" class="insta-avatar">
@@ -545,29 +535,22 @@ with menu_abas[0]:
                         </div>
                     </div>
                     
-                    <div class="insta-carousel">
-                        {fotos_html if fotos_html else '<div style="padding:40px; color:#ccc;">Sem fotos na vitrine</div>'}
-                    </div>
+                    <div class="insta-carousel">{fotos_html}</div>
 
-                    <div style="background:{cor_fundo}; border-radius:10px; padding:10px; margin: 10px 0; border-left: 4px solid {borda};">
+                    <div style="background:{cor_f}; border-radius:10px; padding:10px; margin: 10px 0; border-left: 4px solid {borda};">
                         <strong style="font-size:11px; color:{borda};">{titulo}</strong><br>
-                        <span style="font-size:13px; color:#333;">{texto_extra[:200]}</span>
-                    </div>
-
-                    <div style="padding-bottom: 10px;">
-                        <span style="font-size:13px; color:#666;">{p.get('descricao','')[:100]}...</span>
+                        <span style="font-size:13px; color:#333;">{txt_extra[:200]}</span>
                     </div>
 
                     <a href="{link_zap}" target="_blank" class="insta-btn">💬 CHAMAR NO WHATSAPP</a>
                 </div>
-                """
-                st.markdown(card_html, unsafe_allow_html=True)
-    # 6. MODAL PREMIUM
+                """, unsafe_allow_html=True)
+
+    # 5. MODAL (Sempre presente para funcionar o clique)
     st.markdown("""
-    <div id="meuModal" onclick="fecharInsta()" style="display:none; position:fixed; z-index:9999; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); align-items:center; justify-content:center; flex-direction:column;">
-        <span style="position:absolute; top:20px; right:30px; color:white; font-size:40px; cursor:pointer;">&times;</span>
-        <img id="imgExpandida" style="max-width:95%; max-height:75%; border-radius:12px; object-fit: contain; box-shadow: 0 0 20px rgba(255,255,255,0.1);">
-        <a id="linkZapModal" href="#" target="_blank" style="margin-top:20px; background:#25D366; color:white; padding:15px 40px; border-radius:30px; text-decoration:none; font-weight:bold; box-shadow: 0 4px 15px rgba(37,211,102,0.4);">✅ CONTRATAR AGORA</a>
+    <div id="meuModal" onclick="fecharInsta()" style="display:none; position:fixed; z-index:9999; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); align-items:center; justify-content:center; flex-direction:column;">
+        <img id="imgExpandida" style="max-width:90%; max-height:70%; border-radius:10px;">
+        <a id="linkZapModal" href="#" target="_blank" class="insta-btn" style="width:200px;">✅ CONTRATAR</a>
     </div>
     """, unsafe_allow_html=True)
 # ==============================================================================
@@ -1049,6 +1032,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
