@@ -549,7 +549,7 @@ with menu_abas[0]:
     </div>
     """, unsafe_allow_html=True)
 # ==============================================================================
-# ABA 2: 🚀 PAINEL DO PARCEIRO (VERSÃO FINAL SUMARIZADA E COMPLETA)
+# ABA 2: 🚀 PAINEL DO PARCEIRO (VERSÃO PREMIUM V5.0)
 # ==============================================================================
 with menu_abas[2]:
     import base64, io, time
@@ -571,16 +571,8 @@ with menu_abas[2]:
 
     if 'auth' not in st.session_state: 
         st.session_state.auth = False
-    # --- ABA 1: PERFIL ---
-tipo_perfil = st.radio("Tipo de Perfil", ["Autônomo (Prestador)", "Comércio (Loja/Delivery)"], horizontal=True)
 
-if tipo_perfil == "Autônomo (Prestador)":
-    curriculo = st.text_area("Currículo / Experiência (Fale sobre sua formação e cursos)", height=150)
-    # Salve no firebase como p['tipo'] = 'autonomo' e p['curriculo'] = curriculo
-else:
-    recados = st.text_area("Mural da Loja (Recados, Promoções ou Avisos)", height=100)
-    # Salve no firebase como p['tipo'] = 'comercio' e p['recados'] = recados
-    # --- 2. TELA DE LOGIN ---
+    # --- 2. TELA DE LOGIN (CASO NÃO ESTEJA AUTENTICADO) ---
     if not st.session_state.get('auth'):
         st.subheader("🚀 Acesso ao Painel")
         
@@ -621,7 +613,55 @@ else:
         m2.metric("Cliques 🚀", f"{d.get('cliques', 0)}")
         m3.metric("Status", "🟢 ATIVO" if d.get('aprovado') else "🟡 PENDENTE")
 
-        # Atualização de GPS
+        # --- SEÇÃO DE EDIÇÃO COMPLETA COM TIPO DE PERFIL ---
+        with st.expander("📝 EDITAR MEU PERFIL & VITRINE", expanded=True):
+            with st.form("perfil_v20_completo"):
+                # Escolha do Tipo (Autônomo ou Comércio)
+                tipo_atual = d.get('tipo', 'autonomo')
+                idx_tipo = 0 if tipo_atual == 'autonomo' else 1
+                n_tipo = st.radio("Sua Categoria", ["Autônomo (Prestador)", "Comércio (Loja/Delivery)"], index=idx_tipo, horizontal=True)
+                
+                n_nome = st.text_input("Nome Comercial", d.get('nome', ''))
+                
+                # Campos Específicos
+                if "Autônomo" in n_tipo:
+                    n_extra = st.text_area("📄 Currículo / Experiência", d.get('curriculo', ''), height=150)
+                    tipo_save = 'autonomo'
+                else:
+                    n_extra = st.text_area("📢 Mural da Loja / Recados", d.get('recados', ''), height=150)
+                    tipo_save = 'comercio'
+
+                n_desc = st.text_area("Descrição Curta (Aparece na busca)", d.get('descricao', ''), height=80)
+                
+                st.write("--- **Fotos de Alta Qualidade** ---")
+                n_foto = st.file_uploader("Trocar Foto de Perfil", type=['jpg','jpeg','png'])
+                n_vits = st.file_uploader("Atualizar Vitrine (Até 10 fotos)", type=['jpg','jpeg','png'], accept_multiple_files=True)
+                
+                if st.form_submit_button("💾 SALVAR ALTERAÇÕES", use_container_width=True):
+                    # --- FUNÇÃO OTIMIZAR PREMIUM (800px / 80% Qualidade) ---
+                    def otimizar_premium(arq):
+                        img = Image.open(arq).convert("RGB")
+                        img.thumbnail((800, 800))
+                        buf = io.BytesIO()
+                        img.save(buf, format="JPEG", quality=80)
+                        return f"data:image/jpeg;base64,{base64.b64encode(buf.getvalue()).decode()}"
+
+                    updates = {
+                        "nome": n_nome, 
+                        "tipo": tipo_save,
+                        "descricao": n_desc,
+                        "curriculo" if tipo_save == 'autonomo' else "recados": n_extra
+                    }
+                    
+                    if n_foto: updates["foto_url"] = otimizar_premium(n_foto)
+                    if n_vits: updates["vitrine"] = [otimizar_premium(f) for f in n_vits[:10]]
+                    
+                    doc_ref.update(updates)
+                    st.success("🔥 Perfil e Vitrine atualizados com sucesso!")
+                    time.sleep(1)
+                    st.rerun()
+
+        # Botão de GPS fora do formulário
         if st.button("📍 ATUALIZAR MEU GPS", key="btn_gps_v20", use_container_width=True):
             from streamlit_js_eval import streamlit_js_eval
             loc = streamlit_js_eval(js_expressions="navigator.geolocation.getCurrentPosition(s => s)", key='gps_v20')
@@ -629,63 +669,10 @@ else:
                 doc_ref.update({"lat": loc['coords']['latitude'], "lon": loc['coords']['longitude']})
                 st.success("✅ Localização GPS Atualizada!")
 
-        # --- SEÇÃO DE EDIÇÃO COMPLETA ---
-        with st.expander("📝 EDITAR MEU PERFIL & CATEGORIA"):
-            with st.form("perfil_v20_completo"):
-                n_nome = st.text_input("Nome Comercial", d.get('nome', ''))
-                
-                # Categoria Dinâmica
-                try:
-                    # Supõe que CATEGORIAS_OFICIAIS foi definida no início do app
-                    idx_cat = CATEGORIAS_OFICIAIS.index(d.get('area')) if d.get('area') in CATEGORIAS_OFICIAIS else 0
-                except: idx_cat = 0
-                n_area = st.selectbox("Mudar Segmento/Categoria", CATEGORIAS_OFICIAIS, index=idx_cat)
-                
-                n_desc = st.text_area("Descrição do Serviço", d.get('descricao', ''), height=150)
-                
-                st.write("--- **Imagens** ---")
-                n_foto = st.file_uploader("Trocar Foto de Perfil", type=['jpg','jpeg','png'])
-                n_vits = st.file_uploader("Atualizar Vitrine (Até 4 fotos)", type=['jpg','jpeg','png'], accept_multiple_files=True)
-                
-                if st.form_submit_button("💾 SALVAR ALTERAÇÕES", use_container_width=True):
-                    def otimizar(arq):
-                        img = Image.open(arq).convert("RGB")
-                        img.thumbnail((600, 600))
-                        buf = io.BytesIO()
-                        img.save(buf, format="JPEG", quality=50)
-                        return f"data:image/jpeg;base64,{base64.b64encode(buf.getvalue()).decode()}"
-
-                    updates = {"nome": n_nome, "area": n_area, "descricao": n_desc}
-                    if n_foto: updates["foto_url"] = otimizar(n_foto)
-                    if n_vits: updates["vitrine"] = [otimizar(f) for f in n_vits[:4]]
-                    
-                    doc_ref.update(updates)
-                    st.success("✅ Perfil atualizado!")
-                    time.sleep(1)
-                    st.rerun()
-
-        # FAQ e Suporte
-        with st.expander("❓ PERGUNTAS FREQUENTES"):
-            st.write("**Como funciona o saldo?** Cada clique no seu WhatsApp desconta 1 moeda.")
-            st.write("**Como ganhar o selo Elite?** Mantenha saldo positivo e fotos na vitrine.")
-
         st.divider()
-
-        # Logout e Exclusão
-        c_sair, c_del = st.columns(2)
-        with c_sair:
-            if st.button("🚪 SAIR DO PAINEL", use_container_width=True):
-                st.session_state.auth = False
-                st.rerun()
-        with c_del:
-            with st.expander("🗑️ EXCLUIR CONTA"):
-                st.warning("Isso apagará seu perfil permanentemente.")
-                if st.button("CONFIRMAR EXCLUSÃO", key="del_final", type="secondary", use_container_width=True):
-                    doc_ref.delete()
-                    st.session_state.auth = False
-                    st.error("Conta removida.")
-                    time.sleep(2)
-                    st.rerun()
+        if st.button("🚪 SAIR DO PAINEL", use_container_width=True):
+            st.session_state.auth = False
+            st.rerun()
 # --- ABA 1: CADASTRAR & EDITAR (COM VITRINE DE 4 FOTOS) ---
 with menu_abas[1]:
     import base64
@@ -1040,6 +1027,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
