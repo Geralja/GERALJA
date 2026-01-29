@@ -314,54 +314,76 @@ def processar_ia_avancada(texto):
     if not texto: return "Vazio"
     t_clean = normalizar_para_ia(texto)
     
-    # --- 1. SEU CÓDIGO ATUAL (Rápido e sem custo) ---
+    # --- 1. BUSCA DINÂMICA DAS CATEGORIAS QUE VOCÊ ADD NO FIREBASE ---
+    try:
+        # Puxa a lista 'l' que você criou no console do Firebase
+        doc_ref = db.collection("configuracoes").document("categorias").get()
+        if doc_ref.exists:
+            categorias_para_ia = doc_ref.to_dict().get('l', CATEGORIAS_OFICIAIS)
+        else:
+            categorias_para_ia = CATEGORIAS_OFICIAIS
+    except:
+        categorias_para_ia = CATEGORIAS_OFICIAIS
+
+    # --- 2. VERIFICAÇÃO RÁPIDA (CONCEITOS) ---
     for chave, categoria in CONCEITOS_EXPANDIDOS.items():
         if re.search(rf"\b{normalizar_para_ia(chave)}\b", t_clean):
             return categoria
     
-    for cat in CATEGORIAS_OFICIAIS:
-        if normalizar_para_ia(cat) in t_clean:
-            return cat
-
-    # --- 2. O UPGRADE PARA NOTA 5.0 (IA Groq + Cache) ---
+    # --- 3. UPGRADE IA GROQ COM AS CATEGORIAS REAIS DO BANCO ---
     try:
-        # Primeiro checa se já perguntamos isso antes (Cache)
+        # Checa Cache para economizar Groq
         cache_ref = db.collection("cache_buscas").document(t_clean).get()
         if cache_ref.exists:
             return cache_ref.to_dict().get("categoria")
 
-        # Se não sabe, a IA "pensa" e resolve
         from groq import Groq
         client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-        prompt = f"O usuário buscou: '{texto}'. Categorias: {CATEGORIAS_OFICIAIS}. Responda apenas o NOME DA CATEGORIA."
+        
+        # O pulo do gato: Passamos a lista do Firebase no Prompt
+        prompt = f"""
+        Usuário busca: '{texto}'
+        Categorias Oficiais: {categorias_para_ia}
+        Responda APENAS o nome da categoria exata. Se não existir, use 'Outro (Personalizado)'.
+        """
         
         res = client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
             model="llama3-8b-8192",
-            temperature=0.1
+            temperature=0
         )
         cat_ia = res.choices[0].message.content.strip()
 
-        # Salva no cache para não gastar mais tokens com esse termo
+        # Salva no cache
         db.collection("cache_buscas").document(t_clean).set({"categoria": cat_ia})
         return cat_ia
 
     except:
-        return "NAO_ENCONTRADO" # Se tudo der errado
+        # Busca textual simples se a IA falhar
+        for cat in categorias_para_ia:
+            if normalizar_para_ia(cat) in t_clean:
+                return cat
+        return "Outro (Personalizado)"
 
 def calcular_distancia_real(lat1, lon1, lat2, lon2):
     try:
         if None in [lat1, lon1, lat2, lon2]: return 999.0
-        R = 6371 
+        # Força conversão para float para evitar erro de tipo
+        lat1, lon1, lat2, lon2 = float(lat1), float(lon1), float(lat2), float(lon2)
+        R = 6371  
         dlat, dlon = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
         a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
-        return round(R * (2 * math.atan2(math.sqrt(a), math.sqrt(1-a))), 1)
-    except: return 999.0
+        dist = R * (2 * math.atan2(math.sqrt(a), math.sqrt(1-a)))
+        return round(dist, 1)
+    except: 
+        return 999.0
 
 def converter_img_b64(file):
     if file is None: return ""
-    try: return base64.b64encode(file.read()).decode()
-    except: return ""
+    try: 
+        return base64.b64encode(file.read()).decode()
+    except: 
+        return ""
 
 # --- FUNCIONALIDADE DO ARQUIVO: O VARREDOR (Rodapé Automático) ---
 def finalizar_e_alinhar_layout():
@@ -1083,6 +1105,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
