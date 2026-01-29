@@ -1,3 +1,4 @@
+ 
 # ==============================================================================
 # GERALJÁ: CRIANDO SOLUÇÕES
 # ==============================================================================
@@ -49,78 +50,7 @@ try:
     from streamlit_js_eval import streamlit_js_eval, get_geolocation
 except ImportError:
     pass
-import re
-import math
-from groq import Groq
 
-def processar_ia_avancada(texto):
-    """
-    Motor de Busca Híbrido: Dicionário Local + Firebase + IA Groq
-    """
-    if not texto: return "Vazio"
-    t_clean = normalizar_para_ia(texto)
-    
-    # --- PASSO 1: BUSCA NAS CATEGORIAS REAIS DO SEU FIREBASE ---
-    try:
-        doc_ref = db.collection("configuracoes").document("categorias").get()
-        # Puxa a lista 'l' que você edita no painel do Firebase
-        categorias_oficiais = doc_ref.to_dict().get('l', CATEGORIAS_OFICIAIS) if doc_ref.exists else CATEGORIAS_OFICIAIS
-    except:
-        categorias_oficiais = CATEGORIAS_OFICIAIS
-
-    # --- CAMINHO A: BUSCA DIRETA E CONCEITOS (Rápido) ---
-    # Verifica se o termo está nos seus conceitos expandidos
-    for chave, categoria in CONCEITOS_EXPANDIDOS.items():
-        if re.search(rf"\b{normalizar_para_ia(chave)}\b", t_clean):
-            # Se achou no dicionário, retorna na hora
-            return categoria
-            
-    # Verifica se o termo é o nome exato de uma categoria do Firebase
-    for cat in categorias_oficiais:
-        if normalizar_para_ia(cat) in t_clean:
-            return cat
-
-    # --- CAMINHO B: INTELIGÊNCIA ARTIFICIAL (Interpretativo) ---
-    try:
-        # 1. Tenta o Cache primeiro para economizar
-        cache_ref = db.collection("cache_buscas").document(t_clean).get()
-        if cache_ref.exists:
-            return cache_ref.to_dict().get("categoria")
-
-        # 2. Pergunta para a IA Groq
-        client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-        prompt = f"""
-        Identifique a categoria correta para a busca: '{texto}'
-        Categorias Permitidas: {categorias_oficiais}
-        Responda APENAS o nome da categoria. Se não houver relação, responda 'Outros'.
-        """
-        
-        res = client.chat.completions.create(
-            messages=[{"role": "user", "content": prompt}],
-            model="llama3-8b-8192",
-            temperature=0
-        )
-        cat_ia = res.choices[0].message.content.strip()
-
-        # Salva no cache para a próxima vez ser instantâneo
-        db.collection("cache_buscas").document(t_clean).set({"categoria": cat_ia})
-        return cat_ia
-
-    except Exception as e:
-        # Se a internet cair ou a IA der erro, não trava o app
-        return "Outros"
-
-def calcular_distancia_real(lat1, lon1, lat2, lon2):
-    try:
-        if None in [lat1, lon1, lat2, lon2]: return 999.0
-        # Força conversão para float para evitar erros de tipo
-        la1, lo1, la2, lo2 = float(lat1), float(lon1), float(lat2), float(lon2)
-        R = 6371.0
-        dlat, dlon = math.radians(la2 - la1), math.radians(lo2 - lo1)
-        a = math.sin(dlat/2)**2 + math.cos(math.radians(la1)) * math.cos(math.radians(la2)) * math.sin(dlon/2)**2
-        return round(R * (2 * math.atan2(math.sqrt(a), math.sqrt(1-a))), 1)
-    except:
-        return 999.0
 # ------------------------------------------------------------------------------
 # 1. CONFIGURAÇÃO DE AMBIENTE E PERFORMANCE
 # ------------------------------------------------------------------------------
@@ -1153,6 +1083,12 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
+
+
+
+
+
 
 
 
