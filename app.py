@@ -1,3 +1,4 @@
+ 
 # ==============================================================================
 # GERALJÁ: CRIANDO SOLUÇÕES
 # ==============================================================================
@@ -456,23 +457,7 @@ with menu_abas[0]:
     </script>
     """, unsafe_allow_html=True)
 
-   if termo_busca:
-        # AQUI É A MÁGICA: A IA tenta as duas buscas (Dicionário + Groq)
-        cat_ia = processar_ia_avancada(termo_busca) 
-        
-        # MELHORIA VISUAL: Mostra que a IA está pensando (estilo GetNinjas)
-        with st.status(f"🔍 Analisando: '{termo_busca}'...", expanded=False) as status:
-            st.write(f"1. Consultando dicionário local...")
-            st.write(f"2. Acionando inteligência Groq...")
-            st.write(f"3. Categoria definida: **{cat_ia}**")
-            status.update(label=f"✨ Resultado: {cat_ia}", state="complete", expanded=False)
-
-        # DAQUI PARA BAIXO NÃO MUDE NADA! 
-        # Mantenha seu código original que desenha os cartões (o que você colou na pergunta)
-        profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
-        
-        lista_ranking = []
-        # ... resto do seu código de ranking e visual ...
+    if termo_busca:
         cat_ia = processar_ia_avancada(termo_busca) 
         st.info(f"✨ IA Groq: Buscando por **{cat_ia}**")
         
@@ -1098,8 +1083,6 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
-
-
 
 
 
