@@ -310,80 +310,156 @@ def normalizar_para_ia(texto):
     return "".join(c for c in unicodedata.normalize('NFD', str(texto))
                    if unicodedata.category(c) != 'Mn').lower().strip()
 
-import re  # Essencial para não dar erro de "re not defined"
-
 def processar_ia_avancada(texto):
     if not texto: return "Vazio"
     t_clean = normalizar_para_ia(texto)
     
-    # --- 1. BUSCA DINÂMICA DAS CATEGORIAS DO FIREBASE ---
-    try:
-        doc_ref = db.collection("configuracoes").document("categorias").get()
-        categorias_para_ia = doc_ref.to_dict().get('l', CATEGORIAS_OFICIAIS) if doc_ref.exists else CATEGORIAS_OFICIAIS
-    except:
-        categorias_para_ia = CATEGORIAS_OFICIAIS
-
-    # --- 2. VERIFICAÇÃO RÁPIDA (CONCEITOS) ---
+    # --- 1. SEU CÓDIGO ATUAL (Rápido e sem custo) ---
     for chave, categoria in CONCEITOS_EXPANDIDOS.items():
         if re.search(rf"\b{normalizar_para_ia(chave)}\b", t_clean):
             return categoria
     
-    # --- 3. IA GROQ COM CACHE ---
-    try:
-        cache_ref = db.collection("cache_buscas").document(t_clean).get()
-        if cache_ref.exists: return cache_ref.to_dict().get("categoria")
+    for cat in CATEGORIAS_OFICIAIS:
+        if normalizar_para_ia(cat) in t_clean:
+            return cat
 
+    # --- 2. O UPGRADE PARA NOTA 5.0 (IA Groq + Cache) ---
+    try:
+        # Primeiro checa se já perguntamos isso antes (Cache)
+        cache_ref = db.collection("cache_buscas").document(t_clean).get()
+        if cache_ref.exists:
+            return cache_ref.to_dict().get("categoria")
+
+        # Se não sabe, a IA "pensa" e resolve
         from groq import Groq
         client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-        prompt = f"Categorias: {categorias_para_ia}. O usuário buscou '{texto}'. Responda apenas o nome da categoria exata ou 'Outros'."
+        prompt = f"O usuário buscou: '{texto}'. Categorias: {CATEGORIAS_OFICIAIS}. Responda apenas o NOME DA CATEGORIA."
         
         res = client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
             model="llama3-8b-8192",
-            temperature=0
+            temperature=0.1
         )
         cat_ia = res.choices[0].message.content.strip()
+
+        # Salva no cache para não gastar mais tokens com esse termo
         db.collection("cache_buscas").document(t_clean).set({"categoria": cat_ia})
         return cat_ia
+
     except:
-        return "Outros"
+        return "NAO_ENCONTRADO" # Se tudo der errado
 
 def calcular_distancia_real(lat1, lon1, lat2, lon2):
     try:
-        if None in [lat1, lon1, lat2, lon2]: return 99.0
-        lat1, lon1, lat2, lon2 = float(lat1), float(lon1), float(lat2), float(lon2)
-        R = 6371.0
+        if None in [lat1, lon1, lat2, lon2]: return 999.0
+        R = 6371 
         dlat, dlon = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
         a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
         return round(R * (2 * math.atan2(math.sqrt(a), math.sqrt(1-a))), 1)
-    except: return 99.0
+    except: return 999.0
 
-# --- ABA 0: BUSCA ---
+def converter_img_b64(file):
+    if file is None: return ""
+    try: return base64.b64encode(file.read()).decode()
+    except: return ""
+
+# --- FUNCIONALIDADE DO ARQUIVO: O VARREDOR (Rodapé Automático) ---
+def finalizar_e_alinhar_layout():
+    """
+    Esta função atua como um ímã. Puxa o conteúdo e limpa o rodapé.
+    """
+    st.write("---")
+    fechamento_estilo = """
+        <style>
+            .main .block-container { padding-bottom: 5rem !important; }
+            .footer-clean {
+                text-align: center;
+                padding: 20px;
+                opacity: 0.7;
+                font-size: 0.8rem;
+                width: 100%;
+                color: gray;
+            }
+        </style>
+        <div class="footer-clean">
+            <p>🎯 <b>GeralJá</b> - Sistema de Inteligência Local</p>
+            <p>Conectando quem precisa com quem sabe fazer.</p>
+            <p>v3.0 | © 2026 Todos os direitos reservados</p>
+        </div>
+    """
+    st.markdown(fechamento_estilo, unsafe_allow_html=True)
+
+# ------------------------------------------------------------------------------
+# 5. DESIGN SYSTEM
+# ------------------------------------------------------------------------------
+st.markdown("""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+    * { font-family: 'Inter', sans-serif; }
+    .stApp { background-color: #F8FAFC; }
+    .header-container { background: white; padding: 40px 20px; border-radius: 0 0 50px 50px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border-bottom: 8px solid #FF8C00; margin-bottom: 25px; }
+    .logo-azul { color: #0047AB; font-weight: 900; font-size: 50px; letter-spacing: -2px; }
+    .logo-laranja { color: #FF8C00; font-weight: 900; font-size: 50px; letter-spacing: -2px; }
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown('<div class="header-container"><span class="logo-azul">GERAL</span><span class="logo-laranja">JÁ</span><br><small style="color:#64748B; font-weight:700;">BRASIL ELITE EDITION</small></div>', unsafe_allow_html=True)
+
+lista_abas = ["🔍 BUSCAR", "🚀 CADASTRAR", "👤 MEU PERFIL", "👑 ADMIN", "⭐ FEEDBACK"]
+comando = st.sidebar.text_input("Comando Secreto", type="password")
+if comando == "abracadabra":
+    lista_abas.append("📊 FINANCEIRO")
+
+menu_abas = st.tabs(lista_abas)
+# ==============================================================================
+# --- ABA 0: BUSCA (IA GROQ + RAIO 3KM + VITRINE SOCIAL V3.0) ---
+# ==============================================================================
 with menu_abas[0]:
     st.markdown("### 🏙️ O que você precisa?")
     
-    with st.expander("📍 Sua Localização", expanded=False):
+    # --- 1. MOTOR DE LOCALIZAÇÃO ---
+    with st.expander("📍 Sua Localização (GPS)", expanded=False):
         loc = get_geolocation()
-        minha_lat, minha_lon = (loc['coords']['latitude'], loc['coords']['longitude']) if loc and 'coords' in loc else (LAT_REF, LON_REF)
-        st.write(f"Sua posição: {minha_lat}, {minha_lon}")
+        if loc and 'coords' in loc:
+            minha_lat = loc['coords']['latitude']
+            minha_lon = loc['coords']['longitude']
+            st.success("Localização detectada!")
+        else:
+            minha_lat, minha_lon = LAT_REF, LON_REF
+            st.warning("GPS desativado. Usando padrão (Centro).")
 
     c1, c2 = st.columns([3, 1])
-    termo_busca = c1.text_input("Ex: 'Cano estourado'", key="main_v_groq")
-    raio_km = c2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 50, 100], value=3)
+    termo_busca = c1.text_input("Ex: 'Cano estourado' ou 'Pizza'", key="main_search_v_groq")
+    # Raio padrão em 3 KM conforme solicitado
+    raio_km = c2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 20, 50, 100, 500], value=3)
     
-    st.markdown("""<style>
-        .cartao-geral { background: white; border-radius: 15px; border-left: 8px solid var(--cor-borda); padding: 15px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); color: #111 !important; }
-        .perfil-row { display: flex; gap: 15px; align-items: center; }
-        .foto-perfil { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; }
-        .social-track { display: flex; overflow-x: auto; gap: 10px; margin: 10px 0; scrollbar-width: none; }
-        .social-card { flex: 0 0 180px; height: 250px; border-radius: 10px; overflow: hidden; background: #000; }
-        .social-card img { width: 100%; height: 100%; object-fit: cover; }
-        .btn-zap-footer { display: block; background: #25D366; color: white !important; text-align: center; padding: 12px; border-radius: 10px; font-weight: bold; text-decoration: none; }
-    </style>""", unsafe_allow_html=True)
+    # --- 2. CSS PARA VITRINE E MODAL ---
+    st.markdown("""
+    <style>
+        .cartao-geral { background: white; border-radius: 20px; border-left: 8px solid var(--cor-borda); padding: 15px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); color: #111; }
+        .perfil-row { display: flex; gap: 15px; align-items: center; margin-bottom: 12px; }
+        .foto-perfil { width: 55px; height: 55px; border-radius: 50%; object-fit: cover; border: 2px solid #eee; }
+        .social-track { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 10px; scrollbar-width: none; }
+        .social-track::-webkit-scrollbar { display: none; }
+        .social-card { flex: 0 0 200px; height: 280px; border-radius: 12px; overflow: hidden; cursor: pointer; background: #000; }
+        .social-card img { width: 100%; height: 100%; object-fit: cover; transition: 0.3s; }
+        .btn-zap-footer { display: block; background: #25D366; color: white !important; text-align: center; padding: 15px; border-radius: 12px; font-weight: bold; text-decoration: none; margin-top: 10px; font-size: 16px; }
+    </style>
+    <script>
+    function abrirModal(src, link) {
+        window.parent.document.getElementById('imgExpandida').src = src;
+        window.parent.document.getElementById('linkZapModal').href = link;
+        window.parent.document.getElementById('meuModal').style.display = 'flex';
+    }
+    function fecharModal() {
+        window.parent.document.getElementById('meuModal').style.display = 'none';
+    }
+    </script>
+    """, unsafe_allow_html=True)
 
     if termo_busca:
         cat_ia = processar_ia_avancada(termo_busca) 
-        st.info(f"✨ IA: Buscando por **{cat_ia}**")
+        st.info(f"✨ IA Groq: Buscando por **{cat_ia}**")
         
         profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
         
@@ -392,58 +468,68 @@ with menu_abas[0]:
             p = p_doc.to_dict()
             p['id'] = p_doc.id
             dist = calcular_distancia_real(minha_lat, minha_lon, p.get('lat', LAT_REF), p.get('lon', LON_REF))
+            
             if dist <= raio_km:
                 p['dist'] = dist
-                p['score'] = (1000 if p.get('verificado') else 0) + (p.get('saldo', 0) * 10)
+                score = 0
+                score += 1000 if p.get('verificado') else 0
+                score += (p.get('saldo', 0) * 10)
+                p['score_elite'] = score
                 lista_ranking.append(p)
 
-        lista_ranking.sort(key=lambda x: (x['dist'], -x['score']))
+        # ORDENAÇÃO: Mais perto primeiro (Precisão Geográfica)
+        lista_ranking.sort(key=lambda x: (x['dist'], -x['score_elite']))
 
         if not lista_ranking:
-            st.warning("Nenhum profissional encontrado.")
+            st.warning(f"Ninguém de '{cat_ia}' encontrado em {raio_km}km.")
         else:
             for p in lista_ranking:
-                cor = "#FFD700" if p.get('verificado') and p.get('saldo', 0) > 0 else "#0047AB"
-                link_zap = f"https://wa.me/{limpar_whatsapp(p.get('whatsapp', p['id']))}"
+                is_elite = p.get('verificado') and p.get('saldo', 0) > 0
+                cor_borda = "#FFD700" if is_elite else "#0047AB"
+                zap_limpo = limpar_whatsapp(p.get('whatsapp', p['id']))
+                link_zap = f"https://wa.me/{zap_limpo}?text=Olá, vi seu trabalho no GeralJá!"
                 
-                # Fotos do Portfólio
+                # CORREÇÃO DA STRING: Montagem das fotos do portfólio
                 fotos_html = ""
                 for i in range(1, 11):
-                    f = p.get(f'f{i}')
-                    if f and len(str(f)) > 100:
-                        src = f if str(f).startswith("data") else f"data:image/jpeg;base64,{f}"
+                    f_data = p.get(f'f{i}')
+                    if f_data and len(str(f_data)) > 100:
+                        src = f_data if str(f_data).startswith("data") else f"data:image/jpeg;base64,{f_data}"
                         fotos_html += f'<div class="social-card" onclick="abrirModal(\'{src}\', \'{link_zap}\')"><img src="{src}"></div>'
 
                 st.markdown(f"""
-                <div class="cartao-geral" style="--cor-borda: {cor};">
-                    <div style="font-size: 11px; color: {cor}; font-weight: bold;">📍 a {p['dist']} km</div>
+                <div class="cartao-geral" style="--cor-borda: {cor_borda};">
+                    <div style="font-size: 11px; color: #0047AB; font-weight: bold; margin-bottom: 10px;">
+                        📍 a {p['dist']:.1f} km de você {" | 🏆 ELITE" if is_elite else ""}
+                    </div>
                     <div class="perfil-row">
                         <img src="{p.get('foto_url','')}" class="foto-perfil">
                         <div>
-                            <h4 style="margin:0;">{p.get('nome','').upper()}</h4>
-                            <p style="margin:0; font-size:12px; color:gray;">{p.get('descricao','')[:60]}...</p>
+                            <h4 style="margin:0; color:#1e3a8a;">{p.get('nome','').upper()}</h4>
+                            <p style="margin:0; color:#666; font-size:12px;">{p.get('descricao','')[:100]}...</p>
                         </div>
                     </div>
                     <div class="social-track">{fotos_html}</div>
-                    <a href="{link_zap}" target="_blank" class="btn-zap-footer">💬 WHATSAPP</a>
+                    <a href="{link_zap}" target="_blank" class="btn-zap-footer">💬 CHAMAR AGORA</a>
                 </div>
                 """, unsafe_allow_html=True)
 
-    # Scripts do Modal
+    # Modal Único (Fora do Loop)
     st.markdown("""
     <div id="meuModal" style="display:none; position:fixed; z-index:9999; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); align-items:center; justify-content:center; flex-direction:column;">
-        <span onclick="this.parentElement.style.display='none'" style="position:absolute; top:20px; right:30px; color:white; font-size:40px; cursor:pointer;">&times;</span>
+        <span onclick="fecharModal()" style="position:absolute; top:20px; right:30px; color:white; font-size:40px; cursor:pointer;">&times;</span>
         <img id="imgExpandida" style="max-width:90%; max-height:75%; border-radius:10px;">
         <a id="linkZapModal" href="#" target="_blank" style="margin-top:20px; background:#25D366; color:white; padding:15px 40px; border-radius:30px; text-decoration:none; font-weight:bold;">✅ WHATSAPP</a>
     </div>
-    <script>
-    function abrirModal(src, link) {
-        window.parent.document.getElementById('imgExpandida').src = src;
-        window.parent.document.getElementById('linkZapModal').href = link;
-        window.parent.document.getElementById('meuModal').style.display = 'flex';
-    }
-    </script>
     """, unsafe_allow_html=True)
+                
+import streamlit as st
+import base64
+import time
+import io
+from PIL import Image
+from datetime import datetime
+
 # ==============================================================================
 # ABA 2: 🚀 PAINEL DO PARCEIRO (COMPLETO: FB + IMAGENS + FAQ + EXCLUSÃO)
 # ==============================================================================
@@ -997,17 +1083,6 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
-
-
-
-
-
-
-
-
-
-
-
 
 
 
