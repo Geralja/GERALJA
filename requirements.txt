@@ -13,4 +13,5 @@ Pillow
 streamlit-google-auth
 google-auth-oauthlib     
 gspread
+google-generativeai
 
