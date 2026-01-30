@@ -310,48 +310,60 @@ def normalizar_para_ia(texto):
                    if unicodedata.category(c) != 'Mn').lower().strip()
 
 def processar_ia_avancada(texto):
+    """
+    Motor de Busca Híbrido inspirado no GetNinjas:
+    1. Dicionário Hard-code (Velocidade)
+    2. Busca por Categoria Direta
+    3. IA Groq com Cache (Inteligência)
+    """
     if not texto: return "Vazio"
     t_clean = normalizar_para_ia(texto)
     
-    # --- 1. BUSCA POR CONCEITOS (Dicionário Local) ---
-    # O "Professor" ensina: Se você já definiu no dicionário, ele manda!
+    # 1. BUSCA RÁPIDA (Seu Dicionário de Conceitos)
+    # Verifica correspondência exata de palavras-chave
     for chave, categoria in CONCEITOS_EXPANDIDOS.items():
         if re.search(rf"\b{normalizar_para_ia(chave)}\b", t_clean):
             return categoria
     
-    # --- 2. BUSCA POR CATEGORIA DIRETA ---
+    # 2. BUSCA POR NOME DE CATEGORIA
     for cat in CATEGORIAS_OFICIAIS:
         if normalizar_para_ia(cat) in t_clean:
             return cat
 
-    # --- 3. INTELIGÊNCIA ARTIFICIAL (Groq + Memória de Cache) ---
+    # 3. INTELIGÊNCIA ARTIFICIAL (Onde o GetNinjas brilha)
     try:
-        # Verifica se já resolvemos essa dúvida antes para economizar API
+        # Checa se a IA já classificou esse termo antes (Cache no Firebase)
+        # Isso evita gastar API Groq repetidamente para o mesmo termo
         cache_ref = db.collection("cache_buscas").document(t_clean).get()
         if cache_ref.exists:
             return cache_ref.to_dict().get("categoria")
 
-        # Chama a Groq apenas se o dicionário e o cache falharem
+        # Se não está no cache, aciona a Groq
         client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-        prompt = f"Categorias: {CATEGORIAS_OFICIAIS}. Usuário busca: '{texto}'. Responda apenas o nome da categoria."
+        prompt = f"""
+        Você é o assistente do GeralJá. Classifique a busca: '{texto}'. 
+        Categorias disponíveis: {CATEGORIAS_OFICIAIS}.
+        Responda APENAS o nome da categoria exata.
+        """
         
         res = client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
             model="llama3-8b-8192",
-            temperature=0
+            temperature=0 # Sem alucinações
         )
         cat_ia = res.choices[0].message.content.strip()
 
-        # Salva o resultado no Cache para a próxima busca ser instantânea
+        # Salva o aprendizado no Firebase para a próxima vez
         if cat_ia in CATEGORIAS_OFICIAIS:
             db.collection("cache_buscas").document(t_clean).set({
                 "categoria": cat_ia,
+                "termo_original": texto,
                 "data": datetime.now()
             })
             return cat_ia
 
     except Exception as e:
-        # Se a IA cair, o sistema não trava
+        # Se a IA falhar, não trava o site
         pass
 
     return "Outro (Personalizado)"
@@ -1090,6 +1102,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
