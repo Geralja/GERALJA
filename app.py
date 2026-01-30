@@ -21,7 +21,6 @@ from groq import Groq                # Para a IA avançada
 from fuzzywuzzy import process       # Para buscas com erros de digitação
 from urllib.parse import quote       # Para links de WhatsApp seguros
 # --- CONFIGURAÇÕES DE AUTENTICAÇÃO (PUXANDO DO COFRE) ---
-
 import google.generativeai as genai
 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
@@ -1086,6 +1085,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
