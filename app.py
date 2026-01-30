@@ -501,7 +501,7 @@ with tab_perfil:
                     st.error("❌ Senha incorreta.")
             else:
                 st.error("❌ E-mail não cadastrado.")
-             else:
+    else:
         # --- 25. PAINEL DE CONTROLE (USUÁRIO LOGADO) ---
         p_dados = st.session_state.user_data
         st.success(f"Bem-vindo, {p_dados.get('nome')}!")
@@ -1173,3 +1173,4 @@ if "security_check" not in st.session_state:
     st.session_state.security_check = True
 
 # --- FIM DO ARQUIVO MESTRE ---
+
