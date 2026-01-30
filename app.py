@@ -1,5 +1,5 @@
 # ==============================================================================
-# GERALJÁ: CRIANDO SOLUÇÕES
+# GERALJÁ: CRIANDO SOLUÇÕES - VERSÃO ESTÁVEL COMPLETA
 # ==============================================================================
 import streamlit as st
 import firebase_admin
@@ -10,77 +10,87 @@ import math
 import re
 import time
 import pandas as pd
-from datetime import datetime 
+from datetime import datetime
 import pytz
-from streamlit_js_eval import streamlit_js_eval, get_geolocation
 import unicodedata
-from groq import Groq # <--- Novo
-
-# --- ADICIONE ESTES 3 PARA O NÍVEL 5.0 ---
-from groq import Groq                # Para a IA avançada
-from fuzzywuzzy import process       # Para buscas com erros de digitação
-from urllib.parse import quote       # Para links de WhatsApp seguros
-# --- CONFIGURAÇÕES DE AUTENTICAÇÃO (PUXANDO DO COFRE) ---
-import google.generativeai as genai
-genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-
 import requests
+from groq import Groq
+from fuzzywuzzy import process
+from urllib.parse import quote
+import google.generativeai as genai
+from streamlit_js_eval import streamlit_js_eval, get_geolocation
+from google_auth_oauthlib.flow import Flow
 
-# --- CONFIGURAÇÃO DE CHAVES ---
+# --- 1. CONFIGURAÇÃO DE AMBIENTE ---
+st.set_page_config(
+    page_title="GeralJá | Criando Soluções",
+    page_icon="🇧🇷",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+
+# --- CONFIGURAÇÃO DE CHAVES E IA ---
 try:
-    import requests  # Agora está dentro do recuo (4 espaços)
+    # Configuração Gemini
+    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+    
+    # Configuração Google Auth
     FB_ID = st.secrets["FB_CLIENT_ID"]
     FB_SECRET = st.secrets["FB_CLIENT_SECRET"]
     FIREBASE_API_KEY = st.secrets["FIREBASE_API_KEY"]
     REDIRECT_URI = "https://geralja-zxiaj2ot56fuzgcz7xhcks.streamlit.app/"
+    
+    # Cliente Groq
+    client_groq = Groq(api_key=st.secrets["GROQ_API_KEY"])
 except Exception as e:
-    st.error(f"Erro: Chaves não encontradas no Secrets. ({e})")
+    st.error(f"Erro Crítico: Chaves não encontradas no Secrets. ({e})")
     st.stop()
 
-# O restante do código volta para o alinhamento normal (sem espaços no início)
 HANDLER_URL = "https://geralja-5bb49.firebaseapp.com/__/auth/handler"
 
-try:
-    from streamlit_js_eval import streamlit_js_eval, get_geolocation
-except ImportError:
-    pass
-# URL do Handler (Pode ficar visível)
-HANDLER_URL = "https://geralja-5bb49.firebaseapp.com/__/auth/handler"
-# Tenta importar bibliotecas extras do arquivo original, se não tiver, segue sem quebrar
-try:
-    from streamlit_js_eval import streamlit_js_eval, get_geolocation
-except ImportError:
-    pass
-# ==============================================================================
-# 1. FUNÇÕES DE INFRAESTRUTURA (COLOQUE NO TOPO)
-# ==============================================================================
+# --- 2. CAMADA DE PERSISTÊNCIA (FIREBASE) ---
+@st.cache_resource
+def conectar_banco_master():
+    if not firebase_admin._apps:
+        try:
+            if "firebase" in st.secrets and "base64" in st.secrets["firebase"]:
+                b64_key = st.secrets["firebase"]["base64"]
+                decoded_json = base64.b64decode(b64_key).decode("utf-8")
+                cred_dict = json.loads(decoded_json)
+                cred = credentials.Certificate(cred_dict)
+                return firebase_admin.initialize_app(cred)
+            else:
+                st.error("⚠️ Configuração 'firebase.base64' não encontrada.")
+                st.stop()
+        except Exception as e:
+            st.error(f"❌ FALHA NA INFRAESTRUTURA: {e}")
+            st.stop()
+    return firebase_admin.get_app()
+
+app_engine = conectar_banco_master()
+db = firestore.client()
+
+# --- 3. FUNÇÕES DE SUPORTE E INFRAESTRUTURA ---
 
 @st.cache_data(ttl=600)
 def carregar_categorias_do_banco():
-    """Lê a lista oficial direto do documento configuracoes/categorias"""
     try:
         doc = db.collection("configuracoes").document("categorias").get()
         if doc.exists:
             return doc.to_dict().get("lista", [])
         return []
     except Exception as e:
-        st.error(f"Erro ao carregar categorias: {e}")
         return []
 
 def processar_ia_suprema(termo):
-    """O conselho de 4 IAs que garante a categoria exata do banco"""
     if not termo: return None
-    
-    # Busca a lista atualizada
     categorias = carregar_categorias_do_banco()
     
-    # IA 1: FUZZY (Local e Rápida)
-    # Se o que ele digitou for 90% parecido com algo no banco, já retorna
-    from fuzzywuzzy import process
+    # IA 1: FUZZY Rápida
     match, score = process.extractOne(termo, categorias)
     if score > 90: return match
 
-    # IA 2: GROQ (Llama 3)
+    # IA 2: GROQ
     try:
         prompt = f"Categorize '{termo}' em apenas UMA destas opções: {categorias}. Responda apenas o nome."
         res = client_groq.chat.completions.create(
@@ -91,42 +101,46 @@ def processar_ia_suprema(termo):
         if resp in categorias: return resp
     except: pass
 
-    # IA 3: GEMINI (Google)
+    # IA 3: GEMINI
     try:
         model = genai.GenerativeModel('gemini-pro')
         res = model.generate_content(f"Selecione a categoria exata de '{termo}' na lista {categorias}")
         if res.text.strip() in categorias: return res.text.strip()
     except: pass
 
-    # IA 4: ÚLTIMA CHANCE (Fuzzy com score baixo)
     return match if score > 50 else "Ajudante Geral"
-# ------------------------------------------------------------------------------
-# 1. CONFIGURAÇÃO DE AMBIENTE E PERFORMANCE
-# ------------------------------------------------------------------------------
-st.set_page_config(
-    page_title="GeralJá | Criando Soluções",
-    page_icon="🇧🇷",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
 
-# --- FUNCIONALIDADE DO ARQUIVO: TEMA MANUAL ---
-if 'tema_claro' not in st.session_state:
-    st.session_state.tema_claro = False
+def calcular_distancia_real(lat1, lon1, lat2, lon2):
+    try:
+        if None in [lat1, lon1, lat2, lon2]: return 999.0
+        R = 6371.0
+        dlat, dlon = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
+        a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+        return round(R * c, 1)
+    except: return 999.0
 
-# Mantém os menus escondidos
-st.markdown("""
-    <style>
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        header {visibility: hidden;}
-    </style>
-""", unsafe_allow_html=True)
-# --- LOGICA DE RECEPÇÃO DO GOOGLE (COLOCAR NO TOPO DO ARQUIVO) ---
-from google_auth_oauthlib.flow import Flow
-import requests
+def limpar_whatsapp(numero):
+    num = re.sub(r'\D', '', str(numero))
+    if not num.startswith('55') and len(num) >= 10:
+        num = f"55{num}"
+    return num
 
-# Função para criar o fluxo de troca de tokens
+def normalizar(texto):
+    if not texto: return ""
+    return "".join(ch for ch in unicodedata.normalize('NFKD', str(texto)) 
+                   if unicodedata.category(ch) != 'Mn').lower().strip()
+
+# --- 4. POLÍTICAS E CONSTANTES ---
+CATEGORIAS_OFICIAIS = carregar_categorias_do_banco() or ["Ajudante Geral", "Eletricista", "Encanador", "Pedreiro"]
+
+CONCEITOS_EXPANDIDOS = {
+    "pizza": "Pizzaria", "fome": "Pizzaria", "lanche": "Lanchonete", "vazamento": "Encanador",
+    "cano": "Encanador", "curto": "Eletricista", "luz": "Eletricista", "carro": "Mecânico",
+    "pet": "Pet Shop", "faxina": "Diarista", "jardim": "Jardineiro"
+}
+
+# --- 5. LOGICA DE LOGIN GOOGLE ---
 def get_google_flow():
     g_auth = st.secrets["google_auth"]
     client_config = {
@@ -144,322 +158,58 @@ def get_google_flow():
         redirect_uri=g_auth["redirect_uri"]
     )
 
-# Verifica se o Google enviou o código na URL (Query Params)
 query_params = st.query_params
 if "code" in query_params:
     try:
-        # 1. Troca o código por um token de acesso
         flow = get_google_flow()
         flow.fetch_token(code=query_params["code"])
         session = flow.authorized_session()
-        
-        # 2. Pega os dados reais do usuário no Google
         user_info = session.get('https://www.googleapis.com/userinfo').json()
         
         email_google = user_info.get("email")
-        nome_google = user_info.get("name")
-        foto_google = user_info.get("picture")
-
-        # 3. Limpa a URL (remove o código para não dar erro ao atualizar)
         st.query_params.clear()
-
-        # 4. Busca no Firebase se esse e-mail já é parceiro
+        
         pro_ref = db.collection("profissionais").where("email", "==", email_google).limit(1).get()
-
         if pro_ref:
-            # ✅ USUÁRIO JÁ CADASTRADO: Loga ele direto
-            dados = pro_ref[0].to_dict()
             st.session_state.auth = True
-            st.session_state.user_id = pro_ref[0].id # O WhatsApp dele
-            st.success(f"Logado com sucesso como {dados.get('nome')}!")
-            time.sleep(1)
+            st.session_state.user_id = pro_ref[0].id
             st.rerun()
         else:
-            # ✨ USUÁRIO NOVO: Prepara o pre-cadastro para a Aba 1
-            st.session_state.pre_cadastro = {
-                "email": email_google,
-                "nome": nome_google,
-                "foto": foto_google
-            }
-            st.toast(f"Olá {nome_google}! Complete seu cadastro profissional abaixo.")
-            # Você pode forçar a ida para a aba de cadastro aqui se quiser
-            
+            st.session_state.pre_cadastro = {"email": email_google, "nome": user_info.get("name"), "foto": user_info.get("picture")}
+            st.toast("Complete seu cadastro profissional!")
     except Exception as e:
-        st.error(f"Erro ao processar login do Google: {e}")
-# ------------------------------------------------------------------------------
-# 2. CAMADA DE PERSISTÊNCIA (FIREBASE)
-# ------------------------------------------------------------------------------
-@st.cache_resource
-def conectar_banco_master():
-    if not firebase_admin._apps:
-        try:
-            # Pega do grupo [firebase] que configuramos no Secrets
-            if "firebase" in st.secrets and "base64" in st.secrets["firebase"]:
-                b64_key = st.secrets["firebase"]["base64"]
-                decoded_json = base64.b64decode(b64_key).decode("utf-8")
-                cred_dict = json.loads(decoded_json)
-                cred = credentials.Certificate(cred_dict)
-                return firebase_admin.initialize_app(cred)
-            else:
-                st.error("⚠️ Configuração 'firebase.base64' não encontrada nos Secrets.")
-                st.stop()
-        except Exception as e:
-            st.error(f"❌ FALHA NA INFRAESTRUTURA: {e}")
-            st.stop()
-    return firebase_admin.get_app()
+        st.error(f"Erro Login Google: {e}")
 
-app_engine = conectar_banco_master()
-
-if app_engine:
-    db = firestore.client()
-else:
-    st.error("Erro ao conectar ao Firebase. Verifique suas configurações.")
-    st.stop()
-
-# --- FUNÇÕES DE SUPORTE (Mantenha fora de blocos IF/ELSE para funcionar no app todo) ---
-
-def buscar_opcoes_dinamicas(documento, padrao):
-    """
-    Busca listas de categorias ou tipos na coleção 'configuracoes'.
-    """
-    try:
-        doc = db.collection("configuracoes").document(documento).get()
-        if doc.exists:
-            dados = doc.to_dict()
-            return dados.get("lista", padrao)
-        return padrao
-    except Exception as e:
-        # Se houver erro ou o banco estiver vazio, retorna a lista padrão
-        return padrao
-        # --- COLOCAR LOGO ABAIXO DA CONEXÃO DB ---
-
+# --- 6. DESIGN SYSTEM ---
 if 'modo_noite' not in st.session_state:
-    st.session_state.modo_noite = True 
+    st.session_state.modo_noite = True
 
-# Layout do topo (Toggle)
+st.markdown(f"""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+    * {{ font-family: 'Inter', sans-serif; }}
+    #MainMenu, footer, header {{ visibility: hidden; }}
+    .stApp {{ background-color: {"#0D1117" if st.session_state.modo_noite else "#F8FAFC"} !important; }}
+    .header-container {{ background: white; padding: 40px 20px; border-radius: 0 0 50px 50px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border-bottom: 8px solid #FF8C00; margin-bottom: 25px; }}
+    .logo-azul {{ color: #0047AB; font-weight: 900; font-size: 50px; letter-spacing: -2px; }}
+    .logo-laranja {{ color: #FF8C00; font-weight: 900; font-size: 50px; letter-spacing: -2px; }}
+</style>
+""", unsafe_allow_html=True)
+
+# Topo
 c_t1, c_t2 = st.columns([2, 8])
 with c_t1:
     st.session_state.modo_noite = st.toggle("🌙 Modo Noite", value=st.session_state.modo_noite)
 
-# Bloco CSS Dinâmico
-estilo_dinamico = f"""
-<style>
-    /* Ajustes Mobile */
-    @media (max-width: 640px) {{
-        .main .block-container {{ padding: 1rem !important; }}
-        h1 {{ font-size: 1.8rem !important; }}
-    }}
-
-  /* Lógica de Cores - Estilo Branco Neve */
-    .stApp {{
-        background-color: {"#0D1117" if st.session_state.modo_noite else "#FFFAFA"} !important;
-        color: {"#FFFFFF" if st.session_state.modo_noite else "#1A1A1B"} !important;
-    }}
-
-    /* Cards Adaptáveis */
-    div[data-testid="stVerticalBlock"] > div[style*="background"] {{
-        background-color: {"#161B22" if st.session_state.modo_noite else "#FFFFFF"} !important;
-        border: 1px solid {"#30363D" if st.session_state.modo_noite else "#E0E0E0"} !important;
-        border-radius: 18px !important;
-    }}
-</style>
-"""
-st.markdown(estilo_dinamico, unsafe_allow_html=True)
-# ==========================================================
-# FUNÇÕES DE SUPORTE (COLE NO TOPO DO ARQUIVO)
-# ==========================================================
-import re
-from urllib.parse import quote
-
-def limpar_whatsapp(numero):
-    """Remove parênteses, espaços e traços do número."""
-    num = re.sub(r'\D', '', str(numero))
-    if not num.startswith('55') and len(num) >= 10:
-        num = f"55{num}"
-    return num
-
-def normalizar(texto):
-    """Remove acentos e deixa tudo em minúsculo para busca."""
-    import unicodedata
-    if not texto: return ""
-    return "".join(ch for ch in unicodedata.normalize('NFKD', texto) 
-                   if unicodedata.category(ch) != 'Mn').lower()
-
-# Verifique se você já tem a função de distância, senão adicione esta:
-def calcular_distancia_real(lat1, lon1, lat2, lon2):
-    import math
-    R = 6371  # Raio da Terra em KM
-    dlat = math.radians(lat2 - lat1)
-    dlon = math.radians(lon2 - lon1)
-    a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
-    return R * c
-
-# --- PROSSEGUIR COM O RESTANTE DO CÓDIGO ---
-
-# ------------------------------------------------------------------------------
-# 3. POLÍTICAS E CONSTANTES
-# ------------------------------------------------------------------------------
-PIX_OFICIAL = "11991853488"
-ZAP_ADMIN = "5511991853488"
-CHAVE_ADMIN = "mumias"
-LAT_REF = -23.5505
-LON_REF = -46.6333
-
-CATEGORIAS_OFICIAIS = [
-    "Encanador", "Eletricista", "Pintor", "Pedreiro", "Gesseiro", "Telhadista", 
-    "Serralheiro", "Vidraceiro", "Marceneiro", "Marmoraria", "Calhas e Rufos", 
-    "Dedetização", "Desentupidora", "Piscineiro", "Jardineiro", "Limpeza de Estofados",
-    "Mecânico", "Borracheiro", "Guincho 24h", "Estética Automotiva", "Lava Jato", 
-    "Auto Elétrica", "Funilaria e Pintura", "Som e Alarme", "Moto Peças", "Auto Peças",
-    "Loja de Roupas", "Calçados", "Loja de Variedades", "Relojoaria", "Joalheria", 
-    "Ótica", "Armarinho/Aviamentos", "Papelaria", "Floricultura", "Bazar", 
-    "Material de Construção", "Tintas", "Madeireira", "Móveis", "Eletrodomésticos",
-    "Pizzaria", "Lanchonete", "Restaurante", "Confeitaria", "Padaria", "Açaí", 
-    "Sorveteria", "Adega", "Doceria", "Hortifruti", "Açougue", "Pastelaria", 
-    "Churrascaria", "Hamburgueria", "Comida Japonesa", "Cafeteria",
-    "Farmácia", "Barbearia/Salão", "Manicure/Pedicure", "Estética Facial", 
-    "Tatuagem/Piercing", "Fitness", "Academia", "Fisioterapia", "Odontologia", 
-    "Clínica Médica", "Psicologia", "Nutricionista", "TI", "Assistência Técnica", 
-    "Celulares", "Informática", "Refrigeração", "Técnico de Fogão", "Técnico de Lavadora", 
-    "Eletrônicos", "Chaveiro", "Montador", "Freteiro", "Carreto", "Motoboy/Entregas",
-    "Pet Shop", "Veterinário", "Banho e Tosa", "Adestrador", "Agropecuária",
-    "Aulas Particulares", "Escola Infantil", "Reforço Escolar", "Idiomas", 
-    "Advocacia", "Contabilidade", "Imobiliária", "Seguros", "Ajudante Geral", 
-    "Diarista", "Cuidador de Idosos", "Babá", "Outro (Personalizado)"
-]
-
-CONCEITOS_EXPANDIDOS = {
-    "pizza": "Pizzaria", "pizzaria": "Pizzaria", "fome": "Pizzaria", "massa": "Pizzaria",
-    "lanche": "Lanchonete", "hamburguer": "Lanchonete", "burger": "Lanchonete", "salgado": "Lanchonete",
-    "comida": "Restaurante", "almoco": "Restaurante", "marmita": "Restaurante", "jantar": "Restaurante",
-    "doce": "Confeitaria", "bolo": "Confeitaria", "pao": "Padaria", "padaria": "Padaria",
-    "acai": "Açaí", "sorvete": "Sorveteria", "cerveja": "Adega", "bebida": "Adega",
-    "roupa": "Loja de Roupas", "moda": "Loja de Roupas", "sapato": "Calçados", "tenis": "Calçados",
-    "presente": "Loja de Variedades", "relogio": "Relojoaria", "joia": "Joalheria",
-    "remedio": "Farmácia", "farmacia": "Farmácia", "cabelo": "Barbearia/Salão", "unha": "Barbearia/Salão",
-    "celular": "Assistência Técnica", "iphone": "Assistência Técnica", "computador": "TI", "pc": "TI",
-    "geladeira": "Refrigeração", "ar condicionado": "Refrigeração", "fogao": "Técnico de Fogão",
-    "tv": "Eletrônicos", "pet": "Pet Shop", "racao": "Pet Shop", "cachorro": "Pet Shop",
-    "vazamento": "Encanador", "cano": "Encanador", "curto": "Eletricista", "luz": "Eletricista",
-    "pintar": "Pintor", "parede": "Pintor", "reforma": "Pedreiro", "piso": "Pedreiro",
-    "telhado": "Telhadista", "solda": "Serralheiro", "vidro": "Vidraceiro", "chave": "Chaveiro",
-    "carro": "Mecânico", "motor": "Mecânico", "pneu": "Borracheiro", "guincho": "Guincho 24h",
-    "frete": "Freteiro", "mudanca": "Freteiro", "faxina": "Diarista", "limpeza": "Diarista",
-    "jardim": "Jardineiro", "piscina": "Piscineiro"
-}
-
-# ------------------------------------------------------------------------------
-# 4. MOTORES DE IA E UTILS
-# ------------------------------------------------------------------------------
-def normalizar_para_ia(texto):
-    if not texto:
-        return ""
-    # Remove acentos e deixa tudo em minúsculo
-    return "".join(c for c in unicodedata.normalize('NFD', str(texto))
-                   if unicodedata.category(c) != 'Mn').lower().strip()
-
-def processar_ia_avancada(texto):
-    if not texto: return "Vazio"
-    t_clean = normalizar_para_ia(texto)
-    
-    # --- 1. SEU CÓDIGO ATUAL (Rápido e sem custo) ---
-    for chave, categoria in CONCEITOS_EXPANDIDOS.items():
-        if re.search(rf"\b{normalizar_para_ia(chave)}\b", t_clean):
-            return categoria
-    
-    for cat in CATEGORIAS_OFICIAIS:
-        if normalizar_para_ia(cat) in t_clean:
-            return cat
-
-    # --- 2. O UPGRADE PARA NOTA 5.0 (IA Groq + Cache) ---
-    try:
-        # Primeiro checa se já perguntamos isso antes (Cache)
-        cache_ref = db.collection("cache_buscas").document(t_clean).get()
-        if cache_ref.exists:
-            return cache_ref.to_dict().get("categoria")
-
-        # Se não sabe, a IA "pensa" e resolve
-        from groq import Groq
-        client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-        prompt = f"O usuário buscou: '{texto}'. Categorias: {CATEGORIAS_OFICIAIS}. Responda apenas o NOME DA CATEGORIA."
-        
-        res = client.chat.completions.create(
-            messages=[{"role": "user", "content": prompt}],
-            model="llama3-8b-8192",
-            temperature=0.1
-        )
-        cat_ia = res.choices[0].message.content.strip()
-
-        # Salva no cache para não gastar mais tokens com esse termo
-        db.collection("cache_buscas").document(t_clean).set({"categoria": cat_ia})
-        return cat_ia
-
-    except:
-        return "NAO_ENCONTRADO" # Se tudo der errado
-
-def calcular_distancia_real(lat1, lon1, lat2, lon2):
-    try:
-        if None in [lat1, lon1, lat2, lon2]: return 999.0
-        R = 6371 
-        dlat, dlon = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
-        a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
-        return round(R * (2 * math.atan2(math.sqrt(a), math.sqrt(1-a))), 1)
-    except: return 999.0
-
-def converter_img_b64(file):
-    if file is None: return ""
-    try: return base64.b64encode(file.read()).decode()
-    except: return ""
-
-# --- FUNCIONALIDADE DO ARQUIVO: O VARREDOR (Rodapé Automático) ---
-def finalizar_e_alinhar_layout():
-    """
-    Esta função atua como um ímã. Puxa o conteúdo e limpa o rodapé.
-    """
-    st.write("---")
-    fechamento_estilo = """
-        <style>
-            .main .block-container { padding-bottom: 5rem !important; }
-            .footer-clean {
-                text-align: center;
-                padding: 20px;
-                opacity: 0.7;
-                font-size: 0.8rem;
-                width: 100%;
-                color: gray;
-            }
-        </style>
-        <div class="footer-clean">
-            <p>🎯 <b>GeralJá</b> - Sistema de Inteligência Local</p>
-            <p>Conectando quem precisa com quem sabe fazer.</p>
-            <p>v3.0 | © 2026 Todos os direitos reservados</p>
-        </div>
-    """
-    st.markdown(fechamento_estilo, unsafe_allow_html=True)
-
-# ------------------------------------------------------------------------------
-# 5. DESIGN SYSTEM
-# ------------------------------------------------------------------------------
-st.markdown("""
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-    * { font-family: 'Inter', sans-serif; }
-    .stApp { background-color: #F8FAFC; }
-    .header-container { background: white; padding: 40px 20px; border-radius: 0 0 50px 50px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border-bottom: 8px solid #FF8C00; margin-bottom: 25px; }
-    .logo-azul { color: #0047AB; font-weight: 900; font-size: 50px; letter-spacing: -2px; }
-    .logo-laranja { color: #FF8C00; font-weight: 900; font-size: 50px; letter-spacing: -2px; }
-</style>
-""", unsafe_allow_html=True)
-
 st.markdown('<div class="header-container"><span class="logo-azul">GERAL</span><span class="logo-laranja">JÁ</span><br><small style="color:#64748B; font-weight:700;">BRASIL ELITE EDITION</small></div>', unsafe_allow_html=True)
 
 lista_abas = ["🔍 BUSCAR", "🚀 CADASTRAR", "👤 MEU PERFIL", "👑 ADMIN", "⭐ FEEDBACK"]
+menu_abas = st.tabs(lista_abas)
+
 comando = st.sidebar.text_input("Comando Secreto", type="password")
 if comando == "abracadabra":
     lista_abas.append("📊 FINANCEIRO")
 
-menu_abas = st.tabs(lista_abas)
 # ==============================================================================
 # --- ABA 0: VITRINE PROFISSIONAL ELITE 3.0 ---
 # ==============================================================================
@@ -1137,6 +887,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
