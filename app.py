@@ -817,10 +817,6 @@ with menu_abas[4]:
         st.success("Obrigado! Sua mensagem foi enviada para nossa equipe.")
         # Em produção, salvaria em uma coleção 'feedbacks'
 
-# ------------------------------------------------------------------------------
-# FINALIZAÇÃO (DO ARQUIVO ORIGINAL)
-# ------------------------------------------------------------------------------
-finalizar_e_alinhar_layout()
 # =========================================================
 # MÓDULO: RODAPÉ BLINDADO (LGPD & SECURITY SHIELD)
 # =========================================================
@@ -888,6 +884,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
