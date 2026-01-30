@@ -286,6 +286,7 @@ with menu_abas[0]:
                 lista_ranking.append(p)
 
         # Ordenar: Mais moedas (Score) e mais perto (Dist)
+        
         lista_ranking.sort(key=lambda x: (-x['score'], x['dist']))
 
         # D. RENDERIZAÇÃO DA VITRINE
@@ -887,6 +888,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
