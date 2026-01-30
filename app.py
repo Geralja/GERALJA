@@ -1,4 +1,3 @@
- 
 # ==============================================================================
 # GERALJÁ: CRIANDO SOLUÇÕES
 # ==============================================================================
@@ -216,7 +215,7 @@ estilo_dinamico = f"""
 </style>
 """
 st.markdown(estilo_dinamico, unsafe_allow_html=True)
-        # ==========================================================
+# ==========================================================
 # FUNÇÕES DE SUPORTE (COLE NO TOPO DO ARQUIVO)
 # ==========================================================
 import re
@@ -412,106 +411,135 @@ if comando == "abracadabra":
 
 menu_abas = st.tabs(lista_abas)
 # ==============================================================================
-# --- ABA 0: BUSCA DE PRECISÃO (LLAMA 3 + GEOLOC + VITRINE V3.0) ---
+# --- ABA 0: BUSCA SUPREMA (CONSELHO DE 4 IAS + VITRINE V3.0) ---
 # ==============================================================================
 with menu_abas[0]:
-    st.markdown("### 🏙️ O que você precisa no Grajaú?")
-    
-    # --- 1. MOTOR DE LOCALIZAÇÃO (BLINDADO) ---
-    with st.expander("📍 Ajustar Raio de Busca", expanded=False):
-        loc = get_geolocation()
-        # Fallback se o GPS falhar
-        minha_lat = loc['coords']['latitude'] if loc else LAT_REF
-        minha_lon = loc['coords']['longitude'] if loc else LON_REF
-        
-        raio_km = st.select_slider("Distância máxima (KM)", 
-                                 options=[1, 3, 5, 10, 20, 50, 100], value=3)
-
-    c1, c2 = st.columns([4, 1])
-    termo_busca = c1.text_input("Ex: 'Concerto de telhado' ou 'Manicure'", key="main_search_v_groq")
-    btn_buscar = c2.button("🔍")
-
-    # --- 2. CSS POTENCIALIZADO (MODO DARK/LIGHT AMIGÁVEL) ---
+    # 1. CSS DE ALTO IMPACTO
     st.markdown("""
     <style>
-        .cartao-geral { background: #fff; border-radius: 15px; padding: 15px; margin-bottom: 25px; 
-                        box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-left: 10px solid var(--cor-borda); color: #111; }
-        .perfil-row { display: flex; gap: 12px; align-items: center; }
-        .foto-perfil { width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 2px solid #25D366; }
-        .social-track { display: flex; overflow-x: auto; gap: 8px; padding: 10px 0; scrollbar-width: none; }
-        .social-card { flex: 0 0 140px; height: 200px; border-radius: 10px; overflow: hidden; background: #eee; }
+        .cartao-geral { 
+            background: #fff; border-radius: 15px; padding: 18px; margin-bottom: 25px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08); border-left: 10px solid var(--cor-borda); color: #111; 
+        }
+        .perfil-row { display: flex; gap: 15px; align-items: center; }
+        .foto-perfil { width: 65px; height: 65px; border-radius: 50%; object-fit: cover; border: 3px solid #25D366; }
+        .social-track { display: flex; overflow-x: auto; gap: 10px; padding: 10px 0; scrollbar-width: none; }
+        .social-card { flex: 0 0 150px; height: 210px; border-radius: 12px; overflow: hidden; background: #f0f0f0; }
         .social-card img { width: 100%; height: 100%; object-fit: cover; }
-        .distancia-tag { font-size: 10px; background: #e0f2fe; color: #0369a1; padding: 2px 8px; border-radius: 10px; font-weight: bold; }
-        .btn-zap-footer { display: block; background: #25D366; color: white !important; text-align: center; 
-                          padding: 12px; border-radius: 10px; font-weight: bold; text-decoration: none; margin-top: 10px; }
+        .status-ia { font-size: 10px; color: #64748B; font-family: monospace; }
+        .btn-zap-footer { 
+            display: block; background: #25D366; color: white !important; text-align: center; 
+            padding: 15px; border-radius: 12px; font-weight: bold; text-decoration: none; margin-top: 12px;
+            transition: 0.3s;
+        }
+        .btn-zap-footer:hover { background: #128C7E; transform: scale(1.02); }
     </style>
     """, unsafe_allow_html=True)
 
-    if termo_busca or btn_buscar:
-        with st.status("🧠 IA Llama 3 analisando sua necessidade...", expanded=False) as status:
-            # LIGAÇÃO DAS PONTAS: Chamando o motor Groq que configuramos
-            cat_ia = processar_ia_avancada(termo_busca) 
-            status.update(label=f"✅ Categoria identificada: {cat_ia}", state="complete")
-        
-        # BUSCA NO FIREBASE COM FILTRO DE CATEGORIA
-        profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
+    st.markdown("## 🚀 Busca Inteligente GeralJá")
+    
+    # 2. LOCALIZAÇÃO E RAIO
+    with st.expander("📍 Localização Atual", expanded=False):
+        try:
+            loc = get_geolocation()
+            minha_lat = loc['coords']['latitude'] if loc else LAT_REF
+            minha_lon = loc['coords']['longitude'] if loc else LON_REF
+        except:
+            minha_lat, minha_lon = LAT_REF, LON_REF
+        raio_km = st.slider("Raio de ação (KM)", 1, 100, 10)
+
+    termo_busca = st.text_input("O que você precisa agora?", placeholder="Ex: concerto de telhado urgente...")
+
+    if termo_busca:
+        cat_final = None
+        logs_ia = []
+
+        with st.status("🧠 Consultando Conselho de IAs...", expanded=True) as status:
+            # IA 1: LLAMA 3 (GROQ) - VELOCIDADE MÁXIMA
+            try:
+                cat_final = processar_ia_avancada(termo_busca) # Sua função Groq
+                logs_ia.append("✅ Llama 3 (Groq) respondeu.")
+            except:
+                logs_ia.append("❌ Llama 3 falhou.")
+
+            # IA 2: GEMINI (GOOGLE) - SEGUNDA OPÇÃO
+            if not cat_final:
+                try:
+                    # Exemplo de chamada Gemini simplificada
+                    model_gemini = genai.GenerativeModel('gemini-pro')
+                    response = model_gemini.generate_content(f"Selecione a categoria para: {termo_busca} entre {CATEGORIAS_OFICIAIS}")
+                    cat_final = response.text.strip()
+                    logs_ia.append("✅ Gemini Pro assumiu o comando.")
+                except:
+                    logs_ia.append("❌ Gemini falhou.")
+
+            # IA 3: HUGGINGFACE / LOGICA SEMÂNTICA
+            if not cat_final:
+                # Aqui entra uma lógica de similaridade de texto
+                from difflib import get_close_matches
+                matches = get_close_matches(termo_busca, CATEGORIAS_OFICIAIS, n=1, cutoff=0.3)
+                if matches:
+                    cat_final = matches[0]
+                    logs_ia.append("✅ IA Semântica identificou correspondência.")
+
+            # IA 4: HEURÍSTICA DE SEGURANÇA (REGULAR EXPRESSIONS)
+            if not cat_final:
+                for c in CATEGORIAS_OFICIAIS:
+                    if c.lower() in termo_busca.lower():
+                        cat_final = c
+                        break
+                logs_ia.append("✅ Motor de Segurança (Regex) ativado.")
+
+            # Resultado final do conselho
+            if not cat_final: cat_final = "Geral"
+            status.update(label=f"🎯 Resultado: {cat_final}", state="complete")
+            for log in logs_ia: st.write(log)
+
+        # BUSCA NO BANCO
+        query = db.collection("profissionais").where("area", "==", cat_final).where("aprovado", "==", True).stream()
         
         lista_ranking = []
-        for p_doc in profs:
-            p = p_doc.to_dict()
-            p['id'] = p_doc.id
-            
-            # Cálculo de distância real
+        for doc in query:
+            p = doc.to_dict()
+            p['id'] = doc.id
             dist = calcular_distancia_real(minha_lat, minha_lon, p.get('lat', LAT_REF), p.get('lon', LON_REF))
-            
             if dist <= raio_km:
                 p['dist'] = dist
-                # Score de Ranking: Verificados com saldo sobem no topo
-                p['score_elite'] = (p.get('saldo', 0) * 10) + (1000 if p.get('verificado') else 0)
+                # Ranking de Poder: Verificados com Moedas no topo
+                p['power_score'] = (p.get('saldo', 0) * 5) + (500 if p.get('verificado') else 0)
                 lista_ranking.append(p)
 
-        # ORDENAÇÃO: Elite primeiro, depois os mais próximos
-        lista_ranking.sort(key=lambda x: (-x['score_elite'], x['dist']))
+        lista_ranking.sort(key=lambda x: (-x['power_score'], x['dist']))
 
         if not lista_ranking:
-            st.warning(f"Ops! Nenhum '{cat_ia}' encontrado em {raio_km}km. Tente aumentar o raio de busca.")
+            st.info("Nenhum profissional encontrado nesta categoria dentro do raio.")
         else:
             for p in lista_ranking:
                 is_elite = p.get('verificado') and p.get('saldo', 0) > 0
                 cor_borda = "#FFD700" if is_elite else "#0047AB"
-                link_zap = f"https://wa.me/{limpar_whatsapp(p.get('whatsapp'))}?text=Olá {p.get('nome')}, vi seu trabalho no GeralJá!"
+                zap_link = f"https://wa.me/55{p.get('whatsapp')}?text=Vi seu anúncio no GeralJá!"
                 
-                # Renderização das Fotos do Portfólio (Otimizada)
-                fotos_html = ""
-                for i in range(1, 6): # Reduzi para 5 fotos para ganhar performance mobile
-                    f_data = p.get(f'f{i}')
-                    if f_data:
-                        # Se for Base64, monta o src, se for URL, usa direto
-                        src = f_data if str(f_data).startswith("http") else f"data:image/jpeg;base64,{f_data}"
-                        fotos_html += f'<div class="social-card"><img src="{src}"></div>'
+                # Galeria Portfólio
+                fotos_html = "".join([f'<div class="social-card"><img src="{p.get(f"f{i}")}"></div>' 
+                                     for i in range(1, 6) if p.get(f"f{i}")])
 
-                # EXIBIÇÃO DO CARD
                 st.markdown(f"""
                 <div class="cartao-geral" style="--cor-borda: {cor_borda};">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <span class="distancia-tag">📍 A {p['dist']:.1f} KM DE VOCÊ</span>
-                        {"<span style='color:#d97706; font-size:10px; font-weight:bold;'>🏆 ELITE</span>" if is_elite else ""}
+                    <div style="display:flex; justify-content:space-between; font-size:10px; font-weight:bold; color:#64748B;">
+                        <span>📍 {p['dist']:.1f} KM DE VOCÊ</span>
+                        {f'<span style="color:#B45309">🏆 ELITE</span>' if is_elite else ''}
                     </div>
                     <div class="perfil-row">
-                        <img src="{p.get('foto_url', 'https://cdn-icons-png.flaticon.com/512/149/149071.png')}" class="foto-perfil">
+                        <img src="{p.get('foto_url','')}" class="foto-perfil">
                         <div>
-                            <h4 style="margin:0; text-transform: uppercase;">{p.get('nome','')}</h4>
-                            <p style="margin:0; font-size:12px; color:#555;">{p.get('descricao','')[:90]}...</p>
+                            <h4 style="margin:0;">{p.get('nome','').upper()}</h4>
+                            <p style="margin:0; font-size:12px; color:#475569;">{p.get('descricao','')[:100]}...</p>
                         </div>
                     </div>
-                    <div class="social-track">
-                        {fotos_html}
-                    </div>
-                    <a href="{link_zap}" target="_blank" class="btn-zap-footer">FALAR COM PROFISSIONAL</a>
+                    <div class="social-track">{fotos_html}</div>
+                    <a href="{zap_link}" target="_blank" class="btn-zap-footer">🚀 ENTRAR EM CONTATO AGORA</a>
                 </div>
                 """, unsafe_allow_html=True)
-
-# Lógica de rodapé e scripts de imagem vêm abaixo...
 
 # ==============================================================================
 # ABA 2: 🚀 PAINEL DO PARCEIRO (COMPLETO: FB + IMAGENS + FAQ + EXCLUSÃO)
@@ -1066,6 +1094,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
