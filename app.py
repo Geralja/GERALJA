@@ -51,7 +51,55 @@ try:
     from streamlit_js_eval import streamlit_js_eval, get_geolocation
 except ImportError:
     pass
+# ==============================================================================
+# 1. FUNÇÕES DE INFRAESTRUTURA (COLOQUE NO TOPO)
+# ==============================================================================
 
+@st.cache_data(ttl=600)
+def carregar_categorias_do_banco():
+    """Lê a lista oficial direto do documento configuracoes/categorias"""
+    try:
+        doc = db.collection("configuracoes").document("categorias").get()
+        if doc.exists:
+            return doc.to_dict().get("lista", [])
+        return []
+    except Exception as e:
+        st.error(f"Erro ao carregar categorias: {e}")
+        return []
+
+def processar_ia_suprema(termo):
+    """O conselho de 4 IAs que garante a categoria exata do banco"""
+    if not termo: return None
+    
+    # Busca a lista atualizada
+    categorias = carregar_categorias_do_banco()
+    
+    # IA 1: FUZZY (Local e Rápida)
+    # Se o que ele digitou for 90% parecido com algo no banco, já retorna
+    from fuzzywuzzy import process
+    match, score = process.extractOne(termo, categorias)
+    if score > 90: return match
+
+    # IA 2: GROQ (Llama 3)
+    try:
+        prompt = f"Categorize '{termo}' em apenas UMA destas opções: {categorias}. Responda apenas o nome."
+        res = client_groq.chat.completions.create(
+            messages=[{"role": "user", "content": prompt}],
+            model="llama3-8b-8192", temperature=0
+        )
+        resp = res.choices[0].message.content.strip()
+        if resp in categorias: return resp
+    except: pass
+
+    # IA 3: GEMINI (Google)
+    try:
+        model = genai.GenerativeModel('gemini-pro')
+        res = model.generate_content(f"Selecione a categoria exata de '{termo}' na lista {categorias}")
+        if res.text.strip() in categorias: return res.text.strip()
+    except: pass
+
+    # IA 4: ÚLTIMA CHANCE (Fuzzy com score baixo)
+    return match if score > 50 else "Ajudante Geral"
 # ------------------------------------------------------------------------------
 # 1. CONFIGURAÇÃO DE AMBIENTE E PERFORMANCE
 # ------------------------------------------------------------------------------
@@ -1092,6 +1140,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
