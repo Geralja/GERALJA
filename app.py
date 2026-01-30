@@ -461,132 +461,129 @@ if comando == "abracadabra":
 
 menu_abas = st.tabs(lista_abas)
 # ==============================================================================
-# --- ABA 0: BUSCA SUPREMA (CONSELHO DE 4 IAS + VITRINE V3.0) ---
+# --- ABA 0: VITRINE PROFISSIONAL ELITE 3.0 ---
 # ==============================================================================
 with menu_abas[0]:
-    # 1. CSS MODERNO (DESIGN SYSTEM ELITE)
+    # 1. DESIGN SYSTEM (CSS) - Isso transforma texto em interface de App
     st.markdown("""
     <style>
+        .vitrine-container { font-family: 'Inter', sans-serif; }
         .cartao-geral { 
-            background: #fff; border-radius: 20px; padding: 20px; margin-bottom: 25px; 
-            box-shadow: 0 15px 35px rgba(0,0,0,0.1); border-left: 12px solid var(--cborda, #0047AB); 
-            transition: 0.3s; color: #1e293b;
+            background: #ffffff; border-radius: 20px; padding: 20px; margin-bottom: 25px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05); border-left: 10px solid var(--cborda, #0047AB); 
+            color: #1e293b; position: relative; overflow: hidden;
         }
-        .cartao-geral:hover { transform: translateY(-5px); box-shadow: 0 20px 40px rgba(0,0,0,0.15); }
-        .perfil-row { display: flex; gap: 18px; align-items: center; }
-        .foto-perfil { width: 75px; height: 75px; border-radius: 50%; object-fit: cover; border: 3px solid #25D366; padding: 2px; }
-        .distancia-tag { background: #f1f5f9; color: #64748b; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 800; }
-        .elite-tag { background: linear-gradient(90deg, #FFD700, #FFA500); color: #fff; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 800; }
+        .elite-glow {
+            position: absolute; top: 0; right: 0; width: 100px; height: 100px;
+            background: linear-gradient(45deg, transparent, rgba(255,215,0,0.1));
+        }
+        .perfil-row { display: flex; gap: 15px; align-items: center; }
+        .foto-perfil { 
+            width: 70px; height: 70px; border-radius: 50%; object-fit: cover; 
+            border: 3px solid #25D366; background: #f1f5f9;
+        }
+        .distancia-tag { background: #f1f5f9; color: #64748b; padding: 5px 12px; border-radius: 50px; font-size: 11px; font-weight: 700; }
+        .elite-tag { background: #FFD700; color: #000; padding: 5px 12px; border-radius: 50px; font-size: 11px; font-weight: 800; }
+        
+        /* Galeria de Fotos Estilo Instagram */
         .social-track { display: flex; overflow-x: auto; gap: 12px; padding: 15px 0; scrollbar-width: none; }
-        .social-card { flex: 0 0 160px; height: 220px; border-radius: 15px; overflow: hidden; background: #e2e8f0; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-        .social-card img { width: 100%; height: 100%; object-fit: cover; }
+        .social-track::-webkit-scrollbar { display: none; }
+        .social-card { flex: 0 0 140px; height: 190px; border-radius: 15px; overflow: hidden; background: #f1f5f9; }
+        .social-card img { width: 100%; height: 100%; object-fit: cover; transition: 0.3s; }
+        .social-card img:hover { transform: scale(1.1); }
+
         .btn-zap { 
-            display: flex; align-items: center; justify-content: center; gap: 8px;
-            background: #25D366; color: white !important; text-align: center; 
-            padding: 16px; border-radius: 15px; font-weight: 900; text-decoration: none; 
-            margin-top: 15px; font-size: 16px; transition: 0.3s;
+            display: block; background: #25D366; color: white !important; text-align: center; 
+            padding: 16px; border-radius: 15px; font-weight: 800; text-decoration: none; 
+            margin-top: 15px; font-size: 15px; transition: 0.3s;
         }
-        .btn-zap:hover { background: #128C7E; transform: scale(1.02); }
+        .btn-zap:hover { background: #128C7E; transform: translateY(-2px); }
     </style>
     """, unsafe_allow_html=True)
 
-    # 2. CABEÇALHO DINÂMICO
-    col_l, col_r = st.columns([7, 3])
-    with col_l:
-        st.markdown("## ✨ O que você procura?")
-        termo_busca = st.text_input("", placeholder="Ex: Preciso de um encanador urgente...", label_visibility="collapsed")
-    with col_r:
-        raio_km = st.select_slider("Raio (KM)", options=[1, 5, 10, 20, 50, 100], value=10)
-
-    # 3. PROCESSAMENTO DA BUSCA
+    # 2. INTERFACE DE BUSCA
+    st.markdown("### 🔍 Encontre o melhor no Grajaú")
+    termo_busca = st.text_input("", placeholder="O que você precisa? (ex: consertar pia)", label_visibility="collapsed")
+    
+    col_dist, col_cat = st.columns([1, 1])
+    with col_dist:
+        raio_km = st.select_slider("Distância máxima", options=[2, 5, 10, 20, 50], value=10)
+    
     if termo_busca:
-        # Carrega categorias reais do banco para a IA não errar o nome
-        CATEGORIAS_OFICIAIS = carregar_categorias_do_banco() 
-        
-        with st.status("🧠 Inteligência GeralJá analisando...", expanded=False) as status:
-            cat_final = processar_ia_suprema(termo_busca) # Aquela função que sincroniza com seu Firebase
-            status.update(label=f"🎯 Categoria encontrada: {cat_final}", state="complete")
+        # A. IA RESOLVENDO A CATEGORIA
+        with st.status("🧠 Consultando especialistas...", expanded=False) as status:
+            cat_final = processar_ia_suprema(termo_busca)
+            status.update(label=f"🎯 Categoria: {cat_final}", state="complete")
 
-        # 4. QUERY NO FIREBASE (FILTRADA)
+        # B. LOCALIZAÇÃO DO USUÁRIO
         try:
-            # Pega localização do usuário ou padrão
             loc = get_geolocation()
             m_lat = loc['coords']['latitude'] if loc else LAT_REF
             m_lon = loc['coords']['longitude'] if loc else LON_REF
+        except:
+            m_lat, m_lon = LAT_REF, LON_REF
 
-            # Busca no banco profissionais da categoria e aprovados
-            docs = db.collection("profissionais").where("area", "==", cat_final).where("aprovado", "==", True).stream()
-            
-            lista_resultados = []
-            for d in docs:
-                p = d.to_dict()
-                # Cálculo de distância real
-                dist = calcular_distancia_real(m_lat, m_lon, p.get('lat', LAT_REF), p.get('lon', LON_REF))
+        # C. BUSCA NO FIREBASE
+        docs = db.collection("profissionais").where("area", "==", cat_final).where("aprovado", "==", True).stream()
+        
+        lista_ranking = []
+        for d in docs:
+            p = d.to_dict()
+            dist = calcular_distancia_real(m_lat, m_lon, p.get('lat', LAT_REF), p.get('lon', LON_REF))
+            if dist <= raio_km:
+                p['dist'] = dist
+                p['score'] = (p.get('saldo', 0) * 5) + (500 if p.get('verificado') else 0)
+                lista_ranking.append(p)
+
+        # Ordenar: Mais moedas (Score) e mais perto (Dist)
+        lista_ranking.sort(key=lambda x: (-x['score'], x['dist']))
+
+        # D. RENDERIZAÇÃO DA VITRINE
+        if not lista_ranking:
+            st.warning(f"Nenhum '{cat_final}' encontrado neste raio. Tente aumentar a distância!")
+        else:
+            for prof in lista_ranking:
+                is_elite = prof.get('verificado') and prof.get('saldo', 0) > 0
+                cor_borda = "#FFD700" if is_elite else "#0047AB"
                 
-                if dist <= raio_km:
-                    p['dist'] = dist
-                    # Score de ranking: Verificados e com saldo no topo
-                    p['ranking'] = (p.get('saldo', 0) * 10) + (1000 if p.get('verificado') else 0)
-                    lista_resultados.append(p)
+                # Trata o WhatsApp
+                zap_link = re.sub(r'\D', '', str(prof.get('whatsapp', '')))
+                if not zap_link.startswith('55'): zap_link = f"55{zap_link}"
+                
+                # Monta Galeria de Fotos (f1 a f5)
+                fotos_html = ""
+                for i in range(1, 6):
+                    f_data = prof.get(f'f{i}')
+                    if f_data and len(str(f_data)) > 50:
+                        src = f_data if str(f_data).startswith("http") else f"data:image/jpeg;base64,{f_data}"
+                        fotos_html += f'<div class="social-card"><img src="{src}"></div>'
 
-            # Ordena por Ranking (Melhores primeiro) e depois por Distância
-            lista_resultados.sort(key=lambda x: (-x['ranking'], x['dist']))
-
-            # 5. EXIBIÇÃO DOS CARDS (A VITRINE)
-            if not lista_resultados:
-                st.info(f"Ainda não temos profissionais de '{cat_final}' nesta região. Tente aumentar o raio!")
-            else:
-                for prof in lista_resultados:
-                    is_elite = prof.get('verificado') and prof.get('saldo', 0) > 0
-                    cor_borda = "#FFD700" if is_elite else "#0047AB"
-                    
-                    # Limpeza do WhatsApp para o Link
-                    zap_limpo = re.sub(r'\D', '', str(prof.get('whatsapp', '')))
-                    if not zap_limpo.startswith('55'): zap_limpo = f"55{zap_limpo}"
-                    
-                    # Montagem da Galeria (Fotos f1 até f5)
-                    galeria_html = ""
-                    for i in range(1, 6):
-                        img_path = prof.get(f"f{i}")
-                        if img_path and len(str(img_path)) > 50:
-                            # Se for Base64, coloca o prefixo, se for URL, usa direto
-                            src = img_path if str(img_path).startswith("http") else f"data:image/jpeg;base64,{img_path}"
-                            galeria_html += f'<div class="social-card"><img src="{src}"></div>'
-
-                    # CARD HTML
-                    st.markdown(f"""
-                    <div class="cartao-geral" style="--cborda: {cor_borda};">
-                        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                            <span class="distancia-tag">📍 {prof['dist']:.1f} KM DE VOCÊ</span>
-                            {"<span class='elite-tag'>🏆 PROFISSIONAL ELITE</span>" if is_elite else ""}
-                        </div>
-                        <div class="perfil-row">
-                            <img src="{prof.get('foto_url', 'https://cdn-icons-png.flaticon.com/512/149/149071.png')}" class="foto-perfil">
-                            <div>
-                                <h3 style="margin:0; color:#0f172a; font-size:20px;">{prof.get('nome', '').upper()}</h3>
-                                <p style="margin:0; color:#64748b; font-size:14px; font-weight:600;">{prof.get('area', 'Profissional')}</p>
-                            </div>
-                        </div>
-                        <div style="margin-top:12px; font-size:14px; color:#475569;">
-                            {prof.get('descricao', 'Sem descrição disponível.')[:120]}...
-                        </div>
-                        <div class="social-track">
-                            {galeria_html if galeria_html else '<p style="color:#cbd5e1; font-size:12px;">Galeria de fotos em breve...</p>'}
-                        </div>
-                        <a href="https://wa.me/{zap_limpo}?text=Olá {prof.get('nome')}, vi seu perfil no GeralJá e gostaria de um orçamento!" 
-                           target="_blank" class="btn-zap">
-                           <span>💬 CONTATO VIA WHATSAPP</span>
-                        </a>
+                # HTML DO CARD (Onde a mágica acontece)
+                st.markdown(f"""
+                <div class="cartao-geral" style="--cborda: {cor_borda};">
+                    <div class="elite-glow"></div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+                        <span class="distancia-tag">📍 {prof['dist']:.1f} KM</span>
+                        {"<span class='elite-tag'>🏆 ELITE</span>" if is_elite else ""}
                     </div>
-                    """, unsafe_allow_html=True)
-        except Exception as e:
-            st.error(f"Erro na busca: {e}")
-
-    else:
-        # TELA INICIAL (SUGESTÕES)
-        st.info("💡 Dica: Digite o que você precisa ou o nome de um serviço.")
-        st.image("https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?auto=format&fit=crop&w=800&q=80", use_container_width=True, caption="Conectando o Grajaú e Região")
-
+                    <div class="perfil-row">
+                        <img src="{prof.get('foto_url', 'https://cdn-icons-png.flaticon.com/512/149/149071.png')}" class="foto-perfil">
+                        <div>
+                            <h4 style="margin:0; font-size:18px; color:#0f172a;">{prof.get('nome', '').upper()}</h4>
+                            <p style="margin:0; font-size:13px; color:#64748b; font-weight:600;">{prof.get('area')}</p>
+                        </div>
+                    </div>
+                    <div style="margin-top:10px; font-size:14px; color:#475569; line-height:1.4;">
+                        {prof.get('descricao', '')[:110]}...
+                    </div>
+                    <div class="social-track">
+                        {fotos_html}
+                    </div>
+                    <a href="https://wa.me/{zap_link}?text=Olá, vi seu perfil no GeralJá!" target="_blank" class="btn-zap">
+                        SOLICITAR ORÇAMENTO AGORA
+                    </a>
+                </div>
+                """, unsafe_allow_html=True)
 # ==============================================================================
 # ABA 2: 🚀 PAINEL DO PARCEIRO (COMPLETO: FB + IMAGENS + FAQ + EXCLUSÃO)
 # ==============================================================================
@@ -1140,6 +1137,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
