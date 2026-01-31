@@ -1,5 +1,6 @@
+ 
 # ==============================================================================
-# GERALJÁ: SISTEMA DE INTELIGÊNCIA LOCAL V3.0 - BRASIL ELITE EDITION
+# GERALJÁ: CRIANDO SOLUÇÕES
 # ==============================================================================
 import streamlit as st
 import firebase_admin
@@ -10,22 +11,11 @@ import math
 import re
 import time
 import pandas as pd
-from datetime import datetime
+from datetime import datetime 
 import pytz
-import unicodedata
-import requests
-from groq import Groq
-from fuzzywuzzy import process
-import google.generativeai as genai
 from streamlit_js_eval import streamlit_js_eval, get_geolocation
-from google_auth_oauthlib.flow import Flow
-
-# --- 1. CONFIGURAÇÃO DE AMBIENTE E PERFORMANCE ---
-st.set_page_config(
-    page_title="GeralJá | Criando Soluções",
-    page_icon="🇧🇷",
-    layout="wide",
-    initial_sidebar_state="collapsed"
+import unicodedata
+from groq import Groq # <--- Novo
 
 # --- ADICIONE ESTES 3 PARA O NÍVEL 5.0 ---
 from groq import Groq                # Para a IA avançada
@@ -61,56 +51,16 @@ try:
 except ImportError:
     pass
 
-is_elite = prof.get('verificado') and prof.get('saldo', 0) > 0
-cor_borda = "#FFD700" if is_elite else "#0047AB"
+# ------------------------------------------------------------------------------
+# 1. CONFIGURAÇÃO DE AMBIENTE E PERFORMANCE
+# ------------------------------------------------------------------------------
+st.set_page_config(
+    page_title="GeralJá | Criando Soluções",
+    page_icon="🇧🇷",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
 
-# Trata o WhatsApp (Limpeza de números)
-zap_link = re.sub(r'\D', '', str(prof.get('whatsapp', '')))
-if not zap_link.startswith('55'): zap_link = f"55{zap_link}"
-
-# Monta Galeria de Fotos (Sempre limpa a cada loop)
-fotos_html = ""
-for i in range(1, 6):
-    f_data = prof.get(f'f{i}')
-    if f_data and len(str(f_data)) > 50:
-        src = f_data if str(f_data).startswith("http") else f"data:image/jpeg;base64,{f_data}"
-        fotos_html += f'<div class="social-card"><img src="{src}"></div>'
-
-# AGORA O BLOCO HTML COMPLETO E FECHADO
-st.markdown(f"""
-<div class="cartao-geral" style="--cborda: {cor_borda}; border-left: 10px solid {cor_borda}; background: white; padding: 20px; border-radius: 20px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-    <div class="elite-glow"></div>
-    
-    <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
-        <span class="distancia-tag" style="background: #f1f5f9; padding: 5px 10px; border-radius: 50px; font-size: 11px; font-weight: bold; color: #64748b;">
-            📍 {prof['dist']:.1f} KM
-        </span>
-        {"<span class='elite-tag' style='background:#FFD700; color:black; padding:5px 10px; border-radius:50px; font-size:11px; font-weight:bold;'>🏆 ELITE</span>" if is_elite else ""}
-    </div>
-
-    <div class="perfil-row" style="display: flex; gap: 15px; align-items: center;">
-        <img src="{prof.get('foto_url', 'https://cdn-icons-png.flaticon.com/512/149/149071.png')}" 
-             class="foto-perfil" style="width: 70px; height: 70px; border-radius: 50%; object-fit: cover; border: 3px solid #25D366;">
-        <div>
-            <h4 style="margin:0; font-size:18px; color:#0f172a; font-family: 'Inter', sans-serif;">{prof.get('nome', '').upper()}</h4>
-            <p style="margin:0; font-size:13px; color:#64748b; font-weight:600;">{prof.get('area', 'Profissional')}</p>
-        </div>
-    </div>
-
-    <div style="margin-top:10px; font-size:14px; color:#475569; line-height:1.4; font-family: 'Inter', sans-serif;">
-        {prof.get('descricao', 'Profissional parceiro do ecossistema GeralJá Brasil.')[:150]}...
-    </div>
-
-    <div class="social-track" style="display: flex; overflow-x: auto; gap: 10px; margin-top: 10px;">
-        {fotos_html}
-    </div>
-
-    <a href="https://wa.me/{zap_link}?text=Olá, vi seu perfil no GeralJá!" target="_blank" class="btn-zap" 
-       style="display: block; background: #25D366; color: white !important; text-align: center; padding: 15px; border-radius: 12px; font-weight: bold; text-decoration: none; margin-top: 15px;">
-        SOLICITAR ORÇAMENTO AGORA
-    </a>
-</div>
-""", unsafe_allow_html=True)
 # --- FUNCIONALIDADE DO ARQUIVO: TEMA MANUAL ---
 if 'tema_claro' not in st.session_state:
     st.session_state.tema_claro = False
@@ -350,91 +300,112 @@ CONCEITOS_EXPANDIDOS = {
     "jardim": "Jardineiro", "piscina": "Piscineiro"
 }
 
-# --- 4. MOTORES DE INTELIGÊNCIA (AS 4 IAS) ---
+# ------------------------------------------------------------------------------
+# 4. MOTORES DE IA E UTILS
+# ------------------------------------------------------------------------------
+def normalizar_para_ia(texto):
+    if not texto:
+        return ""
+    # Remove acentos e deixa tudo em minúsculo
+    return "".join(c for c in unicodedata.normalize('NFD', str(texto))
+                   if unicodedata.category(c) != 'Mn').lower().strip()
 
-@st.cache_data(ttl=600)
-def carregar_categorias_do_banco():
-    """Lê a lista oficial do Firestore"""
-    try:
-        doc = db.collection("configuracoes").document("categorias").get()
-        return doc.to_dict().get("lista", []) if doc.exists else []
-    except:
-        return []
-
-def processar_ia_suprema(termo):
-    """Motor Híbrido: Busca Exata > Cache > Groq > Gemini > Fuzzy"""
-    if not termo: return None
-    t_clean = "".join(c for c in unicodedata.normalize('NFD', str(termo)) if unicodedata.category(c) != 'Mn').lower().strip()
-    categorias = carregar_categorias_do_banco()
+def processar_ia_avancada(texto):
+    if not texto: return "Vazio"
+    t_clean = normalizar_para_ia(texto)
     
-    # 1. Busca Exata
-    for cat in categorias:
-        if t_clean == "".join(c for c in unicodedata.normalize('NFD', str(cat)) if unicodedata.category(c) != 'Mn').lower().strip():
+    # --- 1. SEU CÓDIGO ATUAL (Rápido e sem custo) ---
+    for chave, categoria in CONCEITOS_EXPANDIDOS.items():
+        if re.search(rf"\b{normalizar_para_ia(chave)}\b", t_clean):
+            return categoria
+    
+    for cat in CATEGORIAS_OFICIAIS:
+        if normalizar_para_ia(cat) in t_clean:
             return cat
-    
-    # 2. IA GROQ (Rápida)
+
+    # --- 2. O UPGRADE PARA NOTA 5.0 (IA Groq + Cache) ---
     try:
-        client = Groq(api_key=GROQ_KEY)
+        # Primeiro checa se já perguntamos isso antes (Cache)
+        cache_ref = db.collection("cache_buscas").document(t_clean).get()
+        if cache_ref.exists:
+            return cache_ref.to_dict().get("categoria")
+
+        # Se não sabe, a IA "pensa" e resolve
+        from groq import Groq
+        client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+        prompt = f"O usuário buscou: '{texto}'. Categorias: {CATEGORIAS_OFICIAIS}. Responda apenas o NOME DA CATEGORIA."
+        
         res = client.chat.completions.create(
-            messages=[{"role": "user", "content": f"Categorize '{termo}' em apenas UMA das opções: {categorias}. Responda apenas o nome exato."}],
-            model="llama3-8b-8192", temperature=0
+            messages=[{"role": "user", "content": prompt}],
+            model="llama3-8b-8192",
+            temperature=0.1
         )
-        resp = res.choices[0].message.content.strip()
-        if resp in categorias: return resp
-    except: pass
+        cat_ia = res.choices[0].message.content.strip()
 
-    # 3. IA GEMINI (Backup Inteligente)
-    try:
-        model = genai.GenerativeModel('gemini-pro')
-        res = model.generate_content(f"Dada a lista {categorias}, qual categoria melhor define: '{termo}'? Responda apenas o nome.")
-        if res.text.strip() in categorias: return res.text.strip()
-    except: pass
+        # Salva no cache para não gastar mais tokens com esse termo
+        db.collection("cache_buscas").document(t_clean).set({"categoria": cat_ia})
+        return cat_ia
 
-    # 4. FUZZY MATCHING (Corretor de Erros)
-    match, score = process.extractOne(termo, categorias)
-    return match if score > 50 else "Ajudante Geral"
-
-# --- 5. UTILITÁRIOS (GPS, WHATSAPP, IMAGEM) ---
+    except:
+        return "NAO_ENCONTRADO" # Se tudo der errado
 
 def calcular_distancia_real(lat1, lon1, lat2, lon2):
     try:
-        if None in [lat1, lon1, lat2, lon2]: return 99.0
-        R = 6371.0
+        if None in [lat1, lon1, lat2, lon2]: return 999.0
+        R = 6371 
         dlat, dlon = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
         a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
         return round(R * (2 * math.atan2(math.sqrt(a), math.sqrt(1-a))), 1)
-    except: return 99.0
+    except: return 999.0
 
-def limpar_whatsapp(numero):
-    num = re.sub(r'\D', '', str(numero))
-    return f"55{num}" if not num.startswith('55') and len(num) >= 10 else num
+def converter_img_b64(file):
+    if file is None: return ""
+    try: return base64.b64encode(file.read()).decode()
+    except: return ""
 
-# --- 6. INTERFACE E DESIGN SYSTEM ---
-if 'modo_noite' not in st.session_state:
-    st.session_state.modo_noite = True
+# --- FUNCIONALIDADE DO ARQUIVO: O VARREDOR (Rodapé Automático) ---
+def finalizar_e_alinhar_layout():
+    """
+    Esta função atua como um ímã. Puxa o conteúdo e limpa o rodapé.
+    """
+    st.write("---")
+    fechamento_estilo = """
+        <style>
+            .main .block-container { padding-bottom: 5rem !important; }
+            .footer-clean {
+                text-align: center;
+                padding: 20px;
+                opacity: 0.7;
+                font-size: 0.8rem;
+                width: 100%;
+                color: gray;
+            }
+        </style>
+        <div class="footer-clean">
+            <p>🎯 <b>GeralJá</b> - Sistema de Inteligência Local</p>
+            <p>Conectando quem precisa com quem sabe fazer.</p>
+            <p>v3.0 | © 2026 Todos os direitos reservados</p>
+        </div>
+    """
+    st.markdown(fechamento_estilo, unsafe_allow_html=True)
 
-st.markdown(f"""
+# ------------------------------------------------------------------------------
+# 5. DESIGN SYSTEM
+# ------------------------------------------------------------------------------
+st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-    * {{ font-family: 'Inter', sans-serif; }}
-    #MainMenu, footer, header {{ visibility: hidden; }}
-    .stApp {{ background-color: {"#0D1117" if st.session_state.modo_noite else "#F8FAFC"} !important; }}
-    .header-container {{ background: white; padding: 40px 20px; border-radius: 0 0 50px 50px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border-bottom: 8px solid #FF8C00; margin-bottom: 25px; }}
-    .logo-azul {{ color: #0047AB; font-weight: 900; font-size: 50px; letter-spacing: -2px; }}
-    .logo-laranja {{ color: #FF8C00; font-weight: 900; font-size: 50px; letter-spacing: -2px; }}
+    * { font-family: 'Inter', sans-serif; }
+    .stApp { background-color: #F8FAFC; }
+    .header-container { background: white; padding: 40px 20px; border-radius: 0 0 50px 50px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border-bottom: 8px solid #FF8C00; margin-bottom: 25px; }
+    .logo-azul { color: #0047AB; font-weight: 900; font-size: 50px; letter-spacing: -2px; }
+    .logo-laranja { color: #FF8C00; font-weight: 900; font-size: 50px; letter-spacing: -2px; }
 </style>
 """, unsafe_allow_html=True)
 
-# Layout do Topo
-c_t1, c_t2 = st.columns([2, 8])
-with c_t1:
-    st.session_state.modo_noite = st.toggle("🌙 Noite", value=st.session_state.modo_noite)
-
 st.markdown('<div class="header-container"><span class="logo-azul">GERAL</span><span class="logo-laranja">JÁ</span><br><small style="color:#64748B; font-weight:700;">BRASIL ELITE EDITION</small></div>', unsafe_allow_html=True)
 
-# --- 7. NAVEGAÇÃO POR ABAS ---
 lista_abas = ["🔍 BUSCAR", "🚀 CADASTRAR", "👤 MEU PERFIL", "👑 ADMIN", "⭐ FEEDBACK"]
-menu_abas = st.tabs(lista_abas)
 comando = st.sidebar.text_input("Comando Secreto", type="password")
 if comando == "abracadabra":
     lista_abas.append("📊 FINANCEIRO")
@@ -1112,10 +1083,6 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
-
-
-
-
 
 
 
