@@ -1,6 +1,5 @@
- 
 # ==============================================================================
-# GERALJÁ: CRIANDO SOLUÇÕES
+# GERALJÁ: SISTEMA DE INTELIGÊNCIA LOCAL V3.0 - BRASIL ELITE EDITION
 # ==============================================================================
 import streamlit as st
 import firebase_admin
@@ -11,12 +10,22 @@ import math
 import re
 import time
 import pandas as pd
-from datetime import datetime 
+from datetime import datetime
 import pytz
-from streamlit_js_eval import streamlit_js_eval, get_geolocation
-import google.generativeai as genai
 import unicodedata
-from groq import Groq # <--- Novo
+import requests
+from groq import Groq
+from fuzzywuzzy import process
+import google.generativeai as genai
+from streamlit_js_eval import streamlit_js_eval, get_geolocation
+from google_auth_oauthlib.flow import Flow
+
+# --- 1. CONFIGURAÇÃO DE AMBIENTE E PERFORMANCE ---
+st.set_page_config(
+    page_title="GeralJá | Criando Soluções",
+    page_icon="🇧🇷",
+    layout="wide",
+    initial_sidebar_state="collapsed"
 
 # --- ADICIONE ESTES 3 PARA O NÍVEL 5.0 ---
 from groq import Groq                # Para a IA avançada
@@ -51,17 +60,6 @@ try:
     from streamlit_js_eval import streamlit_js_eval, get_geolocation
 except ImportError:
     pass
-
-# ------------------------------------------------------------------------------
-# 1. CONFIGURAÇÃO DE AMBIENTE E PERFORMANCE
-# ------------------------------------------------------------------------------
-st.set_page_config(
-    page_title="GeralJá | Criando Soluções",
-    page_icon="🇧🇷",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
-# --- DENTRO DO LOOP: for prof in lista_ranking: ---
 
 is_elite = prof.get('verificado') and prof.get('saldo', 0) > 0
 cor_borda = "#FFD700" if is_elite else "#0047AB"
@@ -1114,6 +1112,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
