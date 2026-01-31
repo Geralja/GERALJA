@@ -492,95 +492,134 @@ menu_abas = st.tabs(lista_abas)
 # --- ABA 0: BUSCA CORRIGIDA (SEM CÓDIGO APARECENDO NA TELA) ---
 # ==============================================================================
 with menu_abas[0]:
-    # 1. ESTILO CSS (Sempre no topo da aba)
+    # 1. ESTILO CSS (Esconde erros de renderização e embeleza os cards)
     st.markdown("""
     <style>
-        .cartao-geral { 
-            background: #ffffff; border-radius: 15px; border-left: 8px solid var(--cor-borda); 
-            padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+        .cartao-resultado {
+            background: #ffffff;
+            border-radius: 15px;
+            border-left: 8px solid #2563eb;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             color: #1e293b;
         }
-        .foto-perfil { width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 2px solid #eee; }
-        .social-track { display: flex; overflow-x: auto; gap: 10px; padding: 10px 0; }
-        .social-card { flex: 0 0 140px; height: 180px; border-radius: 10px; overflow: hidden; background: #eee; }
-        .social-card img { width: 100%; height: 100%; object-fit: cover; }
-        .btn-zap { 
-            display: block; background: #25D366; color: white !important; text-align: center;
-            padding: 12px; border-radius: 8px; font-weight: bold; text-decoration: none; margin-top: 10px;
+        .foto-perfil {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #f1f5f9;
+        }
+        .distancia-tag {
+            background: #f1f5f9;
+            color: #475569;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .botao-wpp {
+            display: block;
+            background: #25D366;
+            color: white !important;
+            text-align: center;
+            padding: 12px;
+            border-radius: 10px;
+            font-weight: bold;
+            text-decoration: none;
+            margin-top: 15px;
         }
     </style>
     """, unsafe_allow_html=True)
 
-    st.subheader("🔍 Encontre Profissionais")
-    
-    # Busca e Filtros
-    c1, c2 = st.columns([3, 1])
-    termo = c1.text_input("", placeholder="O que você precisa?", key="main_search")
-    raio = c2.select_slider("KM", options=[1, 5, 10, 20, 50], value=10)
-    
-    if termo:
-        with st.status("🧠 IA Filtrando...", expanded=False):
-            # Chama sua função de IA (aquela que você me mandou)
-            cat_alvo = processar_ia_avancada(termo).strip()
+    st.subheader("🔍 Encontrar Profissional")
+
+    # Interface de Busca
+    col_busca, col_km = st.columns([3, 1])
+    termo_digitado = col_busca.text_input("", placeholder="O que você precisa hoje?", key="input_busca_principal")
+    raio_km = col_km.selectbox("Raio (KM)", [5, 10, 20, 50, 100], index=2)
+
+    if termo_digitado:
+        with st.status("🧠 IA analisando sua necessidade...", expanded=False) as status:
+            # Chama sua função de IA para decidir a categoria
+            categoria_escolhida = processar_ia_avancada(termo_digitado).strip()
+            st.write(f"Categoria identificada: **{categoria_escolhida}**")
             
-            # Busca no Firebase
+            # Busca no Firebase (Ajuste 'profissionais' se sua coleção tiver outro nome)
             docs = db.collection("profissionais").where("aprovado", "==", True).stream()
             
-            resultados = []
+            lista_final = []
             for d in docs:
                 p = d.to_dict()
-                area_doc = str(p.get('area', '')).strip()
-                
-                # SÓ ENTRA SE: a área for igual à da IA ou o nome bater
-                if area_doc.lower() == cat_alvo.lower() or normalizar_para_ia(termo) in p.get('nome','').lower():
-                    # Cálculo de distância (usando sua função)
-                    loc = get_geolocation()
-                    m_lat, m_lon = (loc['coords']['latitude'], loc['coords']['longitude']) if loc and 'coords' in loc else (LAT_REF, LON_REF)
-                    dist = calcular_distancia_real(m_lat, m_lon, p.get('lat', LAT_REF), p.get('lon', LON_REF))
-                    
-                    if dist <= raio:
-                        p['distancia'] = dist
-                        # Score: Verificados e Saldo no topo
-                        p['ponto'] = (10000 if p.get('verificado') else 0) + (p.get('saldo', 0) * 10)
-                        resultados.append(p)
+                # Pega a área do profissional no banco
+                area_do_banco = str(p.get('area', '')).strip()
 
-            resultados.sort(key=lambda x: (-x['ponto'], x['distancia']))
+                # --- TRAVA DE SEGURANÇA: Só entra se a categoria bater EXATAMENTE ---
+                if area_do_banco.lower() != categoria_escolhida.lower():
+                    continue
 
-        if not resultados:
-            st.error(f"Nenhum profissional de '{cat_alvo}' encontrado por perto.")
+                # Cálculo de Distância Real
+                loc_usuario = get_geolocation()
+                if loc_usuario and 'coords' in loc_usuario:
+                    u_lat = loc_usuario['coords']['latitude']
+                    u_lon = loc_usuario['coords']['longitude']
+                else:
+                    u_lat, u_lon = LAT_REF, LON_REF # Suas constantes padrão
+
+                dist = calcular_distancia_real(u_lat, u_lon, p.get('lat', u_lat), p.get('lon', u_lon))
+
+                if dist <= raio_km:
+                    p['distancia_calculada'] = dist
+                    # Critério de desempate: Verificados e Saldo
+                    p['score_rank'] = (1000 if p.get('verificado') else 0) + (p.get('saldo', 0))
+                    lista_final.append(p)
+
+            # Ordenação: Primeiro Verificados, depois os mais perto
+            lista_final.sort(key=lambda x: (-x['score_rank'], x['distancia_calculada']))
+            status.update(label="Busca concluída!", state="complete")
+
+        # --- EXIBIÇÃO DOS RESULTADOS ---
+        if not lista_final:
+            st.error(f"Sinto muito! Não encontrei profissionais de '{categoria_escolhida}' em um raio de {raio_km}km.")
         else:
-            # RENDERIZAÇÃO DA VITRINE
-            for p in resultados:
-                borda = "#FFD700" if p.get('verificado') else "#2563eb"
-                link_wpp = f"https://wa.me/{p.get('whatsapp')}?text=Vi seu perfil no GeralJá"
-                
-                # Monta as fotos do portfólio (f1 a f10)
-                fotos_html = ""
-                for i in range(1, 11):
-                    img_data = p.get(f'f{i}')
-                    if img_data and len(str(img_data)) > 100:
-                        src = img_data if str(img_data).startswith("http") else f"data:image/jpeg;base64,{img_data}"
-                        fotos_html += f'<div class="social-card"><img src="{src}"></div>'
+            for prof in lista_final:
+                # Trata a imagem (Se for Base64 ou URL)
+                foto_data = prof.get('foto_url', '') # ou prof.get('foto')
+                if not foto_data:
+                    foto_src = "https://cdn-icons-png.flaticon.com/512/149/149071.png"
+                elif str(foto_data).startswith("http"):
+                    foto_src = foto_data
+                else:
+                    foto_src = f"data:image/png;base64,{foto_data}"
 
-                # O SEGREDO: Todo o HTML dentro de UMA única string f""" """
-                html_card = f"""
-                <div class="cartao-geral" style="--cor-borda: {borda};">
-                    <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:bold;">
-                        <span style="color:green;">📍 {p['distancia']:.1f} KM</span>
-                        {"<span style='color:orange;'>⭐ VERIFICADO</span>" if p.get('verificado') else ""}
-                    </div>
-                    <div style="display:flex; align-items:center; gap:15px; margin: 15px 0;">
-                        <img src="{p.get('foto_url', '')}" class="foto-perfil">
-                        <div>
-                            <h3 style="margin:0; font-size:18px;">{p.get('nome', '').upper()}</h3>
-                            <p style="margin:0; color:#666;">{p.get('area')}</p>
+                link_whatsapp = f"https://wa.me/{prof.get('whatsapp')}?text=Olá {prof.get('nome')}, vi seu perfil no GeralJá e gostaria de um orçamento para {termo_digitado}."
+
+                # HTML do Card (Blindado para não exibir código base64 como texto)
+                card_html = f"""
+                <div class="cartao-resultado">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div style="display: flex; gap: 15px; align-items: center;">
+                            <img src="{foto_src}" class="foto-perfil">
+                            <div>
+                                <h4 style="margin: 0; font-size: 18px;">{prof.get('nome', '').upper()}</h4>
+                                <span style="color: #2563eb; font-size: 13px; font-weight: bold;">{prof.get('area')}</span>
+                            </div>
                         </div>
+                        <span class="distancia-tag">📍 {prof['distancia_calculada']} KM</span>
                     </div>
-                    <div class="social-track">{fotos_html}</div>
-                    <a href="{link_wpp}" target="_blank" class="btn-zap">CHAMAR NO WHATSAPP</a>
+                    <div style="margin-top: 10px; font-size: 14px; color: #64748b;">
+                        {prof.get('descricao', 'Profissional qualificado pronto para te atender.')[:120]}...
+                    </div>
+                    <a href="{link_whatsapp}" target="_blank" class="botao-wpp">
+                        RESERVAR HORÁRIO / ORÇAMENTO
+                    </a>
                 </div>
                 """
-                st.markdown(html_card, unsafe_allow_html=True)
+                st.markdown(card_html, unsafe_allow_html=True)
+
+    # FINALIZADOR: Garante que nada "vaze" para o rodapé
+    finalizar_e_alinhar_layout()
 # ==============================================================================
 # ABA 2: 🚀 PAINEL DO PARCEIRO (COMPLETO: FB + IMAGENS + FAQ + EXCLUSÃO)
 # ==============================================================================
@@ -1134,6 +1173,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
