@@ -72,53 +72,9 @@ def conectar_banco_master():
 # Ativa o banco
 app_engine = conectar_banco_master()
 db = firestore.client()
-# --- DENTRO DO SEU LOOP: for p in lista_ranking: ---
 
-# 1. Garante que a foto de perfil não quebre o layout
-foto_perfil = p.get('foto_url', '')
-if not str(foto_perfil).startswith("data:") and len(str(foto_perfil)) > 100:
-    foto_perfil = f"data:image/jpeg;base64,{foto_perfil}"
-elif not foto_perfil:
-    foto_perfil = "https://cdn-icons-png.flaticon.com/512/149/149071.png"
-
-# 2. Montagem blindada do Portfólio
-fotos_html = ""
-for i in range(1, 11):
-    f_data = p.get(f'f{i}')
-    # Só adiciona se for uma imagem real e longa (Base64)
-    if f_data and isinstance(f_data, str) and len(f_data) > 100:
-        # Verifica se já tem o cabeçalho data:image
-        src_foto = f_data if f_data.startswith("data:") else f"data:image/jpeg;base64,{f_data}"
-        # Usamos uma estrutura de div fixa para não quebrar o float
-        fotos_html += f'''
-        <div class="social-card" onclick="abrirModal('{src_foto}', '{link_zap}')">
-            <img src="{src_foto}" style="width:100%; height:100%; object-fit:cover;">
-        </div>'''
-
-# 3. Renderização Final (O segredo é o f-string limpo)
-card_final = f"""
-<div class="cartao-geral" style="border-left: 8px solid {cor_borda};">
-    <div style="font-size: 11px; color: #0047AB; font-weight: bold; margin-bottom: 10px;">
-        📍 a {p['dist']:.1f} km de você {" | 🏆 ELITE" if is_elite else ""}
-    </div>
-    <div class="perfil-row" style="display:flex; gap:15px; align-items:center;">
-        <img src="{foto_perfil}" class="foto-perfil" style="width:55px; height:55px; border-radius:50%;">
-        <div>
-            <h4 style="margin:0; color:#1e3a8a;">{p.get('nome','').upper()}</h4>
-            <p style="margin:0; color:#666; font-size:12px;">{p.get('area')}</p>
-        </div>
-    </div>
-    <div class="social-track" style="display:flex; overflow-x:auto; gap:10px; margin:10px 0;">
-        {fotos_html}
-    </div>
-    <a href="{link_zap}" target="_blank" class="btn-zap-footer" style="background:#25D366; color:white; display:block; text-align:center; padding:10px; border-radius:10px; text-decoration:none;">
-        💬 CHAMAR AGORA
-    </a>
-</div>
-"""
-st.markdown(card_final, unsafe_allow_html=True)
 # ------------------------------------------------------------------------------
-# 1. CONFIGURAÇÃO DE AMBIENTE E PERFORMANCE (MODERNIZADO)
+# 1. CONFIGURAÇÃO DE AMBIENTE E PERFORMANCE
 # ------------------------------------------------------------------------------
 st.set_page_config(
     page_title="GeralJá | Criando Soluções",
@@ -127,39 +83,24 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- FUNCIONALIDADE DO ARQUIVO: TEMA MANUAL (INICIANDO NO MODO DIA) ---
+# --- FUNCIONALIDADE DO ARQUIVO: TEMA MANUAL ---
 if 'tema_claro' not in st.session_state:
-    st.session_state.tema_claro = True  # Alterado para True para carregar no modo dia
+    st.session_state.tema_claro = False
 
-# --- ESTILIZAÇÃO MODERNA E LIMPEZA DE INTERFACE ---
+# Mantém os menus escondidos
 st.markdown("""
     <style>
-        /* Esconde elementos nativos do Streamlit para um look de App profissional */
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         header {visibility: hidden;}
-        
-        /* Ajuste de margens superiores para modernizar o layout */
-        .block-container {
-            padding-top: 1rem;
-            padding-bottom: 1rem;
-        }
-        
-        /* Estilização para modo dia forçado via CSS se necessário */
-        .main {
-            background-color: #f8f9fa;
-        }
     </style>
 """, unsafe_allow_html=True)
-
-# ------------------------------------------------------------------------------
-# LOGICA DE RECEPÇÃO DO GOOGLE (INTEGRADA E SEGURA)
-# ------------------------------------------------------------------------------
+# --- LOGICA DE RECEPÇÃO DO GOOGLE (COLOCAR NO TOPO DO ARQUIVO) ---
 from google_auth_oauthlib.flow import Flow
 import requests
 
+# Função para criar o fluxo de troca de tokens
 def get_google_flow():
-    """Cria o fluxo de autenticação usando as chaves do Secrets"""
     g_auth = st.secrets["google_auth"]
     client_config = {
         "web": {
@@ -172,62 +113,52 @@ def get_google_flow():
     }
     return Flow.from_client_config(
         client_config,
-        scopes=[
-            "openid", 
-            "https://www.googleapis.com/auth/userinfo.profile", 
-            "https://www.googleapis.com/auth/userinfo.email"
-        ],
+        scopes=["openid", "https://www.googleapis.com/auth/userinfo.profile", "https://www.googleapis.com/auth/userinfo.email"],
         redirect_uri=g_auth["redirect_uri"]
     )
 
-# Captura de parâmetros da URL para processar o login
+# Verifica se o Google enviou o código na URL (Query Params)
 query_params = st.query_params
-
 if "code" in query_params:
     try:
-        # 1. Troca o código por um token de acesso de forma otimizada
-        with st.spinner("🚀 Autenticando com Google..."):
-            flow = get_google_flow()
-            flow.fetch_token(code=query_params["code"])
-            session = flow.authorized_session()
-            
-            # 2. Resgate de dados do perfil
-            user_info = session.get('https://www.googleapis.com/userinfo').json()
-            
-            email_google = user_info.get("email")
-            nome_google = user_info.get("name")
-            foto_google = user_info.get("picture")
+        # 1. Troca o código por um token de acesso
+        flow = get_google_flow()
+        flow.fetch_token(code=query_params["code"])
+        session = flow.authorized_session()
+        
+        # 2. Pega os dados reais do usuário no Google
+        user_info = session.get('https://www.googleapis.com/userinfo').json()
+        
+        email_google = user_info.get("email")
+        nome_google = user_info.get("name")
+        foto_google = user_info.get("picture")
 
-            # 3. Limpeza imediata da URL para evitar loops ou erros de 'code used'
-            st.query_params.clear()
+        # 3. Limpa a URL (remove o código para não dar erro ao atualizar)
+        st.query_params.clear()
 
-            # 4. Verificação de existência no Banco de Dados (Firebase)
-            # Nota: 'db' deve estar inicializado antes deste bloco no seu arquivo principal
-            pro_ref = db.collection("profissionais").where("email", "==", email_google).limit(1).get()
+        # 4. Busca no Firebase se esse e-mail já é parceiro
+        pro_ref = db.collection("profissionais").where("email", "==", email_google).limit(1).get()
 
-            if pro_ref:
-                # ✅ USUÁRIO JÁ CADASTRADO: Login Automático
-                dados = pro_ref[0].to_dict()
-                st.session_state.auth = True
-                st.session_state.user_id = pro_ref[0].id  # ID vinculado ao documento
-                
-                st.toast(f"✅ Bem-vindo de volta, {dados.get('nome')}!", icon="🔥")
-                time.sleep(1)
-                st.rerun()
-            else:
-                # ✨ USUÁRIO NOVO: Preparação de Pré-cadastro
-                st.session_state.pre_cadastro = {
-                    "email": email_google,
-                    "nome": nome_google,
-                    "foto": foto_google
-                }
-                st.balloons()
-                st.success(f"Olá {nome_google}! Quase lá... Complete seu perfil profissional abaixo.")
-                
-    except Exception as e:
-        st.error(f"❌ Erro na autenticação: {str(e)}")
-        if st.button("Tentar novamente"):
+        if pro_ref:
+            # ✅ USUÁRIO JÁ CADASTRADO: Loga ele direto
+            dados = pro_ref[0].to_dict()
+            st.session_state.auth = True
+            st.session_state.user_id = pro_ref[0].id # O WhatsApp dele
+            st.success(f"Logado com sucesso como {dados.get('nome')}!")
+            time.sleep(1)
             st.rerun()
+        else:
+            # ✨ USUÁRIO NOVO: Prepara o pre-cadastro para a Aba 1
+            st.session_state.pre_cadastro = {
+                "email": email_google,
+                "nome": nome_google,
+                "foto": foto_google
+            }
+            st.toast(f"Olá {nome_google}! Complete seu cadastro profissional abaixo.")
+            # Você pode forçar a ida para a aba de cadastro aqui se quiser
+            
+    except Exception as e:
+        st.error(f"Erro ao processar login do Google: {e}")
 # ------------------------------------------------------------------------------
 # 2. CAMADA DE PERSISTÊNCIA (FIREBASE)
 # ------------------------------------------------------------------------------
@@ -307,7 +238,7 @@ estilo_dinamico = f"""
 </style>
 """
 st.markdown(estilo_dinamico, unsafe_allow_html=True)
-# ==========================================================
+        # ==========================================================
 # FUNÇÕES DE SUPORTE (COLE NO TOPO DO ARQUIVO)
 # ==========================================================
 import re
@@ -401,111 +332,81 @@ def normalizar_para_ia(texto):
     return "".join(c for c in unicodedata.normalize('NFD', str(texto))
                    if unicodedata.category(c) != 'Mn').lower().strip()
 
-import math
-import re
-import base64
-import streamlit as st
-
-# --- FUNÇÃO PRINCIPAL: IA COM FILTRO RIGOROSO ---
 def processar_ia_avancada(texto):
     if not texto: return "Vazio"
     t_clean = normalizar_para_ia(texto)
     
-    # 1. Busca Direta (Rápida e sem custo)
-    # Tenta encontrar palavras-chave nos conceitos expandidos
+    # --- 1. SEU CÓDIGO ATUAL (Rápido e sem custo) ---
     for chave, categoria in CONCEITOS_EXPANDIDOS.items():
         if re.search(rf"\b{normalizar_para_ia(chave)}\b", t_clean):
             return categoria
     
-    # Tenta encontrar se o que foi digitado é uma das categorias oficiais
     for cat in CATEGORIAS_OFICIAIS:
         if normalizar_para_ia(cat) in t_clean:
             return cat
 
-    # 2. Upgrade com IA Externa (Groq) + Cache no Firebase
+    # --- 2. O UPGRADE PARA NOTA 5.0 (IA Groq + Cache) ---
     try:
-        # Verifica se já processamos esse termo antes para economizar API
+        # Primeiro checa se já perguntamos isso antes (Cache)
         cache_ref = db.collection("cache_buscas").document(t_clean).get()
         if cache_ref.exists:
             return cache_ref.to_dict().get("categoria")
 
-        # Se não está no cache, a IA decide
+        # Se não sabe, a IA "pensa" e resolve
         from groq import Groq
         client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-        
-        # PROMPT OTIMIZADO: Força a IA a escolher APENAS entre as categorias oficiais
-        prompt = f"""
-        O usuário buscou o termo: '{texto}'. 
-        Baseado nessa busca, escolha a categoria MAIS ADEQUADA da lista abaixo:
-        {CATEGORIAS_OFICIAIS}.
-        
-        REGRAS:
-        1. Responda APENAS o nome da categoria.
-        2. Se não houver relação nenhuma, responda 'OUTROS'.
-        3. Não use pontos ou explicações.
-        """
+        prompt = f"O usuário buscou: '{texto}'. Categorias: {CATEGORIAS_OFICIAIS}. Responda apenas o NOME DA CATEGORIA."
         
         res = client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
             model="llama3-8b-8192",
-            temperature=0.0 # Temperatura 0 para ser preciso e não inventar
+            temperature=0.1
         )
         cat_ia = res.choices[0].message.content.strip()
 
-        # Salva no cache do Firebase
+        # Salva no cache para não gastar mais tokens com esse termo
         db.collection("cache_buscas").document(t_clean).set({"categoria": cat_ia})
         return cat_ia
 
-    except Exception as e:
-        print(f"Erro na IA: {e}")
-        return "OUTROS"
+    except:
+        return "NAO_ENCONTRADO" # Se tudo der errado
 
-# --- FUNÇÃO DE DISTÂNCIA ---
 def calcular_distancia_real(lat1, lon1, lat2, lon2):
     try:
         if None in [lat1, lon1, lat2, lon2]: return 999.0
-        R = 6371 # Raio da Terra em KM
+        R = 6371 
         dlat, dlon = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
         a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
-        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
-        return round(R * c, 1)
-    except: 
-        return 999.0
+        return round(R * (2 * math.atan2(math.sqrt(a), math.sqrt(1-a))), 1)
+    except: return 999.0
 
-# --- CONVERSOR DE IMAGEM (Para Upload de fotos) ---
 def converter_img_b64(file):
     if file is None: return ""
-    try: 
-        return base64.b64encode(file.read()).decode()
-    except: 
-        return ""
+    try: return base64.b64encode(file.read()).decode()
+    except: return ""
 
-# --- LAYOUT E RODAPÉ ---
+# --- FUNCIONALIDADE DO ARQUIVO: O VARREDOR (Rodapé Automático) ---
 def finalizar_e_alinhar_layout():
     """
-    Limpa o layout e adiciona o rodapé fixo.
+    Esta função atua como um ímã. Puxa o conteúdo e limpa o rodapé.
     """
     st.write("---")
     fechamento_estilo = """
         <style>
-            /* Garante que o conteúdo não fique escondido atrás do rodapé */
-            .main .block-container { padding-bottom: 8rem !important; }
-            
+            .main .block-container { padding-bottom: 5rem !important; }
             .footer-clean {
                 text-align: center;
-                padding: 30px 10px;
-                background-color: #f8f9fa;
-                border-radius: 20px 20px 0 0;
-                margin-top: 50px;
-                color: #64748b;
-                border-top: 1px solid #e2e8f0;
+                padding: 20px;
+                opacity: 0.7;
+                font-size: 0.8rem;
+                width: 100%;
+                color: gray;
             }
-            .footer-clean b { color: #0f172a; }
         </style>
         <div class="footer-clean">
             <p>🎯 <b>GeralJá</b> - Sistema de Inteligência Local</p>
             <p>Conectando quem precisa com quem sabe fazer.</p>
-            <p style="font-size: 10px; opacity: 0.6;">v3.5 | © 2026 Inteligência Geográfica</p>
+            <p>v3.0 | © 2026 Todos os direitos reservados</p>
         </div>
     """
     st.markdown(fechamento_estilo, unsafe_allow_html=True)
@@ -533,111 +434,124 @@ if comando == "abracadabra":
 
 menu_abas = st.tabs(lista_abas)
 # ==============================================================================
-# --- ABA 0: BUSCA (VERSÃO CORRIGIDA E LIMPA) ---
+# --- ABA 0: BUSCA (IA GROQ + RAIO 3KM + VITRINE SOCIAL V3.0) ---
 # ==============================================================================
 with menu_abas[0]:
     st.markdown("### 🏙️ O que você precisa?")
     
-    # 1. LOCALIZAÇÃO
-    loc = get_geolocation()
-    minha_lat, minha_lon = (loc['coords']['latitude'], loc['coords']['longitude']) if loc and 'coords' in loc else (LAT_REF, LON_REF)
+    # --- 1. MOTOR DE LOCALIZAÇÃO ---
+    with st.expander("📍 Sua Localização (GPS)", expanded=False):
+        loc = get_geolocation()
+        if loc and 'coords' in loc:
+            minha_lat = loc['coords']['latitude']
+            minha_lon = loc['coords']['longitude']
+            st.success("Localização detectada!")
+        else:
+            minha_lat, minha_lon = LAT_REF, LON_REF
+            st.warning("GPS desativado. Usando padrão (Centro).")
 
     c1, c2 = st.columns([3, 1])
-    termo_busca = c1.text_input("Ex: 'Cano estourado' ou 'Pizza'", key="main_search_v3")
-    raio_km = c2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 20, 50], value=3)
+    termo_busca = c1.text_input("Ex: 'Cano estourado' ou 'Pizza'", key="main_search_v_groq")
+    # Raio padrão em 3 KM conforme solicitado
+    raio_km = c2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 20, 50, 100, 500], value=3)
     
-    if termo_busca:
-        with st.status("🧠 IA processando busca...", expanded=False):
-            cat_ia = processar_ia_avancada(termo_busca)
-            # BUSCA FILTRADA: Só traz quem é da área e está aprovado
-            profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
-            
-            lista_ranking = []
-            for p_doc in profs:
-                p = p_doc.to_dict()
-                dist = calcular_distancia_real(minha_lat, minha_lon, p.get('lat', LAT_REF), p.get('lon', LON_REF))
-                
-                if dist <= raio_km:
-                    p['dist'] = dist
-                    # Ranking: Verificados e Saldo
-                    p['score'] = (1000 if p.get('verificado') else 0) + (p.get('saldo', 0))
-                    lista_ranking.append(p)
+    # --- 2. CSS PARA VITRINE E MODAL ---
+    st.markdown("""
+    <style>
+        .cartao-geral { background: white; border-radius: 20px; border-left: 8px solid var(--cor-borda); padding: 15px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); color: #111; }
+        .perfil-row { display: flex; gap: 15px; align-items: center; margin-bottom: 12px; }
+        .foto-perfil { width: 55px; height: 55px; border-radius: 50%; object-fit: cover; border: 2px solid #eee; }
+        .social-track { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 10px; scrollbar-width: none; }
+        .social-track::-webkit-scrollbar { display: none; }
+        .social-card { flex: 0 0 200px; height: 280px; border-radius: 12px; overflow: hidden; cursor: pointer; background: #000; }
+        .social-card img { width: 100%; height: 100%; object-fit: cover; transition: 0.3s; }
+        .btn-zap-footer { display: block; background: #25D366; color: white !important; text-align: center; padding: 15px; border-radius: 12px; font-weight: bold; text-decoration: none; margin-top: 10px; font-size: 16px; }
+    </style>
+    <script>
+    function abrirModal(src, link) {
+        window.parent.document.getElementById('imgExpandida').src = src;
+        window.parent.document.getElementById('linkZapModal').href = link;
+        window.parent.document.getElementById('meuModal').style.display = 'flex';
+    }
+    function fecharModal() {
+        window.parent.document.getElementById('meuModal').style.display = 'none';
+    }
+    </script>
+    """, unsafe_allow_html=True)
 
-            # Ordena por Score (Premium) e depois por Distância
-            lista_ranking.sort(key=lambda x: (-x['score'], x['dist']))
+    if termo_busca:
+        cat_ia = processar_ia_avancada(termo_busca) 
+        st.info(f"✨ IA Groq: Buscando por **{cat_ia}**")
+        
+        profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
+        
+        lista_ranking = []
+        for p_doc in profs:
+            p = p_doc.to_dict()
+            p['id'] = p_doc.id
+            dist = calcular_distancia_real(minha_lat, minha_lon, p.get('lat', LAT_REF), p.get('lon', LON_REF))
+            
+            if dist <= raio_km:
+                p['dist'] = dist
+                score = 0
+                score += 1000 if p.get('verificado') else 0
+                score += (p.get('saldo', 0) * 10)
+                p['score_elite'] = score
+                lista_ranking.append(p)
+
+        # ORDENAÇÃO: Mais perto primeiro (Precisão Geográfica)
+        lista_ranking.sort(key=lambda x: (x['dist'], -x['score_elite']))
 
         if not lista_ranking:
-            st.warning(f"Nenhum profissional de '{cat_ia}' encontrado em {raio_km}km.")
+            st.warning(f"Ninguém de '{cat_ia}' encontrado em {raio_km}km.")
         else:
             for p in lista_ranking:
-                # --- MANTENHA TODO O SEU CÁCULO DE SCORE E RANKING ---
-
-for p in lista_ranking:
-    # 1. PROTEÇÃO DE DADOS (O segredo para não ficar "doido")
-    # Se a foto for Base64, a gente coloca o cabeçalho. Se for URL, deixa URL.
-    foto_raw = p.get('foto_url', '')
-    if len(str(foto_raw)) > 100 and not str(foto_raw).startswith("data:"):
-        foto_final = f"data:image/jpeg;base64,{foto_raw}"
-    else:
-        foto_final = foto_raw if foto_raw else "https://via.placeholder.com/150"
-
-    # 2. MONTAGEM DAS FOTOS (f1 a f10) - Mantenha sua lógica de Modal
-    fotos_html = ""
-    for i in range(1, 11):
-        f_data = p.get(f'f{i}')
-        if f_data and len(str(f_data)) > 100:
-            # Garante que o código da imagem não vire texto na tela
-            f_src = f_data if str(f_data).startswith("data") else f"data:image/jpeg;base64,{f_data}"
-            fotos_html += f'<div class="social-card" onclick="abrirModal(\'{f_src}\', \'{link_zap}\')"><img src="{f_src}"></div>'
-
-    # 3. O SEU CARD ORIGINAL (Apenas trocando as variáveis para as "protegidas")
-    st.markdown(f"""
-    <div class="cartao-geral" style="--cor-borda: {cor_borda};">
-        <div style="font-size: 11px; color: #0047AB; font-weight: bold; margin-bottom: 10px;">
-            📍 a {p['dist']:.1f} km {" | 🏆 ELITE" if is_elite else ""}
-        </div>
-        <div class="perfil-row">
-            <img src="{foto_final}" class="foto-perfil"> <div>
-                <h4 style="margin:0; color:#1e3a8a;">{p.get('nome','').upper()}</h4>
-                <p style="margin:0; color:#666; font-size:12px;">{p.get('descricao','')[:100]}...</p>
-            </div>
-        </div>
-        <div class="social-track">{fotos_html}</div>
-        <a href="{link_zap}" target="_blank" class="btn-zap-footer">💬 CHAMAR AGORA</a>
-    </div>
-    """, unsafe_allow_html=True)
-                cor_borda = "#FFD700" if p.get('verificado') else "#0047AB"
-                link_zap = f"https://wa.me/{limpar_whatsapp(p.get('whatsapp'))}?text=Vi seu perfil no GeralJá"
+                is_elite = p.get('verificado') and p.get('saldo', 0) > 0
+                cor_borda = "#FFD700" if is_elite else "#0047AB"
+                zap_limpo = limpar_whatsapp(p.get('whatsapp', p['id']))
+                link_zap = f"https://wa.me/{zap_limpo}?text=Olá, vi seu trabalho no GeralJá!"
                 
-                # Tratamento de Imagem (Segurança total contra "texto doido")
-                foto_perfil = p.get('foto_url', '')
-                if not foto_perfil or len(str(foto_perfil)) < 50:
-                    foto_perfil = "https://cdn-icons-png.flaticon.com/512/149/149071.png"
-
-                # Vitrine de Fotos f1 a f10
+                # CORREÇÃO DA STRING: Montagem das fotos do portfólio
                 fotos_html = ""
                 for i in range(1, 11):
-                    img_data = p.get(f'f{i}')
-                    if img_data and len(str(img_data)) > 100:
-                        src = img_data if str(img_data).startswith("data") else f"data:image/jpeg;base64,{img_data}"
-                        fotos_html += f'<div class="social-card"><img src="{src}"></div>'
+                    f_data = p.get(f'f{i}')
+                    if f_data and len(str(f_data)) > 100:
+                        src = f_data if str(f_data).startswith("data") else f"data:image/jpeg;base64,{f_data}"
+                        fotos_html += f'<div class="social-card" onclick="abrirModal(\'{src}\', \'{link_zap}\')"><img src="{src}"></div>'
 
-                # HTML ÚNICO E FECHADO
                 st.markdown(f"""
-                <div class="cartao-geral" style="border-left: 8px solid {cor_borda}; background: white; padding: 15px; border-radius: 15px; margin-bottom: 15px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
-                    <div style="display: flex; align-items: center; gap: 15px;">
-                        <img src="{foto_perfil}" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover;">
+                <div class="cartao-geral" style="--cor-borda: {cor_borda};">
+                    <div style="font-size: 11px; color: #0047AB; font-weight: bold; margin-bottom: 10px;">
+                        📍 a {p['dist']:.1f} km de você {" | 🏆 ELITE" if is_elite else ""}
+                    </div>
+                    <div class="perfil-row">
+                        <img src="{p.get('foto_url','')}" class="foto-perfil">
                         <div>
-                            <h4 style="margin:0; color: #1e3a8a;">{p.get('nome','').upper()}</h4>
-                            <p style="margin:0; color: green; font-size: 12px; font-weight: bold;">📍 a {p['dist']:.1f} km</p>
+                            <h4 style="margin:0; color:#1e3a8a;">{p.get('nome','').upper()}</h4>
+                            <p style="margin:0; color:#666; font-size:12px;">{p.get('descricao','')[:100]}...</p>
                         </div>
                     </div>
-                    <div class="social-track" style="display: flex; overflow-x: auto; gap: 10px; margin-top: 10px;">
-                        {fotos_html}
-                    </div>
+                    <div class="social-track">{fotos_html}</div>
                     <a href="{link_zap}" target="_blank" class="btn-zap-footer">💬 CHAMAR AGORA</a>
                 </div>
                 """, unsafe_allow_html=True)
+
+    # Modal Único (Fora do Loop)
+    st.markdown("""
+    <div id="meuModal" style="display:none; position:fixed; z-index:9999; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); align-items:center; justify-content:center; flex-direction:column;">
+        <span onclick="fecharModal()" style="position:absolute; top:20px; right:30px; color:white; font-size:40px; cursor:pointer;">&times;</span>
+        <img id="imgExpandida" style="max-width:90%; max-height:75%; border-radius:10px;">
+        <a id="linkZapModal" href="#" target="_blank" style="margin-top:20px; background:#25D366; color:white; padding:15px 40px; border-radius:30px; text-decoration:none; font-weight:bold;">✅ WHATSAPP</a>
+    </div>
+    """, unsafe_allow_html=True)
+                
+import streamlit as st
+import base64
+import time
+import io
+from PIL import Image
+from datetime import datetime
+
 # ==============================================================================
 # ABA 2: 🚀 PAINEL DO PARCEIRO (COMPLETO: FB + IMAGENS + FAQ + EXCLUSÃO)
 # ==============================================================================
@@ -1191,21 +1105,6 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
