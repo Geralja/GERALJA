@@ -459,135 +459,149 @@ if comando == "abracadabra":
 
 menu_abas = st.tabs(lista_abas)
 # ==============================================================================
-# --- ABA 0: BUSCA SUPREMA (CONSELHO DE 4 IAS + VITRINE V3.0) ---
+# --- ABA 0: BUSCA (IA GROQ + RAIO 3KM + VITRINE SOCIAL V3.0) - TURBINADA ---
 # ==============================================================================
 with menu_abas[0]:
-    # 1. CSS MODERNO (DESIGN SYSTEM ELITE - OTIMIZADO PARA MODO DIA)
+    # 1. ESTILO MODERNO (DESIGN SYSTEM - MODO DIA)
     st.markdown("""
     <style>
+        /* Fundo e Container principal */
+        .stApp { background-color: #f8fafc; }
+        
         .cartao-geral { 
-            background: #ffffff; border-radius: 20px; padding: 20px; margin-bottom: 25px; 
-            box-shadow: 0 10px 25px rgba(0,0,0,0.05); border-left: 12px solid var(--cborda, #0047AB); 
-            transition: 0.3s; color: #1e293b; border: 1px solid #f1f5f9;
+            background: #ffffff; border-radius: 20px; border-left: 10px solid var(--cor-borda); 
+            padding: 20px; margin-bottom: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); 
+            color: #1e293b; border-right: 1px solid #e2e8f0; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0;
+            transition: transform 0.3s ease;
         }
-        .cartao-geral:hover { transform: translateY(-5px); box-shadow: 0 20px 40px rgba(0,0,0,0.12); }
-        .perfil-row { display: flex; gap: 18px; align-items: center; }
-        .foto-perfil { width: 75px; height: 75px; border-radius: 50%; object-fit: cover; border: 3px solid #25D366; padding: 2px; background: #fff; }
-        .distancia-tag { background: #eff6ff; color: #1e40af; padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: 800; border: 1px solid #dbeafe; }
-        .elite-tag { background: linear-gradient(90deg, #FFD700, #FFA500); color: #fff; padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: 800; shadow: 0 4px 10px rgba(255,215,0,0.3); }
-        .social-track { display: flex; overflow-x: auto; gap: 12px; padding: 15px 0; scrollbar-width: none; }
-        .social-card { flex: 0 0 160px; height: 220px; border-radius: 15px; overflow: hidden; background: #f8fafc; border: 1px solid #e2e8f0; }
-        .social-card img { width: 100%; height: 100%; object-fit: cover; transition: 0.5s; }
-        .social-card img:hover { scale: 1.1; }
-        .btn-zap { 
+        .cartao-geral:hover { transform: translateY(-5px); }
+        
+        .perfil-row { display: flex; gap: 15px; align-items: center; margin-bottom: 12px; }
+        .foto-perfil { width: 65px; height: 65px; border-radius: 50%; object-fit: cover; border: 3px solid #f1f5f9; background: #eee; }
+        
+        .social-track { display: flex; overflow-x: auto; gap: 12px; padding: 10px 0; scrollbar-width: none; }
+        .social-track::-webkit-scrollbar { display: none; }
+        
+        .social-card { flex: 0 0 180px; height: 260px; border-radius: 15px; overflow: hidden; cursor: pointer; background: #f1f5f9; border: 1px solid #e2e8f0; }
+        .social-card img { width: 100%; height: 100%; object-fit: cover; transition: 0.4s; }
+        .social-card:hover img { transform: scale(1.1); }
+        
+        .btn-zap-footer { 
             display: flex; align-items: center; justify-content: center; gap: 8px;
             background: #25D366; color: white !important; text-align: center; 
             padding: 16px; border-radius: 15px; font-weight: 900; text-decoration: none; 
-            margin-top: 15px; font-size: 16px; transition: 0.3s; box-shadow: 0 4px 15px rgba(37,211,102,0.3);
+            margin-top: 15px; font-size: 16px; transition: 0.3s; box-shadow: 0 4px 12px rgba(37,211,102,0.2);
         }
-        .btn-zap:hover { background: #128C7E; transform: scale(1.02); box-shadow: 0 6px 20px rgba(37,211,102,0.4); }
+        .btn-zap-footer:hover { background: #128C7E; transform: scale(1.02); }
     </style>
+    <script>
+    function abrirModal(src, link) {
+        window.parent.document.getElementById('imgExpandida').src = src;
+        window.parent.document.getElementById('linkZapModal').href = link;
+        window.parent.document.getElementById('meuModal').style.display = 'flex';
+    }
+    function fecharModal() {
+        window.parent.document.getElementById('meuModal').style.display = 'none';
+    }
+    </script>
     """, unsafe_allow_html=True)
 
-    # 2. CABEÇALHO DINÂMICO
-    st.markdown("<h2 style='text-align: center; color: #1e293b;'>🚀 Encontre o melhor profissional agora</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='color: #0f172a; margin-bottom:0;'>🏙️ O que você precisa?</h2>", unsafe_allow_html=True)
     
-    col_l, col_r = st.columns([7, 3])
-    with col_l:
-        termo_busca = st.text_input("", placeholder="Ex: Preciso de um dentista para hoje...", label_visibility="collapsed")
-    with col_r:
-        raio_km = st.select_slider("Alcance (KM)", options=[1, 5, 10, 20, 50, 100], value=10)
+    # --- 1. MOTOR DE LOCALIZAÇÃO ---
+    with st.expander("📍 Sua Localização (GPS)", expanded=False):
+        loc = get_geolocation()
+        if loc and 'coords' in loc:
+            minha_lat = loc['coords']['latitude']
+            minha_lon = loc['coords']['longitude']
+            st.success("📍 GPS: Localização detectada com precisão!")
+        else:
+            minha_lat, minha_lon = LAT_REF, LON_REF
+            st.warning("⚠️ GPS desativado. Usando padrão (Centro do Grajaú).")
 
-    # 3. PROCESSAMENTO DA BUSCA (A MÁGICA DAS 4 IAS)
+    c1, c2 = st.columns([3, 1])
+    termo_busca = c1.text_input("", placeholder="Ex: 'Cano estourado', 'Dentista' ou 'TI'...", key="main_search_v_groq", label_visibility="collapsed")
+    raio_km = c2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 20, 50, 100, 500], value=3)
+    
     if termo_busca:
-        # Puxa categorias reais do ADM para a IA não inventar nomes
-        CATEGORIAS_OFICIAIS = carregar_categorias_do_banco() 
+        # 2. IA GROQ COM FILTRO DE CATEGORIA REAL (Para evitar erro TI vs Dentista)
+        with st.status("🧠 IA Groq analisando pedido...", expanded=False) as status:
+            cat_ia = processar_ia_avancada(termo_busca) 
+            status.update(label=f"🎯 Resultado: {cat_ia}", state="complete")
         
-        with st.status("🧠 Conselho de IAs analisando sua necessidade...", expanded=False) as status:
-            # IA 1 e 2: Entende a intenção e mapeia categoria
-            cat_final = processar_ia_suprema(termo_busca) 
-            status.update(label=f"🎯 Categoria Identificada: {cat_final}", state="complete")
-
-        # 4. QUERY NO FIREBASE (ANTI-ERRO "TI")
-        try:
-            loc = get_geolocation()
-            m_lat = loc['coords']['latitude'] if loc else LAT_REF
-            m_lon = loc['coords']['longitude'] if loc else LON_REF
-
-            # BUSCA RESTRITA: Filtramos exatamente pela categoria que a IA encontrou
-            # Isso impede que "TI" apareça se a IA decidiu que a busca é por "DENTISTA"
-            docs = db.collection("profissionais").where("area", "==", cat_final).where("aprovado", "==", True).stream()
+        # BUSCA RESTRITA NO FIREBASE: Filtragem exata por 'area'
+        profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
+        
+        lista_ranking = []
+        for p_doc in profs:
+            p = p_doc.to_dict()
+            p['id'] = p_doc.id
+            dist = calcular_distancia_real(minha_lat, minha_lon, p.get('lat', LAT_REF), p.get('lon', LON_REF))
             
-            lista_resultados = []
-            for d in docs:
-                p = d.to_dict() | {"id": d.id}
+            # Filtro de Raio
+            if dist <= raio_km:
+                p['dist'] = dist
+                # Cálculo de Ranking Elite
+                score = 0
+                score += 5000 if p.get('verificado') else 0
+                score += (p.get('saldo', 0) * 20)
+                p['score_elite'] = score
+                lista_ranking.append(p)
+
+        # ORDENAÇÃO: Elite primeiro, depois os mais próximos
+        lista_ranking.sort(key=lambda x: (-x['score_elite'], x['dist']))
+
+        if not lista_ranking:
+            st.warning(f"😕 Ninguém de '{cat_ia}' encontrado em {raio_km}km. Tente aumentar o raio!")
+        else:
+            for p in lista_ranking:
+                is_elite = p.get('verificado') and p.get('saldo', 0) > 0
+                cor_borda = "#FFD700" if is_elite else "#3b82f6"
+                zap_limpo = limpar_whatsapp(p.get('whatsapp', p['id']))
+                link_zap = f"https://wa.me/{zap_limpo}?text=Olá {p.get('nome')}, vi seu trabalho no GeralJá!"
                 
-                # IA 3: Cálculo de Distância Geográfica
-                dist = calcular_distancia_real(m_lat, m_lon, p.get('lat', LAT_REF), p.get('lon', LON_REF))
-                
-                if dist <= raio_km:
-                    p['dist'] = dist
-                    # IA 4: Ranking de Relevância (Saldo + Verificação)
-                    p['ranking'] = (p.get('saldo', 0) * 10) + (1000 if p.get('verificado') else 0)
-                    lista_resultados.append(p)
+                # Montagem do Portfólio (Fotos f1 até f10)
+                fotos_html = ""
+                for i in range(1, 11):
+                    f_data = p.get(f'f{i}')
+                    if f_data and len(str(f_data)) > 100:
+                        src = f_data if str(f_data).startswith("data") else f"data:image/jpeg;base64,{f_data}"
+                        fotos_html += f'<div class="social-card" onclick="abrirModal(\'{src}\', \'{link_zap}\')"><img src="{src}"></div>'
 
-            # Ordenação Elite
-            lista_resultados.sort(key=lambda x: (-x['ranking'], x['dist']))
-
-            # 5. EXIBIÇÃO DA VITRINE
-            if not lista_resultados:
-                st.warning(f"Ainda não temos '{cat_final}' nesta faixa de {raio_km}km. Tente aumentar o alcance!")
-            else:
-                for prof in lista_resultados:
-                    is_elite = prof.get('verificado') and prof.get('saldo', 0) > 0
-                    cor_borda = "#FFD700" if is_elite else "#0047AB"
-                    
-                    # Link WhatsApp Seguro
-                    zap_limpo = re.sub(r'\D', '', str(prof.get('whatsapp', '')))
-                    if not zap_limpo.startswith('55'): zap_limpo = f"55{zap_limpo}"
-                    
-                    # Galeria Inteligente
-                    galeria_html = ""
-                    for i in range(1, 6):
-                        img_path = prof.get(f"f{i}")
-                        if img_path and len(str(img_path)) > 50:
-                            src = img_path if str(img_path).startswith("http") else f"data:image/jpeg;base64,{img_path}"
-                            galeria_html += f'<div class="social-card"><img src="{src}"></div>'
-
-                    # RENDERIZAÇÃO DO CARD
-                    st.markdown(f"""
-                    <div class="cartao-geral" style="--cborda: {cor_borda};">
-                        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                            <span class="distancia-tag">📍 {prof['dist']:.1f} KM DE VOCÊ</span>
-                            {"<span class='elite-tag'>🏆 PROFISSIONAL ELITE</span>" if is_elite else ""}
-                        </div>
-                        <div class="perfil-row">
-                            <img src="{prof.get('foto_url', 'https://cdn-icons-png.flaticon.com/512/149/149071.png')}" class="foto-perfil">
-                            <div>
-                                <h3 style="margin:0; color:#1e293b; font-size:20px;">{prof.get('nome', '').upper()}</h3>
-                                <p style="margin:0; color:#3b82f6; font-size:14px; font-weight:700;">{prof.get('area', 'Profissional')}</p>
-                            </div>
-                        </div>
-                        <div style="margin-top:12px; font-size:14px; color:#475569; line-height:1.5;">
-                            {prof.get('descricao', 'Profissional qualificado pronto para te atender.')[:150]}...
-                        </div>
-                        <div class="social-track">
-                            {galeria_html if galeria_html else '<p style="color:#cbd5e1; font-size:12px;">Galeria em atualização...</p>'}
-                        </div>
-                        <a href="https://wa.me/{zap_limpo}?text=Olá {prof.get('nome')}, vi seu perfil no GeralJá e gostaria de um orçamento!" 
-                           target="_blank" class="btn-zap">
-                            <span>💬 SOLICITAR ORÇAMENTO AGORA</span>
-                        </a>
+                # RENDERIZAÇÃO DO CARD TURBINADO
+                st.markdown(f"""
+                <div class="cartao-geral" style="--cor-borda: {cor_borda};">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <span style="font-size: 11px; color: #1e40af; background: #eff6ff; padding: 4px 10px; border-radius: 12px; font-weight: bold; border: 1px solid #dbeafe;">
+                            📍 a {p['dist']:.1f} km de você
+                        </span>
+                        {"<span style='font-size: 11px; background: linear-gradient(90deg, #FFD700, #FFA500); color: white; padding: 4px 10px; border-radius: 12px; font-weight: 900;'>🏆 ELITE</span>" if is_elite else ""}
                     </div>
-                    """, unsafe_allow_html=True)
-        except Exception as e:
-            st.error(f"Erro no processamento da busca suprema: {e}")
+                    <div class="perfil-row">
+                        <img src="{p.get('foto_url', 'https://cdn-icons-png.flaticon.com/512/149/149071.png')}" class="foto-perfil">
+                        <div>
+                            <h4 style="margin:0; color:#1e3a8a; font-size: 18px;">{p.get('nome','').upper()}</h4>
+                            <p style="margin:0; color:#64748b; font-size:13px; font-weight: 500;">{p.get('area','')}</p>
+                        </div>
+                    </div>
+                    <div style="margin: 10px 0; color: #475569; font-size: 14px; line-height: 1.4;">
+                        {p.get('descricao','')[:120]}...
+                    </div>
+                    <div class="social-track">{fotos_html}</div>
+                    <a href="{link_zap}" target="_blank" class="btn-zap-footer">
+                        <span>💬 SOLICITAR ORÇAMENTO</span>
+                    </a>
+                </div>
+                """, unsafe_allow_html=True)
 
-    else:
-        # TELA DE ESPERA (MODERNA)
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.info("💡 **Dica da IA:** Digite o problema que você tem, e eu encontro a solução (ex: 'vazamento na pia' ou 'dor de dente').")
-        st.image("https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1200&q=80", use_container_width=True)
+    # Modal Único (Fora do Loop - Design Moderno)
+    st.markdown("""
+    <div id="meuModal" style="display:none; position:fixed; z-index:9999; top:0; left:0; width:100%; height:100%; background:rgba(15, 23, 42, 0.95); align-items:center; justify-content:center; flex-direction:column;">
+        <span onclick="fecharModal()" style="position:absolute; top:20px; right:30px; color:white; font-size:45px; cursor:pointer; font-family:Arial;">&times;</span>
+        <img id="imgExpandida" style="max-width:95%; max-height:80%; border-radius:15px; box-shadow: 0 0 30px rgba(0,0,0,0.5);">
+        <a id="linkZapModal" href="#" target="_blank" style="margin-top:25px; background:#25D366; color:white; padding:18px 45px; border-radius:35px; text-decoration:none; font-weight:900; font-size:18px; box-shadow: 0 5px 15px rgba(37,211,102,0.4);">✅ CHAMAR NO WHATSAPP</a>
+    </div>
+    """, unsafe_allow_html=True)
 
 # ==============================================================================
 # ABA 2: 🚀 PAINEL DO PARCEIRO (COMPLETO: FB + IMAGENS + FAQ + EXCLUSÃO)
@@ -1142,6 +1156,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
