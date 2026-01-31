@@ -526,6 +526,42 @@ with menu_abas[0]:
             st.warning(f"Nenhum profissional de '{cat_ia}' encontrado em {raio_km}km.")
         else:
             for p in lista_ranking:
+                # --- MANTENHA TODO O SEU CÁCULO DE SCORE E RANKING ---
+
+for p in lista_ranking:
+    # 1. PROTEÇÃO DE DADOS (O segredo para não ficar "doido")
+    # Se a foto for Base64, a gente coloca o cabeçalho. Se for URL, deixa URL.
+    foto_raw = p.get('foto_url', '')
+    if len(str(foto_raw)) > 100 and not str(foto_raw).startswith("data:"):
+        foto_final = f"data:image/jpeg;base64,{foto_raw}"
+    else:
+        foto_final = foto_raw if foto_raw else "https://via.placeholder.com/150"
+
+    # 2. MONTAGEM DAS FOTOS (f1 a f10) - Mantenha sua lógica de Modal
+    fotos_html = ""
+    for i in range(1, 11):
+        f_data = p.get(f'f{i}')
+        if f_data and len(str(f_data)) > 100:
+            # Garante que o código da imagem não vire texto na tela
+            f_src = f_data if str(f_data).startswith("data") else f"data:image/jpeg;base64,{f_data}"
+            fotos_html += f'<div class="social-card" onclick="abrirModal(\'{f_src}\', \'{link_zap}\')"><img src="{f_src}"></div>'
+
+    # 3. O SEU CARD ORIGINAL (Apenas trocando as variáveis para as "protegidas")
+    st.markdown(f"""
+    <div class="cartao-geral" style="--cor-borda: {cor_borda};">
+        <div style="font-size: 11px; color: #0047AB; font-weight: bold; margin-bottom: 10px;">
+            📍 a {p['dist']:.1f} km {" | 🏆 ELITE" if is_elite else ""}
+        </div>
+        <div class="perfil-row">
+            <img src="{foto_final}" class="foto-perfil"> <div>
+                <h4 style="margin:0; color:#1e3a8a;">{p.get('nome','').upper()}</h4>
+                <p style="margin:0; color:#666; font-size:12px;">{p.get('descricao','')[:100]}...</p>
+            </div>
+        </div>
+        <div class="social-track">{fotos_html}</div>
+        <a href="{link_zap}" target="_blank" class="btn-zap-footer">💬 CHAMAR AGORA</a>
+    </div>
+    """, unsafe_allow_html=True)
                 cor_borda = "#FFD700" if p.get('verificado') else "#0047AB"
                 link_zap = f"https://wa.me/{limpar_whatsapp(p.get('whatsapp'))}?text=Vi seu perfil no GeralJá"
                 
@@ -1111,6 +1147,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
