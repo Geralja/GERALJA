@@ -61,7 +61,58 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed"
 )
+# --- DENTRO DO LOOP: for prof in lista_ranking: ---
 
+is_elite = prof.get('verificado') and prof.get('saldo', 0) > 0
+cor_borda = "#FFD700" if is_elite else "#0047AB"
+
+# Trata o WhatsApp (Limpeza de números)
+zap_link = re.sub(r'\D', '', str(prof.get('whatsapp', '')))
+if not zap_link.startswith('55'): zap_link = f"55{zap_link}"
+
+# Monta Galeria de Fotos (Sempre limpa a cada loop)
+fotos_html = ""
+for i in range(1, 6):
+    f_data = prof.get(f'f{i}')
+    if f_data and len(str(f_data)) > 50:
+        src = f_data if str(f_data).startswith("http") else f"data:image/jpeg;base64,{f_data}"
+        fotos_html += f'<div class="social-card"><img src="{src}"></div>'
+
+# AGORA O BLOCO HTML COMPLETO E FECHADO
+st.markdown(f"""
+<div class="cartao-geral" style="--cborda: {cor_borda}; border-left: 10px solid {cor_borda}; background: white; padding: 20px; border-radius: 20px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+    <div class="elite-glow"></div>
+    
+    <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+        <span class="distancia-tag" style="background: #f1f5f9; padding: 5px 10px; border-radius: 50px; font-size: 11px; font-weight: bold; color: #64748b;">
+            📍 {prof['dist']:.1f} KM
+        </span>
+        {"<span class='elite-tag' style='background:#FFD700; color:black; padding:5px 10px; border-radius:50px; font-size:11px; font-weight:bold;'>🏆 ELITE</span>" if is_elite else ""}
+    </div>
+
+    <div class="perfil-row" style="display: flex; gap: 15px; align-items: center;">
+        <img src="{prof.get('foto_url', 'https://cdn-icons-png.flaticon.com/512/149/149071.png')}" 
+             class="foto-perfil" style="width: 70px; height: 70px; border-radius: 50%; object-fit: cover; border: 3px solid #25D366;">
+        <div>
+            <h4 style="margin:0; font-size:18px; color:#0f172a; font-family: 'Inter', sans-serif;">{prof.get('nome', '').upper()}</h4>
+            <p style="margin:0; font-size:13px; color:#64748b; font-weight:600;">{prof.get('area', 'Profissional')}</p>
+        </div>
+    </div>
+
+    <div style="margin-top:10px; font-size:14px; color:#475569; line-height:1.4; font-family: 'Inter', sans-serif;">
+        {prof.get('descricao', 'Profissional parceiro do ecossistema GeralJá Brasil.')[:150]}...
+    </div>
+
+    <div class="social-track" style="display: flex; overflow-x: auto; gap: 10px; margin-top: 10px;">
+        {fotos_html}
+    </div>
+
+    <a href="https://wa.me/{zap_link}?text=Olá, vi seu perfil no GeralJá!" target="_blank" class="btn-zap" 
+       style="display: block; background: #25D366; color: white !important; text-align: center; padding: 15px; border-radius: 12px; font-weight: bold; text-decoration: none; margin-top: 15px;">
+        SOLICITAR ORÇAMENTO AGORA
+    </a>
+</div>
+""", unsafe_allow_html=True)
 # --- FUNCIONALIDADE DO ARQUIVO: TEMA MANUAL ---
 if 'tema_claro' not in st.session_state:
     st.session_state.tema_claro = False
@@ -1063,6 +1114,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
