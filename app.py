@@ -357,81 +357,111 @@ def normalizar_para_ia(texto):
     return "".join(c for c in unicodedata.normalize('NFD', str(texto))
                    if unicodedata.category(c) != 'Mn').lower().strip()
 
+import math
+import re
+import base64
+import streamlit as st
+
+# --- FUNÇÃO PRINCIPAL: IA COM FILTRO RIGOROSO ---
 def processar_ia_avancada(texto):
     if not texto: return "Vazio"
     t_clean = normalizar_para_ia(texto)
     
-    # --- 1. SEU CÓDIGO ATUAL (Rápido e sem custo) ---
+    # 1. Busca Direta (Rápida e sem custo)
+    # Tenta encontrar palavras-chave nos conceitos expandidos
     for chave, categoria in CONCEITOS_EXPANDIDOS.items():
         if re.search(rf"\b{normalizar_para_ia(chave)}\b", t_clean):
             return categoria
     
+    # Tenta encontrar se o que foi digitado é uma das categorias oficiais
     for cat in CATEGORIAS_OFICIAIS:
         if normalizar_para_ia(cat) in t_clean:
             return cat
 
-    # --- 2. O UPGRADE PARA NOTA 5.0 (IA Groq + Cache) ---
+    # 2. Upgrade com IA Externa (Groq) + Cache no Firebase
     try:
-        # Primeiro checa se já perguntamos isso antes (Cache)
+        # Verifica se já processamos esse termo antes para economizar API
         cache_ref = db.collection("cache_buscas").document(t_clean).get()
         if cache_ref.exists:
             return cache_ref.to_dict().get("categoria")
 
-        # Se não sabe, a IA "pensa" e resolve
+        # Se não está no cache, a IA decide
         from groq import Groq
         client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-        prompt = f"O usuário buscou: '{texto}'. Categorias: {CATEGORIAS_OFICIAIS}. Responda apenas o NOME DA CATEGORIA."
+        
+        # PROMPT OTIMIZADO: Força a IA a escolher APENAS entre as categorias oficiais
+        prompt = f"""
+        O usuário buscou o termo: '{texto}'. 
+        Baseado nessa busca, escolha a categoria MAIS ADEQUADA da lista abaixo:
+        {CATEGORIAS_OFICIAIS}.
+        
+        REGRAS:
+        1. Responda APENAS o nome da categoria.
+        2. Se não houver relação nenhuma, responda 'OUTROS'.
+        3. Não use pontos ou explicações.
+        """
         
         res = client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
             model="llama3-8b-8192",
-            temperature=0.1
+            temperature=0.0 # Temperatura 0 para ser preciso e não inventar
         )
         cat_ia = res.choices[0].message.content.strip()
 
-        # Salva no cache para não gastar mais tokens com esse termo
+        # Salva no cache do Firebase
         db.collection("cache_buscas").document(t_clean).set({"categoria": cat_ia})
         return cat_ia
 
-    except:
-        return "NAO_ENCONTRADO" # Se tudo der errado
+    except Exception as e:
+        print(f"Erro na IA: {e}")
+        return "OUTROS"
 
+# --- FUNÇÃO DE DISTÂNCIA ---
 def calcular_distancia_real(lat1, lon1, lat2, lon2):
     try:
         if None in [lat1, lon1, lat2, lon2]: return 999.0
-        R = 6371 
+        R = 6371 # Raio da Terra em KM
         dlat, dlon = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
         a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
-        return round(R * (2 * math.atan2(math.sqrt(a), math.sqrt(1-a))), 1)
-    except: return 999.0
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+        return round(R * c, 1)
+    except: 
+        return 999.0
 
+# --- CONVERSOR DE IMAGEM (Para Upload de fotos) ---
 def converter_img_b64(file):
     if file is None: return ""
-    try: return base64.b64encode(file.read()).decode()
-    except: return ""
+    try: 
+        return base64.b64encode(file.read()).decode()
+    except: 
+        return ""
 
-# --- FUNCIONALIDADE DO ARQUIVO: O VARREDOR (Rodapé Automático) ---
+# --- LAYOUT E RODAPÉ ---
 def finalizar_e_alinhar_layout():
     """
-    Esta função atua como um ímã. Puxa o conteúdo e limpa o rodapé.
+    Limpa o layout e adiciona o rodapé fixo.
     """
     st.write("---")
     fechamento_estilo = """
         <style>
-            .main .block-container { padding-bottom: 5rem !important; }
+            /* Garante que o conteúdo não fique escondido atrás do rodapé */
+            .main .block-container { padding-bottom: 8rem !important; }
+            
             .footer-clean {
                 text-align: center;
-                padding: 20px;
-                opacity: 0.7;
-                font-size: 0.8rem;
-                width: 100%;
-                color: gray;
+                padding: 30px 10px;
+                background-color: #f8f9fa;
+                border-radius: 20px 20px 0 0;
+                margin-top: 50px;
+                color: #64748b;
+                border-top: 1px solid #e2e8f0;
             }
+            .footer-clean b { color: #0f172a; }
         </style>
         <div class="footer-clean">
             <p>🎯 <b>GeralJá</b> - Sistema de Inteligência Local</p>
             <p>Conectando quem precisa com quem sabe fazer.</p>
-            <p>v3.0 | © 2026 Todos os direitos reservados</p>
+            <p style="font-size: 10px; opacity: 0.6;">v3.5 | © 2026 Inteligência Geográfica</p>
         </div>
     """
     st.markdown(fechamento_estilo, unsafe_allow_html=True)
@@ -1104,6 +1134,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
