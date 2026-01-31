@@ -459,117 +459,98 @@ if comando == "abracadabra":
 
 menu_abas = st.tabs(lista_abas)
 # ==============================================================================
-# --- ABA 0: BUSCA SUPREMA (PRONTA COM IA + FILTRO DE ELITE + VITRINE) ---
+# --- ABA 0: BUSCA CORRIGIDA (SEM CÓDIGO APARECENDO NA TELA) ---
 # ==============================================================================
 with menu_abas[0]:
-    # 1. ESTILIZAÇÃO DA VITRINE (Design Limpo e Moderno)
+    # 1. ESTILO CSS (Sempre no topo da aba)
     st.markdown("""
     <style>
         .cartao-geral { 
-            background: #ffffff; border-radius: 20px; border-left: 10px solid var(--cor-borda); 
-            padding: 20px; margin-bottom: 25px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); 
-            color: #1e293b; border: 1px solid #f1f5f9;
+            background: #ffffff; border-radius: 15px; border-left: 8px solid var(--cor-borda); 
+            padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+            color: #1e293b;
         }
-        .foto-perfil { width: 65px; height: 65px; border-radius: 50%; object-fit: cover; border: 3px solid #25D366; }
-        .social-track { display: flex; overflow-x: auto; gap: 12px; padding: 10px 0; scrollbar-width: none; }
-        .social-card { flex: 0 0 160px; height: 220px; border-radius: 12px; overflow: hidden; background: #f1f5f9; }
+        .foto-perfil { width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 2px solid #eee; }
+        .social-track { display: flex; overflow-x: auto; gap: 10px; padding: 10px 0; }
+        .social-card { flex: 0 0 140px; height: 180px; border-radius: 10px; overflow: hidden; background: #eee; }
         .social-card img { width: 100%; height: 100%; object-fit: cover; }
-        .btn-zap-footer { 
-            display: flex; align-items: center; justify-content: center; gap: 8px;
-            background: #25D366; color: white !important; padding: 15px; border-radius: 12px; 
-            font-weight: 900; text-decoration: none; margin-top: 15px;
+        .btn-zap { 
+            display: block; background: #25D366; color: white !important; text-align: center;
+            padding: 12px; border-radius: 8px; font-weight: bold; text-decoration: none; margin-top: 10px;
         }
     </style>
     """, unsafe_allow_html=True)
 
-    st.markdown("<h2 style='color:#0f172a;'>🔍 O que você precisa hoje?</h2>", unsafe_allow_html=True)
+    st.subheader("🔍 Encontre Profissionais")
     
-    # --- INTERFACE DE ENTRADA ---
-    loc = get_geolocation()
-    m_lat, m_lon = (loc['coords']['latitude'], loc['coords']['longitude']) if loc and 'coords' in loc else (LAT_REF, LON_REF)
-
-    col_b1, col_b2 = st.columns([3, 1])
-    termo_busca = col_b1.text_input("", placeholder="Ex: Dentista, Encanador, Dente quebrado...", key="input_busca_potente", label_visibility="collapsed")
-    raio_km = col_b2.select_slider("KM", options=[1, 3, 5, 10, 20, 50], value=10)
+    # Busca e Filtros
+    c1, c2 = st.columns([3, 1])
+    termo = c1.text_input("", placeholder="O que você precisa?", key="main_search")
+    raio = c2.select_slider("KM", options=[1, 5, 10, 20, 50], value=10)
     
-    if termo_busca:
-        with st.status("🧠 IA GeralJá analisando pedido...", expanded=False) as status:
+    if termo:
+        with st.status("🧠 IA Filtrando...", expanded=False):
+            # Chama sua função de IA (aquela que você me mandou)
+            cat_alvo = processar_ia_avancada(termo).strip()
             
-            # IA 1: Groq define a Categoria Alvo (Usa a função que você colou no topo)
-            categoria_alvo = processar_ia_avancada(termo_busca).strip()
+            # Busca no Firebase
+            docs = db.collection("profissionais").where("aprovado", "==", True).stream()
             
-            # BUSCA NO FIREBASE (Apenas profissionais aprovados)
-            profs_ref = db.collection("profissionais").where("aprovado", "==", True).stream()
-            
-            lista_ranking = []
-            
-            for p_doc in profs_ref:
-                p = p_doc.to_dict()
-                p['id'] = p_doc.id
+            resultados = []
+            for d in docs:
+                p = d.to_dict()
+                area_doc = str(p.get('area', '')).strip()
                 
-                # Dados para o Motor de Relevância (IA 2 e 3)
-                area_p = str(p.get('area', '')).strip()
-                nome_p = str(p.get('nome', '')).lower()
-                
-                # --- LÓGICA DE PONTUAÇÃO (Resolve o erro do TI vs Dentista) ---
-                score_relevancia = 0
-                
-                # Match exato com a categoria definida pela IA
-                if area_p.lower() == categoria_alvo.lower():
-                    score_relevancia += 2000
-                
-                # Match parcial no nome ou na área (Fuzzy/Busca simples)
-                if normalizar_para_ia(termo_busca) in normalizar_para_ia(area_p) or normalizar_para_ia(termo_busca) in nome_p:
-                    score_relevancia += 500
-
-                # FILTRO DE SEGURANÇA: Só entra se tiver relevância > 0
-                if score_relevancia > 0:
+                # SÓ ENTRA SE: a área for igual à da IA ou o nome bater
+                if area_doc.lower() == cat_alvo.lower() or normalizar_para_ia(termo) in p.get('nome','').lower():
+                    # Cálculo de distância (usando sua função)
+                    loc = get_geolocation()
+                    m_lat, m_lon = (loc['coords']['latitude'], loc['coords']['longitude']) if loc and 'coords' in loc else (LAT_REF, LON_REF)
                     dist = calcular_distancia_real(m_lat, m_lon, p.get('lat', LAT_REF), p.get('lon', LON_REF))
                     
-                    if dist <= raio_km:
-                        p['dist'] = dist
-                        # IA 4: RANKING DE ELITE (Prioridade: Verificado > Saldo > Relevância)
-                        p['score_final'] = (10000 if p.get('verificado') else 0) + (p.get('saldo', 0) * 30) + score_relevancia
-                        lista_ranking.append(p)
+                    if dist <= raio:
+                        p['distancia'] = dist
+                        # Score: Verificados e Saldo no topo
+                        p['ponto'] = (10000 if p.get('verificado') else 0) + (p.get('saldo', 0) * 10)
+                        resultados.append(p)
 
-            # Ordenação Final
-            lista_ranking.sort(key=lambda x: (-x['score_final'], x['dist']))
-            status.update(label=f"🎯 {len(lista_ranking)} profissionais encontrados!", state="complete")
+            resultados.sort(key=lambda x: (-x['ponto'], x['distancia']))
 
-        # --- EXIBIÇÃO DA VITRINE (A POTÊNCIA VISUAL) ---
-        if not lista_ranking:
-            st.warning(f"😕 Não encontramos '{termo_busca}' nesta região. Tente aumentar o raio!")
+        if not resultados:
+            st.error(f"Nenhum profissional de '{cat_alvo}' encontrado por perto.")
         else:
-            for p in lista_ranking:
-                cor_borda = "#FFD700" if p.get('verificado') else "#0047AB"
-                zap_link = f"https://wa.me/{limpar_whatsapp(p.get('whatsapp'))}?text=Olá {p.get('nome')}, vi você no GeralJá!"
+            # RENDERIZAÇÃO DA VITRINE
+            for p in resultados:
+                borda = "#FFD700" if p.get('verificado') else "#2563eb"
+                link_wpp = f"https://wa.me/{p.get('whatsapp')}?text=Vi seu perfil no GeralJá"
                 
-                # Galeria de fotos do portfólio (f1 a f10)
+                # Monta as fotos do portfólio (f1 a f10)
                 fotos_html = ""
                 for i in range(1, 11):
-                    f_img = p.get(f'f{i}')
-                    if f_img and len(str(f_img)) > 100: # Valida se há imagem real
-                        src = f_img if str(f_img).startswith("http") else f"data:image/jpeg;base64,{f_img}"
+                    img_data = p.get(f'f{i}')
+                    if img_data and len(str(img_data)) > 100:
+                        src = img_data if str(img_data).startswith("http") else f"data:image/jpeg;base64,{img_data}"
                         fotos_html += f'<div class="social-card"><img src="{src}"></div>'
 
-                st.markdown(f"""
-                <div class="cartao-geral" style="--cor-borda: {cor_borda};">
-                    <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 10px;">
-                        <span style="color: #25D366; font-weight: bold;">📍 a {p['dist']:.1f} KM</span>
-                        {"<b style='color:#FFA500;'>⭐ ELITE</b>" if p.get('verificado') else ""}
+                # O SEGREDO: Todo o HTML dentro de UMA única string f""" """
+                html_card = f"""
+                <div class="cartao-geral" style="--cor-borda: {borda};">
+                    <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:bold;">
+                        <span style="color:green;">📍 {p['distancia']:.1f} KM</span>
+                        {"<span style='color:orange;'>⭐ VERIFICADO</span>" if p.get('verificado') else ""}
                     </div>
-                    <div class="perfil-row">
-                        <img src="{p.get('foto_url', 'https://cdn-icons-png.flaticon.com/512/149/149071.png')}" class="foto-perfil">
+                    <div style="display:flex; align-items:center; gap:15px; margin: 15px 0;">
+                        <img src="{p.get('foto_url', '')}" class="foto-perfil">
                         <div>
-                            <h4 style="margin:0; color:#1e3a8a;">{p.get('nome','').upper()}</h4>
-                            <p style="margin:0; color:#64748b; font-size:12px; font-weight:bold;">{p.get('area')}</p>
+                            <h3 style="margin:0; font-size:18px;">{p.get('nome', '').upper()}</h3>
+                            <p style="margin:0; color:#666;">{p.get('area')}</p>
                         </div>
                     </div>
-                    <div style="margin: 10px 0; font-size: 14px; color: #475569;">{p.get('descricao','')[:140]}...</div>
                     <div class="social-track">{fotos_html}</div>
-                    <a href="{zap_link}" target="_blank" class="btn-zap-footer">💬 CHAMAR NO WHATSAPP</a>
+                    <a href="{link_wpp}" target="_blank" class="btn-zap">CHAMAR NO WHATSAPP</a>
                 </div>
-                """, unsafe_allow_html=True)
+                """
+                st.markdown(html_card, unsafe_allow_html=True)
 # ==============================================================================
 # ABA 2: 🚀 PAINEL DO PARCEIRO (COMPLETO: FB + IMAGENS + FAQ + EXCLUSÃO)
 # ==============================================================================
@@ -1123,6 +1104,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
