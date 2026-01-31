@@ -300,112 +300,91 @@ CONCEITOS_EXPANDIDOS = {
     "jardim": "Jardineiro", "piscina": "Piscineiro"
 }
 
-# ------------------------------------------------------------------------------
-# 4. MOTORES DE IA E UTILS
-# ------------------------------------------------------------------------------
-def normalizar_para_ia(texto):
-    if not texto:
-        return ""
-    # Remove acentos e deixa tudo em minúsculo
-    return "".join(c for c in unicodedata.normalize('NFD', str(texto))
-                   if unicodedata.category(c) != 'Mn').lower().strip()
+# --- 4. MOTORES DE INTELIGÊNCIA (AS 4 IAS) ---
 
-def processar_ia_avancada(texto):
-    if not texto: return "Vazio"
-    t_clean = normalizar_para_ia(texto)
-    
-    # --- 1. SEU CÓDIGO ATUAL (Rápido e sem custo) ---
-    for chave, categoria in CONCEITOS_EXPANDIDOS.items():
-        if re.search(rf"\b{normalizar_para_ia(chave)}\b", t_clean):
-            return categoria
-    
-    for cat in CATEGORIAS_OFICIAIS:
-        if normalizar_para_ia(cat) in t_clean:
-            return cat
-
-    # --- 2. O UPGRADE PARA NOTA 5.0 (IA Groq + Cache) ---
+@st.cache_data(ttl=600)
+def carregar_categorias_do_banco():
+    """Lê a lista oficial do Firestore"""
     try:
-        # Primeiro checa se já perguntamos isso antes (Cache)
-        cache_ref = db.collection("cache_buscas").document(t_clean).get()
-        if cache_ref.exists:
-            return cache_ref.to_dict().get("categoria")
-
-        # Se não sabe, a IA "pensa" e resolve
-        from groq import Groq
-        client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-        prompt = f"O usuário buscou: '{texto}'. Categorias: {CATEGORIAS_OFICIAIS}. Responda apenas o NOME DA CATEGORIA."
-        
-        res = client.chat.completions.create(
-            messages=[{"role": "user", "content": prompt}],
-            model="llama3-8b-8192",
-            temperature=0.1
-        )
-        cat_ia = res.choices[0].message.content.strip()
-
-        # Salva no cache para não gastar mais tokens com esse termo
-        db.collection("cache_buscas").document(t_clean).set({"categoria": cat_ia})
-        return cat_ia
-
+        doc = db.collection("configuracoes").document("categorias").get()
+        return doc.to_dict().get("lista", []) if doc.exists else []
     except:
-        return "NAO_ENCONTRADO" # Se tudo der errado
+        return []
+
+def processar_ia_suprema(termo):
+    """Motor Híbrido: Busca Exata > Cache > Groq > Gemini > Fuzzy"""
+    if not termo: return None
+    t_clean = "".join(c for c in unicodedata.normalize('NFD', str(termo)) if unicodedata.category(c) != 'Mn').lower().strip()
+    categorias = carregar_categorias_do_banco()
+    
+    # 1. Busca Exata
+    for cat in categorias:
+        if t_clean == "".join(c for c in unicodedata.normalize('NFD', str(cat)) if unicodedata.category(c) != 'Mn').lower().strip():
+            return cat
+    
+    # 2. IA GROQ (Rápida)
+    try:
+        client = Groq(api_key=GROQ_KEY)
+        res = client.chat.completions.create(
+            messages=[{"role": "user", "content": f"Categorize '{termo}' em apenas UMA das opções: {categorias}. Responda apenas o nome exato."}],
+            model="llama3-8b-8192", temperature=0
+        )
+        resp = res.choices[0].message.content.strip()
+        if resp in categorias: return resp
+    except: pass
+
+    # 3. IA GEMINI (Backup Inteligente)
+    try:
+        model = genai.GenerativeModel('gemini-pro')
+        res = model.generate_content(f"Dada a lista {categorias}, qual categoria melhor define: '{termo}'? Responda apenas o nome.")
+        if res.text.strip() in categorias: return res.text.strip()
+    except: pass
+
+    # 4. FUZZY MATCHING (Corretor de Erros)
+    match, score = process.extractOne(termo, categorias)
+    return match if score > 50 else "Ajudante Geral"
+
+# --- 5. UTILITÁRIOS (GPS, WHATSAPP, IMAGEM) ---
 
 def calcular_distancia_real(lat1, lon1, lat2, lon2):
     try:
-        if None in [lat1, lon1, lat2, lon2]: return 999.0
-        R = 6371 
+        if None in [lat1, lon1, lat2, lon2]: return 99.0
+        R = 6371.0
         dlat, dlon = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
         a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
         return round(R * (2 * math.atan2(math.sqrt(a), math.sqrt(1-a))), 1)
-    except: return 999.0
+    except: return 99.0
 
-def converter_img_b64(file):
-    if file is None: return ""
-    try: return base64.b64encode(file.read()).decode()
-    except: return ""
+def limpar_whatsapp(numero):
+    num = re.sub(r'\D', '', str(numero))
+    return f"55{num}" if not num.startswith('55') and len(num) >= 10 else num
 
-# --- FUNCIONALIDADE DO ARQUIVO: O VARREDOR (Rodapé Automático) ---
-def finalizar_e_alinhar_layout():
-    """
-    Esta função atua como um ímã. Puxa o conteúdo e limpa o rodapé.
-    """
-    st.write("---")
-    fechamento_estilo = """
-        <style>
-            .main .block-container { padding-bottom: 5rem !important; }
-            .footer-clean {
-                text-align: center;
-                padding: 20px;
-                opacity: 0.7;
-                font-size: 0.8rem;
-                width: 100%;
-                color: gray;
-            }
-        </style>
-        <div class="footer-clean">
-            <p>🎯 <b>GeralJá</b> - Sistema de Inteligência Local</p>
-            <p>Conectando quem precisa com quem sabe fazer.</p>
-            <p>v3.0 | © 2026 Todos os direitos reservados</p>
-        </div>
-    """
-    st.markdown(fechamento_estilo, unsafe_allow_html=True)
+# --- 6. INTERFACE E DESIGN SYSTEM ---
+if 'modo_noite' not in st.session_state:
+    st.session_state.modo_noite = True
 
-# ------------------------------------------------------------------------------
-# 5. DESIGN SYSTEM
-# ------------------------------------------------------------------------------
-st.markdown("""
+st.markdown(f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-    * { font-family: 'Inter', sans-serif; }
-    .stApp { background-color: #F8FAFC; }
-    .header-container { background: white; padding: 40px 20px; border-radius: 0 0 50px 50px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border-bottom: 8px solid #FF8C00; margin-bottom: 25px; }
-    .logo-azul { color: #0047AB; font-weight: 900; font-size: 50px; letter-spacing: -2px; }
-    .logo-laranja { color: #FF8C00; font-weight: 900; font-size: 50px; letter-spacing: -2px; }
+    * {{ font-family: 'Inter', sans-serif; }}
+    #MainMenu, footer, header {{ visibility: hidden; }}
+    .stApp {{ background-color: {"#0D1117" if st.session_state.modo_noite else "#F8FAFC"} !important; }}
+    .header-container {{ background: white; padding: 40px 20px; border-radius: 0 0 50px 50px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border-bottom: 8px solid #FF8C00; margin-bottom: 25px; }}
+    .logo-azul {{ color: #0047AB; font-weight: 900; font-size: 50px; letter-spacing: -2px; }}
+    .logo-laranja {{ color: #FF8C00; font-weight: 900; font-size: 50px; letter-spacing: -2px; }}
 </style>
 """, unsafe_allow_html=True)
 
+# Layout do Topo
+c_t1, c_t2 = st.columns([2, 8])
+with c_t1:
+    st.session_state.modo_noite = st.toggle("🌙 Noite", value=st.session_state.modo_noite)
+
 st.markdown('<div class="header-container"><span class="logo-azul">GERAL</span><span class="logo-laranja">JÁ</span><br><small style="color:#64748B; font-weight:700;">BRASIL ELITE EDITION</small></div>', unsafe_allow_html=True)
 
+# --- 7. NAVEGAÇÃO POR ABAS ---
 lista_abas = ["🔍 BUSCAR", "🚀 CADASTRAR", "👤 MEU PERFIL", "👑 ADMIN", "⭐ FEEDBACK"]
+menu_abas = st.tabs(lista_abas)
 comando = st.sidebar.text_input("Comando Secreto", type="password")
 if comando == "abracadabra":
     lista_abas.append("📊 FINANCEIRO")
@@ -1083,6 +1062,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
