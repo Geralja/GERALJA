@@ -489,137 +489,75 @@ if comando == "abracadabra":
 
 menu_abas = st.tabs(lista_abas)
 # ==============================================================================
-# --- ABA 0: BUSCA CORRIGIDA (SEM CÓDIGO APARECENDO NA TELA) ---
+# --- ABA 0: BUSCA (VERSÃO CORRIGIDA E LIMPA) ---
 # ==============================================================================
 with menu_abas[0]:
-    # 1. ESTILO CSS (Esconde erros de renderização e embeleza os cards)
-    st.markdown("""
-    <style>
-        .cartao-resultado {
-            background: #ffffff;
-            border-radius: 15px;
-            border-left: 8px solid #2563eb;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            color: #1e293b;
-        }
-        .foto-perfil {
-            width: 70px;
-            height: 70px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid #f1f5f9;
-        }
-        .distancia-tag {
-            background: #f1f5f9;
-            color: #475569;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: bold;
-        }
-        .botao-wpp {
-            display: block;
-            background: #25D366;
-            color: white !important;
-            text-align: center;
-            padding: 12px;
-            border-radius: 10px;
-            font-weight: bold;
-            text-decoration: none;
-            margin-top: 15px;
-        }
-    </style>
-    """, unsafe_allow_html=True)
+    st.markdown("### 🏙️ O que você precisa?")
+    
+    # 1. LOCALIZAÇÃO
+    loc = get_geolocation()
+    minha_lat, minha_lon = (loc['coords']['latitude'], loc['coords']['longitude']) if loc and 'coords' in loc else (LAT_REF, LON_REF)
 
-    st.subheader("🔍 Encontrar Profissional")
-
-    # Interface de Busca
-    col_busca, col_km = st.columns([3, 1])
-    termo_digitado = col_busca.text_input("", placeholder="O que você precisa hoje?", key="input_busca_principal")
-    raio_km = col_km.selectbox("Raio (KM)", [5, 10, 20, 50, 100], index=2)
-
-    if termo_digitado:
-        with st.status("🧠 IA analisando sua necessidade...", expanded=False) as status:
-            # Chama sua função de IA para decidir a categoria
-            categoria_escolhida = processar_ia_avancada(termo_digitado).strip()
-            st.write(f"Categoria identificada: **{categoria_escolhida}**")
+    c1, c2 = st.columns([3, 1])
+    termo_busca = c1.text_input("Ex: 'Cano estourado' ou 'Pizza'", key="main_search_v3")
+    raio_km = c2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 20, 50], value=3)
+    
+    if termo_busca:
+        with st.status("🧠 IA processando busca...", expanded=False):
+            cat_ia = processar_ia_avancada(termo_busca)
+            # BUSCA FILTRADA: Só traz quem é da área e está aprovado
+            profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
             
-            # Busca no Firebase (Ajuste 'profissionais' se sua coleção tiver outro nome)
-            docs = db.collection("profissionais").where("aprovado", "==", True).stream()
-            
-            lista_final = []
-            for d in docs:
-                p = d.to_dict()
-                # Pega a área do profissional no banco
-                area_do_banco = str(p.get('area', '')).strip()
-
-                # --- TRAVA DE SEGURANÇA: Só entra se a categoria bater EXATAMENTE ---
-                if area_do_banco.lower() != categoria_escolhida.lower():
-                    continue
-
-                # Cálculo de Distância Real
-                loc_usuario = get_geolocation()
-                if loc_usuario and 'coords' in loc_usuario:
-                    u_lat = loc_usuario['coords']['latitude']
-                    u_lon = loc_usuario['coords']['longitude']
-                else:
-                    u_lat, u_lon = LAT_REF, LON_REF # Suas constantes padrão
-
-                dist = calcular_distancia_real(u_lat, u_lon, p.get('lat', u_lat), p.get('lon', u_lon))
-
+            lista_ranking = []
+            for p_doc in profs:
+                p = p_doc.to_dict()
+                dist = calcular_distancia_real(minha_lat, minha_lon, p.get('lat', LAT_REF), p.get('lon', LON_REF))
+                
                 if dist <= raio_km:
-                    p['distancia_calculada'] = dist
-                    # Critério de desempate: Verificados e Saldo
-                    p['score_rank'] = (1000 if p.get('verificado') else 0) + (p.get('saldo', 0))
-                    lista_final.append(p)
+                    p['dist'] = dist
+                    # Ranking: Verificados e Saldo
+                    p['score'] = (1000 if p.get('verificado') else 0) + (p.get('saldo', 0))
+                    lista_ranking.append(p)
 
-            # Ordenação: Primeiro Verificados, depois os mais perto
-            lista_final.sort(key=lambda x: (-x['score_rank'], x['distancia_calculada']))
-            status.update(label="Busca concluída!", state="complete")
+            # Ordena por Score (Premium) e depois por Distância
+            lista_ranking.sort(key=lambda x: (-x['score'], x['dist']))
 
-        # --- EXIBIÇÃO DOS RESULTADOS ---
-        if not lista_final:
-            st.error(f"Sinto muito! Não encontrei profissionais de '{categoria_escolhida}' em um raio de {raio_km}km.")
+        if not lista_ranking:
+            st.warning(f"Nenhum profissional de '{cat_ia}' encontrado em {raio_km}km.")
         else:
-            for prof in lista_final:
-                # Trata a imagem (Se for Base64 ou URL)
-                foto_data = prof.get('foto_url', '') # ou prof.get('foto')
-                if not foto_data:
-                    foto_src = "https://cdn-icons-png.flaticon.com/512/149/149071.png"
-                elif str(foto_data).startswith("http"):
-                    foto_src = foto_data
-                else:
-                    foto_src = f"data:image/png;base64,{foto_data}"
+            for p in lista_ranking:
+                cor_borda = "#FFD700" if p.get('verificado') else "#0047AB"
+                link_zap = f"https://wa.me/{limpar_whatsapp(p.get('whatsapp'))}?text=Vi seu perfil no GeralJá"
+                
+                # Tratamento de Imagem (Segurança total contra "texto doido")
+                foto_perfil = p.get('foto_url', '')
+                if not foto_perfil or len(str(foto_perfil)) < 50:
+                    foto_perfil = "https://cdn-icons-png.flaticon.com/512/149/149071.png"
 
-                link_whatsapp = f"https://wa.me/{prof.get('whatsapp')}?text=Olá {prof.get('nome')}, vi seu perfil no GeralJá e gostaria de um orçamento para {termo_digitado}."
+                # Vitrine de Fotos f1 a f10
+                fotos_html = ""
+                for i in range(1, 11):
+                    img_data = p.get(f'f{i}')
+                    if img_data and len(str(img_data)) > 100:
+                        src = img_data if str(img_data).startswith("data") else f"data:image/jpeg;base64,{img_data}"
+                        fotos_html += f'<div class="social-card"><img src="{src}"></div>'
 
-                # HTML do Card (Blindado para não exibir código base64 como texto)
-                card_html = f"""
-                <div class="cartao-resultado">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                        <div style="display: flex; gap: 15px; align-items: center;">
-                            <img src="{foto_src}" class="foto-perfil">
-                            <div>
-                                <h4 style="margin: 0; font-size: 18px;">{prof.get('nome', '').upper()}</h4>
-                                <span style="color: #2563eb; font-size: 13px; font-weight: bold;">{prof.get('area')}</span>
-                            </div>
+                # HTML ÚNICO E FECHADO
+                st.markdown(f"""
+                <div class="cartao-geral" style="border-left: 8px solid {cor_borda}; background: white; padding: 15px; border-radius: 15px; margin-bottom: 15px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <img src="{foto_perfil}" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover;">
+                        <div>
+                            <h4 style="margin:0; color: #1e3a8a;">{p.get('nome','').upper()}</h4>
+                            <p style="margin:0; color: green; font-size: 12px; font-weight: bold;">📍 a {p['dist']:.1f} km</p>
                         </div>
-                        <span class="distancia-tag">📍 {prof['distancia_calculada']} KM</span>
                     </div>
-                    <div style="margin-top: 10px; font-size: 14px; color: #64748b;">
-                        {prof.get('descricao', 'Profissional qualificado pronto para te atender.')[:120]}...
+                    <div class="social-track" style="display: flex; overflow-x: auto; gap: 10px; margin-top: 10px;">
+                        {fotos_html}
                     </div>
-                    <a href="{link_whatsapp}" target="_blank" class="botao-wpp">
-                        RESERVAR HORÁRIO / ORÇAMENTO
-                    </a>
+                    <a href="{link_zap}" target="_blank" class="btn-zap-footer">💬 CHAMAR AGORA</a>
                 </div>
-                """
-                st.markdown(card_html, unsafe_allow_html=True)
-
-    # FINALIZADOR: Garante que nada "vaze" para o rodapé
-    finalizar_e_alinhar_layout()
+                """, unsafe_allow_html=True)
 # ==============================================================================
 # ABA 2: 🚀 PAINEL DO PARCEIRO (COMPLETO: FB + IMAGENS + FAQ + EXCLUSÃO)
 # ==============================================================================
@@ -1173,6 +1111,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
