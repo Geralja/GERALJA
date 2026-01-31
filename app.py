@@ -459,10 +459,10 @@ if comando == "abracadabra":
 
 menu_abas = st.tabs(lista_abas)
 # ==============================================================================
-# --- ABA 0: BUSCA SUPER POTENTE (CONECTADA AOS MOTORES DE IA ACIMA) ---
+# --- ABA 0: BUSCA SUPREMA (PRONTA COM IA + FILTRO DE ELITE + VITRINE) ---
 # ==============================================================================
 with menu_abas[0]:
-    # CSS para a Vitrine Ficar Profissional
+    # 1. ESTILIZAÇÃO DA VITRINE (Design Limpo e Moderno)
     st.markdown("""
     <style>
         .cartao-geral { 
@@ -482,87 +482,92 @@ with menu_abas[0]:
     </style>
     """, unsafe_allow_html=True)
 
-    st.markdown("<h2 style='color:#0f172a;'>🔍 O que você procura?</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='color:#0f172a;'>🔍 O que você precisa hoje?</h2>", unsafe_allow_html=True)
     
-    # Pegar localização
+    # --- INTERFACE DE ENTRADA ---
     loc = get_geolocation()
     m_lat, m_lon = (loc['coords']['latitude'], loc['coords']['longitude']) if loc and 'coords' in loc else (LAT_REF, LON_REF)
 
-    # Barra de busca
-    c1, c2 = st.columns([3, 1])
-    termo_busca = c1.text_input("", placeholder="Ex: Dentista, Encanador, Pintor...", key="search_final")
-    raio_km = c2.select_slider("Raio KM", options=[1, 5, 10, 20, 50], value=10)
+    col_b1, col_b2 = st.columns([3, 1])
+    termo_busca = col_b1.text_input("", placeholder="Ex: Dentista, Encanador, Dente quebrado...", key="input_busca_potente", label_visibility="collapsed")
+    raio_km = col_b2.select_slider("KM", options=[1, 3, 5, 10, 20, 50], value=10)
     
     if termo_busca:
-        with st.status("🧠 IA analisando pedido...", expanded=False):
-            # 1. CHAMA A FUNÇÃO QUE VOCÊ ME MANDOU
-            categoria_alvo = processar_ia_avancada(termo_busca)
+        with st.status("🧠 IA GeralJá analisando pedido...", expanded=False) as status:
             
-            # 2. BUSCA NO BANCO (Apenas quem está aprovado)
+            # IA 1: Groq define a Categoria Alvo (Usa a função que você colou no topo)
+            categoria_alvo = processar_ia_avancada(termo_busca).strip()
+            
+            # BUSCA NO FIREBASE (Apenas profissionais aprovados)
             profs_ref = db.collection("profissionais").where("aprovado", "==", True).stream()
             
             lista_ranking = []
+            
             for p_doc in profs_ref:
                 p = p_doc.to_dict()
                 p['id'] = p_doc.id
+                
+                # Dados para o Motor de Relevância (IA 2 e 3)
                 area_p = str(p.get('area', '')).strip()
+                nome_p = str(p.get('nome', '')).lower()
                 
-                # --- MOTOR DE PONTUAÇÃO (O PENTE FINO) ---
-                score = 0
+                # --- LÓGICA DE PONTUAÇÃO (Resolve o erro do TI vs Dentista) ---
+                score_relevancia = 0
                 
-                # Se a área do profissional é exatamente o que a IA sugeriu
+                # Match exato com a categoria definida pela IA
                 if area_p.lower() == categoria_alvo.lower():
-                    score += 2000
+                    score_relevancia += 2000
                 
-                # Se o nome ou área bate com o texto digitado
-                if normalizar_para_ia(termo_busca) in normalizar_para_ia(area_p) or \
-                   normalizar_para_ia(termo_busca) in p.get('nome', '').lower():
-                    score += 500
-                
-                # SÓ APARECE SE TIVER PONTUAÇÃO (Isso elimina o erro do TI)
-                if score > 0:
+                # Match parcial no nome ou na área (Fuzzy/Busca simples)
+                if normalizar_para_ia(termo_busca) in normalizar_para_ia(area_p) or normalizar_para_ia(termo_busca) in nome_p:
+                    score_relevancia += 500
+
+                # FILTRO DE SEGURANÇA: Só entra se tiver relevância > 0
+                if score_relevancia > 0:
                     dist = calcular_distancia_real(m_lat, m_lon, p.get('lat', LAT_REF), p.get('lon', LON_REF))
                     
                     if dist <= raio_km:
                         p['dist'] = dist
-                        # Ranking: Verificado ganha 10.000 pontos, Saldo ganha 30x
-                        p['score_f'] = (10000 if p.get('verificado') else 0) + (p.get('saldo', 0) * 30) + score
+                        # IA 4: RANKING DE ELITE (Prioridade: Verificado > Saldo > Relevância)
+                        p['score_final'] = (10000 if p.get('verificado') else 0) + (p.get('saldo', 0) * 30) + score_relevancia
                         lista_ranking.append(p)
 
-            # Ordenar: Maior Score primeiro
-            lista_ranking.sort(key=lambda x: (-x['score_f'], x['dist']))
+            # Ordenação Final
+            lista_ranking.sort(key=lambda x: (-x['score_final'], x['dist']))
+            status.update(label=f"🎯 {len(lista_ranking)} profissionais encontrados!", state="complete")
 
-        # --- EXIBIÇÃO ---
+        # --- EXIBIÇÃO DA VITRINE (A POTÊNCIA VISUAL) ---
         if not lista_ranking:
-            st.warning(f"Nenhum profissional de '{categoria_alvo}' encontrado.")
+            st.warning(f"😕 Não encontramos '{termo_busca}' nesta região. Tente aumentar o raio!")
         else:
             for p in lista_ranking:
                 cor_borda = "#FFD700" if p.get('verificado') else "#0047AB"
-                zap = f"https://wa.me/{limpar_whatsapp(p.get('whatsapp'))}?text=Vi você no GeralJá!"
+                zap_link = f"https://wa.me/{limpar_whatsapp(p.get('whatsapp'))}?text=Olá {p.get('nome')}, vi você no GeralJá!"
                 
-                # Montar Galeria f1 até f10
+                # Galeria de fotos do portfólio (f1 a f10)
                 fotos_html = ""
                 for i in range(1, 11):
-                    f = p.get(f'f{i}')
-                    if f and len(str(f)) > 100:
-                        src = f if str(f).startswith("http") else f"data:image/jpeg;base64,{f}"
+                    f_img = p.get(f'f{i}')
+                    if f_img and len(str(f_img)) > 100: # Valida se há imagem real
+                        src = f_img if str(f_img).startswith("http") else f"data:image/jpeg;base64,{f_img}"
                         fotos_html += f'<div class="social-card"><img src="{src}"></div>'
 
                 st.markdown(f"""
                 <div class="cartao-geral" style="--cor-borda: {cor_borda};">
-                    <div style="display:flex; justify-content:space-between; font-size:12px;">
-                        <span style="color:green; font-weight:bold;">📍 {p['dist']:.1f} KM</span>
-                        {"<b style='color:#FFD700;'>⭐ VERIFICADO</b>" if p.get('verificado') else ""}
+                    <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 10px;">
+                        <span style="color: #25D366; font-weight: bold;">📍 a {p['dist']:.1f} KM</span>
+                        {"<b style='color:#FFA500;'>⭐ ELITE</b>" if p.get('verificado') else ""}
                     </div>
-                    <div style="display:flex; align-items:center; gap:15px; margin-top:10px;">
-                        <img src="{p.get('foto_url', '')}" class="foto-perfil">
+                    <div class="perfil-row">
+                        <img src="{p.get('foto_url', 'https://cdn-icons-png.flaticon.com/512/149/149071.png')}" class="foto-perfil">
                         <div>
-                            <h4 style="margin:0;">{p.get('nome','').upper()}</h4>
-                            <p style="margin:0; color:#555;">{p.get('area')}</p>
+                            <h4 style="margin:0; color:#1e3a8a;">{p.get('nome','').upper()}</h4>
+                            <p style="margin:0; color:#64748b; font-size:12px; font-weight:bold;">{p.get('area')}</p>
                         </div>
                     </div>
+                    <div style="margin: 10px 0; font-size: 14px; color: #475569;">{p.get('descricao','')[:140]}...</div>
                     <div class="social-track">{fotos_html}</div>
-                    <a href="{zap}" target="_blank" class="btn-zap-footer">FALAR NO WHATSAPP</a>
+                    <a href="{zap_link}" target="_blank" class="btn-zap-footer">💬 CHAMAR NO WHATSAPP</a>
                 </div>
                 """, unsafe_allow_html=True)
 # ==============================================================================
@@ -1118,6 +1123,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
