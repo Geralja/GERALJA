@@ -74,7 +74,7 @@ app_engine = conectar_banco_master()
 db = firestore.client()
 
 # ------------------------------------------------------------------------------
-# 1. CONFIGURAÇÃO DE AMBIENTE E PERFORMANCE
+# 1. CONFIGURAÇÃO DE AMBIENTE E PERFORMANCE (MODERNIZADO)
 # ------------------------------------------------------------------------------
 st.set_page_config(
     page_title="GeralJá | Criando Soluções",
@@ -83,24 +83,39 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- FUNCIONALIDADE DO ARQUIVO: TEMA MANUAL ---
+# --- FUNCIONALIDADE DO ARQUIVO: TEMA MANUAL (INICIANDO NO MODO DIA) ---
 if 'tema_claro' not in st.session_state:
-    st.session_state.tema_claro = False
+    st.session_state.tema_claro = True  # Alterado para True para carregar no modo dia
 
-# Mantém os menus escondidos
+# --- ESTILIZAÇÃO MODERNA E LIMPEZA DE INTERFACE ---
 st.markdown("""
     <style>
+        /* Esconde elementos nativos do Streamlit para um look de App profissional */
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         header {visibility: hidden;}
+        
+        /* Ajuste de margens superiores para modernizar o layout */
+        .block-container {
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+        }
+        
+        /* Estilização para modo dia forçado via CSS se necessário */
+        .main {
+            background-color: #f8f9fa;
+        }
     </style>
 """, unsafe_allow_html=True)
-# --- LOGICA DE RECEPÇÃO DO GOOGLE (COLOCAR NO TOPO DO ARQUIVO) ---
+
+# ------------------------------------------------------------------------------
+# LOGICA DE RECEPÇÃO DO GOOGLE (INTEGRADA E SEGURA)
+# ------------------------------------------------------------------------------
 from google_auth_oauthlib.flow import Flow
 import requests
 
-# Função para criar o fluxo de troca de tokens
 def get_google_flow():
+    """Cria o fluxo de autenticação usando as chaves do Secrets"""
     g_auth = st.secrets["google_auth"]
     client_config = {
         "web": {
@@ -113,52 +128,62 @@ def get_google_flow():
     }
     return Flow.from_client_config(
         client_config,
-        scopes=["openid", "https://www.googleapis.com/auth/userinfo.profile", "https://www.googleapis.com/auth/userinfo.email"],
+        scopes=[
+            "openid", 
+            "https://www.googleapis.com/auth/userinfo.profile", 
+            "https://www.googleapis.com/auth/userinfo.email"
+        ],
         redirect_uri=g_auth["redirect_uri"]
     )
 
-# Verifica se o Google enviou o código na URL (Query Params)
+# Captura de parâmetros da URL para processar o login
 query_params = st.query_params
+
 if "code" in query_params:
     try:
-        # 1. Troca o código por um token de acesso
-        flow = get_google_flow()
-        flow.fetch_token(code=query_params["code"])
-        session = flow.authorized_session()
-        
-        # 2. Pega os dados reais do usuário no Google
-        user_info = session.get('https://www.googleapis.com/userinfo').json()
-        
-        email_google = user_info.get("email")
-        nome_google = user_info.get("name")
-        foto_google = user_info.get("picture")
-
-        # 3. Limpa a URL (remove o código para não dar erro ao atualizar)
-        st.query_params.clear()
-
-        # 4. Busca no Firebase se esse e-mail já é parceiro
-        pro_ref = db.collection("profissionais").where("email", "==", email_google).limit(1).get()
-
-        if pro_ref:
-            # ✅ USUÁRIO JÁ CADASTRADO: Loga ele direto
-            dados = pro_ref[0].to_dict()
-            st.session_state.auth = True
-            st.session_state.user_id = pro_ref[0].id # O WhatsApp dele
-            st.success(f"Logado com sucesso como {dados.get('nome')}!")
-            time.sleep(1)
-            st.rerun()
-        else:
-            # ✨ USUÁRIO NOVO: Prepara o pre-cadastro para a Aba 1
-            st.session_state.pre_cadastro = {
-                "email": email_google,
-                "nome": nome_google,
-                "foto": foto_google
-            }
-            st.toast(f"Olá {nome_google}! Complete seu cadastro profissional abaixo.")
-            # Você pode forçar a ida para a aba de cadastro aqui se quiser
+        # 1. Troca o código por um token de acesso de forma otimizada
+        with st.spinner("🚀 Autenticando com Google..."):
+            flow = get_google_flow()
+            flow.fetch_token(code=query_params["code"])
+            session = flow.authorized_session()
             
+            # 2. Resgate de dados do perfil
+            user_info = session.get('https://www.googleapis.com/userinfo').json()
+            
+            email_google = user_info.get("email")
+            nome_google = user_info.get("name")
+            foto_google = user_info.get("picture")
+
+            # 3. Limpeza imediata da URL para evitar loops ou erros de 'code used'
+            st.query_params.clear()
+
+            # 4. Verificação de existência no Banco de Dados (Firebase)
+            # Nota: 'db' deve estar inicializado antes deste bloco no seu arquivo principal
+            pro_ref = db.collection("profissionais").where("email", "==", email_google).limit(1).get()
+
+            if pro_ref:
+                # ✅ USUÁRIO JÁ CADASTRADO: Login Automático
+                dados = pro_ref[0].to_dict()
+                st.session_state.auth = True
+                st.session_state.user_id = pro_ref[0].id  # ID vinculado ao documento
+                
+                st.toast(f"✅ Bem-vindo de volta, {dados.get('nome')}!", icon="🔥")
+                time.sleep(1)
+                st.rerun()
+            else:
+                # ✨ USUÁRIO NOVO: Preparação de Pré-cadastro
+                st.session_state.pre_cadastro = {
+                    "email": email_google,
+                    "nome": nome_google,
+                    "foto": foto_google
+                }
+                st.balloons()
+                st.success(f"Olá {nome_google}! Quase lá... Complete seu perfil profissional abaixo.")
+                
     except Exception as e:
-        st.error(f"Erro ao processar login do Google: {e}")
+        st.error(f"❌ Erro na autenticação: {str(e)}")
+        if st.button("Tentar novamente"):
+            st.rerun()
 # ------------------------------------------------------------------------------
 # 2. CAMADA DE PERSISTÊNCIA (FIREBASE)
 # ------------------------------------------------------------------------------
@@ -1105,6 +1130,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
