@@ -48,11 +48,11 @@ except Exception as e:
 HANDLER_URL = "https://geralja-5bb49.firebaseapp.com/__/auth/handler"
 
 # ------------------------------------------------------------------------------
-# 2. CONEXÃO COM O BANCO DE DADOS (FIREBASE) - CORRIGIDO
+# 2. CONEXÃO COM O BANCO DE DADOS (FIREBASE)
 # ------------------------------------------------------------------------------
 @st.cache_resource
 def conectar_banco_master():
-    """Inicializa o Firebase como App Padrão para evitar erros de instância"""
+    """Inicializa o Firebase apenas uma vez por sessão"""
     if not firebase_admin._apps:
         try:
             if "firebase" in st.secrets and "base64" in st.secrets["firebase"]:
@@ -60,8 +60,6 @@ def conectar_banco_master():
                 decoded_json = base64.b64decode(b64_key).decode("utf-8")
                 cred_dict = json.loads(decoded_json)
                 cred = credentials.Certificate(cred_dict)
-                
-                # REMOVIDO o parâmetro 'name' para que este seja o [DEFAULT] app
                 return firebase_admin.initialize_app(cred)
             else:
                 st.error("⚠️ Configuração 'firebase.base64' não encontrada no Secrets.")
@@ -71,13 +69,10 @@ def conectar_banco_master():
             st.stop()
     return firebase_admin.get_app()
 
-# Ativa o banco (Agora o Firestore encontrará o app padrão corretamente)
-try:
-    app_engine = conectar_banco_master()
-    db = firestore.client() 
-except Exception as e:
-    st.error(f"💥 Erro crítico ao conectar ao Firestore: {e}")
-    st.stop()
+# Ativa o banco
+app_engine = conectar_banco_master()
+db = firestore.client()
+
 # ------------------------------------------------------------------------------
 # 1. CONFIGURAÇÃO DE AMBIENTE E PERFORMANCE
 # ------------------------------------------------------------------------------
@@ -1110,9 +1105,6 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
-
-
-
 
 
 
