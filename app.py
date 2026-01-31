@@ -1,6 +1,5 @@
- 
 # ==============================================================================
-# GERALJÁ: CRIANDO SOLUÇÕES
+# GERALJÁ: CRIANDO SOLUÇÕES - MÓDULO 1: INFRAESTRUTURA
 # ==============================================================================
 import streamlit as st
 import firebase_admin
@@ -13,44 +12,66 @@ import time
 import pandas as pd
 from datetime import datetime 
 import pytz
-from streamlit_js_eval import streamlit_js_eval, get_geolocation
 import unicodedata
-from groq import Groq # <--- Novo
+import requests
 
-# --- ADICIONE ESTES 3 PARA O NÍVEL 5.0 ---
+# --- BIBLIOTECAS NÍVEL 5.0 ---
 from groq import Groq                # Para a IA avançada
 from fuzzywuzzy import process       # Para buscas com erros de digitação
 from urllib.parse import quote       # Para links de WhatsApp seguros
-# --- CONFIGURAÇÕES DE AUTENTICAÇÃO (PUXANDO DO COFRE) ---
+import google.generativeai as genai  # IA Gemini
+from google_auth_oauthlib.flow import Flow # Login Google
 
-import requests
-
-# --- CONFIGURAÇÃO DE CHAVES ---
+# --- TENTA IMPORTAR COMPONENTES JS (EVITA QUEBRA SE NÃO INSTALADO) ---
 try:
-    import requests  # Agora está dentro do recuo (4 espaços)
+    from streamlit_js_eval import streamlit_js_eval, get_geolocation
+except ImportError:
+    pass
+
+# --- CONFIGURAÇÃO DE CHAVES (PUXANDO DO SECRETS) ---
+try:
+    # Chaves de Autenticação Social
     FB_ID = st.secrets["FB_CLIENT_ID"]
     FB_SECRET = st.secrets["FB_CLIENT_SECRET"]
     FIREBASE_API_KEY = st.secrets["FIREBASE_API_KEY"]
     REDIRECT_URI = "https://geralja-zxiaj2ot56fuzgcz7xhcks.streamlit.app/"
+    
+    # Configuração de APIs de IA
+    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+    client_groq = Groq(api_key=st.secrets["GROQ_API_KEY"])
+    
 except Exception as e:
-    st.error(f"Erro: Chaves não encontradas no Secrets. ({e})")
+    st.error(f"⚠️ Erro Crítico: Verifique o arquivo 'Secrets' no Streamlit. ({e})")
     st.stop()
 
-# O restante do código volta para o alinhamento normal (sem espaços no início)
+# URLs de Suporte
 HANDLER_URL = "https://geralja-5bb49.firebaseapp.com/__/auth/handler"
 
-try:
-    from streamlit_js_eval import streamlit_js_eval, get_geolocation
-except ImportError:
-    pass
-# URL do Handler (Pode ficar visível)
-HANDLER_URL = "https://geralja-5bb49.firebaseapp.com/__/auth/handler"
-# Tenta importar bibliotecas extras do arquivo original, se não tiver, segue sem quebrar
-try:
-    from streamlit_js_eval import streamlit_js_eval, get_geolocation
-except ImportError:
-    pass
+# ------------------------------------------------------------------------------
+# 2. CONEXÃO COM O BANCO DE DADOS (FIREBASE)
+# ------------------------------------------------------------------------------
+@st.cache_resource
+def conectar_banco_master():
+    """Inicializa o Firebase apenas uma vez por sessão"""
+    if not firebase_admin._apps:
+        try:
+            if "firebase" in st.secrets and "base64" in st.secrets["firebase"]:
+                b64_key = st.secrets["firebase"]["base64"]
+                decoded_json = base64.b64decode(b64_key).decode("utf-8")
+                cred_dict = json.loads(decoded_json)
+                cred = credentials.Certificate(cred_dict)
+                return firebase_admin.initialize_app(cred)
+            else:
+                st.error("⚠️ Configuração 'firebase.base64' não encontrada no Secrets.")
+                st.stop()
+        except Exception as e:
+            st.error(f"❌ FALHA NA INFRAESTRUTURA FIREBASE: {e}")
+            st.stop()
+    return firebase_admin.get_app()
 
+# Ativa o banco
+app_engine = conectar_banco_master()
+db = firestore.client()
 # ------------------------------------------------------------------------------
 # 1. CONFIGURAÇÃO DE AMBIENTE E PERFORMANCE
 # ------------------------------------------------------------------------------
@@ -1083,6 +1104,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
