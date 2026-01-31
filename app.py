@@ -48,30 +48,46 @@ except Exception as e:
 HANDLER_URL = "https://geralja-5bb49.firebaseapp.com/__/auth/handler"
 
 # ------------------------------------------------------------------------------
-# 2. CONEXÃO COM O BANCO DE DADOS (FIREBASE)
+# 2. CONEXÃO COM O BANCO DE DADOS (FIREBASE) - TURBINADA 🚀
 # ------------------------------------------------------------------------------
 @st.cache_resource
 def conectar_banco_master():
-    """Inicializa o Firebase apenas uma vez por sessão"""
+    """
+    Inicializa o Firebase de forma segura e otimizada.
+    Utiliza cache_resource para evitar múltiplas conexões desnecessárias.
+    """
     if not firebase_admin._apps:
         try:
+            # Verifica se a estrutura de secrets existe para evitar erros de KeyError
             if "firebase" in st.secrets and "base64" in st.secrets["firebase"]:
                 b64_key = st.secrets["firebase"]["base64"]
+                
+                # Decodificação segura
                 decoded_json = base64.b64decode(b64_key).decode("utf-8")
                 cred_dict = json.loads(decoded_json)
+                
+                # Inicialização do Certificado
                 cred = credentials.Certificate(cred_dict)
-                return firebase_admin.initialize_app(cred)
+                return firebase_admin.initialize_app(cred, name="geralja-master")
             else:
-                st.error("⚠️ Configuração 'firebase.base64' não encontrada no Secrets.")
+                st.error("⚠️ Configuração 'firebase.base64' não encontrada nos Secrets do Streamlit.")
+                st.info("💡 Certifique-se de que o TOML tem o formato: [firebase] -> base64 = '...' ")
                 st.stop()
         except Exception as e:
-            st.error(f"❌ FALHA NA INFRAESTRUTURA FIREBASE: {e}")
+            st.error(f"❌ FALHA CRÍTICA NA INFRAESTRUTURA: {str(e)}")
+            st.warning("Verifique se a chave Base64 no Secrets está completa e correta.")
             st.stop()
     return firebase_admin.get_app()
 
-# Ativa o banco
-app_engine = conectar_banco_master()
-db = firestore.client()
+# Inicialização do Motor e do Cliente Firestore
+try:
+    app_engine = conectar_banco_master()
+    db = firestore.client()
+    # Pequeno feedback visual apenas para o desenvolvedor (opcional)
+    # st.toast("Conexão com Firebase estabelecida!", icon="🔥")
+except Exception as e:
+    st.error(f"Erro ao instanciar cliente Firestore: {e}")
+    st.stop()
 # ------------------------------------------------------------------------------
 # 1. CONFIGURAÇÃO DE AMBIENTE E PERFORMANCE
 # ------------------------------------------------------------------------------
@@ -1104,6 +1120,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
