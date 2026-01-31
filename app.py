@@ -14,6 +14,7 @@ import pandas as pd
 from datetime import datetime 
 import pytz
 from streamlit_js_eval import streamlit_js_eval, get_geolocation
+import google.generativeai as genai
 import unicodedata
 from groq import Groq # <--- Novo
 
@@ -1062,6 +1063,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
