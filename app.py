@@ -72,7 +72,51 @@ def conectar_banco_master():
 # Ativa o banco
 app_engine = conectar_banco_master()
 db = firestore.client()
+# --- DENTRO DO SEU LOOP: for p in lista_ranking: ---
 
+# 1. Garante que a foto de perfil não quebre o layout
+foto_perfil = p.get('foto_url', '')
+if not str(foto_perfil).startswith("data:") and len(str(foto_perfil)) > 100:
+    foto_perfil = f"data:image/jpeg;base64,{foto_perfil}"
+elif not foto_perfil:
+    foto_perfil = "https://cdn-icons-png.flaticon.com/512/149/149071.png"
+
+# 2. Montagem blindada do Portfólio
+fotos_html = ""
+for i in range(1, 11):
+    f_data = p.get(f'f{i}')
+    # Só adiciona se for uma imagem real e longa (Base64)
+    if f_data and isinstance(f_data, str) and len(f_data) > 100:
+        # Verifica se já tem o cabeçalho data:image
+        src_foto = f_data if f_data.startswith("data:") else f"data:image/jpeg;base64,{f_data}"
+        # Usamos uma estrutura de div fixa para não quebrar o float
+        fotos_html += f'''
+        <div class="social-card" onclick="abrirModal('{src_foto}', '{link_zap}')">
+            <img src="{src_foto}" style="width:100%; height:100%; object-fit:cover;">
+        </div>'''
+
+# 3. Renderização Final (O segredo é o f-string limpo)
+card_final = f"""
+<div class="cartao-geral" style="border-left: 8px solid {cor_borda};">
+    <div style="font-size: 11px; color: #0047AB; font-weight: bold; margin-bottom: 10px;">
+        📍 a {p['dist']:.1f} km de você {" | 🏆 ELITE" if is_elite else ""}
+    </div>
+    <div class="perfil-row" style="display:flex; gap:15px; align-items:center;">
+        <img src="{foto_perfil}" class="foto-perfil" style="width:55px; height:55px; border-radius:50%;">
+        <div>
+            <h4 style="margin:0; color:#1e3a8a;">{p.get('nome','').upper()}</h4>
+            <p style="margin:0; color:#666; font-size:12px;">{p.get('area')}</p>
+        </div>
+    </div>
+    <div class="social-track" style="display:flex; overflow-x:auto; gap:10px; margin:10px 0;">
+        {fotos_html}
+    </div>
+    <a href="{link_zap}" target="_blank" class="btn-zap-footer" style="background:#25D366; color:white; display:block; text-align:center; padding:10px; border-radius:10px; text-decoration:none;">
+        💬 CHAMAR AGORA
+    </a>
+</div>
+"""
+st.markdown(card_final, unsafe_allow_html=True)
 # ------------------------------------------------------------------------------
 # 1. CONFIGURAÇÃO DE AMBIENTE E PERFORMANCE (MODERNIZADO)
 # ------------------------------------------------------------------------------
@@ -1147,6 +1191,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
