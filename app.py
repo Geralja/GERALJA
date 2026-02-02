@@ -477,7 +477,6 @@ with menu_abas[0]:
 
     # --- ABAIXO DA VENDA, O BUSCADOR QUE JÁ EXISTE ---
     st.markdown("#### 🔍 Busca Inteligente no Bairro")
-    # [Aqui continua o seu código de termo_busca, raio_km e get_geolocation]
 
     st.divider()
 
@@ -739,7 +738,7 @@ with menu_abas[2]:
                     
                     # Processa foto de perfil se houver upload
                     if n_foto:
-                        img_base64 = otimizar_imagem(n_foto, qualidade=60, size=(300, 300))
+                        img_base64 = otimizar_imagem(n_foto, qualidade=60, size=(350, 350))
                         if img_base64:
                             updates["foto_url"] = img_base64
 
@@ -1168,6 +1167,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
