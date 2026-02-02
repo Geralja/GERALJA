@@ -434,44 +434,63 @@ if comando == "abracadabra":
 
 menu_abas = st.tabs(lista_abas)
 # ==============================================================================
-# --- ABA 0: BUSCA (IA GROQ + VITRINE SOCIAL V3.0) ---
+# --- ABA 0: PORTAL GRAJAÚ TEM (NOTÍCIAS + BUSCA + LOJA) ---
 # ==============================================================================
 with menu_abas[0]:
+    # 1. CABEÇALHO E LOJA DE ANÚNCIOS (LEVANTAR FUNDOS)
+    st.markdown("### 📢 Anuncie no Grajaú Tem")
+    st.caption("Alcance mais de 500 mil seguidores e 20 milhões de visualizações!")
+    
+    col_b, col_p, col_o = st.columns(3)
+    
+    with col_b:
+        st.markdown("""<div style="border:1px solid #cd7f32; padding:10px; border-radius:10px; text-align:center;">
+        🥉 <b>BRONZE</b><br>1 Post: R$ 150</div>""", unsafe_allow_html=True)
+        if st.button("Comprar Bronze", use_container_width=True):
+            st.markdown(f'<meta http-equiv="refresh" content="0; url=https://wa.me/55119XXXXXXXX?text=Quero+o+Pacote+Bronze">', unsafe_allow_html=True)
+
+    with col_p:
+        st.markdown("""<div style="border:1px solid #c0c0c0; padding:10px; border-radius:10px; text-align:center;">
+        🥈 <b>PRATA</b><br>3 Posts: R$ 400</div>""", unsafe_allow_html=True)
+        if st.button("Comprar Prata", use_container_width=True):
+            st.info("Me chama no Zap para agendar!")
+
+    with col_o:
+        st.markdown("""<div style="border:2px solid #FFD700; background:#fffdf0; padding:10px; border-radius:10px; text-align:center;">
+        🥇 <b>OURO</b><br>10 Posts: R$ 700</div>""", unsafe_allow_html=True)
+        if st.button("Comprar Ouro", use_container_width=True):
+            st.success("O melhor custo-benefício!")
+
+    st.divider()
+
+    # 2. MOTOR DE BUSCA
     st.markdown("### 🏙️ O que você precisa?")
     
-    # 1. MOTOR DE LOCALIZAÇÃO
     with st.expander("📍 Sua Localização (GPS)", expanded=False):
         loc = get_geolocation()
-        if loc and 'coords' in loc:
-            minha_lat = loc['coords']['latitude']
-            minha_lon = loc['coords']['longitude']
-            st.success("Localização detectada!")
-        else:
-            minha_lat, minha_lon = LAT_REF, LON_REF
-            st.warning("GPS desativado. Usando padrão (Centro).")
+        minha_lat, minha_lon = (loc['coords']['latitude'], loc['coords']['longitude']) if loc and 'coords' in loc else (LAT_REF, LON_REF)
+        st.success("Localização pronta!")
 
     c1, c2 = st.columns([3, 1])
-    termo_busca = c1.text_input("Ex: 'Cano estourado' ou 'Pizza'", key="main_search_v_groq")
-    raio_km = c2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 20, 50, 100, 500], value=3)
+    termo_busca = c1.text_input("Ex: 'Chuva na Belmira', 'Pizzaria' ou 'Diarista'", key="main_search_v_groq")
+    raio_km = c2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 20, 50, 500], value=5)
 
-    # --- CSS E JAVASCRIPT (Organizado para não quebrar) ---
+    # --- CSS E JAVASCRIPT (Blindado) ---
     st.markdown("""
     <style>
-        .cartao-geral { background: white; border-radius: 20px; border-left: 8px solid var(--cor-borda); padding: 15px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); color: #111; }
+        .cartao-geral { background: white; border-radius: 20px; border-left: 8px solid var(--cor-borda); padding: 15px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); color: #111 !important; }
         .perfil-row { display: flex; gap: 15px; align-items: center; margin-bottom: 12px; }
         .foto-perfil { width: 55px; height: 55px; border-radius: 50%; object-fit: cover; border: 2px solid #eee; }
-        .social-track { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 10px; scrollbar-width: none; }
-        .social-track::-webkit-scrollbar { display: none; }
+        .social-track { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 10px; }
         .social-card { flex: 0 0 200px; height: 280px; border-radius: 12px; overflow: hidden; cursor: pointer; background: #000; }
-        .social-card img { width: 100%; height: 100%; object-fit: cover; transition: 0.3s; }
-        .btn-zap-footer { display: block; background: #25D366; color: white !important; text-align: center; padding: 15px; border-radius: 12px; font-weight: bold; text-decoration: none; margin-top: 10px; font-size: 16px; }
+        .social-card img { width: 100%; height: 100%; object-fit: cover; }
+        .btn-zap-footer { display: block; background: #25D366; color: white !important; text-align: center; padding: 15px; border-radius: 12px; font-weight: bold; text-decoration: none; margin-top: 10px; }
     </style>
     <script>
     function abrirModal(src, link) {
-        const modal = window.parent.document.getElementById('meuModal');
         window.parent.document.getElementById('imgExpandida').src = src;
         window.parent.document.getElementById('linkZapModal').href = link;
-        modal.style.display = 'flex';
+        window.parent.document.getElementById('meuModal').style.display = 'flex';
     }
     function fecharModal() {
         window.parent.document.getElementById('meuModal').style.display = 'none';
@@ -503,24 +522,27 @@ with menu_abas[0]:
             st.warning(f"Nenhum profissional de '{cat_ia}' encontrado próximo.")
         else:
             for p in lista_ranking:
-                is_elite = p.get('verificado') and p.get('saldo', 0) > 0
+                # --- TRATAMENTO DE VARIÁVEIS (EVITA ERRO DECIMAL) ---
+                dist_val = p.get('dist', 0.0)
+                is_elite = p.get('verificado', False) and p.get('saldo', 0) > 0
                 cor_borda = "#FFD700" if is_elite else "#0047AB"
+                txt_elite = " | 🏆 ELITE" if is_elite else ""
                 zap_limpo = limpar_whatsapp(p.get('whatsapp', p['id']))
-                link_zap = f"https://wa.me/{zap_limpo}?text=Olá, vi seu trabalho no GeralJá!"
+                link_zap = f"https://wa.me/{zap_limpo}?text=Olá, vi seu trabalho no Grajaú Tem!"
                 
-                # Montagem segura da vitrine
+                # Fotos
                 fotos_html = ""
                 for i in range(1, 11):
                     f_data = p.get(f'f{i}')
                     if f_data and len(str(f_data)) > 100:
-                        src = f_data if str(f_data).startswith("data") else f"data:image/jpeg;base64,{f_data}"
-                        # Uso de template string do JS para evitar erro de aspas
-                        fotos_html += f'<div class="social-card" onclick="abrirModal(`{src}`, `{link_zap}`)"><img src="{src}"></div>'
+                        f_src = f_data if str(f_data).startswith("data") else f"data:image/jpeg;base64,{f_data}"
+                        fotos_html += f'<div class="social-card" onclick="abrirModal(`{f_src}`, `{link_zap}`)"><img src="{f_src}"></div>'
 
+                # --- RENDERIZAÇÃO FINAL ---
                 st.markdown(f"""
                 <div class="cartao-geral" style="--cor-borda: {cor_borda};">
                     <div style="font-size: 11px; color: #0047AB; font-weight: bold; margin-bottom: 10px;">
-                        📍 a {p['dist']:.1f} km {" | 🏆 ELITE" if is_elite else ""}
+                        📍 a {dist_val:.1f} km {txt_elite}
                     </div>
                     <div class="perfil-row">
                         <img src="{p.get('foto_url', 'https://via.placeholder.com/150')}" class="foto-perfil">
@@ -534,7 +556,7 @@ with menu_abas[0]:
                 </div>
                 """, unsafe_allow_html=True)
 
-    # Modal Único
+    # Modal Único (Fora do loop)
     st.markdown("""
     <div id="meuModal" style="display:none; position:fixed; z-index:9999; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); align-items:center; justify-content:center; flex-direction:column;">
         <span onclick="fecharModal()" style="position:absolute; top:20px; right:30px; color:white; font-size:40px; cursor:pointer;">&times;</span>
@@ -1096,6 +1118,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
