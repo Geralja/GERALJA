@@ -433,137 +433,111 @@ if comando == "abracadabra":
     lista_abas.append("📊 FINANCEIRO")
 
 menu_abas = st.tabs(lista_abas)
+import streamlit as st
+import urllib.parse
+
+# --- CONFIGURAÇÕES DE ELITE ---
+ZAP_VENDAS = "5511980168513"
+CATEGORIAS_OFICIAIS = ["Encanador", "Eletricista", "Mecânico", "Pizzaria", "Diarista", "Chaveiro"] # Ajuste conforme seu banco
+
+def link_zap_limpo(numero, msg):
+    texto = urllib.parse.quote(msg)
+    return f"https://api.whatsapp.com/send?phone={numero}&text={texto}"
+
 # ==============================================================================
-# --- ABA 0: PORTAL GRAJAÚ TEM (NOTÍCIAS + BUSCA + LOJA) ---
+# --- ABA 0: O SUPER PORTAL (BUSCA + LOJA + FIREBASE) ---
 # ==============================================================================
 with menu_abas[0]:
-    # 1. CABEÇALHO E LOJA DE ANÚNCIOS (LEVANTAR FUNDOS)
-    st.markdown("### 📢 Anuncie no Grajaú Tem")
-    st.caption("Alcance mais de 500 mil seguidores e 20 milhões de visualizações!")
+    # 1. LOJA DE ANÚNCIOS (Aberto para faturamento)
+    st.markdown("### 📢 Portal de Anúncios Grajaú Tem")
     
-    col_b, col_p, col_o = st.columns(3)
-    
-    with col_b:
-        st.markdown("""<div style="border:1px solid #cd7f32; padding:10px; border-radius:10px; text-align:center;">
-        🥉 <b>BRONZE</b><br>1 Post: R$ 150</div>""", unsafe_allow_html=True)
-        if st.button("Comprar Bronze", use_container_width=True):
-            st.markdown(f'<meta http-equiv="refresh" content="0; url=https://wa.me/55119XXXXXXXX?text=Quero+o+Pacote+Bronze">', unsafe_allow_html=True)
+    c_b, c_p, c_o = st.columns(3)
+    with c_b:
+        st.markdown(f'''<div style="border:1px solid #cd7f32; padding:15px; border-radius:12px; text-align:center;">
+            🥉 <b>BRONZE</b><br>R$ 150<hr>
+            <a href="{link_zap_limpo(ZAP_VENDAS, 'Quero o Pacote Bronze')}" target="_blank" style="background:#25D366; color:white; padding:8px 20px; border-radius:20px; text-decoration:none; font-weight:bold; display:inline-block;">COMPRAR</a>
+        </div>''', unsafe_allow_html=True)
 
-    with col_p:
-        st.markdown("""<div style="border:1px solid #c0c0c0; padding:10px; border-radius:10px; text-align:center;">
-        🥈 <b>PRATA</b><br>3 Posts: R$ 400</div>""", unsafe_allow_html=True)
-        if st.button("Comprar Prata", use_container_width=True):
-            st.info("Me chama no Zap para agendar!")
+    with c_p:
+        st.markdown(f'''<div style="border:1px solid #c0c0c0; padding:15px; border-radius:12px; text-align:center;">
+            🥈 <b>PRATA</b><br>R$ 400<hr>
+            <a href="{link_zap_limpo(ZAP_VENDAS, 'Quero o Pacote Prata')}" target="_blank" style="background:#25D366; color:white; padding:8px 20px; border-radius:20px; text-decoration:none; font-weight:bold; display:inline-block;">COMPRAR</a>
+        </div>''', unsafe_allow_html=True)
 
-    with col_o:
-        st.markdown("""<div style="border:2px solid #FFD700; background:#fffdf0; padding:10px; border-radius:10px; text-align:center;">
-        🥇 <b>OURO</b><br>10 Posts: R$ 700</div>""", unsafe_allow_html=True)
-        if st.button("Comprar Ouro", use_container_width=True):
-            st.success("O melhor custo-benefício!")
+    with c_o:
+        st.markdown(f'''<div style="border:2px solid #FFD700; background:#fffdf0; padding:15px; border-radius:12px; text-align:center;">
+            🥇 <b>OURO</b><br>R$ 700<hr>
+            <a href="{link_zap_limpo(ZAP_VENDAS, 'Quero o Pacote Ouro')}" target="_blank" style="background:#FFD700; color:black; padding:8px 20px; border-radius:20px; text-decoration:none; font-weight:bold; display:inline-block;">COMPRAR</a>
+        </div>''', unsafe_allow_html=True)
 
     st.divider()
 
-    # 2. MOTOR DE BUSCA
-    st.markdown("### 🏙️ O que você precisa?")
-    
-    with st.expander("📍 Sua Localização (GPS)", expanded=False):
-        loc = get_geolocation()
-        minha_lat, minha_lon = (loc['coords']['latitude'], loc['coords']['longitude']) if loc and 'coords' in loc else (LAT_REF, LON_REF)
-        st.success("Localização pronta!")
+    # 2. SUPER BUSCADOR (FIREBASE + MÚLTIPLAS IAs)
+    st.markdown("### 🏙️ O que você procura no Grajaú?")
+    termo = st.text_input("", placeholder="Busque notícias, serviços ou comércios...", key="input_super_busca")
 
-    c1, c2 = st.columns([3, 1])
-    termo_busca = c1.text_input("Ex: 'Chuva na Belmira', 'Pizzaria' ou 'Diarista'", key="main_search_v_groq")
-    raio_km = c2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 20, 50, 500], value=5)
+    if termo:
+        # --- ORQUESTRADOR DE BUSCA ---
+        with st.status("🚀 Processando Busca Inteligente...", expanded=True) as status:
+            # IA 1: Groq (Intenção rápida)
+            cat_ia = processar_ia_avancada(termo) # Sua função existente
+            st.write(f"✅ Categoria identificada: **{cat_ia}**")
+            
+            # IA 2: Busca na Lista do Firebase
+            st.write("📂 Consultando Banco de Dados Firebase...")
+            profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
+            
+            # Preparação para IA 3 e 4 (Notícias e Contexto)
+            st.write("🌐 Buscando notícias locais...")
+            # Aqui entrará sua API de notícias futuramente
+            
+            status.update(label="Resultados encontrados!", state="complete")
 
-    # --- CSS E JAVASCRIPT (Blindado) ---
-    st.markdown("""
-    <style>
-        .cartao-geral { background: white; border-radius: 20px; border-left: 8px solid var(--cor-borda); padding: 15px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); color: #111 !important; }
-        .perfil-row { display: flex; gap: 15px; align-items: center; margin-bottom: 12px; }
-        .foto-perfil { width: 55px; height: 55px; border-radius: 50%; object-fit: cover; border: 2px solid #eee; }
-        .social-track { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 10px; }
-        .social-card { flex: 0 0 200px; height: 280px; border-radius: 12px; overflow: hidden; cursor: pointer; background: #000; }
-        .social-card img { width: 100%; height: 100%; object-fit: cover; }
-        .btn-zap-footer { display: block; background: #25D366; color: white !important; text-align: center; padding: 15px; border-radius: 12px; font-weight: bold; text-decoration: none; margin-top: 10px; }
-    </style>
-    <script>
-    function abrirModal(src, link) {
-        window.parent.document.getElementById('imgExpandida').src = src;
-        window.parent.document.getElementById('linkZapModal').href = link;
-        window.parent.document.getElementById('meuModal').style.display = 'flex';
-    }
-    function fecharModal() {
-        window.parent.document.getElementById('meuModal').style.display = 'none';
-    }
-    </script>
-    """, unsafe_allow_html=True)
-
-    if termo_busca:
-        cat_ia = processar_ia_avancada(termo_busca) 
-        st.info(f"✨ IA: Buscando por **{cat_ia}**")
-        
-        profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
-        
+        # 3. RESULTADOS (O MESMO DESIGN QUE VOCÊ GOSTA)
         lista_ranking = []
         for p_doc in profs:
             p = p_doc.to_dict()
             p['id'] = p_doc.id
+            # Lógica de distância e score (Mantenha a que já temos)
             dist = calcular_distancia_real(minha_lat, minha_lon, p.get('lat', LAT_REF), p.get('lon', LON_REF))
-            
             if dist <= raio_km:
                 p['dist'] = dist
-                score = (1000 if p.get('verificado') else 0) + (p.get('saldo', 0) * 10)
-                p['score_elite'] = score
+                p['score'] = (1000 if p.get('verificado') else 0) + (p.get('saldo', 0) * 10)
                 lista_ranking.append(p)
 
-        lista_ranking.sort(key=lambda x: (x['dist'], -x['score_elite']))
+        lista_ranking.sort(key=lambda x: (x['dist'], -x['score']))
 
         if not lista_ranking:
-            st.warning(f"Nenhum profissional de '{cat_ia}' encontrado próximo.")
+            st.warning(f"Não encontramos profissionais para '{cat_ia}' agora. Tente outro termo!")
         else:
             for p in lista_ranking:
-                # --- TRATAMENTO DE VARIÁVEIS (EVITA ERRO DECIMAL) ---
-                dist_val = p.get('dist', 0.0)
-                is_elite = p.get('verificado', False) and p.get('saldo', 0) > 0
-                cor_borda = "#FFD700" if is_elite else "#0047AB"
-                txt_elite = " | 🏆 ELITE" if is_elite else ""
-                zap_limpo = limpar_whatsapp(p.get('whatsapp', p['id']))
-                link_zap = f"https://wa.me/{zap_limpo}?text=Olá, vi seu trabalho no Grajaú Tem!"
+                # Renderização do Card (Blindada contra erro decimal)
+                d_val = p.get('dist', 0.0)
+                is_elite = p.get('verificado') and p.get('saldo', 0) > 0
+                c_borda = "#FFD700" if is_elite else "#0047AB"
+                z_link = f"https://wa.me/{limpar_whatsapp(p.get('whatsapp', ''))}?text=Vi+seu+perfil+no+GrajauTem"
                 
-                # Fotos
-                fotos_html = ""
-                for i in range(1, 11):
-                    f_data = p.get(f'f{i}')
-                    if f_data and len(str(f_data)) > 100:
-                        f_src = f_data if str(f_data).startswith("data") else f"data:image/jpeg;base64,{f_data}"
-                        fotos_html += f'<div class="social-card" onclick="abrirModal(`{f_src}`, `{link_zap}`)"><img src="{f_src}"></div>'
-
-                # --- RENDERIZAÇÃO FINAL ---
                 st.markdown(f"""
-                <div class="cartao-geral" style="--cor-borda: {cor_borda};">
-                    <div style="font-size: 11px; color: #0047AB; font-weight: bold; margin-bottom: 10px;">
-                        📍 a {dist_val:.1f} km {txt_elite}
-                    </div>
-                    <div class="perfil-row">
-                        <img src="{p.get('foto_url', 'https://via.placeholder.com/150')}" class="foto-perfil">
+                <div style="background:white; border-radius:20px; border-left:8px solid {c_borda}; padding:15px; margin-bottom:15px; box-shadow:0 4px 10px rgba(0,0,0,0.1); color:black;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <img src="{p.get('foto_url','')}" style="width:50px; height:50px; border-radius:50%;">
                         <div>
-                            <h4 style="margin:0; color:#1e3a8a;">{str(p.get('nome','')).upper()}</h4>
-                            <p style="margin:0; color:#666; font-size:12px;">{str(p.get('descricao',''))[:100]}...</p>
+                            <h4 style="margin:0;">{str(p.get('nome','')).upper()}</h4>
+                            <small>{d_val:.1f} km de você</small>
                         </div>
                     </div>
-                    <div class="social-track">{fotos_html}</div>
-                    <a href="{link_zap}" target="_blank" class="btn-zap-footer">💬 CHAMAR AGORA</a>
+                    <a href="{z_link}" target="_blank" style="display:block; background:#25D366; color:white; text-align:center; padding:10px; border-radius:10px; text-decoration:none; font-weight:bold; margin-top:10px;">CHAMAR NO WHATSAPP</a>
                 </div>
                 """, unsafe_allow_html=True)
 
-    # Modal Único (Fora do loop)
-    st.markdown("""
-    <div id="meuModal" style="display:none; position:fixed; z-index:9999; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); align-items:center; justify-content:center; flex-direction:column;">
-        <span onclick="fecharModal()" style="position:absolute; top:20px; right:30px; color:white; font-size:40px; cursor:pointer;">&times;</span>
-        <img id="imgExpandida" style="max-width:90%; max-height:75%; border-radius:10px; object-fit: contain;">
-        <a id="linkZapModal" href="#" target="_blank" style="margin-top:20px; background:#25D366; color:white; padding:15px 40px; border-radius:30px; text-decoration:none; font-weight:bold;">✅ WHATSAPP</a>
-    </div>
-    """, unsafe_allow_html=True)
+# 4. MODAL ÚNICO (Final da página)
+st.markdown("""
+<div id="meuModal" style="display:none; position:fixed; z-index:9999; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); align-items:center; justify-content:center; flex-direction:column;">
+    <span onclick="this.parentElement.style.display='none'" style="position:absolute; top:20px; right:30px; color:white; font-size:40px; cursor:pointer;">&times;</span>
+    <img id="imgExpandida" style="max-width:90%; max-height:80%;">
+    <a id="linkZapModal" href="#" target="_blank" style="margin-top:20px; background:#25D366; color:white; padding:15px; border-radius:30px; text-decoration:none;">✅ WHATSAPP</a>
+</div>
+""", unsafe_allow_html=True)
 
 # ==============================================================================
 # ABA 2: 🚀 PAINEL DO PARCEIRO (COMPLETO: FB + IMAGENS + FAQ + EXCLUSÃO)
@@ -1118,6 +1092,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
