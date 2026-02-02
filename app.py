@@ -573,6 +573,37 @@ function abrirModal(src, link) {
 </script>
 """, unsafe_allow_html=True)
 # ==============================================================================
+# --- SEÇÃO DE NOTÍCIAS (LOGO ABAIXO DO BUSCADOR) ---
+# ==============================================================================
+st.markdown("---")
+st.subheader("📰 Notícias do Grajaú")
+
+# 1. BUSCAR NOTÍCIAS DO FIREBASE
+# Ordenamos por data (as mais recentes) e limitamos a 6 para não travar o site
+noticias_ref = db.collection("noticias").order_by("data", direction="DESCENDING").limit(6).stream()
+
+cols_noticias = st.columns(2) # Cria duas colunas para as notícias
+
+for i, doc in enumerate(noticias_ref):
+    n = doc.to_dict()
+    col_index = i % 2 # Distribui entre a coluna 0 e 1
+    
+    with cols_noticias[col_index]:
+        st.markdown(f"""
+            <div style="background:white; border-radius:15px; padding:0px; margin-bottom:20px; box-shadow:0 4px 8px rgba(0,0,0,0.1); overflow:hidden; border-bottom: 4px solid #1e3a8a;">
+                <img src="{n.get('imagem_url', 'https://via.placeholder.com/400x200')}" style="width:100%; height:180px; object-fit:cover;">
+                <div style="padding:15px;">
+                    <span style="background:#f0f2f6; padding:2px 8px; border-radius:10px; font-size:10px; font-weight:bold; color:#1e3a8a;">{n.get('categoria', 'GERAL')}</span>
+                    <h4 style="margin:10px 0 5px 0; color:#111; line-height:1.2;">{n.get('titulo')[:60]}...</h4>
+                    <p style="font-size:12px; color:#666;">{n.get('resumo')[:100]}...</p>
+                    <a href="{n.get('link_original')}" target="_blank" style="text-decoration:none; color:#1e3a8a; font-weight:bold; font-size:13px;">Ler matéria completa →</a>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+
+if not noticias_ref:
+    st.info("Acompanhe as notícias em tempo real no nosso Instagram @grajautem")
+# ==============================================================================
 # ABA 2: 🚀 PAINEL DO PARCEIRO (COMPLETO: FB + IMAGENS + FAQ + EXCLUSÃO)
 # ==============================================================================
 with menu_abas[2]:
@@ -1125,6 +1156,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
