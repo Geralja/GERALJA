@@ -443,29 +443,41 @@ def criar_link_zap(numero, msg):
     return f"https://api.whatsapp.com/send?phone={numero}&text={urllib.parse.quote(msg)}"
 
 # ==============================================================================
-# --- ABA 0: SUPER BUSCADOR GRAJAÚ TEM (PRECISÃO TOTAL) ---
+# --- ABA 0: O NOVO PORTAL GRAJAÚ TEM ---
 # ==============================================================================
 with menu_abas[0]:
-    # --- 1. VITRINE DE ANÚNCIOS (FATURAMENTO) ---
-    st.markdown("### 📢 Anuncie no Portal Grajaú Tem")
-    c1, c2, c3 = st.columns(3)
+    # --- NOVIDADE: HEADER DO PORTAL E VENDA DE ANÚNCIOS ---
+    st.markdown("### 📰 O Grajaú Tem - Notícias e Oportunidades")
     
-    pacotes = [
-        {"nome": "BRONZE 🥉", "preco": "150", "msg": "Quero o Pacote Bronze", "cor": "#cd7f32"},
-        {"nome": "PRATA 🥈", "preco": "400", "msg": "Quero o Pacote Prata", "cor": "#c0c0c0"},
-        {"nome": "OURO 🥇", "preco": "700", "msg": "Quero o Pacote Ouro", "cor": "#FFD700"}
-    ]
+    # Seção de pacotes (Dinheiro rápido)
+    col_venda1, col_venda2, col_venda3 = st.columns(3)
     
-    for i, col in enumerate([c1, c2, c3]):
-        p = pacotes[i]
-        col.markdown(f"""
-            <div style="border:2px solid {p['cor']}; padding:10px; border-radius:15px; text-align:center; background:white;">
-                <b style="color:{p['cor']};">{p['nome']}</b><br>
-                <span style="font-size:20px; font-weight:bold; color:black;">R$ {p['preco']}</span><br>
-                <a href="{criar_link_zap(ZAP_VENDAS, p['msg'])}" target="_blank" 
-                   style="background:#25D366; color:white; padding:5px 15px; border-radius:10px; text-decoration:none; font-size:12px; font-weight:bold; display:block; margin-top:5px;">COMPRAR</a>
-            </div>
-        """, unsafe_allow_html=True)
+    with col_venda1:
+        st.markdown(f'''<div style="border:1px solid #cd7f32; padding:10px; border-radius:10px; text-align:center; height:150px;">
+            <b style="color:#cd7f32;">BRONZE 🥉</b><br>
+            <span style="font-size:18px;">R$ 150</span><br><br>
+            <a href="https://wa.me/5511980168513?text=Quero+o+Pacote+Bronze" target="_blank" style="background:#25D366; color:white; padding:5px 10px; border-radius:5px; text-decoration:none; font-weight:bold;">COMPRAR</a>
+        </div>''', unsafe_allow_html=True)
+
+    with col_venda2:
+        st.markdown(f'''<div style="border:1px solid #c0c0c0; padding:10px; border-radius:10px; text-align:center; height:150px;">
+            <b style="color:#c0c0c0;">PRATA 🥈</b><br>
+            <span style="font-size:18px;">R$ 400</span><br><br>
+            <a href="https://wa.me/5511980168513?text=Quero+o+Pacote+Prata" target="_blank" style="background:#25D366; color:white; padding:5px 10px; border-radius:5px; text-decoration:none; font-weight:bold;">COMPRAR</a>
+        </div>''', unsafe_allow_html=True)
+
+    with col_venda3:
+        st.markdown(f'''<div style="border:2px solid #FFD700; padding:10px; border-radius:10px; text-align:center; height:150px; background:#fffdf0;">
+            <b style="color:#FFD700;">OURO 🥇</b><br>
+            <span style="font-size:18px; font-weight:bold;">R$ 700</span><br><br>
+            <a href="https://wa.me/5511980168513?text=Quero+o+Pacote+Ouro" target="_blank" style="background:#FFD700; color:black; padding:5px 10px; border-radius:5px; text-decoration:none; font-weight:bold;">COMPRAR</a>
+        </div>''', unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # --- ABAIXO DA VENDA, O BUSCADOR QUE JÁ EXISTE ---
+    st.markdown("#### 🔍 Busca Inteligente no Bairro")
+    # [Aqui continua o seu código de termo_busca, raio_km e get_geolocation]
 
     st.divider()
 
@@ -1156,6 +1168,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
