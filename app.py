@@ -942,15 +942,16 @@ with menu_abas[3]:
     import pandas as pd
     import time
 
-    # 1. CONFIGURAÇÃO DE TEMPO E SEGURANÇA
-    fuso_br = pytz.timezone('America/Sao_Paulo')
-    agora_br = datetime.now(fuso_br)
-    
-    ADMIN_USER_OFICIAL = st.secrets.get("ADMIN_USER", "admin")
-    ADMIN_PASS_OFICIAL = st.secrets.get("ADMIN_PASS", "geralja2026")
+   # 1. CONFIGURAÇÃO DE TEMPO E SEGURANÇA
+fuso_br = pytz.timezone('America/Sao_Paulo')
+agora_br = datetime.now(fuso_br)
 
-    if 'admin_logado' not in st.session_state:
-        st.session_state.admin_logado = False
+# Aqui ele tenta pegar dos Secrets, se não achar, usa os padrões que você definiu
+ADMIN_USER_OFICIAL = st.secrets.get("ADMIN_USER", "admin")
+ADMIN_PASS_OFICIAL = st.secrets.get("ADMIN_PASS", "Bps36ocara") # Sua nova senha padrão
+
+if 'admin_logado' not in st.session_state:
+    st.session_state.admin_logado = False
 
     if not st.session_state.admin_logado:
         st.markdown("### 🔐 Acesso Restrito à Diretoria")
@@ -1167,6 +1168,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
