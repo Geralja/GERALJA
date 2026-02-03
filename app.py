@@ -1008,92 +1008,94 @@ with menu_abas[3]:
                     st.success("Adicionada!"); st.rerun()
 
         # ----------------------------------------------------------------------
-        # TAB: NOTÍCIAS (CADASTRO + VITRINE MODERNA)
+        # TAB: NOTÍCIAS (CAPTAÇÃO AUTOMÁTICA + POSTAGEM MANUAL + VITRINE)
         # ----------------------------------------------------------------------
         with tab_noticias:
-         import feedparser # Para o Google News RSS
+            st.subheader("🤖 Central de Captação (Google News)")
+            
+            def buscar_google_news():
+                # Busca notícias sobre o Grajaú - SP
+                url = "https://news.google.com/rss/search?q=Grajaú+São+Paulo&hl=pt-BR&gl=BR&ceid=BR:pt-419"
+                feed = feedparser.parse(url)
+                if feed.entries:
+                    return [{"titulo": e.title, "link": e.link} for e in feed.entries[:3]]
+                return []
 
-# --- DENTRO DA ABA NOTÍCIAS (tab_noticias) ---
-with tab_noticias:
-    st.subheader("🤖 Sugestões Automáticas (IA)")
-    
-    # Função para buscar do Google News (Gratuito e Ilimitado)
-    def buscar_google_news():
-        url = "https://news.google.com/rss/search?q=Grajaú+São+Paulo&hl=pt-BR&gl=BR&ceid=BR:pt-419"
-        feed = feedparser.parse(url)
-        if feed.entries:
-            entry = feed.entries[0] # Pega a primeira
-            return {"titulo": entry.title, "link": entry.link, "fonte": "Google News"}
-        return None
-
-    # Interface de Captação
-    if st.button("🔍 Buscar Novidades na Web"):
-        col_api1, col_api2, col_api3 = st.columns(3)
-        
-        # Sugestão 1: Google RSS
-        noticia_g = buscar_google_news()
-        if noticia_g:
-            with col_api1:
-                st.info(f"**{noticia_g['fonte']}**")
-                st.write(noticia_g['titulo'][:80]...)
-                if st.button("✅ Postar Esta", key="btn_g"):
-                    db.collection("noticias").add({
-                        "titulo": noticia_g['titulo'],
-                        "link_original": noticia_g['link'],
-                        "imagem_url": "https://images.unsplash.com/photo-1504711432869-ed3bd40301f7", # Placeholder
-                        "data": datetime.now(fuso_br),
-                        "categoria": "AUTOMATICA"
-                    })
-                    st.success("Enviado!"); st.rerun()
-
-        # Sugestão 2 e 3 (Aqui você inseriria NewsAPI e GNews com suas chaves)
-        with col_api2:
-            st.warning("NewsAPI: Requer Chave API")
-        with col_api3:
-            st.warning("GNews: Requer Chave API")
-
-    st.divider()
-    
-    # --- SEU FORMULÁRIO MANUAL CONTINUA AQUI ABAIXO ---
-    st.subheader("🚀 Publicar Manualmente")
-    # ... (resto do seu código de formulário)
-            # 1. FORMULÁRIO DE POSTAGEM (QUE VOCÊ QUERIA DE VOLTA)
-            st.subheader("🚀 Publicar Nova Notícia")
-            with st.form("nova_noticia_adm"):
-                ntitulo = st.text_input("Título da Notícia")
-                nimg = st.text_input("URL da Imagem (Instagram/FB)")
-                nlink = st.text_input("Link da Matéria Completa")
-                nresumo = st.text_area("Breve Resumo (Opcional)")
-                if st.form_submit_button("PUBLICAR NO PORTAL"):
-                    db.collection("noticias").add({
-                        "titulo": ntitulo, "imagem_url": nimg, 
-                        "link_original": nlink, "resumo": nresumo,
-                        "data": datetime.now(fuso_br), "categoria": "DESTAQUE"
-                    })
-                    st.success("Notícia publicada!"); time.sleep(1); st.rerun()
+            if st.button("🔍 Buscar Novidades na Web", key="btn_captar"):
+                sugestoes = buscar_google_news()
+                if sugestoes:
+                    cols = st.columns(3)
+                    for i, sug in enumerate(sugestoes):
+                        with cols[i]:
+                            st.info(f"📍 Sugestão {i+1}")
+                            st.write(f"{sug['titulo'][:80]}...")
+                            # Ao clicar, preenche o formulário manual abaixo ou posta direto
+                            if st.button("✅ Usar Esta", key=f"use_{i}"):
+                                st.session_state['temp_titulo'] = sug['titulo']
+                                st.session_state['temp_link'] = sug['link']
+                                st.rerun()
+                else:
+                    st.warning("Nenhuma notícia nova encontrada no momento.")
 
             st.divider()
 
-            # 2. VITRINE DE LEITURA (VISUALIZAÇÃO)
-            st.subheader("👀 Visualização do Portal")
+            # FORMULÁRIO MANUAL (Com dados da API se houver)
+            st.subheader("🚀 Publicar no Portal")
+            with st.form("form_noticia"):
+                titulo_padrao = st.session_state.get('temp_titulo', "")
+                link_padrao = st.session_state.get('temp_link', "")
+                
+                ntitulo = st.text_input("Título da Notícia", value=titulo_padrao)
+                nimg = st.text_input("URL da Imagem (Obrigatório para Vitrine)")
+                nlink = st.text_input("Link da Matéria Completa", value=link_padrao)
+                nresumo = st.text_area("Texto da Matéria (Para leitura interna)")
+                
+                if st.form_submit_button("PUBLICAR AGORA"):
+                    if ntitulo and nimg:
+                        db.collection("noticias").add({
+                            "titulo": ntitulo,
+                            "imagem_url": nimg,
+                            "link_original": nlink,
+                            "resumo": nresumo,
+                            "data": datetime.now(fuso_br),
+                            "categoria": "DESTAQUE"
+                        })
+                        st.success("Notícia postada com sucesso!")
+                        # Limpa os temporários
+                        st.session_state.pop('temp_titulo', None)
+                        st.session_state.pop('temp_link', None)
+                        time.sleep(1); st.rerun()
+                    else:
+                        st.error("Título e Imagem são obrigatórios!")
+
+            st.divider()
+
+            # VITRINE DE EXIBIÇÃO (COMO O USUÁRIO VÊ)
+            st.subheader("👀 Vitrine do Site")
             noticias_ref = db.collection("noticias").order_by("data", direction="DESCENDING").limit(12).stream()
             lista_noticias = [n.to_dict() | {"id": n.id} for n in noticias_ref]
 
             if lista_noticias:
-                col1, col2, col3 = st.columns(3)
+                # Top 3 (Carrossel/Grid Estático)
+                c1, c2, c3 = st.columns(3)
                 destaques = lista_noticias[:3]
-                restante = lista_noticias[3:]
-
                 for i, n in enumerate(destaques):
-                    with [col1, col2, col3][i]:
-                        st.markdown(f'<div style="height:150px; overflow:hidden; border-radius:10px;"><img src="{n.get("imagem_url")}" style="width:100%; height:100%; object-fit:cover;"></div>', unsafe_allow_html=True)
+                    with [c1, c2, c3][i]:
+                        st.markdown(f"""
+                            <div style="height:150px; overflow:hidden; border-radius:10px;">
+                                <img src="{n.get('imagem_url')}" style="width:100%; height:100%; object-fit:cover;">
+                            </div>
+                        """, unsafe_allow_html=True)
                         st.caption(f"**{n.get('titulo')[:50]}...**")
-                        with st.expander("📖 Ler matérea"):
+                        with st.expander("📖 Ler Matéria"):
                             st.image(n.get('imagem_url'))
-                            st.write(n.get('resumo') if n.get('resumo') else n.get('titulo'))
-                            st.link_button("Ver Original", n.get('link_original'), use_container_width=True)
-                            if st.button("🗑️ Apagar", key=f"del_not_{n['id']}"):
+                            st.markdown(f"### {n.get('titulo')}")
+                            st.write(n.get('resumo', 'Sem resumo disponível.'))
+                            st.link_button("Ver Fonte", n.get('link_original'), use_container_width=True)
+                            if st.button("🗑️ Excluir", key=f"del_{n['id']}"):
                                 db.collection("noticias").document(n['id']).delete(); st.rerun()
+            else:
+                st.info("Nenhuma notícia no banco de dados.")
 
         # ----------------------------------------------------------------------
         # TAB: PARCEIROS (AUTONOMIA TOTAL)
@@ -1239,6 +1241,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
