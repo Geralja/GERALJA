@@ -942,6 +942,7 @@ with menu_abas[3]:
     import base64
     import requests
     import feedparser
+    import urllib.parse
 
     def otimizar_imagem(image_file, size=(500, 500)):
         try:
@@ -969,13 +970,14 @@ with menu_abas[3]:
                 else: st.error("Dados incorretos.")
     else:
         st.markdown(f"## 👑 Central de Comando GeralJá")
-        if st.button("🚪 Sair", key="logout_adm"): st.session_state.admin_logado = False; st.rerun()
+        if st.button("🚪 Sair", key="logout_adm"): 
+            st.session_state.admin_logado = False; st.rerun()
 
         tab_profissionais, tab_noticias, tab_loja, tab_categorias = st.tabs([
             "👥 Parceiros", "📰 Gestão de Notícias", "🛍️ Loja", "📁 Categorias"
         ])
 
-with tab_categorias:
+        with tab_categorias:
             doc_cat_ref = db.collection("configuracoes").document("categorias")
             res_cat = doc_cat_ref.get()
             lista_atual = res_cat.to_dict().get("lista", CATEGORIAS_OFICIAIS) if res_cat.exists else CATEGORIAS_OFICIAIS
@@ -989,19 +991,15 @@ with tab_categorias:
         with tab_noticias:
             st.subheader("🤖 Captação por IA")
             c_ia1, c_ia2 = st.columns(2)
-            
-            # Imagem padrão caso a IA não encontre uma (resolve o erro do Google News)
             IMG_NEWS_DEFAULT = "https://images.unsplash.com/photo-1504711432869-0df30d7eaf4d?w=800"
 
             if c_ia1.button("🔍 CAPTAR GOOGLE NEWS"):
                 feed = feedparser.parse("https://news.google.com/rss/search?q=Grajaú+São+Paulo&hl=pt-BR&gl=BR&ceid=BR:pt-419")
-                # No Google, como não vem imagem, injetamos a IMG_NEWS_DEFAULT
                 st.session_state['sugestoes_ia'] = [{"titulo": e.title, "link": e.link, "img": IMG_NEWS_DEFAULT, "fonte": "Google"} for e in feed.entries[:3]]
             
             if c_ia2.button("📡 SCANNER NEWS API"):
                 try:
                     res = requests.get(f"https://newsapi.org/v2/everything?q=Grajaú+São+Paulo&language=pt&apiKey={st.secrets.get('NEWS_API_KEY','516289bf44e1429784e0ca0102854a0d')}").json()
-                    # Na NewsAPI, se urlToImage for None, usamos a padrão
                     st.session_state['sugestoes_ia'] = [{"titulo": a['title'], "link": a['url'], "img": a.get('urlToImage') or IMG_NEWS_DEFAULT, "res": a.get('description'), "fonte": "NewsAPI"} for a in res.get("articles", [])[:3]]
                 except: st.error("Erro na API.")
 
@@ -1009,9 +1007,7 @@ with tab_categorias:
                 cols_sug = st.columns(3)
                 for idx, sug in enumerate(st.session_state['sugestoes_ia']):
                     with cols_sug[idx]:
-                        # APRIMORAMENTO: Mostra um preview da imagem que será usada
-                        if sug.get('img'):
-                            st.image(sug['img'], use_container_width=True)
+                        if sug.get('img'): st.image(sug['img'], use_container_width=True)
                         st.info(f"**{sug['titulo'][:60]}...**")
                         if st.button("✅ USAR", key=f"sug_{idx}"):
                             st.session_state['temp_titulo'] = sug['titulo']
@@ -1054,7 +1050,7 @@ with tab_categorias:
                 lf = st.file_uploader("Foto", type=['jpg','png'])
                 if st.form_submit_button("SALVAR PRODUTO"):
                     db.collection("loja").add({"nome": ln, "preco": lp, "estoque": le, "foto": otimizar_imagem(lf) if lf else ""})
-                    st.rerun()
+                    st.success("Produto Adicionado!"); st.rerun()
             st.divider()
             for it in db.collection("loja").stream():
                 item = it.to_dict()
@@ -1072,7 +1068,9 @@ with tab_categorias:
                     if busca: df = df[df['nome'].str.contains(busca, case=False, na=False) | df['whatsapp'].str.contains(busca, na=False)]
                     
                     m1, m2, m3 = st.columns(3)
-                    m1.metric("Total", len(df)); m2.metric("Pendentes", len(df[df['aprovado'] == False])); m3.metric("GeralCones", f"💎 {int(df['saldo'].sum())}")
+                    m1.metric("Total", len(df))
+                    m2.metric("Pendentes", len(df[df['aprovado'] == False]))
+                    m3.metric("GeralCones", f"💎 {int(df['saldo'].sum())}")
 
                     for _, p in df.iterrows():
                         pid = p['id']
@@ -1188,6 +1186,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
