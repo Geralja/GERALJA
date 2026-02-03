@@ -930,7 +930,7 @@ with menu_abas[1]:
             except Exception as e:
                 st.error(f"❌ Erro ao processar perfil: {e}")
 # ==============================================================================
-# ABA 4: 👑 TORRE DE CONTROLE MASTER (COMPLETA, INTEGRADA E BLINDADA)
+# ABA 4: 👑 TORRE DE CONTROLE MASTER (VERSÃO FINAL - BLINDADA)
 # ==============================================================================
 with menu_abas[3]:
     import pytz
@@ -940,8 +940,8 @@ with menu_abas[3]:
     from PIL import Image
     import io
     import base64
-    import requests    # Para NewsAPI
-    import feedparser  # Para Google News
+    import requests
+    import feedparser
 
     # --- FUNÇÃO DE APOIO: OTIMIZAÇÃO DE IMAGENS ---
     def otimizar_imagem(image_file, size=(800, 800)):
@@ -957,7 +957,6 @@ with menu_abas[3]:
             st.error(f"Erro ao processar imagem: {e}")
             return None
 
-    # 1. CONFIGURAÇÃO DE TEMPO E SEGURANÇA
     fuso_br = pytz.timezone('America/Sao_Paulo')
     agora_br = datetime.now(fuso_br)
 
@@ -967,7 +966,6 @@ with menu_abas[3]:
     if 'admin_logado' not in st.session_state:
         st.session_state.admin_logado = False
 
-    # --- SISTEMA DE LOGIN ---
     if not st.session_state.admin_logado:
         st.markdown("### 🔐 Acesso Restrito à Diretoria")
         with st.form("painel_login_adm"):
@@ -983,26 +981,18 @@ with menu_abas[3]:
     
     else:
         st.markdown(f"## 👑 Central de Comando GeralJá")
-        st.caption(f"🕒 {agora_br.strftime('%H:%M:%S')} | Poder de Edição Total Ativo")
-        
         if st.button("🚪 Sair do Sistema", key="logout_adm"):
             st.session_state.admin_logado = False
             st.rerun()
 
-        # Criação das Tabs
         tab_profissionais, tab_noticias, tab_categorias = st.tabs([
             "👥 Parceiros", "📰 Gestão de Notícias", "📁 Categorias"
         ])
 
-        # ----------------------------------------------------------------------
-        # TAB: GESTÃO DE CATEGORIAS
-        # ----------------------------------------------------------------------
         with tab_categorias:
             doc_cat_ref = db.collection("configuracoes").document("categorias")
             res_cat = doc_cat_ref.get()
-            # CATEGORIAS_OFICIAIS deve estar definida no seu código global
             lista_atual = res_cat.to_dict().get("lista", CATEGORIAS_OFICIAIS) if res_cat.exists else CATEGORIAS_OFICIAIS
-            
             c_cat1, c_cat2 = st.columns([3, 1])
             nova_cat_input = c_cat1.text_input("Nova Profissão:")
             if c_cat2.button("➕ ADICIONAR"):
@@ -1012,35 +1002,23 @@ with menu_abas[3]:
                     doc_cat_ref.set({"lista": lista_atual})
                     st.success("Adicionada!"); st.rerun()
 
-        # ----------------------------------------------------------------------
-        # TAB: GESTÃO DE NOTÍCIAS (GOOGLE + NEWSAPI + MANUAL + VITRINE)
-        # ----------------------------------------------------------------------
         with tab_noticias:
             NEWS_API_KEY = st.secrets.get("NEWS_API_KEY", "516289bf44e1429784e0ca0102854a0d")
             st.subheader("🤖 Central de Inteligência e Captação")
             
-            def buscar_google_news():
+            c_ia1, c_ia2 = st.columns(2)
+            if c_ia1.button("🔍 CAPTAR GOOGLE NEWS", use_container_width=True):
                 url = "https://news.google.com/rss/search?q=Grajaú+São+Paulo&hl=pt-BR&gl=BR&ceid=BR:pt-419"
                 feed = feedparser.parse(url)
-                if feed.entries:
-                    return [{"titulo": e.title, "link": e.link, "fonte": "Google"} for e in feed.entries[:3]]
-                return []
-
-            c_ia1, c_ia2 = st.columns(2)
-            
-            if c_ia1.button("🔍 CAPTAR GOOGLE NEWS", use_container_width=True):
-                st.session_state['sugestoes_ia'] = buscar_google_news()
+                st.session_state['sugestoes_ia'] = [{"titulo": e.title, "link": e.link, "fonte": "Google"} for e in feed.entries[:3]]
 
             if c_ia2.button("📡 SCANNER NEWS API", use_container_width=True):
                 try:
                     url_api = f"https://newsapi.org/v2/everything?q=Grajaú+São+Paulo&language=pt&sortBy=publishedAt&apiKey={NEWS_API_KEY}"
                     res = requests.get(url_api).json()
-                    artigos = [{"titulo": a['title'], "link": a['url'], "img": a.get('urlToImage'), "res": a.get('description'), "fonte": "NewsAPI"} for a in res.get("articles", [])[:3]]
-                    st.session_state['sugestoes_ia'] = artigos
-                except:
-                    st.error("Erro ao acessar NewsAPI. Verifique o cofre.")
+                    st.session_state['sugestoes_ia'] = [{"titulo": a['title'], "link": a['url'], "img": a.get('urlToImage'), "res": a.get('description'), "fonte": "NewsAPI"} for a in res.get("articles", [])[:3]]
+                except: st.error("Erro na NewsAPI.")
 
-            # Sugestões da IA
             if 'sugestoes_ia' in st.session_state:
                 cols_sug = st.columns(3)
                 for idx, sug in enumerate(st.session_state['sugestoes_ia']):
@@ -1048,74 +1026,60 @@ with menu_abas[3]:
                         st.info(f"📍 {sug['fonte']}")
                         st.write(f"**{sug['titulo'][:70]}...**")
                         if st.button("✅ USAR ESTA", key=f"sug_btn_{idx}"):
-                            st.session_state['temp_titulo'] = sug['titulo']
-                            st.session_state['temp_link'] = sug['link']
-                            st.session_state['temp_resumo'] = sug.get('res', "")
-                            st.session_state['temp_img'] = sug.get('img', "")
+                            st.session_state['temp_titulo'] = sug['titulo']; st.session_state['temp_link'] = sug['link']
+                            st.session_state['temp_resumo'] = sug.get('res', ""); st.session_state['temp_img'] = sug.get('img', "")
                             st.rerun()
 
             st.divider()
-
-            # Formulário de Publicação
-            st.subheader("🚀 Publicar no Portal")
             with st.form("form_noticia_geral"):
                 ntitulo = st.text_input("Título", value=st.session_state.get('temp_titulo', ""))
                 nimg = st.text_input("URL da Imagem", value=st.session_state.get('temp_img', ""))
                 nlink = st.text_input("Link da Matéria", value=st.session_state.get('temp_link', ""))
                 nresumo = st.text_area("Conteúdo/Resumo", value=st.session_state.get('temp_resumo', ""))
-                
-                if st.form_submit_button("PUBLICAR AGORA NO GERALJÁ", use_container_width=True):
+                if st.form_submit_button("PUBLICAR AGORA NO GERALJÁ"):
                     if ntitulo and nimg:
-                        db.collection("noticias").add({
-                            "titulo": ntitulo, "imagem_url": nimg, "link_original": nlink,
-                            "resumo": nresumo, "data": datetime.now(fuso_br), "categoria": "DESTAQUE"
-                        })
+                        db.collection("noticias").add({"titulo": ntitulo, "imagem_url": nimg, "link_original": nlink, "resumo": nresumo, "data": datetime.now(fuso_br), "categoria": "DESTAQUE"})
                         st.success("Postado!"); time.sleep(1)
-                        for k in ['temp_titulo', 'temp_img', 'temp_link', 'temp_resumo', 'sugestoes_ia']:
-                            st.session_state.pop(k, None)
+                        for k in ['temp_titulo', 'temp_img', 'temp_link', 'temp_resumo', 'sugestoes_ia']: st.session_state.pop(k, None)
                         st.rerun()
-                    else:
-                        st.error("Título e Imagem são obrigatórios!")
 
             st.divider()
-
-            # Vitrine Blindada (Correção do erro MediaFileStorageError)
             st.subheader("👀 Vitrine do Site")
             try:
                 noticias_ref = db.collection("noticias").order_by("data", direction="DESCENDING").limit(12).stream()
                 lista_noticias = [n.to_dict() | {"id": n.id} for n in noticias_ref]
-
                 if lista_noticias:
                     c_v1, c_v2, c_v3 = st.columns(3)
                     for i, n in enumerate(lista_noticias[:3]):
                         with [c_v1, c_v2, c_v3][i]:
                             img_v = n.get('imagem_url', '')
-                            st.markdown(f'''<div style="height:140px;overflow:hidden;border-radius:10px;background:#eee;">
-                                <img src="{img_v}" style="width:100%;height:100%;object-fit:cover;" onerror="this.src='https://placehold.co/400x200?text=Erro+Link';">
-                                </div>''', unsafe_allow_html=True)
+                            st.markdown(f'''<div style="height:140px;overflow:hidden;border-radius:10px;background:#eee;"><img src="{img_v}" style="width:100%;height:100%;object-fit:cover;" onerror="this.src='https://placehold.co/400x200?text=Erro+Link';"></div>''', unsafe_allow_html=True)
                             st.caption(f"**{n.get('titulo')[:50]}...**")
                             with st.expander("📖 Ler"):
                                 try:
                                     if n.get('imagem_url'): st.image(n.get('imagem_url'), use_container_width=True)
-                                except:
-                                    st.warning("Imagem bloqueada pela fonte.")
+                                except: st.warning("Imagem bloqueada.")
                                 st.write(n.get('resumo', 'Sem resumo.'))
                                 st.link_button("Ver Fonte", n.get('link_original'), use_container_width=True)
-                                if st.button("🗑️", key=f"del_n_{n['id']}"):
-                                    db.collection("noticias").document(n['id']).delete(); st.rerun()
-                else:
-                    st.info("Nenhuma notícia no banco.")
-            except Exception as e:
-                st.error(f"Erro ao carregar vitrine: {e}")
+                                if st.button("🗑️", key=f"del_n_{n['id']}"): db.collection("noticias").document(n['id']).delete(); st.rerun()
+            except Exception as e: st.error(f"Erro na vitrine: {e}")
 
-        # ----------------------------------------------------------------------
-        # TAB: PARCEIROS (GESTÃO COMPLETA)
-        # ----------------------------------------------------------------------
+        # --- TAB PARCEIROS CORRIGIDA (SOLUÇÃO PARA O FLOAT) ---
         with tab_profissionais:
             try:
                 profs_ref = list(db.collection("profissionais").stream())
-                profs_data = [p.to_dict() | {"id": p.id} for p in profs_ref]
-                df = pd.DataFrame(profs_data)
+                profs_list = []
+                for p in profs_ref:
+                    d = p.to_dict()
+                    d['id'] = p.id
+                    # 💉 VACINA: Força os tipos de dados para evitar erro de 'float'
+                    d['nome'] = str(d.get('nome') or 'Sem Nome')
+                    d['saldo'] = int(d.get('saldo') or 0)
+                    d['aprovado'] = bool(d.get('aprovado', False))
+                    d['area'] = str(d.get('area') or 'Geral')
+                    profs_list.append(d)
+                
+                df = pd.DataFrame(profs_list)
 
                 if not df.empty:
                     busca_adm = st.text_input("🔍 Localizar (Nome ou WhatsApp)", key="busca_adm_geral")
@@ -1125,35 +1089,35 @@ with menu_abas[3]:
                     m1, m2, m3 = st.columns(3)
                     m1.metric("Total", len(df))
                     m2.metric("Pendentes", len(df[df['aprovado'] == False]))
+                    # Cálculo seguro do saldo
                     m3.metric("GeralCones", f"💎 {int(df['saldo'].sum())}")
 
                     for _, p in df.iterrows():
                         pid = p['id']
-                        status = "🟢" if p.get('aprovado') else "🟡"
-                        with st.expander(f"{status} {p.get('nome','').upper()}"):
+                        status = "🟢" if p['aprovado'] else "🟡"
+                        with st.expander(f"{status} {p['nome'].upper()}"):
                             with st.form(f"form_edit_{pid}"):
                                 c1, c2 = st.columns(2)
-                                n_nome = c1.text_input("Nome", value=p.get('nome'))
-                                n_area = c2.selectbox("Área", lista_atual, index=lista_atual.index(p.get('area')) if p.get('area') in lista_atual else 0)
-                                n_desc = st.text_area("Descrição", value=p.get('descricao'))
+                                n_nome = c1.text_input("Nome", value=p['nome'])
+                                n_area = c2.selectbox("Área", lista_atual, index=lista_atual.index(p['area']) if p['area'] in lista_atual else 0)
+                                n_desc = st.text_area("Descrição", value=p.get('descricao', ''))
                                 
                                 c3, c4, c5 = st.columns(3)
-                                n_zap = c3.text_input("Zap", value=p.get('whatsapp'))
-                                n_saldo = c4.number_input("Saldo", value=int(p.get('saldo', 0)))
-                                n_status = c5.selectbox("Status", ["Aprovado", "Pendente"], index=0 if p.get('aprovado') else 1)
+                                n_zap = c3.text_input("Zap", value=p.get('whatsapp', ''))
+                                n_saldo = c4.number_input("Saldo", value=int(p['saldo']), step=1)
+                                n_status = c5.selectbox("Status", ["Aprovado", "Pendente"], index=0 if p['aprovado'] else 1)
                                 
                                 st.divider()
                                 cf1, cf2 = st.columns([1, 2])
                                 with cf1:
                                     f_url = p.get('foto_url', '')
-                                    if f_url: 
-                                        st.image(f"data:image/jpeg;base64,{f_url}" if len(str(f_url)) > 100 else f_url, width=80)
+                                    if f_url: st.image(f"data:image/jpeg;base64,{f_url}" if len(str(f_url)) > 100 else f_url, width=80)
                                     up_p = st.file_uploader("Trocar Foto", type=['jpg','png'], key=f"p_{pid}")
                                 with cf2:
                                     up_v = st.file_uploader("Trocar Vitrine (Máx 4)", type=['jpg','png'], accept_multiple_files=True, key=f"v_{pid}")
 
                                 if st.form_submit_button("💾 SALVAR ALTERAÇÕES TOTAIS"):
-                                    upd = {"nome": n_nome, "area": n_area, "descricao": n_desc, "whatsapp": n_zap, "saldo": n_saldo, "aprovado": (n_status == "Aprovado")}
+                                    upd = {"nome": n_nome, "area": n_area, "descricao": n_desc, "whatsapp": n_zap, "saldo": int(n_saldo), "aprovado": (n_status == "Aprovado")}
                                     if up_p: upd["foto_url"] = otimizar_imagem(up_p, size=(350, 350))
                                     if up_v:
                                         for i in range(1, 5): upd[f'f{i}'] = None
@@ -1165,8 +1129,8 @@ with menu_abas[3]:
                             if cr1.button("✅ APROVAR", key=f"ok_{pid}"): db.collection("profissionais").document(pid).update({"aprovado": True}); st.rerun()
                             if cr2.button("🚫 SUSPENDER", key=f"no_{pid}"): db.collection("profissionais").document(pid).update({"aprovado": False}); st.rerun()
                             if cr3.button("🗑️ EXCLUIR", key=f"del_{pid}"): db.collection("profissionais").document(pid).delete(); st.rerun()
-            except Exception as e:
-                st.error(f"Erro na Torre: {e}")
+                else: st.info("Nenhum parceiro cadastrado.")
+            except Exception as e: st.error(f"Erro na Torre: {e}")
 # ==============================================================================
 # ABA 5: FEEDBACK
 # ==============================================================================
@@ -1252,6 +1216,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
