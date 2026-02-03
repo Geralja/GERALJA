@@ -1010,8 +1010,8 @@ with menu_abas[3]:
                     doc_cat_ref.set({"lista": lista_atual})
                     st.rerun()
 
-      # ----------------------------------------------------------------------
-        # TAB: GESTÃO DE PARCEIROS (AUTONOMIA TOTAL DE EDIÇÃO)
+# ----------------------------------------------------------------------
+        # TAB: GESTÃO DE PARCEIROS (AUTONOMIA TOTAL + EDIÇÃO DE FOTOS)
         # ----------------------------------------------------------------------
         with tab_profissionais:
             try:
@@ -1021,7 +1021,7 @@ with menu_abas[3]:
 
                 if not df.empty:
                     # 1. Busca e Filtro rápido dentro do Admin
-                    busca_adm = st.text_input("🔍 Localizar Parceiro (Nome ou ID/WhatsApp)")
+                    busca_adm = st.text_input("🔍 Localizar Parceiro (Nome ou ID/WhatsApp)", key="busca_adm_geral")
                     if busca_adm:
                         df = df[df['nome'].str.contains(busca_adm, case=False, na=False) | 
                                 df['id'].str.contains(busca_adm, na=False)]
@@ -1052,17 +1052,49 @@ with menu_abas[3]:
                                 new_saldo = col_e4.number_input("Saldo GeralCones", value=int(p.get('saldo', 0)))
                                 new_status = col_e5.selectbox("Status", ["Aprovado", "Pendente"], index=0 if p.get('aprovado') else 1)
                                 
+                                # --- SEÇÃO DE FOTOS DENTRO DO FORM ---
+                                st.divider()
+                                st.markdown("### 📸 Gerenciar Fotos")
+                                c_foto1, c_foto2 = st.columns([1, 2])
+                                
+                                with c_foto1:
+                                    # Preview da foto de perfil
+                                    f_perfil = p.get('foto_url', '')
+                                    if f_perfil:
+                                        st.image(f"data:image/jpeg;base64,{f_perfil}" if not str(f_perfil).startswith("http") else f_perfil, caption="Perfil Atual", width=100)
+                                    up_perfil = st.file_uploader("Trocar Perfil", type=['jpg','png','jpeg'], key=f"up_p_{pid}")
+
+                                with c_foto2:
+                                    # Preview da vitrine
+                                    st.write("Fotos da Vitrine:")
+                                    up_vitrine = st.file_uploader("Substituir Vitrine (Máx 4)", type=['jpg','png','jpeg'], accept_multiple_files=True, key=f"up_v_{pid}")
+                                
                                 # Botão de Salvar Alterações
-                                if st.form_submit_button("💾 SALVAR ALTERAÇÕES TOTAIS", use_container_width=True):
-                                    db.collection("profissionais").document(pid).update({
+                                if st.form_submit_button("💾 SALVAR TUDO (DADOS + FOTOS)", use_container_width=True):
+                                    updates = {
                                         "nome": new_nome,
                                         "area": new_area,
                                         "descricao": new_desc,
                                         "whatsapp": new_zap,
                                         "saldo": new_saldo,
                                         "aprovado": True if new_status == "Aprovado" else False
-                                    })
-                                    st.success("Dados atualizados com sucesso!")
+                                    }
+                                    
+                                    # Processa nova foto de perfil
+                                    if up_perfil:
+                                        img_64 = otimizar_imagem(up_perfil, size=(350, 350))
+                                        if img_64: updates["foto_url"] = img_64
+                                        
+                                    # Processa novas fotos da vitrine
+                                    if up_vitrine:
+                                        # Limpa as 4 posições antes de subir as novas
+                                        for i in range(1, 5): updates[f'f{i}'] = None
+                                        for i, f in enumerate(up_vitrine[:4]):
+                                            img_v64 = otimizar_imagem(f)
+                                            if img_v64: updates[f"f{i+1}"] = img_v64
+
+                                    db.collection("profissionais").document(pid).update(updates)
+                                    st.success("Perfil e Fotos atualizados!")
                                     time.sleep(0.5); st.rerun()
 
                             # Ações Rápidas (Fora do Form de Edição)
@@ -1076,9 +1108,8 @@ with menu_abas[3]:
                                 st.rerun()
 
                             if col_rap3.button("🗑️ EXCLUIR PERFIL", key=f"quick_del_{pid}", type="secondary"):
-                                if st.warning(f"Tem certeza que deseja apagar {p.get('nome')}?"):
-                                    db.collection("profissionais").document(pid).delete()
-                                    st.rerun()
+                                db.collection("profissionais").document(pid).delete()
+                                st.rerun()
                 else:
                     st.info("Nenhum parceiro cadastrado ainda.")
 
@@ -1170,6 +1201,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
