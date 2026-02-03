@@ -930,36 +930,35 @@ with menu_abas[1]:
             except Exception as e:
                 st.error(f"❌ Erro ao processar perfil: {e}")
 # ==============================================================================
-# ABA 4: 👑 TORRE DE CONTROLE MASTER (VERSÃO CORRIGIDA)
+# ABA 4: 👑 TORRE DE CONTROLE MASTER (COMPLETA E SEM REMOÇÕES)
 # ==============================================================================
 with menu_abas[3]:
     import pytz
     from datetime import datetime
     import pandas as pd
     import time
-def otimizar_imagem(image_file, size=(800, 800)):
     from PIL import Image
     import io
     import base64
-    
-    try:
-        img = Image.open(image_file)
-        # Converte para RGB (evita erro com PNG transparente)
-        if img.mode in ("RGBA", "P"):
-            img = img.convert("RGB")
-        
-        img.thumbnail(size)
-        buffer = io.BytesIO()
-        img.save(buffer, format="JPEG", quality=70) # Qualidade 70 para economizar banco
-        return base64.b64encode(buffer.getvalue()).decode()
-    except Exception as e:
-        print(f"Erro ao otimizar: {e}")
-        return None
+
+    # --- FUNÇÃO DE APOIO (Definida aqui para evitar erro 'not defined') ---
+    def otimizar_imagem(image_file, size=(800, 800)):
+        try:
+            img = Image.open(image_file)
+            if img.mode in ("RGBA", "P"):
+                img = img.convert("RGB")
+            img.thumbnail(size)
+            buffer = io.BytesIO()
+            img.save(buffer, format="JPEG", quality=70)
+            return base64.b64encode(buffer.getvalue()).decode()
+        except Exception as e:
+            st.error(f"Erro ao processar imagem: {e}")
+            return None
+
     # 1. CONFIGURAÇÃO DE TEMPO E SEGURANÇA
     fuso_br = pytz.timezone('America/Sao_Paulo')
     agora_br = datetime.now(fuso_br)
 
-    # Credenciais
     ADMIN_USER_OFICIAL = st.secrets.get("ADMIN_USER", "geralja")
     ADMIN_PASS_OFICIAL = st.secrets.get("ADMIN_PASS", "Bps36ocara")
 
@@ -975,8 +974,7 @@ def otimizar_imagem(image_file, size=(800, 800)):
                 if u == ADMIN_USER_OFICIAL and p == ADMIN_PASS_OFICIAL:
                     st.session_state.admin_logado = True
                     st.success("Acesso concedido!")
-                    time.sleep(1)
-                    st.rerun()
+                    time.sleep(1); st.rerun()
                 else:
                     st.error("Credenciais inválidas.")
     
@@ -988,27 +986,10 @@ def otimizar_imagem(image_file, size=(800, 800)):
             st.session_state.admin_logado = False
             st.rerun()
 
-        # --- NOVAS TABS PARA ORGANIZAR A TORRE ---
+        # --- ORGANIZAÇÃO EM TABS PARA NÃO PERDER NADA ---
         tab_profissionais, tab_noticias, tab_categorias = st.tabs([
-            "👥 Parceiros", "📰 Gestão de Notícias", "📁 Categorias"
+            "👥 Parceiros", "📰 Notícias", "📁 Categorias"
         ])
-
-        # ----------------------------------------------------------------------
-        # TAB: GESTÃO DE NOTÍCIAS (O QUE ADICIONAMOS HOJE)
-        # ----------------------------------------------------------------------
-        with tab_noticias:
-            st.subheader("Publicar Notícia Manual (Destaque)")
-            with st.form("nova_noticia_adm"):
-                ntitulo = st.text_input("Título da Notícia")
-                nimg = st.text_input("URL da Imagem (Instagram/FB)")
-                nlink = st.text_input("Link da Matéria Completa")
-                if st.form_submit_button("🚀 PUBLICAR NO PORTAL"):
-                    db.collection("noticias").add({
-                        "titulo": ntitulo, "imagem_url": nimg, 
-                        "link_original": nlink, "data": datetime.now(fuso_br),
-                        "categoria": "DESTAQUE"
-                    })
-                    st.success("Notícia no ar!")
 
         # ----------------------------------------------------------------------
         # TAB: GESTÃO DE CATEGORIAS
@@ -1020,15 +1001,32 @@ def otimizar_imagem(image_file, size=(800, 800)):
             
             c_cat1, c_cat2 = st.columns([3, 1])
             nova_cat_input = c_cat1.text_input("Nova Profissão:")
-            if c_cat2.button("➕ ADD"):
+            if c_cat2.button("➕ ADICIONAR"):
                 if nova_cat_input and nova_cat_input not in lista_atual:
                     lista_atual.append(nova_cat_input)
                     lista_atual.sort()
                     doc_cat_ref.set({"lista": lista_atual})
-                    st.rerun()
+                    st.success("Adicionada!"); st.rerun()
 
-# ----------------------------------------------------------------------
-        # TAB: GESTÃO DE PARCEIROS (AUTONOMIA TOTAL + EDIÇÃO DE FOTOS)
+        # ----------------------------------------------------------------------
+        # TAB: GESTÃO DE NOTÍCIAS
+        # ----------------------------------------------------------------------
+        with tab_noticias:
+            st.subheader("Publicar Notícia Manual (Destaque)")
+            with st.form("nova_noticia_adm"):
+                ntitulo = st.text_input("Título da Notícia")
+                nimg = st.text_input("URL da Imagem")
+                nlink = st.text_input("Link da Matéria")
+                if st.form_submit_button("🚀 PUBLICAR"):
+                    db.collection("noticias").add({
+                        "titulo": ntitulo, "imagem_url": nimg, 
+                        "link_original": nlink, "data": datetime.now(fuso_br),
+                        "categoria": "DESTAQUE"
+                    })
+                    st.success("Postado!")
+
+        # ----------------------------------------------------------------------
+        # TAB: GESTÃO DE PARCEIROS (EDIÇÃO DE TEXTO + FOTOS)
         # ----------------------------------------------------------------------
         with tab_profissionais:
             try:
@@ -1037,101 +1035,63 @@ def otimizar_imagem(image_file, size=(800, 800)):
                 df = pd.DataFrame(profs_data)
 
                 if not df.empty:
-                    # 1. Busca e Filtro rápido dentro do Admin
-                    busca_adm = st.text_input("🔍 Localizar Parceiro (Nome ou ID/WhatsApp)", key="busca_adm_geral")
+                    busca_adm = st.text_input("🔍 Localizar (Nome ou WhatsApp)", key="busca_adm_geral")
                     if busca_adm:
                         df = df[df['nome'].str.contains(busca_adm, case=False, na=False) | 
                                 df['id'].str.contains(busca_adm, na=False)]
 
-                    # 2. Métricas
                     m1, m2, m3 = st.columns(3)
                     m1.metric("Total", len(df))
                     m2.metric("Pendentes", len(df[df['aprovado'] == False]))
                     m3.metric("GeralCones", f"💎 {int(df['saldo'].sum())}")
 
-                    # 3. Listagem com Edição Total
                     for _, p in df.iterrows():
                         pid = p['id']
                         status = "🟢" if p.get('aprovado') else "🟡"
                         
                         with st.expander(f"{status} {p.get('nome','').upper()}"):
-                            # Formulário de Edição de Dados
                             with st.form(f"form_edit_{pid}"):
-                                col_e1, col_e2 = st.columns(2)
+                                c_e1, c_e2 = st.columns(2)
+                                new_nome = c_e1.text_input("Nome", value=p.get('nome'))
+                                new_area = c_e2.selectbox("Área", lista_atual, index=lista_atual.index(p.get('area')) if p.get('area') in lista_atual else 0)
+                                new_desc = st.text_area("Descrição", value=p.get('descricao'))
                                 
-                                new_nome = col_e1.text_input("Nome do Negócio", value=p.get('nome'))
-                                new_area = col_e2.selectbox("Área de Atuação", lista_atual, index=lista_atual.index(p.get('area')) if p.get('area') in lista_atual else 0)
+                                c_e3, c_e4, c_e5 = st.columns(3)
+                                new_zap = c_e3.text_input("Zap", value=p.get('whatsapp'))
+                                new_saldo = c_e4.number_input("Saldo", value=int(p.get('saldo', 0)))
+                                new_status = c_e5.selectbox("Status", ["Aprovado", "Pendente"], index=0 if p.get('aprovado') else 1)
                                 
-                                new_desc = st.text_area("Descrição do Serviço", value=p.get('descricao'))
-                                
-                                col_e3, col_e4, col_e5 = st.columns(3)
-                                new_zap = col_e3.text_input("WhatsApp", value=p.get('whatsapp'))
-                                new_saldo = col_e4.number_input("Saldo GeralCones", value=int(p.get('saldo', 0)))
-                                new_status = col_e5.selectbox("Status", ["Aprovado", "Pendente"], index=0 if p.get('aprovado') else 1)
-                                
-                                # --- SEÇÃO DE FOTOS DENTRO DO FORM ---
+                                # SEÇÃO DE FOTOS
                                 st.divider()
-                                st.markdown("### 📸 Gerenciar Fotos")
-                                c_foto1, c_foto2 = st.columns([1, 2])
-                                
-                                with c_foto1:
-                                    # Preview da foto de perfil
-                                    f_perfil = p.get('foto_url', '')
-                                    if f_perfil:
-                                        st.image(f"data:image/jpeg;base64,{f_perfil}" if not str(f_perfil).startswith("http") else f_perfil, caption="Perfil Atual", width=100)
-                                    up_perfil = st.file_uploader("Trocar Perfil", type=['jpg','png','jpeg'], key=f"up_p_{pid}")
+                                cf1, cf2 = st.columns([1, 2])
+                                with cf1:
+                                    f_p = p.get('foto_url', '')
+                                    if f_p: st.image(f"data:image/jpeg;base64,{f_p}" if len(f_p) > 100 else f_p, width=80)
+                                    up_perfil = st.file_uploader("Trocar Foto", type=['jpg','png'], key=f"p_{pid}")
+                                with cf2:
+                                    up_vitrine = st.file_uploader("Trocar Vitrine (Máx 4)", type=['jpg','png'], accept_multiple_files=True, key=f"v_{pid}")
 
-                                with c_foto2:
-                                    # Preview da vitrine
-                                    st.write("Fotos da Vitrine:")
-                                    up_vitrine = st.file_uploader("Substituir Vitrine (Máx 4)", type=['jpg','png','jpeg'], accept_multiple_files=True, key=f"up_v_{pid}")
-                                
-                                # Botão de Salvar Alterações
-                                if st.form_submit_button("💾 SALVAR TUDO (DADOS + FOTOS)", use_container_width=True):
-                                    updates = {
-                                        "nome": new_nome,
-                                        "area": new_area,
-                                        "descricao": new_desc,
-                                        "whatsapp": new_zap,
-                                        "saldo": new_saldo,
-                                        "aprovado": True if new_status == "Aprovado" else False
-                                    }
-                                    
-                                    # Processa nova foto de perfil
-                                    if up_perfil:
-                                        img_64 = otimizar_imagem(up_perfil, size=(350, 350))
-                                        if img_64: updates["foto_url"] = img_64
-                                        
-                                    # Processa novas fotos da vitrine
+                                if st.form_submit_button("💾 SALVAR ALTERAÇÕES TOTAIS", use_container_width=True):
+                                    updates = {"nome": new_nome, "area": new_area, "descricao": new_desc, "whatsapp": new_zap, "saldo": new_saldo, "aprovado": (new_status == "Aprovado")}
+                                    if up_perfil: updates["foto_url"] = otimizar_imagem(up_perfil, size=(350, 350))
                                     if up_vitrine:
-                                        # Limpa as 4 posições antes de subir as novas
                                         for i in range(1, 5): updates[f'f{i}'] = None
-                                        for i, f in enumerate(up_vitrine[:4]):
-                                            img_v64 = otimizar_imagem(f)
-                                            if img_v64: updates[f"f{i+1}"] = img_v64
-
+                                        for i, f in enumerate(up_vitrine[:4]): updates[f"f{i+1}"] = otimizar_imagem(f)
                                     db.collection("profissionais").document(pid).update(updates)
-                                    st.success("Perfil e Fotos atualizados!")
-                                    time.sleep(0.5); st.rerun()
+                                    st.success("Atualizado!"); st.rerun()
 
-                            # Ações Rápidas (Fora do Form de Edição)
-                            col_rap1, col_rap2, col_rap3 = st.columns([1,1,1])
-                            if col_rap1.button("✅ APROVAR AGORA", key=f"quick_ok_{pid}"):
-                                db.collection("profissionais").document(pid).update({"aprovado": True})
-                                st.rerun()
-                            
-                            if col_rap2.button("🚫 SUSPENDER", key=f"quick_no_{pid}"):
-                                db.collection("profissionais").document(pid).update({"aprovado": False})
-                                st.rerun()
-
-                            if col_rap3.button("🗑️ EXCLUIR PERFIL", key=f"quick_del_{pid}", type="secondary"):
-                                db.collection("profissionais").document(pid).delete()
-                                st.rerun()
+                            # Ações Rápidas
+                            cr1, cr2, cr3 = st.columns(3)
+                            if cr1.button("✅ APROVAR", key=f"ok_{pid}"):
+                                db.collection("profissionais").document(pid).update({"aprovado": True}); st.rerun()
+                            if cr2.button("🚫 SUSPENDER", key=f"no_{pid}"):
+                                db.collection("profissionais").document(pid).update({"aprovado": False}); st.rerun()
+                            if cr3.button("🗑️ EXCLUIR", key=f"del_{pid}", type="secondary"):
+                                db.collection("profissionais").document(pid).delete(); st.rerun()
                 else:
-                    st.info("Nenhum parceiro cadastrado ainda.")
-
+                    st.info("Lista vazia.")
             except Exception as e:
-                st.error(f"Erro na Torre de Controle: {e}")
+                st.error(f"Erro na Torre: {e}")
 
 # ==============================================================================
 # ABA 5: FEEDBACK
@@ -1218,6 +1178,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
