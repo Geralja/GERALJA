@@ -1010,8 +1010,8 @@ with menu_abas[3]:
                     doc_cat_ref.set({"lista": lista_atual})
                     st.rerun()
 
-        # ----------------------------------------------------------------------
-        # TAB: GESTÃO DE PARCEIROS (SEU CÓDIGO ORIGINAL)
+      # ----------------------------------------------------------------------
+        # TAB: GESTÃO DE PARCEIROS (AUTONOMIA TOTAL DE EDIÇÃO)
         # ----------------------------------------------------------------------
         with tab_profissionais:
             try:
@@ -1020,24 +1020,70 @@ with menu_abas[3]:
                 df = pd.DataFrame(profs_data)
 
                 if not df.empty:
-                    # Métricas Rápidas
+                    # 1. Busca e Filtro rápido dentro do Admin
+                    busca_adm = st.text_input("🔍 Localizar Parceiro (Nome ou ID/WhatsApp)")
+                    if busca_adm:
+                        df = df[df['nome'].str.contains(busca_adm, case=False, na=False) | 
+                                df['id'].str.contains(busca_adm, na=False)]
+
+                    # 2. Métricas
                     m1, m2, m3 = st.columns(3)
                     m1.metric("Total", len(df))
                     m2.metric("Pendentes", len(df[df['aprovado'] == False]))
                     m3.metric("GeralCones", f"💎 {int(df['saldo'].sum())}")
 
-                    # Listagem
+                    # 3. Listagem com Edição Total
                     for _, p in df.iterrows():
                         pid = p['id']
                         status = "🟢" if p.get('aprovado') else "🟡"
+                        
                         with st.expander(f"{status} {p.get('nome','').upper()}"):
-                            # Aqui você mantém seus botões de ✅ APROVAR, ➕10 e 🗑️
-                            st.write(f"WhatsApp: {pid} | Saldo: {p.get('saldo', 0)}")
-                            if st.button("✅ Aprovar", key=f"aprova_{pid}"):
+                            # Formulário de Edição de Dados
+                            with st.form(f"form_edit_{pid}"):
+                                col_e1, col_e2 = st.columns(2)
+                                
+                                new_nome = col_e1.text_input("Nome do Negócio", value=p.get('nome'))
+                                new_area = col_e2.selectbox("Área de Atuação", lista_atual, index=lista_atual.index(p.get('area')) if p.get('area') in lista_atual else 0)
+                                
+                                new_desc = st.text_area("Descrição do Serviço", value=p.get('descricao'))
+                                
+                                col_e3, col_e4, col_e5 = st.columns(3)
+                                new_zap = col_e3.text_input("WhatsApp", value=p.get('whatsapp'))
+                                new_saldo = col_e4.number_input("Saldo GeralCones", value=int(p.get('saldo', 0)))
+                                new_status = col_e5.selectbox("Status", ["Aprovado", "Pendente"], index=0 if p.get('aprovado') else 1)
+                                
+                                # Botão de Salvar Alterações
+                                if st.form_submit_button("💾 SALVAR ALTERAÇÕES TOTAIS", use_container_width=True):
+                                    db.collection("profissionais").document(pid).update({
+                                        "nome": new_nome,
+                                        "area": new_area,
+                                        "descricao": new_desc,
+                                        "whatsapp": new_zap,
+                                        "saldo": new_saldo,
+                                        "aprovado": True if new_status == "Aprovado" else False
+                                    })
+                                    st.success("Dados atualizados com sucesso!")
+                                    time.sleep(0.5); st.rerun()
+
+                            # Ações Rápidas (Fora do Form de Edição)
+                            col_rap1, col_rap2, col_rap3 = st.columns([1,1,1])
+                            if col_rap1.button("✅ APROVAR AGORA", key=f"quick_ok_{pid}"):
                                 db.collection("profissionais").document(pid).update({"aprovado": True})
                                 st.rerun()
+                            
+                            if col_rap2.button("🚫 SUSPENDER", key=f"quick_no_{pid}"):
+                                db.collection("profissionais").document(pid).update({"aprovado": False})
+                                st.rerun()
+
+                            if col_rap3.button("🗑️ EXCLUIR PERFIL", key=f"quick_del_{pid}", type="secondary"):
+                                if st.warning(f"Tem certeza que deseja apagar {p.get('nome')}?"):
+                                    db.collection("profissionais").document(pid).delete()
+                                    st.rerun()
+                else:
+                    st.info("Nenhum parceiro cadastrado ainda.")
+
             except Exception as e:
-                st.error(f"Erro ao carregar dados: {e}")
+                st.error(f"Erro na Torre de Controle: {e}")
 
 # ==============================================================================
 # ABA 5: FEEDBACK
@@ -1124,6 +1170,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
