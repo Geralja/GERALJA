@@ -1,4 +1,4 @@
-# ==============================================================================
+ # ==============================================================================
 # GERALJÁ: CRIANDO SOLUÇÕES - MÓDULO 1: INFRAESTRUTURA
 # ==============================================================================
 import streamlit as st
@@ -238,7 +238,7 @@ estilo_dinamico = f"""
 </style>
 """
 st.markdown(estilo_dinamico, unsafe_allow_html=True)
-        # ==========================================================
+# ==========================================================
 # FUNÇÕES DE SUPORTE (COLE NO TOPO DO ARQUIVO)
 # ==========================================================
 import re
@@ -267,8 +267,6 @@ def calcular_distancia_real(lat1, lon1, lat2, lon2):
     a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
     return R * c
-
-# --- PROSSEGUIR COM O RESTANTE DO CÓDIGO ---
 
 # ------------------------------------------------------------------------------
 # 3. POLÍTICAS E CONSTANTES
@@ -483,11 +481,19 @@ with menu_abas[0]:
     # --- 2. MOTOR DE BUSCA HÍBRIDO (MANUAL + 4 IAs) ---
     st.markdown("### 🏙️ O que você procura hoje?")
     
-    # Busca de Localização precisa
-    with st.expander("📍 Ajustar Localização", expanded=False):
-        loc = get_geolocation()
-        m_lat, m_lon = (loc['coords']['latitude'], loc['coords']['longitude']) if loc and 'coords' in loc else (LAT_REF, LON_REF)
-        st.caption(f"Coordenadas: {m_lat}, {m_lon}")
+    with st.expander("📍 Sua Localização (GPS)", expanded=False):
+    # Forçamos alta precisão e timeout menor para ser rápido
+    loc = get_geolocation(component_key="geo_preciso") 
+    
+    if loc and 'coords' in loc:
+        minha_lat = loc['coords']['latitude']
+        minha_lon = loc['coords']['longitude']
+        precisao = loc['coords'].get('accuracy', 0)
+        
+        st.success(f"Localização detectada (Precisão: {precisao:.0f}m)")
+    else:
+        minha_lat, minha_lon = LAT_REF, LON_REF
+        st.warning("Usando localização padrão (Centro do Grajaú). Ative o GPS para resultados melhores.")
 
     col_txt, col_raio = st.columns([3, 1])
     termo = col_txt.text_input("", placeholder="Ex: 'chuva na belmira', 'mecanico' ou 'pizza'", key="input_master")
@@ -1168,6 +1174,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
