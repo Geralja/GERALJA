@@ -967,17 +967,20 @@ with menu_abas[3]:
                 if u == st.secrets.get("ADMIN_USER", "geralja") and p == st.secrets.get("ADMIN_PASS", "Bps36ocara"):
                     st.session_state.admin_logado = True; st.rerun()
                 else: st.error("Dados incorretos.")
-    else:
-        st.markdown(f"## 👑 Central de Comando GeralJá")
+  else:
+        st.markdown("## 👑 Central de Comando GeralJá")
         if st.button("🚪 Sair", key="logout_adm"): 
-            st.session_state.admin_logado = False; st.rerun()
+            st.session_state.admin_logado = False
+            st.rerun()
 
-        # Define as abas dentro do ambiente logado (TODAS MANTIDAS)
-       tab_profissionais, tab_noticias, tab_loja, tab_vendas, tab_recibos, tab_categorias, tab_metricas = st.tabs([
-    "👥 Parceiros", "📰 Notícias", "🛍️ Loja", "📜 Vendas", "🎫 Recibos", "📁 Categorias", "📊 Métricas"
-
+        # Alinhamento exato: 8 espaços (ou 2 Tabs) antes de começar a linha abaixo
+        tab_profissionais, tab_noticias, tab_loja, tab_vendas, tab_recibos, tab_categorias, tab_metricas = st.tabs([
+            "👥 Parceiros", "📰 Notícias", "🛍️ Loja", "📜 Vendas", "🎫 Recibos", "📁 Categorias", "📊 Métricas"
         ])
 
+        with tab_categorias:
+            st.subheader("📁 Gestão de Profissões e Categorias")
+            # Seu código continua aqui...
         with tab_categorias:
             st.subheader("📁 Gestão de Profissões e Categorias")
             
@@ -1373,6 +1376,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
