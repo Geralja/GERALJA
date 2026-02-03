@@ -1008,22 +1008,60 @@ with menu_abas[3]:
                     doc_cat_ref.set({"lista": lista_atual})
                     st.success("Adicionada!"); st.rerun()
 
-        # ----------------------------------------------------------------------
-        # TAB: GESTÃO DE NOTÍCIAS
-        # ----------------------------------------------------------------------
-        with tab_noticias:
-            st.subheader("Publicar Notícia Manual (Destaque)")
-            with st.form("nova_noticia_adm"):
-                ntitulo = st.text_input("Título da Notícia")
-                nimg = st.text_input("URL da Imagem")
-                nlink = st.text_input("Link da Matéria")
-                if st.form_submit_button("🚀 PUBLICAR"):
-                    db.collection("noticias").add({
-                        "titulo": ntitulo, "imagem_url": nimg, 
-                        "link_original": nlink, "data": datetime.now(fuso_br),
-                        "categoria": "DESTAQUE"
-                    })
-                    st.success("Postado!")
+# ==============================================================================
+# EXIBIÇÃO MODERNA DE NOTÍCIAS (VITRINE)
+# ==============================================================================
+st.markdown("### 📰 Destaques do Grajaú")
+
+# Busca as notícias no Firebase
+noticias_ref = db.collection("noticias").order_by("data", direction="DESCENDING").limit(12).stream()
+lista_noticias = [n.to_dict() | {"id": n.id} for n in noticias_ref]
+
+if lista_noticias:
+    # --- BLOCO 1: AS 3 NOTÍCIAS EM DESTAQUE (TAMANHOS IGUAIS) ---
+    col1, col2, col3 = st.columns(3)
+    destaques = lista_noticias[:3]
+    restante = lista_noticias[3:]
+
+    for i, n in enumerate(destaques):
+        alvo = [col1, col2, col3][i]
+        with alvo:
+            # Container estilizado para manter a altura igual
+            st.markdown(f"""
+                <div style="height: 200px; overflow: hidden; border-radius: 10px;">
+                    <img src="{n.get('imagem_url')}" style="width: 100%; height: 100%; object-fit: cover;">
+                </div>
+            """, unsafe_allow_html=True)
+            st.subheader(n.get('titulo')[:50] + "...")
+            
+            # Botão para Ler sem sair do site (Uso de Expander como "Modal")
+            with st.expander("📖 Ler Matéria"):
+                st.write(f"**Postado em:** {n.get('data').strftime('%d/%m/%Y %H:%M')}")
+                st.markdown(f"#### {n.get('titulo')}")
+                st.image(n.get('imagem_url'), use_container_width=True)
+                
+                # Aqui você pode colocar o texto completo se tiver no banco
+                st.write(n.get('resumo', 'Clique no botão abaixo para ver a cobertura completa no Instagram/Portal.'))
+                
+                st.link_button("🔗 Ver Fonte Original", n.get('link_original'), use_container_width=True)
+
+    st.divider()
+
+    # --- BLOCO 2: ROLAGEM PARA BAIXO (RESTANTE) ---
+    st.markdown("#### ⏳ Mais Notícias")
+    for n in restante:
+        with st.container(border=True):
+            c_img, c_txt = st.columns([1, 2])
+            with c_img:
+                st.image(n.get('imagem_url'), use_container_width=True)
+            with c_txt:
+                st.markdown(f"**{n.get('titulo')}**")
+                with st.expander("Visualizar"):
+                    st.write(n.get('titulo'))
+                    st.link_button("Ver no Insta", n.get('link_original'))
+
+else:
+    st.info("Nenhuma notícia publicada no momento.")
 
         # ----------------------------------------------------------------------
         # TAB: GESTÃO DE PARCEIROS (EDIÇÃO DE TEXTO + FOTOS)
@@ -1178,6 +1216,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
