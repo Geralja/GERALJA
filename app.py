@@ -1044,25 +1044,51 @@ with menu_abas[3]:
                         st.rerun()
 
             st.divider()
-            st.subheader("👀 Vitrine do Site")
+            # ----------------------------------------------------------------------
+            # VITRINE DO SITE (CORRIGIDA PARA 4 COLUNAS)
+            # ----------------------------------------------------------------------
+            st.divider()
+            st.subheader("👀 Vitrine do Site (4 Destaques)")
             try:
-                noticias_ref = db.collection("noticias").order_by("data", direction="DESCENDING").limit(12).stream()
+                # Buscamos as últimas 4 notícias
+                noticias_ref = db.collection("noticias").order_by("data", direction="DESCENDING").limit(4).stream()
                 lista_noticias = [n.to_dict() | {"id": n.id} for n in noticias_ref]
+
                 if lista_noticias:
-                    c_v1, c_v2, c_v3 c_v4, c_v5, c_v6 = st.columns(6)
-                    for i, n in enumerate(lista_noticias[:6]):
-                        with [c_v1, c_v2, c_v3 c_v4, c_v5, c_v6][i]:
+                    # Criamos exatamente 4 colunas
+                    cols = st.columns(4)
+                    
+                    for i, n in enumerate(lista_noticias):
+                        with cols[i]:
                             img_v = n.get('imagem_url', '')
-                            st.markdown(f'''<div style="height:140px;overflow:hidden;border-radius:10px;background:#eee;"><img src="{img_v}" style="width:100%;height:100%;object-fit:cover;" onerror="this.src='https://placehold.co/400x200?text=Erro+Link';"></div>''', unsafe_allow_html=True)
-                            st.caption(f"**{n.get('titulo')[:50]}...**")
-                            with st.expander("📖 Ler"):
+                            # HTML para manter as imagens todas com o mesmo tamanho (140px de altura)
+                            st.markdown(f'''
+                                <div style="height:140px;overflow:hidden;border-radius:10px;background:#eee;margin-bottom:5px;">
+                                    <img src="{img_v}" style="width:100%;height:100%;object-fit:cover;" 
+                                    onerror="this.src='https://placehold.co/400x200?text=Erro+Link';">
+                                </div>''', unsafe_allow_html=True)
+                            
+                            st.caption(f"**{n.get('titulo')[:45]}...**")
+                            
+                            with st.expander("📖 Gerenciar"):
                                 try:
-                                    if n.get('imagem_url'): st.image(n.get('imagem_url'), use_container_width=True)
-                                except: st.warning("Imagem bloqueada.")
+                                    if n.get('imagem_url'): 
+                                        st.image(n.get('imagem_url'), use_container_width=True)
+                                except: 
+                                    st.warning("Imagem bloqueada.")
+                                
                                 st.write(n.get('resumo', 'Sem resumo.'))
-                                st.link_button("Ver Fonte", n.get('link_original'), use_container_width=True)
-                                if st.button("🗑️", key=f"del_n_{n['id']}"): db.collection("noticias").document(n['id']).delete(); st.rerun()
-            except Exception as e: st.error(f"Erro na vitrine: {e}")
+                                st.link_button("Ver Fonte", n.get('link_original', '#'), use_container_width=True)
+                                
+                                if st.button("🗑️ Excluir", key=f"del_n_{n['id']}"):
+                                    db.collection("noticias").document(n['id']).delete()
+                                    st.success("Removido!")
+                                    time.sleep(0.5)
+                                    st.rerun()
+                else:
+                    st.info("Nenhuma notícia no banco.")
+            except Exception as e: 
+                st.error(f"Erro na vitrine: {e}")
 
         # --- TAB PARCEIROS CORRIGIDA (SOLUÇÃO PARA O FLOAT) ---
         with tab_profissionais:
@@ -1216,6 +1242,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
