@@ -534,41 +534,82 @@ with menu_abas[0]:
                 </div>
                 """, unsafe_allow_html=True)
 
-# 4. NOTÍCIAS RELEVANTES (OPCIONAL - ABAIXO DOS RESULTADOS)
-st.markdown("---")
-st.subheader("📰 Notícias Locais")
-# Chamar sua nova função de notícias aqui
 # ==============================================================================
-# --- SEÇÃO DE NOTÍCIAS (LOGO ABAIXO DO BUSCADOR) ---
+# --- SEÇÃO DE NOTÍCIAS HÍBRIDA (MANUAL + AUTOMÁTICA) ---
 # ==============================================================================
 st.markdown("---")
-st.subheader("📰 Notícias do Grajaú")
+st.subheader("📰 Plantão Grajaú Tem")
 
-# 1. BUSCAR NOTÍCIAS DO FIREBASE
-# Ordenamos por data (as mais recentes) e limitamos a 6 para não travar o site
-noticias_ref = db.collection("noticias").order_by("data", direction="DESCENDING").limit(6).stream()
+import feedparser
 
-cols_noticias = st.columns(2) # Cria duas colunas para as notícias
+# 1. BUSCAR NOTÍCIAS MANUAIS DO FIREBASE (LIMITADO A 2 PARA O TOPO)
+noticias_fb = list(db.collection("noticias").order_by("data", direction="DESCENDING").limit(2).stream())
 
-for i, doc in enumerate(noticias_ref):
-    n = doc.to_dict()
-    col_index = i % 2 # Distribui entre a coluna 0 e 1
-    
-    with cols_noticias[col_index]:
+# 2. FUNÇÃO PARA BUSCAR NOTÍCIAS AUTOMÁTICAS
+def buscar_noticias_rss(busca="Grajaú São Paulo"):
+    try:
+        url_rss = f"https://news.google.com/rss/search?q={urllib.parse.quote(busca)}&hl=pt-BR&gl=BR&ceid=BR:pt-419"
+        feed = feedparser.parse(url_rss)
+        return feed.entries[:2]
+    except:
+        return []
+
+noticias_auto = buscar_noticias_rss()
+
+# 3. RENDERIZAÇÃO EM COLUNAS
+col_n1, col_n2 = st.columns(2)
+
+# LÓGICA: Se houver notícia manual, ela vai para a Coluna 1. 
+# A Coluna 2 fica para a segunda manual ou para a primeira automática.
+
+# --- COLUNA 1 ---
+with col_n1:
+    if noticias_fb:
+        n = noticias_fb[0].to_dict()
         st.markdown(f"""
-            <div style="background:white; border-radius:15px; padding:0px; margin-bottom:20px; box-shadow:0 4px 8px rgba(0,0,0,0.1); overflow:hidden; border-bottom: 4px solid #1e3a8a;">
-                <img src="{n.get('imagem_url', 'https://via.placeholder.com/400x200')}" style="width:100%; height:180px; object-fit:cover;">
+            <div style="background:white; border-radius:15px; padding:0px; margin-bottom:20px; box-shadow:0 4px 8px rgba(0,0,0,0.1); overflow:hidden; border-bottom: 5px solid #FFD700; height: 350px;">
+                <img src="{n.get('imagem_url', 'https://via.placeholder.com/400x200')}" style="width:100%; height:150px; object-fit:cover;">
                 <div style="padding:15px;">
-                    <span style="background:#f0f2f6; padding:2px 8px; border-radius:10px; font-size:10px; font-weight:bold; color:#1e3a8a;">{n.get('categoria', 'GERAL')}</span>
-                    <h4 style="margin:10px 0 5px 0; color:#111; line-height:1.2;">{n.get('titulo')[:60]}...</h4>
-                    <p style="font-size:12px; color:#666;">{n.get('resumo')[:100]}...</p>
-                    <a href="{n.get('link_original')}" target="_blank" style="text-decoration:none; color:#1e3a8a; font-weight:bold; font-size:13px;">Ler matéria completa →</a>
+                    <span style="background:#fff7e6; color:#b8860b; font-size:10px; font-weight:bold; padding:2px 8px; border-radius:5px;">⭐ DESTAQUE LOCAL</span>
+                    <h4 style="margin:10px 0 5px 0; color:#111; font-size:15px; line-height:1.2;">{n.get('titulo')[:60]}...</h4>
+                    <a href="{n.get('link_original')}" target="_blank" style="text-decoration:none; color:#1e3a8a; font-weight:bold; font-size:13px;">Ler no Instagram →</a>
                 </div>
             </div>
         """, unsafe_allow_html=True)
+    elif noticias_auto:
+        n = noticias_auto[0]
+        st.markdown(f"""
+            <div style="background:white; border-radius:15px; padding:15px; margin-bottom:20px; box-shadow:0 4px 8px rgba(0,0,0,0.1); border-bottom: 5px solid #0047AB; height: 250px;">
+                <span style="background:#eef2ff; color:#0047AB; font-size:10px; font-weight:bold; padding:2px 8px; border-radius:5px;">{n.source.get('title', 'Google News')}</span>
+                <h4 style="margin:10px 0; color:#111; font-size:14px;">{n.title.split(' - ')[0][:80]}...</h4>
+                <a href="{n.link}" target="_blank" style="text-decoration:none; color:#0047AB; font-weight:bold; font-size:12px;">Ler Notícia Completa →</a>
+            </div>
+        """, unsafe_allow_html=True)
 
-if not noticias_ref:
-    st.info("Acompanhe as notícias em tempo real no nosso Instagram @grajautem")
+# --- COLUNA 2 ---
+with col_n2:
+    # Se houver uma segunda notícia manual, mostra ela. Se não, mostra a automática.
+    if len(noticias_fb) > 1:
+        n = noticias_fb[1].to_dict()
+        st.markdown(f"""
+            <div style="background:white; border-radius:15px; padding:0px; margin-bottom:20px; box-shadow:0 4px 8px rgba(0,0,0,0.1); overflow:hidden; border-bottom: 5px solid #FFD700; height: 350px;">
+                <img src="{n.get('imagem_url', 'https://via.placeholder.com/400x200')}" style="width:100%; height:150px; object-fit:cover;">
+                <div style="padding:15px;">
+                    <span style="background:#fff7e6; color:#b8860b; font-size:10px; font-weight:bold; padding:2px 8px; border-radius:5px;">⭐ DESTAQUE LOCAL</span>
+                    <h4 style="margin:10px 0 5px 0; color:#111; font-size:15px; line-height:1.2;">{n.get('titulo')[:60]}...</h4>
+                    <a href="{n.get('link_original')}" target="_blank" style="text-decoration:none; color:#1e3a8a; font-weight:bold; font-size:13px;">Ler no Instagram →</a>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+    elif len(noticias_auto) > 1:
+        n = noticias_auto[1]
+        st.markdown(f"""
+            <div style="background:white; border-radius:15px; padding:15px; margin-bottom:20px; box-shadow:0 4px 8px rgba(0,0,0,0.1); border-bottom: 5px solid #0047AB; height: 250px;">
+                <span style="background:#eef2ff; color:#0047AB; font-size:10px; font-weight:bold; padding:2px 8px; border-radius:5px;">{n.source.get('title', 'Google News')}</span>
+                <h4 style="margin:10px 0; color:#111; font-size:14px;">{n.title.split(' - ')[0][:80]}...</h4>
+                <a href="{n.link}" target="_blank" style="text-decoration:none; color:#0047AB; font-weight:bold; font-size:12px;">Ler Notícia Completa →</a>
+            </div>
+        """, unsafe_allow_html=True)
 # ==============================================================================
 # ABA 2: 🚀 PAINEL DO PARCEIRO (COMPLETO: FB + IMAGENS + FAQ + EXCLUSÃO)
 # ==============================================================================
@@ -1123,6 +1164,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
