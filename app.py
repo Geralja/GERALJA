@@ -1120,45 +1120,77 @@ with menu_abas[3]:
 
         with tab_recibos:
             st.subheader("🎫 Gerador de Recibos Oficiais")
+            
+            # Import de fonte cursiva para a assinatura (Google Fonts)
+            st.markdown('<link href="https://fonts.googleapis.com/css2?family=Monsieur+La+Doulaise&display=swap" rel="stylesheet">', unsafe_allow_html=True)
+            
             with st.form("gerador_recibo"):
                 c1, c2 = st.columns(2)
                 nome_cliente = c1.text_input("Nome do Cliente/Parceiro:")
                 pacote = c2.text_input("Pacote/Serviço (ex: Plano Premium 30 dias):")
+                
                 c3, c4 = st.columns(2)
                 valor_recibo = c3.number_input("Valor do Pagamento (R$):", min_value=0.0, format="%.2f")
                 data_recibo = c4.date_input("Data do Pagamento:", value=datetime.now(fuso_br))
-                gerar = st.form_submit_button("✨ GERAR PRÉVIA DO RECIBO")
+                
+                c5, c6 = st.columns(2)
+                responsavel = c5.text_input("Responsável pela Assinatura:", value="Diretoria GeralJá")
+                zap_suporte = c6.text_input("WhatsApp para Contato:", value="(11) 991853488") # Seu zap aqui
+                
+                gerar = st.form_submit_button("✨ GERAR RECIBO ASSINADO")
 
             if gerar:
                 html_recibo = f"""
-                <div style="position: relative; padding: 40px; border: 2px solid #1e3a8a; border-radius: 10px; background-color: white; color: #333; font-family: sans-serif; max-width: 700px; margin: auto; overflow: hidden;">
-                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); font-size: 80px; color: rgba(30, 58, 138, 0.05); white-space: nowrap; pointer-events: none; z-index: 0; font-weight: bold;">
+                <div style="position: relative; padding: 40px; border: 2px solid #1e3a8a; border-radius: 10px; background-color: white; color: #333; font-family: sans-serif; max-width: 700px; margin: auto; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                    
+                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); font-size: 80px; color: rgba(30, 58, 138, 0.04); white-space: nowrap; pointer-events: none; z-index: 0; font-weight: bold; text-align: center;">
                         GERALJÁ GERALJÁ<br>GERALJÁ GERALJÁ
                     </div>
+
                     <div style="position: relative; z-index: 1;">
-                        <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #1e3a8a; padding-bottom: 10px;">
-                            <h2 style="margin:0; color:#1e3a8a;">RECIBO DE PAGAMENTO</h2>
-                            <h2 style="margin:0; color:#1e3a8a;">R$ {valor_recibo:,.2f}</h2>
-                        </div>
-                        <p style="margin-top: 30px; font-size: 18px; line-height: 1.6;">
-                            Recebemos de <b>{nome_cliente.upper()}</b> a importância de <b>R$ {valor_recibo:,.2f}</b> referente ao pagamento de <b>{pacote}</b>.
-                        </p>
-                        <p style="margin-top: 40px; text-align: right;">
-                            Grajaú, São Paulo - {data_recibo.strftime('%d de %B de %Y')}
-                        </p>
-                        <div style="margin-top: 60px; display: flex; justify-content: space-between; align-items: flex-end;">
-                            <div style="font-size: 12px; color: #666;">
-                                <b>EMISSOR:</b> GERALJÁ INTERMEDIAÇÕES<br>
-                                <b>CONTATO:</b> (11) 9XXXX-XXXX<br>
-                                <b>GERALJÁ - O GUIA DO GRAJAÚ</b>
+                        <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #1e3a8a; padding-bottom: 10px; align-items: center;">
+                            <div>
+                                <h1 style="margin:0; color:#1e3a8a; font-size: 24px;">GERALJÁ</h1>
+                                <span style="font-size: 10px; color: #666; letter-spacing: 2px;">O GUIA OFICIAL DO GRAJAÚ</span>
                             </div>
-                            <div style="text-align: center; border-top: 1px solid #333; width: 250px; padding-top: 5px;">
-                                Assinatura Responsável
+                            <div style="text-align: right;">
+                                <h2 style="margin:0; color:#1e3a8a;">R$ {valor_recibo:,.2f}</h2>
+                                <span style="font-size: 12px; font-weight: bold; color: #1e3a8a;">RECIBO Nº {datetime.now().strftime('%Y%m%d%H%M')}</span>
+                            </div>
+                        </div>
+                        
+                        <p style="margin-top: 40px; font-size: 18px; line-height: 1.8; text-align: justify;">
+                            Recebemos de <b>{nome_cliente.upper()}</b> a importância de 
+                            <span style="background: #f0f4f8; padding: 2px 5px; border-radius: 4px;"><b>R$ {valor_recibo:,.2f}</b></span> 
+                            referente ao pagamento de <b>{pacote}</b>, pelo que firmamos o presente recibo dando plena quitação.
+                        </p>
+                        
+                        <p style="margin-top: 40px; text-align: right; font-weight: 500;">
+                            Grajaú, São Paulo — {data_recibo.strftime('%d de %B de %Y')}
+                        </p>
+
+                        <div style="margin-top: 60px; display: flex; justify-content: space-between; align-items: flex-end;">
+                            <div style="font-size: 12px; color: #444; line-height: 1.4;">
+                                <b>EMISSOR:</b> GERALJÁ INTERMEDIAÇÕES<br>
+                                <b>WHATSAPP:</b> {zap_suporte}<br>
+                                <b>SÃO PAULO - SP</b>
+                            </div>
+                            
+                            <div style="text-align: center; width: 250px;">
+                                <div style="font-family: 'Monsieur La Doulaise', cursive; font-size: 38px; color: #1e3a8a; margin-bottom: -15px;">
+                                    {responsavel}
+                                </div>
+                                <div style="border-top: 1px solid #333; padding-top: 5px; font-size: 13px; font-weight: bold;">
+                                    Assinatura Digital GeralJá
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <br><p style="text-align:center; color:gray;">💡 <i>Dica: Para salvar, clique com o botão direito e selecione "Imprimir" e salve como PDF.</i></p>
+                <br>
+                <div style="text-align:center;">
+                    <p style="color:gray; font-size: 14px;">💡 <b>Dica:</b> Clique com o botão direito no recibo > Imprimir > Salvar como PDF.</p>
+                </div>
                 """
                 st.markdown(html_recibo, unsafe_allow_html=True)
 # ==============================================================================
@@ -1246,6 +1278,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
