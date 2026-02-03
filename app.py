@@ -1022,77 +1022,102 @@ with menu_abas[3]:
 
         with tab_recibos:
             st.subheader("🎫 Gerador de Recibos Brasil Elite")
-            st.markdown('<link href="https://fonts.googleapis.com/css2?family=Inter:wght@900&family=Monsieur+La+Doulaise&display=swap" rel="stylesheet">', unsafe_allow_html=True)
+            
+            # CSS das Fontes e Marca d'água
+            st.markdown("""
+                <style>
+                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@900&family=Monsieur+La+Doulaise&display=swap');
+                .marca-dagua {
+                    position: absolute; top: 50%; left: 50%; 
+                    transform: translate(-50%, -50%) rotate(-30deg); 
+                    font-size: 60px; color: rgba(0, 71, 171, 0.05); 
+                    font-weight: 900; pointer-events: none; z-index: 0; 
+                    width: 100%; text-align: center; white-space: nowrap;
+                }
+                </style>
+            """, unsafe_allow_html=True)
             
             meses = {1:"Janeiro", 2:"Fevereiro", 3:"Março", 4:"Abril", 5:"Maio", 6:"Junho", 7:"Julho", 8:"Agosto", 9:"Setembro", 10:"Outubro", 11:"Novembro", 12:"Dezembro"}
 
             with st.container(border=True):
                 c1, c2 = st.columns(2)
-                nome_c = c1.text_input("Nome do Cliente:", placeholder="Ex: Cury Construtora", key="n_rec")
-                pacote_c = c2.text_area("Serviço:", placeholder="Descreva o pacote...", height=68, key="p_rec")
+                nome_c = c1.text_input("Nome do Cliente:", key="n_rec_e")
+                pacote_c = c2.text_area("Serviço:", height=68, key="p_rec_e")
                 
                 c3, c4 = st.columns(2)
-                valor_c = c3.number_input("Valor (R$):", min_value=0.0, format="%.2f", key="v_rec")
-                data_c = c4.date_input("Data:", value=datetime.now(fuso_br), key="d_rec")
+                valor_c = c3.number_input("Valor (R$):", min_value=0.0, format="%.2f", key="v_rec_e")
+                data_c = c4.date_input("Data:", value=datetime.now(fuso_br), key="d_rec_e")
                 
                 c5, c6 = st.columns(2)
-                resp_c = c5.text_input("Assinatura:", value="Diretoria GeralJá", key="a_rec")
-                zap_c = c6.text_input("WhatsApp do Cliente (com DDD):", value="11991853488", key="z_rec")
+                resp_c = c5.text_input("Assinatura:", value="Diretoria GeralJá", key="a_rec_e")
+                zap_c = c6.text_input("WhatsApp do Cliente:", value="11991853488", key="z_rec_e")
                 
-                # Criamos duas colunas para os botões de ação
-                col_btn1, col_btn2 = st.columns(2)
-                gerar = col_btn1.button("✨ VISUALIZAR RECIBO", use_container_width=True, type="primary")
+                btn_gerar = st.button("✨ GERAR RECIBO", use_container_width=True, type="primary")
 
-            if gerar:
+            if btn_gerar:
                 if nome_c and pacote_c:
                     data_f = f"{data_c.day} de {meses[data_c.month]} de {data_c.year}"
                     num_doc = datetime.now().strftime('%y%m%d%H%M')
                     
-                    # HTML do Recibo (Otimizado para Impressão)
+                    # HTML com a Marca d'água de volta
                     html_recibo = f"""
-                    <div id="recibo-print" style="padding: 30px; border: 2px solid #0047AB; border-top: 12px solid #FF8C00; border-radius: 15px; background: white; font-family: sans-serif; max-width: 600px; margin: 20px auto; box-shadow: 0 10px 25px rgba(0,0,0,0.1);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px;">
-                            <div>
-                                <span style="color: #0047AB; font-weight: 900; font-size: 26px;">GERAL</span><span style="color: #FF8C00; font-weight: 900; font-size: 26px;">JÁ</span>
-                                <div style="font-size: 9px; font-weight: 700; color: #64748B;">BRASIL ELITE EDITION</div>
+                    <div style="position: relative; padding: 40px; border: 2px solid #0047AB; border-top: 12px solid #FF8C00; border-radius: 15px; background: white; max-width: 650px; margin: 20px auto; box-shadow: 0 10px 30px rgba(0,0,0,0.1); overflow: hidden;">
+                        <div class="marca-dagua">GERALJÁ BRASIL</div>
+                        
+                        <div style="position: relative; z-index: 1;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px;">
+                                <div>
+                                    <span style="color: #0047AB; font-weight: 900; font-size: 28px; font-family: 'Inter';">GERAL</span><span style="color: #FF8C00; font-weight: 900; font-size: 28px; font-family: 'Inter';">JÁ</span>
+                                    <div style="font-size: 9px; font-weight: 700; color: #64748B; letter-spacing: 1px;">BRASIL ELITE EDITION</div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="background: #0047AB; color: white; padding: 6px 14px; border-radius: 8px; font-weight: 900; font-size: 20px;">R$ {valor_c:,.2f}</div>
+                                    <div style="font-size: 10px; color: #64748B; margin-top: 4px;">DOC Nº {num_doc}</div>
+                                </div>
                             </div>
-                            <div style="text-align: right;">
-                                <div style="background: #0047AB; color: white; padding: 4px 10px; border-radius: 6px; font-weight: 900; font-size: 16px;">R$ {valor_c:,.2f}</div>
-                                <div style="font-size: 9px; color: #64748B; margin-top: 4px;">DOC Nº {num_doc}</div>
+
+                            <h2 style="text-align: center; color: #0047AB; font-size: 18px; font-weight: 900; margin: 35px 0; font-family: 'Inter';">RECIBO DE QUITAÇÃO</h2>
+
+                            <div style="font-size: 16px; line-height: 1.6; color: #1e293b; text-align: justify; font-family: sans-serif;">
+                                Recebemos de <b style="color: #0047AB;">{nome_c.upper()}</b> a importância de <b>R$ {valor_c:,.2f}</b> referente ao pagamento de:
+                                <div style="margin: 15px 0; padding: 15px; background: #f8fafc; border-left: 5px solid #FF8C00; font-style: italic; border-radius: 0 8px 8px 0;">{pacote_c}</div>
+                                Pelo que firmamos o presente recibo dando plena, geral e irrevogável quitação.
                             </div>
-                        </div>
-                        <h2 style="text-align: center; color: #0047AB; font-size: 18px; font-weight: 900; margin: 25px 0;">RECIBO DE QUITAÇÃO</h2>
-                        <div style="font-size: 15px; line-height: 1.6; color: #1e293b; text-align: justify;">
-                            Recebemos de <b style="color: #0047AB;">{nome_c.upper()}</b> a importância de <b>R$ {valor_c:,.2f}</b> referente ao pagamento de:
-                            <div style="margin: 10px 0; padding: 10px; background: #f8fafc; border-left: 4px solid #FF8C00; font-style: italic;">{pacote_c}</div>
-                            Damos por este plena e irrevogável quitação.
-                        </div>
-                        <p style="text-align: right; font-weight: 700; color: #64748B; font-size: 13px; margin-top: 20px;">Grajaú, SP — {data_f}</p>
-                        <div style="margin-top: 30px; display: flex; justify-content: space-between; align-items: flex-end;">
-                            <div style="font-size: 10px; color: #94a3b8;"><b>EMISSOR:</b> GERALJÁ INTERMEDIAÇÕES</div>
-                            <div style="text-align: center; width: 200px;">
-                                <div style="font-family: 'Monsieur La Doulaise', cursive; font-size: 35px; color: #0047AB; margin-bottom: -8px;">{resp_c}</div>
-                                <div style="border-top: 1px solid #0047AB; font-size: 9px; font-weight: 900; color: #0047AB; padding-top: 5px;">ASSINATURA DIGITAL</div>
+
+                            <p style="text-align: right; font-weight: 700; color: #64748B; margin-top: 30px; font-family: sans-serif;">Grajaú, São Paulo — {data_f}</p>
+
+                            <div style="margin-top: 50px; display: flex; justify-content: space-between; align-items: flex-end;">
+                                <div style="font-size: 11px; color: #94a3b8; font-family: sans-serif;"><b>EMISSOR:</b> GERALJÁ INTERMEDIAÇÕES</div>
+                                <div style="text-align: center; width: 230px;">
+                                    <div style="font-family: 'Monsieur La Doulaise', cursive; font-size: 42px; color: #0047AB; margin-bottom: -10px;">{resp_c}</div>
+                                    <div style="border-top: 1px solid #0047AB; font-size: 10px; font-weight: 900; color: #0047AB; padding-top: 5px; font-family: 'Inter';">ASSINATURA DIGITAL</div>
+                                </div>
                             </div>
                         </div>
                     </div>
                     """
                     st.markdown(html_recibo, unsafe_allow_html=True)
                     
-                    # --- AÇÕES PÓS-GERAÇÃO ---
-                    st.divider()
-                    c_act1, c_act2 = st.columns(2)
+                    # Colunas de Ação
+                    col_down, col_zap = st.columns(2)
                     
-                    # 1. Botão de WhatsApp com mensagem profissional
-                    texto_zap = urllib.parse.quote(f"Olá {nome_c}! Segue o comprovante do seu pagamento referente a: {pacote_c}. Valor: R$ {valor_c:,.2f}. Obrigado pela parceria com a GeralJá Brasil!")
-                    link_zap = f"https://wa.me/55{zap_c.replace(' ','').replace('-','')}?text={texto_zap}"
-                    c_act1.link_button("📲 ENVIAR AVISO VIA WHATSAPP", link_zap, use_container_width=True)
+                    # 1. BOTÃO DE DOWNLOAD (Gera um TXT/HTML que pode ser salvo como arquivo)
+                    # Para enviar arquivo no Zap, você baixa ele aqui e anexa lá.
+                    st.download_button(
+                        label="📥 BAIXAR RECIBO (HTML/PDF)",
+                        data=html_recibo,
+                        file_name=f"Recibo_{nome_c.replace(' ', '_')}.html",
+                        mime="text/html",
+                        use_container_width=True
+                    )
                     
-                    # 2. Instrução para PDF (A forma mais estável no Streamlit Cloud)
-                    c_act2.info("💡 Para baixar em PDF: Pressione **Ctrl + P** (ou Cmd+P) e escolha 'Salvar como PDF'.")
+                    # 2. BOTÃO DE WHATSAPP (Aviso profissional)
+                    msg_w = urllib.parse.quote(f"Olá {nome_c}! Seu recibo da GeralJá de R$ {valor_c:,.2f} foi gerado com sucesso. Vou te enviar o arquivo logo abaixo.")
+                    col_zap.link_button("📲 AVISAR CLIENTE NO ZAP", f"https://wa.me/55{zap_c.replace(' ','').replace('-','')}?text={msg_w}", use_container_width=True)
                     
+                    st.info("☝️ **Como enviar o ARQUIVO:** 1. Clique em 'Baixar Recibo' acima. 2. No WhatsApp do cliente, anexe o arquivo que você baixou.")
                 else:
-                    st.error("Por favor, preencha o Nome do Cliente e o Serviço.")
+                    st.error("Preencha os dados para gerar.")
 # ==============================================================================
 # ABA 5: FEEDBACK
 # ==============================================================================
@@ -1178,6 +1203,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
