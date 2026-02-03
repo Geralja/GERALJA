@@ -1020,12 +1020,54 @@ with menu_abas[3]:
                     if col_b.button(f"✅ USAR", key=f"ia_btn_{idx}"):
                         st.session_state['temp_titulo'] = sug['titulo']; st.session_state['temp_link'] = sug['link']; st.rerun()
 
-            with st.form("form_noticia"):
-                nt = st.text_input("Título", value=st.session_state.get('temp_titulo', ""))
-                nl = st.text_input("Link", value=st.session_state.get('temp_link', ""))
-                if st.form_submit_button("🚀 PUBLICAR"):
-                    db.collection("noticias").add({"titulo": nt, "link_original": nl, "data": datetime.now(fuso_br), "categoria": "DESTAQUE"})
-                    st.success("Postado!"); st.session_state.pop('temp_titulo', None); st.rerun()
+            # --- UPGRADE: CENTRAL DE REDAÇÃO ELITE ---
+            st.markdown("### ✍️ Redação e Edição Final")
+            
+            # Preview da Notícia (Para você ver como vai ficar no app)
+            with st.expander("👁️ Visualizar Preview do Card", expanded=True):
+                col_pre1, col_pre2 = st.columns([1, 2])
+                p_url = st.session_state.get('temp_img', "https://images.unsplash.com/photo-1504711432869-0df30d7eaf4d?w=800")
+                p_tit = st.session_state.get('temp_titulo', "Título da Notícia")
+                
+                col_pre1.image(p_url, use_container_width=True)
+                col_pre2.markdown(f"**{p_tit}**")
+                col_pre2.caption(f"📅 {datetime.now(fuso_br).strftime('%d/%m/%Y')} | 🏷️ DESTAQUE")
+
+            with st.form("form_noticia_upgrade"):
+                col_f1, col_f2 = st.columns([2, 1])
+                nt = col_f1.text_input("📌 Título da Postagem", value=st.session_state.get('temp_titulo', ""), help="Título chamativo para o portal")
+                cat_n = col_f2.selectbox("🏷️ Categoria", ["URGENTE", "DESTAQUE", "GRAJAÚ", "UTILIDADE", "EVENTOS"])
+                
+                # Parte de Imagem Turbinada
+                ni = st.text_input("🖼️ URL da Imagem (Unsplash ou Link Direto)", value=p_url)
+                
+                st.markdown("---")
+                nl = st.text_input("🔗 Link Oficial da Matéria", value=st.session_state.get('temp_link', ""))
+                
+                # Botão de Publicação com Estilo
+                btn_pub = st.form_submit_button("🚀 PUBLICAR NO PORTAL GERALJÁ", use_container_width=True)
+                
+                if btn_pub:
+                    if nt and nl:
+                        # Envio completo para o Firebase
+                        db.collection("noticias").add({
+                            "titulo": nt, 
+                            "imagem_url": ni, 
+                            "link_original": nl, 
+                            "data": datetime.now(fuso_br), 
+                            "categoria": cat_n,
+                            "cliques": 0
+                        })
+                        st.balloons()
+                        st.success(f"✅ Notícia '{nt}' publicada com sucesso!")
+                        
+                        # Limpa o cache para a próxima notícia
+                        for key in ['temp_titulo', 'temp_link', 'temp_img']:
+                            if key in st.session_state: st.session_state.pop(key)
+                        
+                        st.rerun()
+                    else:
+                        st.error("Preencha o Título e o Link para continuar.")
 
         with tab_loja:
             with st.form("add_loja"):
@@ -1204,6 +1246,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
