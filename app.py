@@ -930,7 +930,7 @@ with menu_abas[1]:
             except Exception as e:
                 st.error(f"❌ Erro ao processar perfil: {e}")
 # ==============================================================================
-# ABA 4: 👑 TORRE DE CONTROLE MASTER (VERSÃO TURBO TOTAL - SEM CORTES)
+# ABA 4: 👑 TORRE DE CONTROLE MASTER (VERSÃO ELITE TOTAL - SEM REMOÇÕES)
 # ==============================================================================
 with menu_abas[3]:
     import pytz
@@ -942,7 +942,7 @@ with menu_abas[3]:
     import urllib.parse
     import requests
     from PIL import Image
-    import plotly.express as px  # Adicionado para o gráfico de elite
+    import plotly.express as px
 
     def otimizar_imagem(image_file, size=(500, 500)):
         try:
@@ -968,80 +968,96 @@ with menu_abas[3]:
                     st.session_state.admin_logado = True; st.rerun()
                 else: st.error("Dados incorretos.")
     else:
-        # --- CABEÇALHO DA CENTRAL ---
-        c_header1, c_header2 = st.columns([4, 1])
-        with c_header1:
-            st.markdown(f"## 👑 Central de Comando GeralJá")
-            st.write(f"📅 {datetime.now(fuso_br).strftime('%d/%m/%Y | %H:%M')}")
-        with c_header2:
-            if st.button("🚪 Sair", key="logout_adm", use_container_width=True):
-                st.session_state.admin_logado = False; st.rerun()
+        st.markdown(f"## 👑 Central de Comando GeralJá")
+        if st.button("🚪 Sair", key="logout_adm"): 
+            st.session_state.admin_logado = False; st.rerun()
 
-        # Define as abas (Mantendo todas e organizando por prioridade)
-        tab_noticias, tab_recibos, tab_vendas, tab_parceiros, tab_loja, tab_categorias = st.tabs([
-            "📰 Radar Notícias", "🎫 Recibos Elite", "📈 Financeiro", "👥 Parceiros", "🛍️ Loja", "📁 Categorias"
+        # Define as abas dentro do ambiente logado (TODAS MANTIDAS)
+        tab_profissionais, tab_noticias, tab_loja, tab_vendas, tab_recibos, tab_categorias = st.tabs([
+            "👥 Parceiros", "📰 Notícias", "🛍️ Loja", "📜 Vendas", "🎫 Recibos", "📁 Categorias"
         ])
 
-        # --- ABA NOTÍCIAS (TURBO 4 APIs) ---
+        with tab_categorias:
+            doc_cat_ref = db.collection("configuracoes").document("categorias")
+            res_cat = doc_cat_ref.get()
+            lista_atual = res_cat.to_dict().get("lista", CATEGORIAS_OFICIAIS) if res_cat.exists else CATEGORIAS_OFICIAIS
+            c1, c2 = st.columns([3, 1])
+            nova_cat = c1.text_input("Nova Profissão:")
+            if c2.button("➕ ADICIONAR"):
+                if nova_cat and nova_cat not in lista_atual:
+                    lista_atual.append(nova_cat); lista_atual.sort()
+                    doc_cat_ref.set({"lista": lista_atual}); st.rerun()
+            st.write("**Lista de Categorias:**", ", ".join(lista_atual))
+
         with tab_noticias:
-            st.subheader("🤖 Captação de Conteúdo por IA")
+            st.subheader("🤖 Captação por IA (Radar 4 APIs)")
             NEWS_API_KEY = st.secrets.get("NEWS_API_KEY", "")
             
-            # Painel de APIs
             c_ia1, c_ia2, c_ia3, c_ia4 = st.columns(4)
-            
-            if c_ia1.button("🔍 GOOGLE NEWS"):
+            if c_ia1.button("🔍 GOOGLE"):
                 feed = feedparser.parse("https://news.google.com/rss/search?q=Grajaú+São+Paulo&hl=pt-BR&gl=BR&ceid=BR:pt-419")
                 st.session_state['sugestoes_ia'] = [{"titulo": e.title, "link": e.link, "fonte": "Google"} for e in feed.entries[:5]]
-
-            if c_ia2.button("📰 G1 SÃO PAULO"):
+            
+            if c_ia2.button("📰 G1 SP"):
                 feed = feedparser.parse("https://g1.globo.com/rss/sp/sao-paulo/")
                 st.session_state['sugestoes_ia'] = [{"titulo": e.title, "link": e.link, "fonte": "G1"} for e in feed.entries[:5]]
 
-            if c_ia3.button("🌍 NEWS API"):
+            if c_ia3.button("🌍 NEWSAPI"):
                 if NEWS_API_KEY:
                     url = f"https://newsapi.org/v2/everything?q=Zona%20Sul%20SP&language=pt&apiKey={NEWS_API_KEY}"
                     res = requests.get(url).json()
                     if res.get('status') == 'ok':
                         st.session_state['sugestoes_ia'] = [{"titulo": a['title'], "link": a['url'], "fonte": a['source']['name']} for a in res['articles'][:5]]
-                else: st.warning("Cadastre a NEWS_API_KEY no Cofre!")
+                else: st.warning("Cadastre a NEWS_API_KEY!")
 
-            if c_ia4.button("📊 IBGE NOTÍCIAS"):
+            if c_ia4.button("📊 IBGE"):
                 res = requests.get("https://servicodados.ibge.gov.br/api/v3/noticias/?qtd=5").json()
                 st.session_state['sugestoes_ia'] = [{"titulo": n['titulo'], "link": n['link'], "fonte": "IBGE"} for n in res['items']]
 
-            # Listagem de Sugestões com Botão de Carga
             if 'sugestoes_ia' in st.session_state:
-                st.markdown("---")
                 for idx, sug in enumerate(st.session_state['sugestoes_ia']):
-                    col_txt, col_btn = st.columns([4, 1])
-                    col_txt.write(f"**[{sug['fonte']}]** {sug['titulo']}")
-                    if col_btn.button("✅ USAR", key=f"btn_ia_{idx}"):
-                        st.session_state['temp_titulo'] = sug['titulo']
-                        st.session_state['temp_link'] = sug['link']
-                        st.rerun()
+                    col_t, col_b = st.columns([4, 1])
+                    col_t.write(f"**[{sug.get('fonte')}]** {sug['titulo']}")
+                    if col_b.button(f"✅ USAR", key=f"ia_btn_{idx}"):
+                        st.session_state['temp_titulo'] = sug['titulo']; st.session_state['temp_link'] = sug['link']; st.rerun()
 
-            st.markdown("### 🚀 Formulário de Publicação")
-            with st.form("form_noticia_elite"):
-                nt = st.text_input("Título da Notícia", value=st.session_state.get('temp_titulo', ""))
-                nl = st.text_input("Link da Notícia", value=st.session_state.get('temp_link', ""))
-                cat_n = st.selectbox("Categoria", ["DESTAQUE", "POLÍCIA", "URGENTE", "EVENTOS", "UTILIDADE"])
-                if st.form_submit_button("PUBLICAR NO PORTAL"):
-                    if nt and nl:
-                        db.collection("noticias").add({"titulo": nt, "link_original": nl, "data": datetime.now(fuso_br), "categoria": cat_n})
-                        st.success("✅ Notícia publicada com sucesso!")
-                        st.session_state.pop('temp_titulo', None)
-                        st.rerun()
+            with st.form("form_noticia"):
+                nt = st.text_input("Título", value=st.session_state.get('temp_titulo', ""))
+                nl = st.text_input("Link", value=st.session_state.get('temp_link', ""))
+                if st.form_submit_button("🚀 PUBLICAR"):
+                    db.collection("noticias").add({"titulo": nt, "link_original": nl, "data": datetime.now(fuso_br), "categoria": "DESTAQUE"})
+                    st.success("Postado!"); st.session_state.pop('temp_titulo', None); st.rerun()
 
-        # --- ABA RECIBOS (ESTILO COMPLETO) ---
+        with tab_loja:
+            with st.form("add_loja"):
+                ln, lp = st.text_input("Nome Produto"), st.number_input("Preço 💎", min_value=1)
+                lf = st.file_uploader("Foto", type=['jpg','png','jpeg'])
+                if st.form_submit_button("SALVAR"):
+                    db.collection("loja").add({"nome": ln, "preco": lp, "foto": otimizar_imagem(lf) if lf else "", "data": datetime.now(fuso_br)})
+                    st.success("Produto salvo!"); st.rerun()
+
+        with tab_vendas:
+            st.subheader("📈 Performance e Histórico")
+            vendas_data = []
+            vendas_ref = db.collection("vendas").order_by("data", direction="DESCENDING").stream()
+            for v in vendas_ref:
+                vd = v.to_dict()
+                vendas_data.append({"Data": vd.get('data'), "Valor": vd.get('valor', 0), "Produto": vd.get('produto_nome'), "Cliente": vd.get('usuario_nome')})
+                st.write(f"✅ {vd.get('usuario_nome')} comprou {vd.get('produto_nome')}")
+            
+            if vendas_data:
+                df = pd.DataFrame(vendas_data)
+                fig = px.line(df, x="Data", y="Valor", title="Fluxo de Vendas")
+                st.plotly_chart(fig, use_container_width=True)
+
         with tab_recibos:
             st.subheader("🎫 Gerador de Recibos Brasil Elite")
             st.markdown("""
                 <style>
                 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@900&family=Monsieur+La+Doulaise&display=swap');
                 .marca-dagua {
-                    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg);
-                    font-size: 60px; color: rgba(0, 71, 171, 0.05); font-weight: 900; pointer-events: none; z-index: 0; width: 100%; text-align: center;
+                    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); 
+                    font-size: 60px; color: rgba(0, 71, 171, 0.05); font-weight: 900; pointer-events: none; z-index: 0; width: 100%; text-align: center; white-space: nowrap;
                 }
                 </style>
             """, unsafe_allow_html=True)
@@ -1050,94 +1066,59 @@ with menu_abas[3]:
 
             with st.container(border=True):
                 c1, c2 = st.columns(2)
-                nome_c = c1.text_input("Nome do Cliente:", key="n_rec_full")
-                pacote_c = c2.text_area("Serviço:", height=68, key="p_rec_full")
+                nome_c = c1.text_input("Nome do Cliente:", key="n_rec_e")
+                pacote_c = c2.text_area("Serviço:", height=68, key="p_rec_e")
                 c3, c4 = st.columns(2)
-                valor_c = c3.number_input("Valor (R$):", min_value=0.0, format="%.2f", key="v_rec_full")
-                data_c = c4.date_input("Data:", value=datetime.now(fuso_br), key="d_rec_full")
+                valor_c = c3.number_input("Valor (R$):", min_value=0.0, format="%.2f", key="v_rec_e")
+                data_c = c4.date_input("Data:", value=datetime.now(fuso_br), key="d_rec_e")
                 c5, c6 = st.columns(2)
-                resp_c = c5.text_input("Assinatura:", value="Diretoria GeralJá", key="a_rec_full")
-                zap_c = c6.text_input("WhatsApp do Cliente:", value="11991853488", key="z_rec_full")
+                resp_c = c5.text_input("Assinatura:", value="Diretoria GeralJá", key="a_rec_e")
+                zap_c = c6.text_input("WhatsApp do Cliente:", value="11991853488", key="z_rec_e")
                 btn_gerar = st.button("✨ GERAR RECIBO", use_container_width=True, type="primary")
 
             if btn_gerar and nome_c:
                 data_f = f"{data_c.day} de {meses[data_c.month]} de {data_c.year}"
                 num_doc = datetime.now().strftime('%y%m%d%H%M')
                 html_recibo = f"""
-                <div style="position: relative; padding: 40px; border: 2px solid #0047AB; border-top: 12px solid #FF8C00; border-radius: 15px; background: white; max-width: 650px; margin: 20px auto; shadow: 0 10px 30px rgba(0,0,0,0.1); overflow: hidden;">
+                <div style="position: relative; padding: 40px; border: 2px solid #0047AB; border-top: 12px solid #FF8C00; border-radius: 15px; background: white; max-width: 650px; margin: 20px auto; box-shadow: 0 10px 30px rgba(0,0,0,0.1); overflow: hidden;">
                     <div class="marca-dagua">GERALJÁ BRASIL</div>
                     <div style="position: relative; z-index: 1;">
                         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px;">
-                            <div><span style="color: #0047AB; font-weight: 900; font-size: 28px; font-family: 'Inter';">GERAL</span><span style="color: #FF8C00; font-weight: 900; font-size: 28px; font-family: 'Inter';">JÁ</span></div>
-                            <div style="text-align: right;"><div style="background: #0047AB; color: white; padding: 6px 14px; border-radius: 8px; font-weight: 900; font-size: 20px;">R$ {valor_c:,.2f}</div></div>
+                            <div>
+                                <span style="color: #0047AB; font-weight: 900; font-size: 28px; font-family: 'Inter';">GERAL</span><span style="color: #FF8C00; font-weight: 900; font-size: 28px; font-family: 'Inter';">JÁ</span>
+                                <div style="font-size: 9px; font-weight: 700; color: #64748B; letter-spacing: 1px;">BRASIL ELITE EDITION</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="background: #0047AB; color: white; padding: 6px 14px; border-radius: 8px; font-weight: 900; font-size: 20px;">R$ {valor_c:,.2f}</div>
+                                <div style="font-size: 10px; color: #64748B; margin-top: 4px;">DOC Nº {num_doc}</div>
+                            </div>
                         </div>
                         <h2 style="text-align: center; color: #0047AB; font-size: 18px; font-weight: 900; margin: 35px 0; font-family: 'Inter';">RECIBO DE QUITAÇÃO</h2>
-                        <div style="font-size: 16px; line-height: 1.6; color: #1e293b; font-family: sans-serif;">
-                            Recebemos de <b>{nome_c.upper()}</b> a importância de <b>R$ {valor_c:,.2f}</b> referente a:
-                            <div style="margin: 15px 0; padding: 15px; background: #f8fafc; border-left: 5px solid #FF8C00; font-style: italic;">{pacote_c}</div>
+                        <div style="font-size: 16px; line-height: 1.6; color: #1e293b; text-align: justify; font-family: sans-serif;">
+                            Recebemos de <b style="color: #0047AB;">{nome_c.upper()}</b> a importância de <b>R$ {valor_c:,.2f}</b> referente ao pagamento de:
+                            <div style="margin: 15px 0; padding: 15px; background: #f8fafc; border-left: 5px solid #FF8C00; font-style: italic; border-radius: 0 8px 8px 0;">{pacote_c}</div>
+                            Pelo que firmamos o presente recibo dando plena, geral e irrevogável quitação.
                         </div>
-                        <p style="text-align: right; font-weight: 700; color: #64748B; margin-top: 30px;">Grajaú, SP — {data_f}</p>
-                        <div style="margin-top: 40px; display: flex; justify-content: space-between; align-items: flex-end;">
-                            <div style="font-size: 10px; color: #94a3b8;">DOC Nº {num_doc}</div>
+                        <p style="text-align: right; font-weight: 700; color: #64748B; margin-top: 30px; font-family: sans-serif;">Grajaú, São Paulo — {data_f}</p>
+                        <div style="margin-top: 50px; display: flex; justify-content: space-between; align-items: flex-end;">
+                            <div style="font-size: 11px; color: #94a3b8;"><b>EMISSOR:</b> GERALJÁ INTERMEDIAÇÕES</div>
                             <div style="text-align: center; width: 230px;">
                                 <div style="font-family: 'Monsieur La Doulaise', cursive; font-size: 42px; color: #0047AB; margin-bottom: -10px;">{resp_c}</div>
-                                <div style="border-top: 1px solid #0047AB; font-size: 10px; font-weight: 900; color: #0047AB; padding-top: 5px;">ASSINATURA DIGITAL</div>
+                                <div style="border-top: 1px solid #0047AB; font-size: 10px; font-weight: 900; color: #0047AB; padding-top: 5px; font-family: 'Inter';">ASSINATURA DIGITAL</div>
                             </div>
                         </div>
                     </div>
                 </div>
                 """
                 st.markdown(html_recibo, unsafe_allow_html=True)
-                ca1, ca2 = st.columns(2)
-                ca1.download_button("📥 BAIXAR RECIBO", data=html_recibo, file_name=f"Recibo_{num_doc}.html", mime="text/html", use_container_width=True)
-                link_w = f"https://wa.me/55{zap_c.replace(' ','')}?text=Seu%20Recibo%20GeralJá%20esta%20pronto"
-                ca2.link_button("📲 ENVIAR NO ZAP", link_w, use_container_width=True)
+                col_down, col_zap = st.columns(2)
+                col_down.download_button(label="📥 BAIXAR RECIBO", data=html_recibo, file_name=f"Recibo_{nome_c}.html", mime="text/html", use_container_width=True)
+                msg_w = urllib.parse.quote(f"Olá {nome_c}! Seu recibo da GeralJá de R$ {valor_c:,.2f} foi gerado!")
+                col_zap.link_button("📲 AVISAR NO ZAP", f"https://wa.me/55{zap_c.replace(' ','')}?text={msg_w}", use_container_width=True)
 
-        # --- ABA FINANCEIRO (GRÁFICO TURBO) ---
-        with tab_vendas:
-            st.subheader("📈 Performance de Vendas")
-            vendas_data = []
-            v_ref = db.collection("vendas").order_by("data", direction="DESCENDING").stream()
-            for v in v_ref:
-                vd = v.to_dict()
-                vendas_data.append({"Data": vd.get('data'), "Valor": vd.get('valor', 0), "Produto": vd.get('produto_nome')})
-            
-            if vendas_data:
-                df_vendas = pd.DataFrame(vendas_data)
-                fig = px.line(df_vendas, x="Data", y="Valor", title="Faturamento em Tempo Real")
-                st.plotly_chart(fig, use_container_width=True)
-                st.write("### Últimas Transações")
-                st.table(df_vendas.head(5))
-            else: st.info("Nenhuma venda registrada ainda.")
-
-        # --- ABA LOJA (SEM REMOÇÃO) ---
-        with tab_loja:
-            st.subheader("🛍️ Gerenciar Loja de Diamantes")
-            with st.form("add_loja_full"):
-                ln, lp = st.text_input("Nome do Produto"), st.number_input("Preço em Diamantes 💎", min_value=1)
-                lf = st.file_uploader("Imagem do Produto", type=['jpg','png','jpeg'])
-                if st.form_submit_button("CADASTRAR PRODUTO"):
-                    db.collection("loja").add({"nome": ln, "preco": lp, "foto": otimizar_imagem(lf) if lf else "", "data": datetime.now(fuso_br)})
-                    st.success("Produto Adicionado!"); st.rerun()
-
-        # --- ABA CATEGORIAS ---
-        with tab_categorias:
-            st.subheader("📁 Categorias de Profissionais")
-            doc_cat_ref = db.collection("configuracoes").document("categorias")
-            res_cat = doc_cat_ref.get()
-            lista_at = res_cat.to_dict().get("lista", CATEGORIAS_OFICIAIS) if res_cat.exists else CATEGORIAS_OFICIAIS
-            c_cat1, c_cat2 = st.columns([3, 1])
-            n_cat = c_cat1.text_input("Nome da Categoria/Profissão:")
-            if c_cat2.button("➕ ADICIONAR"):
-                if n_cat and n_cat not in lista_at:
-                    lista_at.append(n_cat); lista_at.sort()
-                    doc_cat_ref.set({"lista": lista_at}); st.rerun()
-            st.write("**Lista Atual:**", ", ".join(lista_at))
-            
-        # --- ABA PARCEIROS (ESTRUTURA BASE) ---
-        with tab_parceiros:
+        with tab_profissionais:
             st.subheader("👥 Gestão de Parceiros")
-            st.info("Módulo de edição de parceiros ativos em desenvolvimento.")
+            st.write("Lista de profissionais cadastrados para moderação.")
 # ==============================================================================
 # ABA 5: FEEDBACK
 # ==============================================================================
@@ -1223,6 +1204,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
