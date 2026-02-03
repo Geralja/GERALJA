@@ -942,7 +942,7 @@ with menu_abas[3]:
     import urllib.parse
     import requests
     from PIL import Image
-    import plotly.express as px  # O toque de mestre para os gráficos
+    import plotly.express as px # Adicionado para o gráfico de performance
 
     def otimizar_imagem(image_file, size=(500, 500)):
         try:
@@ -972,15 +972,14 @@ with menu_abas[3]:
         if st.button("🚪 Sair", key="logout_adm"): 
             st.session_state.admin_logado = False; st.rerun()
 
-        # Define as abas dentro do ambiente logado (TODAS AS ORIGINAIS MANTIDAS)
+        # Define as abas dentro do ambiente logado (TODAS MANTIDAS)
         tab_profissionais, tab_noticias, tab_loja, tab_vendas, tab_recibos, tab_categorias = st.tabs([
             "👥 Parceiros", "📰 Notícias", "🛍️ Loja", "📜 Vendas", "🎫 Recibos", "📁 Categorias"
         ])
 
-        # --- ABA CATEGORIAS (MANTIDA) ---
         with tab_categorias:
             doc_cat_ref = db.collection("configuracoes").document("categorias")
-            res_cat = d_cat_ref.get() if 'd_cat_ref' in locals() else doc_cat_ref.get()
+            res_cat = doc_cat_ref.get()
             lista_atual = res_cat.to_dict().get("lista", CATEGORIAS_OFICIAIS) if res_cat.exists else CATEGORIAS_OFICIAIS
             c1, c2 = st.columns([3, 1])
             nova_cat = c1.text_input("Nova Profissão:")
@@ -988,12 +987,10 @@ with menu_abas[3]:
                 if nova_cat and nova_cat not in lista_atual:
                     lista_atual.append(nova_cat); lista_atual.sort()
                     doc_cat_ref.set({"lista": lista_atual}); st.rerun()
-            st.write("**Lista de Categorias:**", ", ".join(lista_atual))
 
-        # --- ABA NOTÍCIAS (TURBINADA COM 4 APIs) ---
         with tab_noticias:
-            st.subheader("🤖 Radar de Captação Inteligente")
-            NEWS_API_KEY = st.secrets.get("NEWS_API_KEY", "")
+            st.subheader("🤖 Captação por IA (Radar 4 APIs)")
+            api_key_news = st.secrets.get("NEWS_API_KEY", "")
             
             c_ia1, c_ia2, c_ia3, c_ia4 = st.columns(4)
             if c_ia1.button("🔍 GOOGLE"):
@@ -1005,8 +1002,8 @@ with menu_abas[3]:
                 st.session_state['sugestoes_ia'] = [{"titulo": e.title, "link": e.link, "fonte": "G1"} for e in feed.entries[:5]]
 
             if c_ia3.button("🌍 NEWSAPI"):
-                if NEWS_API_KEY:
-                    url = f"https://newsapi.org/v2/everything?q=Zona%20Sul%20SP&language=pt&apiKey={NEWS_API_KEY}"
+                if api_key_news:
+                    url = f"https://newsapi.org/v2/everything?q=Grajaú%20SP&language=pt&apiKey={api_key_news}"
                     res = requests.get(url).json()
                     if res.get('status') == 'ok':
                         st.session_state['sugestoes_ia'] = [{"titulo": a['title'], "link": a['url'], "fonte": a['source']['name']} for a in res['articles'][:5]]
@@ -1015,47 +1012,43 @@ with menu_abas[3]:
             if c_ia4.button("📊 IBGE"):
                 res = requests.get("https://servicodados.ibge.gov.br/api/v3/noticias/?qtd=5").json()
                 st.session_state['sugestoes_ia'] = [{"titulo": n['titulo'], "link": n['link'], "fonte": "IBGE"} for n in res['items']]
-
+            
             if 'sugestoes_ia' in st.session_state:
-                st.markdown("---")
                 for idx, sug in enumerate(st.session_state['sugestoes_ia']):
-                    col_txt, col_btn = st.columns([4, 1])
-                    col_txt.write(f"**[{sug.get('fonte', 'IA')}]** {sug['titulo']}")
-                    if col_btn.button(f"✅ USAR", key=f"ia_{idx}"):
+                    col_t, col_b = st.columns([4, 1])
+                    col_t.write(f"**[{sug.get('fonte', 'IA')}]** {sug['titulo']}")
+                    if col_b.button(f"✅ USAR", key=f"ia_btn_{idx}"):
                         st.session_state['temp_titulo'] = sug['titulo']; st.session_state['temp_link'] = sug['link']; st.rerun()
 
             with st.form("form_noticia"):
                 nt = st.text_input("Título", value=st.session_state.get('temp_titulo', ""))
                 nl = st.text_input("Link", value=st.session_state.get('temp_link', ""))
-                if st.form_submit_button("🚀 PUBLICAR NO PORTAL"):
+                if st.form_submit_button("🚀 PUBLICAR"):
                     db.collection("noticias").add({"titulo": nt, "link_original": nl, "data": datetime.now(fuso_br), "categoria": "DESTAQUE"})
-                    st.success("Postado com sucesso!"); st.session_state.pop('temp_titulo', None); st.rerun()
+                    st.success("Postado!"); st.session_state.pop('temp_titulo', None); st.rerun()
 
-        # --- ABA LOJA (MANTIDA) ---
         with tab_loja:
             with st.form("add_loja"):
                 ln, lp = st.text_input("Nome Produto"), st.number_input("Preço 💎", min_value=1)
                 lf = st.file_uploader("Foto", type=['jpg','png','jpeg'])
                 if st.form_submit_button("SALVAR"):
                     db.collection("loja").add({"nome": ln, "preco": lp, "foto": otimizar_imagem(lf) if lf else "", "data": datetime.now(fuso_br)})
-                    st.success("Produto Adicionado!"); st.rerun()
+                    st.success("Salvo!"); st.rerun()
 
-        # --- ABA VENDAS (TURBINADA COM GRÁFICO) ---
         with tab_vendas:
-            st.subheader("📜 Histórico e Gráfico de Performance")
+            st.subheader("📊 Performance de Vendas")
             vendas_data = []
             vendas_ref = db.collection("vendas").order_by("data", direction="DESCENDING").stream()
             for v in vendas_ref:
                 vd = v.to_dict()
                 vendas_data.append({"Data": vd.get('data'), "Valor": vd.get('valor', 0), "Produto": vd.get('produto_nome'), "Cliente": vd.get('usuario_nome')})
-                st.write(f"✅ {vd.get('usuario_nome')} comprou {vd.get('produto_nome')} - R$ {vd.get('valor', 0)}")
+                st.write(f"✅ {vd.get('usuario_nome')} comprou {vd.get('produto_nome')}")
             
             if vendas_data:
-                df_v = pd.DataFrame(vendas_data)
-                fig = px.line(df_v, x="Data", y="Valor", title="Evolução de Vendas GeralJá")
+                df = pd.DataFrame(vendas_data)
+                fig = px.line(df, x="Data", y="Valor", title="Fluxo Financeiro GeralJá")
                 st.plotly_chart(fig, use_container_width=True)
 
-        # --- ABA RECIBOS (MANTIDA COMPLETA) ---
         with tab_recibos:
             st.subheader("🎫 Gerador de Recibos Brasil Elite")
             st.markdown("""
@@ -1118,11 +1111,11 @@ with menu_abas[3]:
                 """
                 st.markdown(html_recibo, unsafe_allow_html=True)
                 col_down, col_zap = st.columns(2)
-                st.download_button(label="📥 BAIXAR RECIBO (HTML/PDF)", data=html_recibo, file_name=f"Recibo_{nome_c.replace(' ', '_')}.html", mime="text/html", use_container_width=True)
-                msg_w = urllib.parse.quote(f"Olá {nome_c}! Seu recibo da GeralJá de R$ {valor_c:,.2f} foi gerado com sucesso.")
-                col_zap.link_button("📲 AVISAR CLIENTE NO ZAP", f"https://wa.me/55{zap_c.replace(' ','').replace('-','')}?text={msg_w}", use_container_width=True)
+                col_down.download_button(label="📥 BAIXAR RECIBO (HTML/PDF)", data=html_recibo, file_name=f"Recibo_{nome_c.replace(' ', '_')}.html", mime="text/html", use_container_width=True)
+                msg_w = urllib.parse.quote(f"Olá {nome_c}! Seu recibo da GeralJá de R$ {valor_c:,.2f} foi gerado com sucesso. Vou te enviar o arquivo logo abaixo.")
+                col_zap.link_button("📲 AVISAR NO ZAP", f"https://wa.me/55{zap_c.replace(' ','').replace('-','')}?text={msg_w}", use_container_width=True)
+                st.info("☝️ **Como enviar o ARQUIVO:** 1. Clique em 'Baixar Recibo' acima. 2. No WhatsApp do cliente, anexe o arquivo que você baixou.")
 
-        # --- ABA PARCEIROS (MANTIDA) ---
         with tab_profissionais:
             st.subheader("👥 Gestão de Parceiros")
             st.write("Lista de profissionais cadastrados para moderação.")
@@ -1211,6 +1204,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
