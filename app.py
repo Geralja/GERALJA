@@ -1,4 +1,4 @@
- # ==============================================================================
+# ==============================================================================
 # GERALJÁ: CRIANDO SOLUÇÕES - MÓDULO 1: INFRAESTRUTURA
 # ==============================================================================
 import streamlit as st
@@ -1080,7 +1080,7 @@ with menu_abas[3]:
 
             st.divider()
 
-            # --- VITRINE DE EXIBIÇÃO ---
+            # --- VITRINE DE EXIBIÇÃO (VERSÃO SEGURA) ---
             st.subheader("👀 Vitrine do Site")
             noticias_ref = db.collection("noticias").order_by("data", direction="DESCENDING").limit(12).stream()
             lista_noticias = [n.to_dict() | {"id": n.id} for n in noticias_ref]
@@ -1088,17 +1088,39 @@ with menu_abas[3]:
             if lista_noticias:
                 c1, c2, c3 = st.columns(3)
                 destaques = lista_noticias[:3]
+                
                 for i, n in enumerate(destaques):
                     with [c1, c2, c3][i]:
-                        st.markdown(f'<div style="height:150px; overflow:hidden; border-radius:10px;"><img src="{n.get("imagem_url")}" style="width:100%; height:100%; object-fit:cover;"></div>', unsafe_allow_html=True)
+                        # 1. Imagem do Card com fallback via HTML
+                        img_url = n.get('imagem_url', '')
+                        if not img_url:
+                            img_url = "https://placehold.co/400x200?text=Sem+Imagem"
+                            
+                        st.markdown(f"""
+                            <div style="height:150px; overflow:hidden; border-radius:10px; background:#f0f0f0;">
+                                <img src="{img_url}" style="width:100%; height:100%; object-fit:cover;" 
+                                onerror="this.src='https://placehold.co/400x200?text=Erro+Link';">
+                            </div>
+                        """, unsafe_allow_html=True)
+                        
                         st.caption(f"**{n.get('titulo')[:55]}...**")
+                        
+                        # 2. Expander com TRY/EXCEPT para evitar o erro MediaFileStorageError
                         with st.expander("📖 Ler Matéria"):
-                            st.image(n.get('imagem_url'), use_container_width=True)
+                            try:
+                                if n.get('imagem_url'):
+                                    st.image(n.get('imagem_url'), use_container_width=True)
+                            except Exception:
+                                st.warning("⚠️ Imagem original indisponível")
+                                st.image("https://placehold.co/600x400?text=Link+Quebrado+ou+Bloqueado")
+                            
                             st.markdown(f"### {n.get('titulo')}")
-                            st.write(n.get('resumo', 'Sem resumo.'))
+                            st.write(n.get('resumo', 'Sem resumo disponível.'))
                             st.link_button("Ver Fonte", n.get('link_original'), use_container_width=True)
+                            
                             if st.button("🗑️ Excluir", key=f"del_{n['id']}"):
-                                db.collection("noticias").document(n['id']).delete(); st.rerun()
+                                db.collection("noticias").document(n['id']).delete()
+                                st.rerun()
             else:
                 st.info("Nenhuma notícia no banco.")
         # ----------------------------------------------------------------------
@@ -1245,6 +1267,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
