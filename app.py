@@ -1008,95 +1008,99 @@ with menu_abas[3]:
                     st.success("Adicionada!"); st.rerun()
 
         # ----------------------------------------------------------------------
-        # TAB: NOTÍCIAS (CAPTAÇÃO AUTOMÁTICA + POSTAGEM MANUAL + VITRINE)
+        # TAB: NOTÍCIAS (GOOGLE NEWS + NEWS API + MANUAL + VITRINE)
         # ----------------------------------------------------------------------
         with tab_noticias:
-            st.subheader("🤖 Central de Captação (Google News)")
+            # 🔐 PUXA A CHAVE DO COFRE (SECRETS)
+            NEWS_API_KEY = st.secrets.get("NEWS_API_KEY", "516289bf44e1429784e0ca0102854a0d")
             
+            st.subheader("🤖 Central de Inteligência e Captação")
+            
+            # --- FUNÇÃO 1: GOOGLE NEWS (RSS) ---
             def buscar_google_news():
-                # Busca notícias sobre o Grajaú - SP
                 url = "https://news.google.com/rss/search?q=Grajaú+São+Paulo&hl=pt-BR&gl=BR&ceid=BR:pt-419"
                 feed = feedparser.parse(url)
                 if feed.entries:
-                    return [{"titulo": e.title, "link": e.link} for e in feed.entries[:3]]
+                    return [{"titulo": e.title, "link": e.link, "fonte": "Google"} for e in feed.entries[:3]]
                 return []
 
-            if st.button("🔍 Buscar Novidades na Web", key="btn_captar"):
+            # --- LINHA DE COMANDO DAS IAs ---
+            c_ia1, c_ia2 = st.columns(2)
+            
+            if c_ia1.button("🔍 CAPTAR GOOGLE NEWS", use_container_width=True):
                 sugestoes = buscar_google_news()
-                if sugestoes:
-                    cols = st.columns(3)
-                    for i, sug in enumerate(sugestoes):
-                        with cols[i]:
-                            st.info(f"📍 Sugestão {i+1}")
-                            st.write(f"{sug['titulo'][:80]}...")
-                            # Ao clicar, preenche o formulário manual abaixo ou posta direto
-                            if st.button("✅ Usar Esta", key=f"use_{i}"):
-                                st.session_state['temp_titulo'] = sug['titulo']
-                                st.session_state['temp_link'] = sug['link']
-                                st.rerun()
-                else:
-                    st.warning("Nenhuma notícia nova encontrada no momento.")
+                st.session_state['sugestoes_ia'] = sugestoes
+
+            if c_ia2.button("📡 SCANNER NEWS API", use_container_width=True):
+                try:
+                    url_api = f"https://newsapi.org/v2/everything?q=Grajaú+São+Paulo&language=pt&sortBy=publishedAt&apiKey={NEWS_API_KEY}"
+                    res = requests.get(url_api).json()
+                    artigos = [{"titulo": a['title'], "link": a['url'], "img": a.get('urlToImage'), "res": a.get('description'), "fonte": "NewsAPI"} for a in res.get("articles", [])[:3]]
+                    st.session_state['sugestoes_ia'] = artigos
+                except:
+                    st.error("Erro ao acessar NewsAPI. Verifique o cofre.")
+
+            # EXIBIÇÃO DAS SUGESTÕES (De qualquer uma das APIs)
+            if 'sugestoes_ia' in st.session_state:
+                cols_sug = st.columns(3)
+                for idx, sug in enumerate(st.session_state['sugestoes_ia']):
+                    with cols_sug[idx]:
+                        st.info(f"📍 {sug['fonte']}")
+                        st.write(f"**{sug['titulo'][:70]}...**")
+                        if st.button("✅ USAR ESTA", key=f"sug_btn_{idx}"):
+                            st.session_state['temp_titulo'] = sug['titulo']
+                            st.session_state['temp_link'] = sug['link']
+                            st.session_state['temp_resumo'] = sug.get('res', "")
+                            st.session_state['temp_img'] = sug.get('img', "")
+                            st.rerun()
 
             st.divider()
 
-            # FORMULÁRIO MANUAL (Com dados da API se houver)
+            # --- FORMULÁRIO DE PUBLICAÇÃO (RECEBE DADOS DAS APIs) ---
             st.subheader("🚀 Publicar no Portal")
-            with st.form("form_noticia"):
-                titulo_padrao = st.session_state.get('temp_titulo', "")
-                link_padrao = st.session_state.get('temp_link', "")
+            with st.form("form_noticia_geral"):
+                ntitulo = st.text_input("Título", value=st.session_state.get('temp_titulo', ""))
+                nimg = st.text_input("URL da Imagem", value=st.session_state.get('temp_img', ""))
+                nlink = st.text_input("Link da Matéria", value=st.session_state.get('temp_link', ""))
+                nresumo = st.text_area("Conteúdo/Resumo", value=st.session_state.get('temp_resumo', ""))
                 
-                ntitulo = st.text_input("Título da Notícia", value=titulo_padrao)
-                nimg = st.text_input("URL da Imagem (Obrigatório para Vitrine)")
-                nlink = st.text_input("Link da Matéria Completa", value=link_padrao)
-                nresumo = st.text_area("Texto da Matéria (Para leitura interna)")
-                
-                if st.form_submit_button("PUBLICAR AGORA"):
+                if st.form_submit_button("PUBLICAR AGORA NO GERALJÁ", use_container_width=True):
                     if ntitulo and nimg:
                         db.collection("noticias").add({
-                            "titulo": ntitulo,
-                            "imagem_url": nimg,
-                            "link_original": nlink,
-                            "resumo": nresumo,
-                            "data": datetime.now(fuso_br),
-                            "categoria": "DESTAQUE"
+                            "titulo": ntitulo, "imagem_url": nimg, "link_original": nlink,
+                            "resumo": nresumo, "data": datetime.now(fuso_br), "categoria": "DESTAQUE"
                         })
-                        st.success("Notícia postada com sucesso!")
-                        # Limpa os temporários
-                        st.session_state.pop('temp_titulo', None)
-                        st.session_state.pop('temp_link', None)
+                        st.success("Postado com sucesso!")
+                        # Limpa tudo após postar
+                        for k in ['temp_titulo', 'temp_img', 'temp_link', 'temp_resumo', 'sugestoes_ia']:
+                            st.session_state.pop(k, None)
                         time.sleep(1); st.rerun()
                     else:
                         st.error("Título e Imagem são obrigatórios!")
 
             st.divider()
 
-            # VITRINE DE EXIBIÇÃO (COMO O USUÁRIO VÊ)
+            # --- VITRINE DE EXIBIÇÃO ---
             st.subheader("👀 Vitrine do Site")
             noticias_ref = db.collection("noticias").order_by("data", direction="DESCENDING").limit(12).stream()
             lista_noticias = [n.to_dict() | {"id": n.id} for n in noticias_ref]
 
             if lista_noticias:
-                # Top 3 (Carrossel/Grid Estático)
                 c1, c2, c3 = st.columns(3)
                 destaques = lista_noticias[:3]
                 for i, n in enumerate(destaques):
                     with [c1, c2, c3][i]:
-                        st.markdown(f"""
-                            <div style="height:150px; overflow:hidden; border-radius:10px;">
-                                <img src="{n.get('imagem_url')}" style="width:100%; height:100%; object-fit:cover;">
-                            </div>
-                        """, unsafe_allow_html=True)
-                        st.caption(f"**{n.get('titulo')[:50]}...**")
+                        st.markdown(f'<div style="height:150px; overflow:hidden; border-radius:10px;"><img src="{n.get("imagem_url")}" style="width:100%; height:100%; object-fit:cover;"></div>', unsafe_allow_html=True)
+                        st.caption(f"**{n.get('titulo')[:55]}...**")
                         with st.expander("📖 Ler Matéria"):
-                            st.image(n.get('imagem_url'))
+                            st.image(n.get('imagem_url'), use_container_width=True)
                             st.markdown(f"### {n.get('titulo')}")
-                            st.write(n.get('resumo', 'Sem resumo disponível.'))
+                            st.write(n.get('resumo', 'Sem resumo.'))
                             st.link_button("Ver Fonte", n.get('link_original'), use_container_width=True)
                             if st.button("🗑️ Excluir", key=f"del_{n['id']}"):
                                 db.collection("noticias").document(n['id']).delete(); st.rerun()
             else:
-                st.info("Nenhuma notícia no banco de dados.")
-
+                st.info("Nenhuma notícia no banco.")
         # ----------------------------------------------------------------------
         # TAB: PARCEIROS (AUTONOMIA TOTAL)
         # ----------------------------------------------------------------------
@@ -1241,6 +1245,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
