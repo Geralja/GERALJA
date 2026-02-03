@@ -943,7 +943,7 @@ with menu_abas[3]:
     agora_br = datetime.now(fuso_br)
 
     # Credenciais
-    ADMIN_USER_OFICIAL = st.secrets.get("ADMIN_USER", "admin")
+    ADMIN_USER_OFICIAL = st.secrets.get("ADMIN_USER", "geralja")
     ADMIN_PASS_OFICIAL = st.secrets.get("ADMIN_PASS", "Bps36ocara")
 
     if 'admin_logado' not in st.session_state:
@@ -1124,6 +1124,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
