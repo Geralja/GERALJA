@@ -930,7 +930,7 @@ with menu_abas[1]:
             except Exception as e:
                 st.error(f"❌ Erro ao processar perfil: {e}")
 # ==============================================================================
-# ABA 4: 👑 TORRE DE CONTROLE MASTER (COMPLETA E SEM REMOÇÕES)
+# ABA 4: 👑 TORRE DE CONTROLE MASTER (COMPLETA, INTEGRADA E BLINDADA)
 # ==============================================================================
 with menu_abas[3]:
     import pytz
@@ -940,8 +940,10 @@ with menu_abas[3]:
     from PIL import Image
     import io
     import base64
+    import requests    # Para NewsAPI
+    import feedparser  # Para Google News
 
-    # --- FUNÇÃO DE APOIO ---
+    # --- FUNÇÃO DE APOIO: OTIMIZAÇÃO DE IMAGENS ---
     def otimizar_imagem(image_file, size=(800, 800)):
         try:
             img = Image.open(image_file)
@@ -965,6 +967,7 @@ with menu_abas[3]:
     if 'admin_logado' not in st.session_state:
         st.session_state.admin_logado = False
 
+    # --- SISTEMA DE LOGIN ---
     if not st.session_state.admin_logado:
         st.markdown("### 🔐 Acesso Restrito à Diretoria")
         with st.form("painel_login_adm"):
@@ -986,6 +989,7 @@ with menu_abas[3]:
             st.session_state.admin_logado = False
             st.rerun()
 
+        # Criação das Tabs
         tab_profissionais, tab_noticias, tab_categorias = st.tabs([
             "👥 Parceiros", "📰 Gestão de Notícias", "📁 Categorias"
         ])
@@ -996,6 +1000,7 @@ with menu_abas[3]:
         with tab_categorias:
             doc_cat_ref = db.collection("configuracoes").document("categorias")
             res_cat = doc_cat_ref.get()
+            # CATEGORIAS_OFICIAIS deve estar definida no seu código global
             lista_atual = res_cat.to_dict().get("lista", CATEGORIAS_OFICIAIS) if res_cat.exists else CATEGORIAS_OFICIAIS
             
             c_cat1, c_cat2 = st.columns([3, 1])
@@ -1008,15 +1013,12 @@ with menu_abas[3]:
                     st.success("Adicionada!"); st.rerun()
 
         # ----------------------------------------------------------------------
-        # TAB: NOTÍCIAS (GOOGLE NEWS + NEWS API + MANUAL + VITRINE)
+        # TAB: GESTÃO DE NOTÍCIAS (GOOGLE + NEWSAPI + MANUAL + VITRINE)
         # ----------------------------------------------------------------------
         with tab_noticias:
-            # 🔐 PUXA A CHAVE DO COFRE (SECRETS)
             NEWS_API_KEY = st.secrets.get("NEWS_API_KEY", "516289bf44e1429784e0ca0102854a0d")
-            
             st.subheader("🤖 Central de Inteligência e Captação")
             
-            # --- FUNÇÃO 1: GOOGLE NEWS (RSS) ---
             def buscar_google_news():
                 url = "https://news.google.com/rss/search?q=Grajaú+São+Paulo&hl=pt-BR&gl=BR&ceid=BR:pt-419"
                 feed = feedparser.parse(url)
@@ -1024,12 +1026,10 @@ with menu_abas[3]:
                     return [{"titulo": e.title, "link": e.link, "fonte": "Google"} for e in feed.entries[:3]]
                 return []
 
-            # --- LINHA DE COMANDO DAS IAs ---
             c_ia1, c_ia2 = st.columns(2)
             
             if c_ia1.button("🔍 CAPTAR GOOGLE NEWS", use_container_width=True):
-                sugestoes = buscar_google_news()
-                st.session_state['sugestoes_ia'] = sugestoes
+                st.session_state['sugestoes_ia'] = buscar_google_news()
 
             if c_ia2.button("📡 SCANNER NEWS API", use_container_width=True):
                 try:
@@ -1040,7 +1040,7 @@ with menu_abas[3]:
                 except:
                     st.error("Erro ao acessar NewsAPI. Verifique o cofre.")
 
-            # EXIBIÇÃO DAS SUGESTÕES (De qualquer uma das APIs)
+            # Sugestões da IA
             if 'sugestoes_ia' in st.session_state:
                 cols_sug = st.columns(3)
                 for idx, sug in enumerate(st.session_state['sugestoes_ia']):
@@ -1056,7 +1056,7 @@ with menu_abas[3]:
 
             st.divider()
 
-            # --- FORMULÁRIO DE PUBLICAÇÃO (RECEBE DADOS DAS APIs) ---
+            # Formulário de Publicação
             st.subheader("🚀 Publicar no Portal")
             with st.form("form_noticia_geral"):
                 ntitulo = st.text_input("Título", value=st.session_state.get('temp_titulo', ""))
@@ -1070,61 +1070,46 @@ with menu_abas[3]:
                             "titulo": ntitulo, "imagem_url": nimg, "link_original": nlink,
                             "resumo": nresumo, "data": datetime.now(fuso_br), "categoria": "DESTAQUE"
                         })
-                        st.success("Postado com sucesso!")
-                        # Limpa tudo após postar
+                        st.success("Postado!"); time.sleep(1)
                         for k in ['temp_titulo', 'temp_img', 'temp_link', 'temp_resumo', 'sugestoes_ia']:
                             st.session_state.pop(k, None)
-                        time.sleep(1); st.rerun()
+                        st.rerun()
                     else:
                         st.error("Título e Imagem são obrigatórios!")
 
             st.divider()
 
-            # --- VITRINE DE EXIBIÇÃO (VERSÃO SEGURA) ---
+            # Vitrine Blindada (Correção do erro MediaFileStorageError)
             st.subheader("👀 Vitrine do Site")
-            noticias_ref = db.collection("noticias").order_by("data", direction="DESCENDING").limit(12).stream()
-            lista_noticias = [n.to_dict() | {"id": n.id} for n in noticias_ref]
+            try:
+                noticias_ref = db.collection("noticias").order_by("data", direction="DESCENDING").limit(12).stream()
+                lista_noticias = [n.to_dict() | {"id": n.id} for n in noticias_ref]
 
-            if lista_noticias:
-                c1, c2, c3 = st.columns(3)
-                destaques = lista_noticias[:3]
-                
-                for i, n in enumerate(destaques):
-                    with [c1, c2, c3][i]:
-                        # 1. Imagem do Card com fallback via HTML
-                        img_url = n.get('imagem_url', '')
-                        if not img_url:
-                            img_url = "https://placehold.co/400x200?text=Sem+Imagem"
-                            
-                        st.markdown(f"""
-                            <div style="height:150px; overflow:hidden; border-radius:10px; background:#f0f0f0;">
-                                <img src="{img_url}" style="width:100%; height:100%; object-fit:cover;" 
-                                onerror="this.src='https://placehold.co/400x200?text=Erro+Link';">
-                            </div>
-                        """, unsafe_allow_html=True)
-                        
-                        st.caption(f"**{n.get('titulo')[:55]}...**")
-                        
-                        # 2. Expander com TRY/EXCEPT para evitar o erro MediaFileStorageError
-                        with st.expander("📖 Ler Matéria"):
-                            try:
-                                if n.get('imagem_url'):
-                                    st.image(n.get('imagem_url'), use_container_width=True)
-                            except Exception:
-                                st.warning("⚠️ Imagem original indisponível")
-                                st.image("https://placehold.co/600x400?text=Link+Quebrado+ou+Bloqueado")
-                            
-                            st.markdown(f"### {n.get('titulo')}")
-                            st.write(n.get('resumo', 'Sem resumo disponível.'))
-                            st.link_button("Ver Fonte", n.get('link_original'), use_container_width=True)
-                            
-                            if st.button("🗑️ Excluir", key=f"del_{n['id']}"):
-                                db.collection("noticias").document(n['id']).delete()
-                                st.rerun()
-            else:
-                st.info("Nenhuma notícia no banco.")
+                if lista_noticias:
+                    c_v1, c_v2, c_v3 = st.columns(3)
+                    for i, n in enumerate(lista_noticias[:3]):
+                        with [c_v1, c_v2, c_v3][i]:
+                            img_v = n.get('imagem_url', '')
+                            st.markdown(f'''<div style="height:140px;overflow:hidden;border-radius:10px;background:#eee;">
+                                <img src="{img_v}" style="width:100%;height:100%;object-fit:cover;" onerror="this.src='https://placehold.co/400x200?text=Erro+Link';">
+                                </div>''', unsafe_allow_html=True)
+                            st.caption(f"**{n.get('titulo')[:50]}...**")
+                            with st.expander("📖 Ler"):
+                                try:
+                                    if n.get('imagem_url'): st.image(n.get('imagem_url'), use_container_width=True)
+                                except:
+                                    st.warning("Imagem bloqueada pela fonte.")
+                                st.write(n.get('resumo', 'Sem resumo.'))
+                                st.link_button("Ver Fonte", n.get('link_original'), use_container_width=True)
+                                if st.button("🗑️", key=f"del_n_{n['id']}"):
+                                    db.collection("noticias").document(n['id']).delete(); st.rerun()
+                else:
+                    st.info("Nenhuma notícia no banco.")
+            except Exception as e:
+                st.error(f"Erro ao carregar vitrine: {e}")
+
         # ----------------------------------------------------------------------
-        # TAB: PARCEIROS (AUTONOMIA TOTAL)
+        # TAB: PARCEIROS (GESTÃO COMPLETA)
         # ----------------------------------------------------------------------
         with tab_profissionais:
             try:
@@ -1161,7 +1146,8 @@ with menu_abas[3]:
                                 cf1, cf2 = st.columns([1, 2])
                                 with cf1:
                                     f_url = p.get('foto_url', '')
-                                    if f_url: st.image(f"data:image/jpeg;base64,{f_url}" if len(str(f_url)) > 100 else f_url, width=80)
+                                    if f_url: 
+                                        st.image(f"data:image/jpeg;base64,{f_url}" if len(str(f_url)) > 100 else f_url, width=80)
                                     up_p = st.file_uploader("Trocar Foto", type=['jpg','png'], key=f"p_{pid}")
                                 with cf2:
                                     up_v = st.file_uploader("Trocar Vitrine (Máx 4)", type=['jpg','png'], accept_multiple_files=True, key=f"v_{pid}")
@@ -1175,11 +1161,10 @@ with menu_abas[3]:
                                     db.collection("profissionais").document(pid).update(upd)
                                     st.success("Atualizado!"); st.rerun()
 
-                            # Ações Rápidas
                             cr1, cr2, cr3 = st.columns(3)
                             if cr1.button("✅ APROVAR", key=f"ok_{pid}"): db.collection("profissionais").document(pid).update({"aprovado": True}); st.rerun()
                             if cr2.button("🚫 SUSPENDER", key=f"no_{pid}"): db.collection("profissionais").document(pid).update({"aprovado": False}); st.rerun()
-                            if cr3.button("🗑️ EXCLUIR", key=f"del_{pid}", type="secondary"): db.collection("profissionais").document(pid).delete(); st.rerun()
+                            if cr3.button("🗑️ EXCLUIR", key=f"del_{pid}"): db.collection("profissionais").document(pid).delete(); st.rerun()
             except Exception as e:
                 st.error(f"Erro na Torre: {e}")
 # ==============================================================================
@@ -1267,6 +1252,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
