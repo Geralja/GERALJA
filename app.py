@@ -441,154 +441,103 @@ def criar_link_zap(numero, msg):
     return f"https://api.whatsapp.com/send?phone={numero}&text={urllib.parse.quote(msg)}"
 
 # ==============================================================================
-# --- ABA 0: O NOVO PORTAL GRAJAÚ TEM ---
+# --- ABA 0: PORTAL GRAJAÚ TEM (V4.0 - ESTÁVEL) ---
 # ==============================================================================
 with menu_abas[0]:
-    # --- NOVIDADE: HEADER DO PORTAL E VENDA DE ANÚNCIOS ---
-    st.markdown("### 📰 O Grajaú Tem - Notícias e Oportunidades")
+    st.markdown("### 🏙️ O que você precisa no Grajaú?")
     
-    # Seção de pacotes (Dinheiro rápido)
-    col_venda1, col_venda2, col_venda3 = st.columns(3)
-    
-    with col_venda1:
-        st.markdown(f'''<div style="border:1px solid #cd7f32; padding:10px; border-radius:10px; text-align:center; height:150px;">
-            <b style="color:#cd7f32;">BRONZE 🥉</b><br>
-            <span style="font-size:18px;">R$ 150</span><br><br>
-            <a href="https://wa.me/5511980168513?text=Quero+o+Pacote+Bronze" target="_blank" style="background:#25D366; color:white; padding:5px 10px; border-radius:5px; text-decoration:none; font-weight:bold;">COMPRAR</a>
-        </div>''', unsafe_allow_html=True)
+    # 1. MOTOR DE LOCALIZAÇÃO (ALTA PRECISÃO)
+    with st.expander("📍 Sua Localização (GPS)", expanded=False):
+        # component_key diferente para forçar atualização
+        loc = get_geolocation(component_key="geo_high_prec") 
+        if loc and 'coords' in loc:
+            minha_lat = loc['coords']['latitude']
+            minha_lon = loc['coords']['longitude']
+            precisao = loc['coords'].get('accuracy', 0)
+            st.success(f"GPS Ativo (Precisão: {precisao:.0f}m)")
+        else:
+            minha_lat, minha_lon = LAT_REF, LON_REF
+            st.warning("Usando localização padrão (Centro). Ative o GPS para maior precisão.")
 
-    with col_venda2:
-        st.markdown(f'''<div style="border:1px solid #c0c0c0; padding:10px; border-radius:10px; text-align:center; height:150px;">
-            <b style="color:#c0c0c0;">PRATA 🥈</b><br>
-            <span style="font-size:18px;">R$ 400</span><br><br>
-            <a href="https://wa.me/5511980168513?text=Quero+o+Pacote+Prata" target="_blank" style="background:#25D366; color:white; padding:5px 10px; border-radius:5px; text-decoration:none; font-weight:bold;">COMPRAR</a>
-        </div>''', unsafe_allow_html=True)
+    # 2. CAMPOS DE BUSCA
+    c1, c2 = st.columns([3, 1])
+    termo_busca = c1.text_input("Ex: 'Cano estourado' ou 'Pizzaria'", key="main_search_v4")
+    raio_km = c2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 20, 50, 500], value=5)
 
-    with col_venda3:
-        st.markdown(f'''<div style="border:2px solid #FFD700; padding:10px; border-radius:10px; text-align:center; height:150px; background:#fffdf0;">
-            <b style="color:#FFD700;">OURO 🥇</b><br>
-            <span style="font-size:18px; font-weight:bold;">R$ 700</span><br><br>
-            <a href="https://wa.me/5511980168513?text=Quero+o+Pacote+Ouro" target="_blank" style="background:#FFD700; color:black; padding:5px 10px; border-radius:5px; text-decoration:none; font-weight:bold;">COMPRAR</a>
-        </div>''', unsafe_allow_html=True)
-
-    st.markdown("---")
-
-    # --- ABAIXO DA VENDA, O BUSCADOR QUE JÁ EXISTE ---
-    st.markdown("#### 🔍 Busca Inteligente no Bairro")
-
-    st.divider()
-
-    # --- 2. MOTOR DE BUSCA HÍBRIDO (MANUAL + 4 IAs) ---
-    st.markdown("### 🏙️ O que você procura hoje?")
-    
- with st.expander("📍 Sua Localização (GPS)", expanded=False):
-    # Forçamos alta precisão e timeout menor para ser rápido
-    loc = get_geolocation(component_key="geo_preciso") 
-    
-    if loc and 'coords' in loc:
-        minha_lat = loc['coords']['latitude']
-        minha_lon = loc['coords']['longitude']
-        precisao = loc['coords'].get('accuracy', 0)
-        
-        st.success(f"Localização detectada (Precisão: {precisao:.0f}m)")
-    else:
-        minha_lat, minha_lon = LAT_REF, LON_REF
-        st.warning("Usando localização padrão (Centro do Grajaú). Ative o GPS para resultados melhores.")
-
-    col_txt, col_raio = st.columns([3, 1])
-    termo = col_txt.text_input("", placeholder="Ex: 'chuva na belmira', 'mecanico' ou 'pizza'", key="input_master")
-    raio_km = col_raio.select_slider("KM", options=[1, 3, 5, 10, 50, 500], value=5)
-
-    if termo:
-        with st.status("🔍 Orquestrando IAs e Banco de Dados...", expanded=True) as status:
-            # PASSO A: CONSULTA LISTA MANUAL (configuracoes/categorias/lista)
-            st.write("📂 Checando Categorias Oficiais...")
+    if termo_busca:
+        with st.status("🔍 Buscando...", expanded=False) as status:
+            # A: BUSCA MANUAL NAS CONFIGURAÇÕES
+            st.write("📂 Verificando categorias oficiais...")
             doc_cat = db.collection("configuracoes").document("categorias").get()
-            lista_manual = doc_cat.to_dict().get("lista", []) if doc_cat.exists else []
+            lista_oficial = doc_cat.to_dict().get("lista", []) if doc_cat.exists else []
             
-            cat_final = None
-            for c in lista_manual:
-                if c.lower() in termo.lower():
-                    cat_final = c
+            cat_ia = None
+            for c in lista_oficial:
+                if c.lower() in termo_busca.lower():
+                    cat_ia = c
                     break
             
-            # PASSO B: SE NÃO ACHOU, ACIONA O CÉREBRO DAS 4 IAs
-            if not cat_final:
-                st.write("🤖 Consultando Inteligência Artificial (Groq/Gemini/GPT)...")
-                # Aqui sua função 'processar_ia_avancada' faz o trabalho sujo
-                cat_final = processar_ia_avancada(termo)
+            # B: SE NÃO ACHOU MANUAL, USA A IA
+            if not cat_ia:
+                st.write("🤖 IA classificando seu pedido...")
+                cat_ia = processar_ia_avancada(termo_busca)
             
-            # PASSO C: BUSCA NO FIREBASE
-            st.write(f"🎯 Buscando profissionais de **{cat_final}**...")
-            profs_ref = db.collection("profissionais").where("area", "==", cat_final).where("aprovado", "==", True).stream()
+            # C: BUSCA NO FIREBASE
+            profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
             
-            # PASSO D: FILTRO DE DISTÂNCIA E RANKING
             lista_ranking = []
-            for p_doc in profs_ref:
+            for p_doc in profs:
                 p = p_doc.to_dict()
                 p['id'] = p_doc.id
-                distancia = calcular_distancia_real(m_lat, m_lon, p.get('lat', LAT_REF), p.get('lon', LON_REF))
+                # Cálculo de distância usando sua função
+                dist = calcular_distancia_real(minha_lat, minha_lon, p.get('lat', LAT_REF), p.get('lon', LON_REF))
                 
-                if distancia <= raio_km:
-                    p['dist'] = distancia
-                    # Score: Elite (Saldo > 0) ganha 1000 pontos de bônus no ranking
-                    p['score_ranking'] = (1000 if p.get('verificado') and p.get('saldo', 0) > 0 else 0)
+                if dist <= raio_km:
+                    p['dist'] = dist
+                    # Ranking: Verificados com saldo no topo
+                    p['score_elite'] = (1000 if p.get('verificado') and p.get('saldo', 0) > 0 else 0)
                     lista_ranking.append(p)
 
-            # ORDENAÇÃO: 1º Mais Perto, 2º Maior Score Elite
-            lista_ranking.sort(key=lambda x: (x['dist'], -x['score_ranking']))
-            status.update(label="Busca concluída com precisão!", state="complete")
+            # Ordenação: 1º Proximidade, 2º Score Elite
+            lista_ranking.sort(key=lambda x: (x['dist'], -x['score_elite']))
+            status.update(label=f"Resultados para {cat_ia} encontrados!", state="complete")
 
-        # --- 3. EXIBIÇÃO DOS RESULTADOS (DESIGN VITRINE) ---
+        # 3. RENDERIZAÇÃO DOS CARDS
         if not lista_ranking:
-            st.warning(f"Nenhum resultado para '{cat_final}' nesta distância.")
+            st.warning(f"Nenhum profissional de '{cat_ia}' encontrado nesta distância.")
         else:
             for p in lista_ranking:
-                d_format = f"{p['dist']:.1f}"
-                eh_elite = p['score_ranking'] > 0
-                cor_borda = "#FFD700" if eh_elite else "#0047AB"
-                link_zap = criar_link_zap(p.get('whatsapp', ''), f"Olá {p.get('nome')}, vi seu anúncio no Grajaú Tem!")
+                # Tratamento de Foto de Perfil (Base64 vs URL)
+                f_perfil = p.get('foto_url', '')
+                if f_perfil and not str(f_perfil).startswith("http"):
+                    f_perfil = f"data:image/jpeg;base64,{f_perfil}"
+                elif not f_perfil:
+                    f_perfil = "https://cdn-icons-png.flaticon.com/512/149/149071.png"
                 
-                # Vitrine de fotos (Base64 ou URL)
-                fotos_html = ""
-                for i in range(1, 11):
-                    f = p.get(f'f{i}')
-                    if f and len(str(f)) > 50:
-                        src = f if str(f).startswith("data") else f"data:image/jpeg;base64,{f}"
-                        fotos_html += f'<div class="social-card" onclick="abrirModal(`{src}`, `{link_zap}`)"><img src="{src}"></div>'
+                is_elite = p['score_elite'] > 0
+                cor_borda = "#FFD700" if is_elite else "#0047AB"
+                zap_link = f"https://wa.me/{limpar_whatsapp(p.get('whatsapp',''))}?text=Vi+seu+perfil+no+GeralJa"
 
                 st.markdown(f"""
-                <div class="cartao-geral" style="border-left: 8px solid {cor_borda}; background:white; padding:15px; border-radius:20px; margin-bottom:20px; box-shadow:0 4px 12px rgba(0,0,0,0.1); color:black;">
-                    <div style="font-size:11px; color:#0047AB; font-weight:bold; margin-bottom:5px;">
-                        📍 a {d_format} km de você {" | 🏆 ELITE" if eh_elite else ""}
+                <div style="background:white; border-radius:20px; border-left:8px solid {cor_borda}; padding:15px; margin-bottom:15px; box-shadow:0 4px 10px rgba(0,0,0,0.1); color:black;">
+                    <div style="font-size:11px; color:#0047AB; font-weight:bold; margin-bottom:8px;">
+                        📍 a {p['dist']:.1f} km {" | 🏆 ELITE" if is_elite else ""}
                     </div>
-                    <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
-                        <img src="{p.get('foto_url', 'https://via.placeholder.com/150')}" style="width:55px; height:55px; border-radius:50%; object-fit:cover;">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <img src="{f_perfil}" style="width:55px; height:55px; border-radius:50%; object-fit:cover; border:2px solid #eee;">
                         <div>
                             <h4 style="margin:0; color:#1e3a8a;">{str(p.get('nome','')).upper()}</h4>
-                            <p style="margin:0; font-size:12px; color:#555;">{str(p.get('descricao',''))[:90]}...</p>
+                            <p style="margin:0; color:#666; font-size:12px;">{str(p.get('descricao',''))[:80]}...</p>
                         </div>
                     </div>
-                    <div class="social-track" style="display:flex; overflow-x:auto; gap:10px;">{fotos_html}</div>
-                    <a href="{link_zap}" target="_blank" style="display:block; background:#25D366; color:white; text-align:center; padding:12px; border-radius:12px; text-decoration:none; font-weight:bold; margin-top:10px;">💬 CHAMAR NO WHATSAPP</a>
+                    <a href="{zap_link}" target="_blank" style="display:block; background:#25D366; color:white; text-align:center; padding:12px; border-radius:12px; text-decoration:none; font-weight:bold; margin-top:12px;">💬 CHAMAR NO WHATSAPP</a>
                 </div>
                 """, unsafe_allow_html=True)
 
-# CSS/JS DO MODAL (Coloque fora de qualquer bloco 'if' para funcionar sempre)
-st.markdown("""
-<style>
-    .social-track::-webkit-scrollbar { display: none; }
-    .social-card { flex: 0 0 180px; height: 250px; border-radius: 10px; overflow: hidden; cursor: pointer; }
-    .social-card img { width: 100%; height: 100%; object-fit: cover; }
-</style>
-<script>
-function abrirModal(src, link) {
-    window.parent.document.getElementById('imgExpandida').src = src;
-    window.parent.document.getElementById('linkZapModal').href = link;
-    window.parent.document.getElementById('meuModal').style.display = 'flex';
-}
-</script>
-""", unsafe_allow_html=True)
+# 4. NOTÍCIAS RELEVANTES (OPCIONAL - ABAIXO DOS RESULTADOS)
+st.markdown("---")
+st.subheader("📰 Notícias Locais")
+# Chamar sua nova função de notícias aqui
 # ==============================================================================
 # --- SEÇÃO DE NOTÍCIAS (LOGO ABAIXO DO BUSCADOR) ---
 # ==============================================================================
@@ -1174,6 +1123,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
