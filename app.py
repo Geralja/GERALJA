@@ -943,7 +943,7 @@ with menu_abas[3]:
     import requests
     import feedparser
 
-    def otimizar_imagem(image_file, size=(800, 800)):
+    def otimizar_imagem(image_file, size=(500, 500)):
         try:
             img = Image.open(image_file)
             if img.mode in ("RGBA", "P"): img = img.convert("RGB")
@@ -1176,6 +1176,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
