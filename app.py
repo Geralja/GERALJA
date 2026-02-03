@@ -971,6 +971,7 @@ with menu_abas[3]:
         if st.button("🚪 Sair", key="logout_adm"): 
             st.session_state.admin_logado = False; st.rerun()
 
+        # Define as abas dentro do ambiente logado
         tab_profissionais, tab_noticias, tab_loja, tab_vendas, tab_recibos, tab_categorias = st.tabs([
             "👥 Parceiros", "📰 Notícias", "🛍️ Loja", "📜 Vendas", "🎫 Recibos", "📁 Categorias"
         ])
@@ -1019,38 +1020,34 @@ with menu_abas[3]:
                 vd = v.to_dict()
                 st.write(f"✅ {vd.get('usuario_nome')} comprou {vd.get('produto_nome')}")
 
-with tab_recibos:
+        # AQUI ESTAVA O ERRO: tab_recibos agora está dentro do 'else' (com recuo)
+        with tab_recibos:
             st.subheader("🎫 Gerador de Recibos Brasil Elite")
-            
-            # 1. CSS Global para garantir que as fontes carreguem no App
             st.markdown('<link href="https://fonts.googleapis.com/css2?family=Inter:wght@900&family=Monsieur+La+Doulaise&display=swap" rel="stylesheet">', unsafe_allow_html=True)
             
             meses = {1:"Janeiro", 2:"Fevereiro", 3:"Março", 4:"Abril", 5:"Maio", 6:"Junho", 7:"Julho", 8:"Agosto", 9:"Setembro", 10:"Outubro", 11:"Novembro", 12:"Dezembro"}
 
-            # 2. Campos de Entrada
             with st.container(border=True):
                 c1, c2 = st.columns(2)
-                nome_c = c1.text_input("Nome do Cliente:", placeholder="Ex: Cury Construtora")
-                pacote_c = c2.text_area("Serviço:", placeholder="Descreva o pacote...", height=68)
+                nome_c = c1.text_input("Nome do Cliente:", placeholder="Ex: Cury Construtora", key="n_rec")
+                pacote_c = c2.text_area("Serviço:", placeholder="Descreva o pacote...", height=68, key="p_rec")
                 
                 c3, c4 = st.columns(2)
-                valor_c = c3.number_input("Valor (R$):", min_value=0.0, format="%.2f")
-                data_c = c4.date_input("Data:", value=datetime.now(fuso_br))
+                valor_c = c3.number_input("Valor (R$):", min_value=0.0, format="%.2f", key="v_rec")
+                data_c = c4.date_input("Data:", value=datetime.now(fuso_br), key="d_rec")
                 
                 c5, c6 = st.columns(2)
-                resp_c = c5.text_input("Assinatura:", value="Diretoria GeralJá")
-                zap_c = c6.text_input("WhatsApp para link:", value="11991853488")
+                resp_c = c5.text_input("Assinatura:", value="Diretoria GeralJá", key="a_rec")
+                zap_c = c6.text_input("WhatsApp para link:", value="11991853488", key="z_rec")
                 
-                # O Segredo: Usar um estado para manter o recibo na tela
                 if st.button("✨ GERAR RECIBO AGORA", use_container_width=True, type="primary"):
                     if nome_c and pacote_c:
                         data_f = f"{data_c.day} de {meses[data_c.month]} de {data_c.year}"
                         num_doc = datetime.now().strftime('%y%m%d%H%M')
                         
-                        # Montagem do HTML
                         html_recibo = f"""
                         <div style="padding: 30px; border: 2px solid #0047AB; border-top: 12px solid #FF8C00; border-radius: 15px; background: white; font-family: sans-serif; max-width: 600px; margin: 20px auto; box-shadow: 0 10px 25px rgba(0,0,0,0.1);">
-                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; font-family: 'Inter', sans-serif;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px;">
                                 <div>
                                     <span style="color: #0047AB; font-weight: 900; font-size: 26px;">GERAL</span><span style="color: #FF8C00; font-weight: 900; font-size: 26px;">JÁ</span>
                                     <div style="font-size: 9px; font-weight: 700; color: #64748B;">BRASIL ELITE EDITION</div>
@@ -1060,17 +1057,13 @@ with tab_recibos:
                                     <div style="font-size: 9px; color: #64748B; margin-top: 4px;">DOC Nº {num_doc}</div>
                                 </div>
                             </div>
-
-                            <h2 style="text-align: center; color: #0047AB; font-size: 18px; font-weight: 900; margin: 25px 0; font-family: 'Inter', sans-serif;">RECIBO DE QUITAÇÃO</h2>
-
+                            <h2 style="text-align: center; color: #0047AB; font-size: 18px; font-weight: 900; margin: 25px 0;">RECIBO DE QUITAÇÃO</h2>
                             <div style="font-size: 15px; line-height: 1.6; color: #1e293b; text-align: justify;">
                                 Recebemos de <b style="color: #0047AB;">{nome_c.upper()}</b> a importância de <b>R$ {valor_c:,.2f}</b> referente ao pagamento de:
                                 <div style="margin: 10px 0; padding: 10px; background: #f8fafc; border-left: 4px solid #FF8C00; font-style: italic;">{pacote_c}</div>
                                 Damos por este plena e irrevogável quitação.
                             </div>
-
                             <p style="text-align: right; font-weight: 700; color: #64748B; font-size: 13px; margin-top: 20px;">Grajaú, SP — {data_f}</p>
-
                             <div style="margin-top: 30px; display: flex; justify-content: space-between; align-items: flex-end;">
                                 <div style="font-size: 10px; color: #94a3b8;"><b>EMISSOR:</b> GERALJÁ INTERMEDIAÇÕES</div>
                                 <div style="text-align: center; width: 200px;">
@@ -1080,16 +1073,16 @@ with tab_recibos:
                             </div>
                         </div>
                         """
-                        
-                        # AQUI É ONDE O ERRO ACONTECIA: Agora usamos unsafe_allow_html=True corretamente
                         st.markdown("---")
                         st.markdown(html_recibo, unsafe_allow_html=True)
                         
-                        # Botão de WhatsApp
                         link_zap = f"https://wa.me/55{zap_c.replace(' ','').replace('-','')}?text=Segue%20seu%20recibo%20GeralJá"
                         st.link_button("📲 ENVIAR PARA WHATSAPP", link_zap, use_container_width=True)
                     else:
                         st.error("Por favor, preencha Nome e Serviço.")
+
+        with tab_profissionais:
+            st.write("A área de gestão de profissionais deve ser inserida aqui.")
 # ==============================================================================
 # ABA 5: FEEDBACK
 # ==============================================================================
@@ -1175,6 +1168,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
