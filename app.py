@@ -535,81 +535,81 @@ with menu_abas[0]:
                 """, unsafe_allow_html=True)
 
 # ==============================================================================
-# --- SEÇÃO DE NOTÍCIAS HÍBRIDA (MANUAL + AUTOMÁTICA) ---
+# --- SEÇÃO DE NOTÍCIAS HÍBRIDA (VERSÃO OTIMIZADA) ---
 # ==============================================================================
 st.markdown("---")
 st.subheader("📰 Plantão Grajaú Tem")
 
 import feedparser
+import urllib.parse
 
-# 1. BUSCAR NOTÍCIAS MANUAIS DO FIREBASE (LIMITADO A 2 PARA O TOPO)
-noticias_fb = list(db.collection("noticias").order_by("data", direction="DESCENDING").limit(2).stream())
+# Imagem padrão para quando a notícia não tiver foto (especialmente Google News)
+IMG_PADRAO = "https://images.unsplash.com/photo-1504711432869-0df30d7eaf4d?w=500&q=80"
 
-# 2. FUNÇÃO PARA BUSCAR NOTÍCIAS AUTOMÁTICAS
+# 1. BUSCAR NOTÍCIAS MANUAIS (Prioridade Máxima)
+try:
+    noticias_fb = list(db.collection("noticias").order_by("data", direction="DESCENDING").limit(2).stream())
+except:
+    noticias_fb = []
+
+# 2. BUSCAR NOTÍCIAS AUTOMÁTICAS (Fallback)
 def buscar_noticias_rss(busca="Grajaú São Paulo"):
     try:
         url_rss = f"https://news.google.com/rss/search?q={urllib.parse.quote(busca)}&hl=pt-BR&gl=BR&ceid=BR:pt-419"
         feed = feedparser.parse(url_rss)
-        return feed.entries[:2]
+        return feed.entries[:4] # Pegamos um pouco mais para garantir
     except:
         return []
 
 noticias_auto = buscar_noticias_rss()
 
-# 3. RENDERIZAÇÃO EM COLUNAS
-col_n1, col_n2 = st.columns(2)
+# 3. ORGANIZAÇÃO DA FILA DE EXIBIÇÃO
+# Criamos uma lista unificada onde os manuais vêm primeiro
+fila_noticias = []
+for n in noticias_fb:
+    dados = n.to_dict()
+    fila_noticias.append({
+        "titulo": dados.get('titulo', 'Sem título'),
+        "link": dados.get('link_original', '#'),
+        "img": dados.get('imagem_url', IMG_PADRAO),
+        "fonte": "⭐ DESTAQUE LOCAL",
+        "cor": "#FFD700" # Dourado para manual
+    })
 
-# LÓGICA: Se houver notícia manual, ela vai para a Coluna 1. 
-# A Coluna 2 fica para a segunda manual ou para a primeira automática.
+# Preenchemos o que sobrar das 2 colunas com as automáticas
+for n in noticias_auto:
+    if len(fila_noticias) >= 2: break
+    fila_noticias.append({
+        "titulo": n.title.split(' - ')[0],
+        "link": n.link,
+        "img": IMG_PADRAO, # Google RSS raramente envia imagem
+        "fonte": f"📡 {n.source.get('title', 'Google News')}",
+        "cor": "#0047AB" # Azul para automático
+    })
 
-# --- COLUNA 1 ---
-with col_n1:
-    if noticias_fb:
-        n = noticias_fb[0].to_dict()
-        st.markdown(f"""
-            <div style="background:white; border-radius:15px; padding:0px; margin-bottom:20px; box-shadow:0 4px 8px rgba(0,0,0,0.1); overflow:hidden; border-bottom: 5px solid #FFD700; height: 350px;">
-                <img src="{n.get('imagem_url', 'https://via.placeholder.com/400x200')}" style="width:100%; height:150px; object-fit:cover;">
-                <div style="padding:15px;">
-                    <span style="background:#fff7e6; color:#b8860b; font-size:10px; font-weight:bold; padding:2px 8px; border-radius:5px;">⭐ DESTAQUE LOCAL</span>
-                    <h4 style="margin:10px 0 5px 0; color:#111; font-size:15px; line-height:1.2;">{n.get('titulo')[:60]}...</h4>
-                    <a href="{n.get('link_original')}" target="_blank" style="text-decoration:none; color:#1e3a8a; font-weight:bold; font-size:13px;">Ler no Instagram →</a>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-    elif noticias_auto:
-        n = noticias_auto[0]
-        st.markdown(f"""
-            <div style="background:white; border-radius:15px; padding:15px; margin-bottom:20px; box-shadow:0 4px 8px rgba(0,0,0,0.1); border-bottom: 5px solid #0047AB; height: 250px;">
-                <span style="background:#eef2ff; color:#0047AB; font-size:10px; font-weight:bold; padding:2px 8px; border-radius:5px;">{n.source.get('title', 'Google News')}</span>
-                <h4 style="margin:10px 0; color:#111; font-size:14px;">{n.title.split(' - ')[0][:80]}...</h4>
-                <a href="{n.link}" target="_blank" style="text-decoration:none; color:#0047AB; font-weight:bold; font-size:12px;">Ler Notícia Completa →</a>
-            </div>
-        """, unsafe_allow_html=True)
-
-# --- COLUNA 2 ---
-with col_n2:
-    # Se houver uma segunda notícia manual, mostra ela. Se não, mostra a automática.
-    if len(noticias_fb) > 1:
-        n = noticias_fb[1].to_dict()
-        st.markdown(f"""
-            <div style="background:white; border-radius:15px; padding:0px; margin-bottom:20px; box-shadow:0 4px 8px rgba(0,0,0,0.1); overflow:hidden; border-bottom: 5px solid #FFD700; height: 350px;">
-                <img src="{n.get('imagem_url', 'https://via.placeholder.com/400x200')}" style="width:100%; height:150px; object-fit:cover;">
-                <div style="padding:15px;">
-                    <span style="background:#fff7e6; color:#b8860b; font-size:10px; font-weight:bold; padding:2px 8px; border-radius:5px;">⭐ DESTAQUE LOCAL</span>
-                    <h4 style="margin:10px 0 5px 0; color:#111; font-size:15px; line-height:1.2;">{n.get('titulo')[:60]}...</h4>
-                    <a href="{n.get('link_original')}" target="_blank" style="text-decoration:none; color:#1e3a8a; font-weight:bold; font-size:13px;">Ler no Instagram →</a>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-    elif len(noticias_auto) > 1:
-        n = noticias_auto[1]
-        st.markdown(f"""
-            <div style="background:white; border-radius:15px; padding:15px; margin-bottom:20px; box-shadow:0 4px 8px rgba(0,0,0,0.1); border-bottom: 5px solid #0047AB; height: 250px;">
-                <span style="background:#eef2ff; color:#0047AB; font-size:10px; font-weight:bold; padding:2px 8px; border-radius:5px;">{n.source.get('title', 'Google News')}</span>
-                <h4 style="margin:10px 0; color:#111; font-size:14px;">{n.title.split(' - ')[0][:80]}...</h4>
-                <a href="{n.link}" target="_blank" style="text-decoration:none; color:#0047AB; font-weight:bold; font-size:12px;">Ler Notícia Completa →</a>
-            </div>
-        """, unsafe_allow_html=True)
+# 4. RENDERIZAÇÃO EM COLUNAS
+if fila_noticias:
+    cols = st.columns(2)
+    for i, noticia in enumerate(fila_noticias):
+        with cols[i]:
+            st.markdown(f"""
+                <a href="{noticia['link']}" target="_blank" style="text-decoration:none; color:inherit;">
+                    <div style="background:white; border-radius:15px; margin-bottom:20px; box-shadow:0 4px 12px rgba(0,0,0,0.08); overflow:hidden; border-bottom: 5px solid {noticia['cor']}; height: 320px;">
+                        <div style="height:150px; background-image: url('{noticia['img']}'); background-size:cover; background-position:center;"></div>
+                        <div style="padding:15px;">
+                            <span style="background:{noticia['cor']}22; color:{noticia['cor']}; font-size:10px; font-weight:bold; padding:3px 10px; border-radius:50px;">
+                                {noticia['fonte']}
+                            </span>
+                            <h4 style="margin:12px 0 8px 0; color:#1a1a1a; font-size:15px; line-height:1.3; height: 60px; overflow: hidden;">
+                                {noticia['titulo'][:85]}{'...' if len(noticia['titulo']) > 85 else ''}
+                            </h4>
+                            <div style="color:{noticia['cor']}; font-weight:bold; font-size:12px; margin-top:10px;">Ler matéria completa →</div>
+                        </div>
+                    </div>
+                </a>
+            """, unsafe_allow_html=True)
+else:
+    st.info("Aguardando novas atualizações da região.")
 # ==============================================================================
 # ABA 2: 🚀 PAINEL DO PARCEIRO (COMPLETO: FB + IMAGENS + FAQ + EXCLUSÃO)
 # ==============================================================================
@@ -1176,6 +1176,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
