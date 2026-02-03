@@ -1066,8 +1066,7 @@ else:
         # ----------------------------------------------------------------------
         # TAB: GESTÃO DE PARCEIROS (EDIÇÃO DE TEXTO + FOTOS)
         # ----------------------------------------------------------------------
-              
-              with tab_profissionais:
+        with tab_profissionais:
             try:
                 profs_ref = list(db.collection("profissionais").stream())
                 profs_data = [p.to_dict() | {"id": p.id} for p in profs_ref]
@@ -1105,7 +1104,7 @@ else:
                                 cf1, cf2 = st.columns([1, 2])
                                 with cf1:
                                     f_p = p.get('foto_url', '')
-                                    if f_p: st.image(f"data:image/jpeg;base64,{f_p}" if len(f_p) > 100 else f_p, width=80)
+                                    if f_p: st.image(f"data:image/jpeg;base64,{f_p}" if len(str(f_p)) > 100 else f_p, width=80)
                                     up_perfil = st.file_uploader("Trocar Foto", type=['jpg','png'], key=f"p_{pid}")
                                 with cf2:
                                     up_vitrine = st.file_uploader("Trocar Vitrine (Máx 4)", type=['jpg','png'], accept_multiple_files=True, key=f"v_{pid}")
@@ -1217,6 +1216,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
