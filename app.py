@@ -1011,6 +1011,52 @@ with menu_abas[3]:
         # TAB: NOTÍCIAS (CADASTRO + VITRINE MODERNA)
         # ----------------------------------------------------------------------
         with tab_noticias:
+         import feedparser # Para o Google News RSS
+
+# --- DENTRO DA ABA NOTÍCIAS (tab_noticias) ---
+with tab_noticias:
+    st.subheader("🤖 Sugestões Automáticas (IA)")
+    
+    # Função para buscar do Google News (Gratuito e Ilimitado)
+    def buscar_google_news():
+        url = "https://news.google.com/rss/search?q=Grajaú+São+Paulo&hl=pt-BR&gl=BR&ceid=BR:pt-419"
+        feed = feedparser.parse(url)
+        if feed.entries:
+            entry = feed.entries[0] # Pega a primeira
+            return {"titulo": entry.title, "link": entry.link, "fonte": "Google News"}
+        return None
+
+    # Interface de Captação
+    if st.button("🔍 Buscar Novidades na Web"):
+        col_api1, col_api2, col_api3 = st.columns(3)
+        
+        # Sugestão 1: Google RSS
+        noticia_g = buscar_google_news()
+        if noticia_g:
+            with col_api1:
+                st.info(f"**{noticia_g['fonte']}**")
+                st.write(noticia_g['titulo'][:80]...)
+                if st.button("✅ Postar Esta", key="btn_g"):
+                    db.collection("noticias").add({
+                        "titulo": noticia_g['titulo'],
+                        "link_original": noticia_g['link'],
+                        "imagem_url": "https://images.unsplash.com/photo-1504711432869-ed3bd40301f7", # Placeholder
+                        "data": datetime.now(fuso_br),
+                        "categoria": "AUTOMATICA"
+                    })
+                    st.success("Enviado!"); st.rerun()
+
+        # Sugestão 2 e 3 (Aqui você inseriria NewsAPI e GNews com suas chaves)
+        with col_api2:
+            st.warning("NewsAPI: Requer Chave API")
+        with col_api3:
+            st.warning("GNews: Requer Chave API")
+
+    st.divider()
+    
+    # --- SEU FORMULÁRIO MANUAL CONTINUA AQUI ABAIXO ---
+    st.subheader("🚀 Publicar Manualmente")
+    # ... (resto do seu código de formulário)
             # 1. FORMULÁRIO DE POSTAGEM (QUE VOCÊ QUERIA DE VOLTA)
             st.subheader("🚀 Publicar Nova Notícia")
             with st.form("nova_noticia_adm"):
@@ -1193,6 +1239,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
