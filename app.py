@@ -481,7 +481,7 @@ with menu_abas[0]:
     # --- 2. MOTOR DE BUSCA HÍBRIDO (MANUAL + 4 IAs) ---
     st.markdown("### 🏙️ O que você procura hoje?")
     
-    with st.expander("📍 Sua Localização (GPS)", expanded=False):
+ with st.expander("📍 Sua Localização (GPS)", expanded=False):
     # Forçamos alta precisão e timeout menor para ser rápido
     loc = get_geolocation(component_key="geo_preciso") 
     
@@ -1174,6 +1174,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
