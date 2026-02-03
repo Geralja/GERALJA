@@ -975,7 +975,7 @@ with menu_abas[3]:
         # Define as abas dentro do ambiente logado (TODAS MANTIDAS)
        tab_profissionais, tab_noticias, tab_loja, tab_vendas, tab_recibos, tab_categorias, tab_metricas = st.tabs([
     "👥 Parceiros", "📰 Notícias", "🛍️ Loja", "📜 Vendas", "🎫 Recibos", "📁 Categorias", "📊 Métricas"
-])
+
         ])
 
         with tab_categorias:
@@ -1373,6 +1373,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
