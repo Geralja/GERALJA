@@ -1119,6 +1119,86 @@ with menu_abas[3]:
                                     db.collection("profissionais").document(pid).update(upd); st.rerun()
                             if st.button("🗑️ EXCLUIR", key=f"del_p_{pid}"): db.collection("profissionais").document(pid).delete(); st.rerun()
             except Exception as e: st.error(f"Erro: {e}")
+                # Adicione "🎫 Recibos" na lista de abas da sua Torre de Controle
+tab_profissionais, tab_noticias, tab_loja, tab_vendas, tab_recibos, tab_categorias = st.tabs([
+    "👥 Parceiros", "📰 Gestão de Notícias", "🛍️ Loja", "📜 Vendas", "🎫 Recibos", "📁 Categorias"
+])
+
+with tab_recibos:
+    st.subheader("🎫 Gerador de Recibos Oficiais")
+    
+    with st.form("gerador_recibo"):
+        c1, c2 = st.columns(2)
+        nome_cliente = c1.text_input("Nome do Cliente/Parceiro:")
+        pacote = c2.text_input("Pacote/Serviço (ex: Plano Premium 30 dias):")
+        
+        c3, c4 = st.columns(2)
+        valor_recibo = c3.number_input("Valor do Pagamento (R$):", min_value=0.0, format="%.2f")
+        data_recibo = c4.date_input("Data do Pagamento:", value=datetime.now(fuso_br))
+        
+        gerar = st.form_submit_button("✨ GERAR PRÉVIA DO RECIBO")
+
+    if gerar:
+        # Template HTML com CSS para Marca D'água e Estilo de Impressão
+        html_recibo = f"""
+        <div style="
+            position: relative;
+            padding: 40px;
+            border: 2px solid #1e3a8a;
+            border-radius: 10px;
+            background-color: white;
+            color: #333;
+            font-family: sans-serif;
+            max-width: 700px;
+            margin: auto;
+            overflow: hidden;
+        ">
+            <div style="
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%) rotate(-30deg);
+                font-size: 80px;
+                color: rgba(30, 58, 138, 0.05);
+                white-space: nowrap;
+                pointer-events: none;
+                z-index: 0;
+                font-weight: bold;
+            ">
+                GERALJÁ GERALJÁ<br>GERALJÁ GERALJÁ
+            </div>
+
+            <div style="position: relative; z-index: 1;">
+                <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #1e3a8a; padding-bottom: 10px;">
+                    <h2 style="margin:0; color:#1e3a8a;">RECIBO DE PAGAMENTO</h2>
+                    <h2 style="margin:0; color:#1e3a8a;">R$ {valor_recibo:,.2f}</h2>
+                </div>
+                
+                <p style="margin-top: 30px; font-size: 18px; line-height: 1.6;">
+                    Recebemos de <b>{nome_cliente.upper()}</b> a importância de 
+                    <b>R$ {valor_recibo:,.2f}</b> referente ao pagamento de <b>{pacote}</b>.
+                </p>
+                
+                <p style="margin-top: 40px; text-align: right;">
+                    Grajaú, São Paulo - {data_recibo.strftime('%d de %B de %Y')}
+                </p>
+
+                <div style="margin-top: 60px; display: flex; justify-content: space-between; align-items: flex-end;">
+                    <div style="font-size: 12px; color: #666;">
+                        <b>EMISSOR:</b> GERALJÁ INTERMEDIAÇÕES<br>
+                        <b>CONTATO:</b> (11) 9XXXX-XXXX<br>
+                        <b>GERALJÁ - O GUIA DO GRAJAÚ</b>
+                    </div>
+                    <div style="text-align: center; border-top: 1px solid #333; width: 250px; padding-top: 5px;">
+                        Assinatura Responsável
+                    </div>
+                </div>
+            </div>
+        </div>
+        <br>
+        <p style="text-align:center; color:gray;">💡 <i>Dica: Para salvar, clique com o botão direito e selecione "Imprimir" e salve como PDF.</i></p>
+        """
+        st.markdown(html_recibo, unsafe_allow_html=True)
 # ==============================================================================
 # ABA 5: FEEDBACK
 # ==============================================================================
@@ -1204,6 +1284,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
