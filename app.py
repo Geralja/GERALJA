@@ -930,7 +930,7 @@ with menu_abas[1]:
             except Exception as e:
                 st.error(f"❌ Erro ao processar perfil: {e}")
 # ==============================================================================
-# ABA 4: 👑 TORRE DE CONTROLE MASTER (COMPLETA | 6 NOTÍCIAS | LOJA INTEGRADA)
+# ABA 4: 👑 TORRE DE CONTROLE MASTER (COMPLETA + REGISTRO DE VENDAS)
 # ==============================================================================
 with menu_abas[3]:
     import pytz
@@ -973,8 +973,9 @@ with menu_abas[3]:
         if st.button("🚪 Sair", key="logout_adm"): 
             st.session_state.admin_logado = False; st.rerun()
 
-        tab_profissionais, tab_noticias, tab_loja, tab_categorias = st.tabs([
-            "👥 Parceiros", "📰 Gestão de Notícias", "🛍️ Loja", "📁 Categorias"
+        # Adicionada a Tab de Vendas
+        tab_profissionais, tab_noticias, tab_loja, tab_vendas, tab_categorias = st.tabs([
+            "👥 Parceiros", "📰 Gestão de Notícias", "🛍️ Loja", "📜 Vendas", "📁 Categorias"
         ])
 
         with tab_categorias:
@@ -1057,6 +1058,23 @@ with menu_abas[3]:
                 with st.expander(f"📦 {item['nome']} - {item['preco']} 💎"):
                     if item.get('foto'): st.image(f"data:image/jpeg;base64,{item['foto']}", width=100)
                     if st.button("Remover", key=f"del_it_{it.id}"): db.collection("loja").document(it.id).delete(); st.rerun()
+
+        with tab_vendas:
+            st.subheader("📜 Histórico de Resgates")
+            vendas_ref = db.collection("vendas").order_by("data", direction="DESCENDING").limit(20).stream()
+            vendas_data = []
+            for v in vendas_ref:
+                vd = v.to_dict()
+                vendas_data.append({
+                    "Data": vd.get('data').astimezone(fuso_br).strftime('%d/%m %H:%M') if vd.get('data') else "---",
+                    "Cliente": vd.get('usuario_nome', 'Desconhecido'),
+                    "Produto": vd.get('produto_nome', '---'),
+                    "Preço": f"{vd.get('preco', 0)} 💎"
+                })
+            if vendas_data:
+                st.table(pd.DataFrame(vendas_data))
+            else:
+                st.info("Nenhuma venda registrada ainda.")
 
         with tab_profissionais:
             try:
@@ -1186,6 +1204,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
