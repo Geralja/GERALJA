@@ -1020,7 +1020,7 @@ with menu_abas[3]:
                 except: st.error("Erro na NewsAPI.")
 
             if 'sugestoes_ia' in st.session_state:
-                cols_sug = st.columns(3)
+                cols_sug = st.columns(4)
                 for idx, sug in enumerate(st.session_state['sugestoes_ia']):
                     with cols_sug[idx]:
                         st.info(f"📍 {sug['fonte']}")
@@ -1049,9 +1049,9 @@ with menu_abas[3]:
                 noticias_ref = db.collection("noticias").order_by("data", direction="DESCENDING").limit(12).stream()
                 lista_noticias = [n.to_dict() | {"id": n.id} for n in noticias_ref]
                 if lista_noticias:
-                    c_v1, c_v2, c_v3 = st.columns(3)
-                    for i, n in enumerate(lista_noticias[:3]):
-                        with [c_v1, c_v2, c_v3][i]:
+                    c_v1, c_v2, c_v3 c_v4, c_v5, c_v6 = st.columns(6)
+                    for i, n in enumerate(lista_noticias[:6]):
+                        with [c_v1, c_v2, c_v3 c_v4, c_v5, c_v6][i]:
                             img_v = n.get('imagem_url', '')
                             st.markdown(f'''<div style="height:140px;overflow:hidden;border-radius:10px;background:#eee;"><img src="{img_v}" style="width:100%;height:100%;object-fit:cover;" onerror="this.src='https://placehold.co/400x200?text=Erro+Link';"></div>''', unsafe_allow_html=True)
                             st.caption(f"**{n.get('titulo')[:50]}...**")
@@ -1216,6 +1216,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
