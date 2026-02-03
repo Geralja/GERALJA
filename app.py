@@ -1008,7 +1008,7 @@ with menu_abas[3]:
                     doc_cat_ref.set({"lista": lista_atual})
                     st.success("Adicionada!"); st.rerun()
 
-# ==============================================================================
+         # ==============================================================================
 # EXIBIÇÃO MODERNA DE NOTÍCIAS (VITRINE)
 # ==============================================================================
 st.markdown("### 📰 Destaques do Grajaú")
@@ -1216,6 +1216,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
