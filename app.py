@@ -1066,7 +1066,8 @@ else:
         # ----------------------------------------------------------------------
         # TAB: GESTÃO DE PARCEIROS (EDIÇÃO DE TEXTO + FOTOS)
         # ----------------------------------------------------------------------
-           with tab_profissionais:
+              
+              with tab_profissionais:
             try:
                 profs_ref = list(db.collection("profissionais").stream())
                 profs_data = [p.to_dict() | {"id": p.id} for p in profs_ref]
@@ -1216,6 +1217,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
