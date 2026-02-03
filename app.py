@@ -937,7 +937,24 @@ with menu_abas[3]:
     from datetime import datetime
     import pandas as pd
     import time
-
+def otimizar_imagem(image_file, size=(800, 800)):
+    from PIL import Image
+    import io
+    import base64
+    
+    try:
+        img = Image.open(image_file)
+        # Converte para RGB (evita erro com PNG transparente)
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
+        
+        img.thumbnail(size)
+        buffer = io.BytesIO()
+        img.save(buffer, format="JPEG", quality=70) # Qualidade 70 para economizar banco
+        return base64.b64encode(buffer.getvalue()).decode()
+    except Exception as e:
+        print(f"Erro ao otimizar: {e}")
+        return None
     # 1. CONFIGURAÇÃO DE TEMPO E SEGURANÇA
     fuso_br = pytz.timezone('America/Sao_Paulo')
     agora_br = datetime.now(fuso_br)
@@ -1201,6 +1218,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
