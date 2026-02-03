@@ -979,15 +979,62 @@ with menu_abas[3]:
         ])
 
         with tab_categorias:
+            st.subheader("📁 Gestão de Profissões e Categorias")
+            
+            # Referência ao banco
             doc_cat_ref = db.collection("configuracoes").document("categorias")
             res_cat = doc_cat_ref.get()
+            
+            # Carrega a lista do Firebase ou a Oficial definida no seu código
             lista_atual = res_cat.to_dict().get("lista", CATEGORIAS_OFICIAIS) if res_cat.exists else CATEGORIAS_OFICIAIS
-            c1, c2 = st.columns([3, 1])
-            nova_cat = c1.text_input("Nova Profissão:")
-            if c2.button("➕ ADICIONAR"):
-                if nova_cat and nova_cat not in lista_atual:
-                    lista_atual.append(nova_cat); lista_atual.sort()
-                    doc_cat_ref.set({"lista": lista_atual}); st.rerun()
+            
+            # --- ÁREA DE ADIÇÃO ---
+            with st.container(border=True):
+                c1, c2 = st.columns([3, 1])
+                nova_cat = c1.text_input("Nova Profissão ou Categoria:", placeholder="Ex: Eletricista, Encanador...")
+                if c2.button("➕ ADICIONAR", use_container_width=True):
+                    if nova_cat:
+                        nova_cat_clean = nova_cat.strip().upper()
+                        if nova_cat_clean not in [c.upper() for c in lista_atual]:
+                            lista_atual.append(nova_cat_clean)
+                            lista_atual.sort()
+                            doc_cat_ref.set({"lista": lista_atual})
+                            st.success(f"✅ {nova_cat_clean} adicionada!")
+                            st.rerun()
+                        else:
+                            st.warning("Esta categoria já existe.")
+                    else:
+                        st.error("Digite um nome!")
+
+            st.markdown("---")
+
+            # --- LISTA DE GESTÃO (Visual Elite) ---
+            st.write(f"📊 **{len(lista_atual)} Categorias Ativas**")
+            
+            # Criando uma grade para não ficar uma lista gigante vertical
+            cols_cat = st.columns(2) 
+            
+            for idx, cat in enumerate(lista_atual):
+                # Alterna entre a coluna 1 e 2
+                col_alvo = cols_cat[idx % 2]
+                
+                with col_alvo.container(border=True):
+                    c_txt, c_del = st.columns([4, 1])
+                    c_txt.markdown(f"**{cat}**")
+                    
+                    # Botão de remoção (Importante para manter a casa limpa)
+                    if c_del.button("🗑️", key=f"del_cat_{idx}"):
+                        lista_atual.remove(cat)
+                        doc_cat_ref.set({"lista": lista_atual})
+                        st.toast(f"Categoria {cat} removida!")
+                        st.rerun()
+
+            # --- BOTÃO DE RESET (Cuidado!) ---
+            with st.expander("⚠️ Zona de Perigo"):
+                if st.button("🔄 RESETAR PARA PADRÃO OFICIAL"):
+                    doc_cat_ref.set({"lista": CATEGORIAS_OFICIAIS})
+                    st.warning("Categorias resetadas para o padrão inicial.")
+                    st.rerun()
 
         with tab_noticias:
             st.subheader("🤖 Captação por IA (Radar 4 APIs)")
@@ -1070,27 +1117,106 @@ with menu_abas[3]:
                     else:
                         st.error("Preencha o Título e o Link para continuar.")
 
-        with tab_loja:
-            with st.form("add_loja"):
-                ln, lp = st.text_input("Nome Produto"), st.number_input("Preço 💎", min_value=1)
-                lf = st.file_uploader("Foto", type=['jpg','png','jpeg'])
-                if st.form_submit_button("SALVAR"):
-                    db.collection("loja").add({"nome": ln, "preco": lp, "foto": otimizar_imagem(lf) if lf else "", "data": datetime.now(fuso_br)})
-                    st.success("Salvo!"); st.rerun()
+       with tab_loja:
+            st.subheader("🛍️ Gestão de Inventário Elite")
+            
+            # --- FORMULÁRIO DE ADIÇÃO (TURBINADO) ---
+            with st.expander("➕ Cadastrar Novo Produto", expanded=False):
+                with st.form("add_loja"):
+                    c1, c2 = st.columns([2, 1])
+                    ln = c1.text_input("Nome do Produto")
+                    lp = c2.number_input("Preço (R$)", min_value=1.0, step=0.50)
+                    
+                    ld = st.text_area("Descrição Curta (Opcional)")
+                    lf = st.file_uploader("Foto do Produto", type=['jpg','png','jpeg'])
+                    
+                    if st.form_submit_button("💎 LANÇAR PRODUTO NA LOJA", use_container_width=True):
+                        if ln:
+                            img_base64 = otimizar_imagem(lf) if lf else ""
+                            db.collection("loja").add({
+                                "nome": ln, 
+                                "preco": lp, 
+                                "descricao": ld,
+                                "foto": img_base64, 
+                                "data": datetime.now(fuso_br),
+                                "status": "ativo"
+                            })
+                            st.success(f"🚀 {ln} já está na vitrine!")
+                            st.rerun()
+                        else:
+                            st.error("Dê um nome ao produto!")
 
-        with tab_vendas:
+            st.markdown("---")
+            
+            # --- VITRINE DE GESTÃO (GERENCIAR ESTOQUE) ---
+            st.write("### 🏬 Itens na Vitrine")
+            produtos = db.collection("loja").order_by("data", direction="DESCENDING").stream()
+            
+            for p in produtos:
+                p_data = p.to_dict()
+                p_id = p.id
+                
+                # Criando um card visual para cada produto na administração
+                with st.container(border=True):
+                    col_img, col_info, col_acao = st.columns([1, 2, 1])
+                    
+                    # Coluna 1: Imagem
+                    if p_data.get("foto"):
+                        col_img.image(f"data:image/jpeg;base64,{p_data['foto']}", use_container_width=True)
+                    else:
+                        col_img.image("https://placehold.co/400x400?text=Sem+Foto", use_container_width=True)
+                    
+                    # Coluna 2: Informações
+                    col_info.subheader(f"{p_data.get('nome')}")
+                    col_info.write(f"**Preço:** R$ {p_data.get('preco'):,.2f}")
+                    if p_data.get("descricao"):
+                        col_info.caption(p_data.get("descricao"))
+                    
+                    # Coluna 3: Ações de Elite
+                    # Aqui você pode adicionar botões para deletar ou pausar venda
+                    if col_acao.button("🗑️ Excluir", key=f"del_{p_id}", use_container_width=True):
+                        db.collection("loja").document(p_id).delete()
+                        st.warning(f"Produto removido!")
+                        st.rerun()
+                    
+                    if col_acao.button("✏️ Promover", key=f"promo_{p_id}", use_container_width=True):
+                        st.toast(f"Promoção aplicada a {p_data.get('nome')}!")
+
+       with tab_vendas:
             st.subheader("📊 Performance de Vendas")
+            
             vendas_data = []
             vendas_ref = db.collection("vendas").order_by("data", direction="DESCENDING").stream()
+            
             for v in vendas_ref:
                 vd = v.to_dict()
-                vendas_data.append({"Data": vd.get('data'), "Valor": vd.get('valor', 0), "Produto": vd.get('produto_nome'), "Cliente": vd.get('usuario_nome')})
-                st.write(f"✅ {vd.get('usuario_nome')} comprou {vd.get('produto_nome')}")
-            
+                vendas_data.append({
+                    "Data": vd.get('data'), 
+                    "Valor": vd.get('valor', 0), 
+                    "Produto": vd.get('produto_nome'), 
+                    "Cliente": vd.get('usuario_nome')
+                })
+
             if vendas_data:
                 df = pd.DataFrame(vendas_data)
-                fig = px.line(df, x="Data", y="Valor", title="Fluxo Financeiro GeralJá")
+                
+                # Card de Faturamento Total
+                total_faturado = df['Valor'].sum()
+                st.info(f"💰 **Faturamento Acumulado:** R$ {total_faturado:,.2f}")
+                
+                # Gráfico Turbinado
+                fig = px.area(df, x="Data", y="Valor", 
+                              title="Fluxo Financeiro GeralJá",
+                              line_shape='spline', # Deixa a linha curvada, mais elegante
+                              color_discrete_sequence=['#FF8C00']) # Cor laranja da GeralJá
+                
                 st.plotly_chart(fig, use_container_width=True)
+                
+                # Tabela detalhada
+                with st.expander("📄 Ver Relatório Detalhado"):
+                    st.dataframe(df, use_container_width=True)
+            else:
+                st.write("🦗 Nenhuma venda registrada ainda.")
 
         with tab_recibos:
             st.subheader("🎫 Gerador de Recibos Brasil Elite")
@@ -1247,6 +1373,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
