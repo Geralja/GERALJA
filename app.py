@@ -1119,10 +1119,12 @@ with menu_abas[3]:
             except Exception as e: st.error(f"Erro: {e}")
 
         with tab_recibos:
-            st.subheader("🎫 Gerador de Recibos Oficiais")
+            st.subheader("🎫 Gerador de Recibos Oficiais GeralJá")
             
-            # Carrega a fonte da assinatura
-            st.markdown('<link href="https://fonts.googleapis.com/css2?family=Monsieur+La+Doulaise&display=swap" rel="stylesheet">', unsafe_allow_html=True)
+            # Imports de fontes: Inter (Logo) e Monsieur La Doulaise (Assinatura)
+            st.markdown("""
+                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Monsieur+La+Doulaise&display=swap" rel="stylesheet">
+            """, unsafe_allow_html=True)
             
             meses = {1:"Janeiro", 2:"Fevereiro", 3:"Março", 4:"Abril", 5:"Maio", 6:"Junho", 
                      7:"Julho", 8:"Agosto", 9:"Setembro", 10:"Outubro", 11:"Novembro", 12:"Dezembro"}
@@ -1130,7 +1132,7 @@ with menu_abas[3]:
             with st.form("gerador_recibo"):
                 c1, c2 = st.columns(2)
                 nome_cliente = c1.text_input("Nome do Cliente:", placeholder="Ex: Cury Construtora")
-                pacote = c2.text_area("Pacote/Serviço:", placeholder="Descreva o serviço...", height=68)
+                pacote = c2.text_area("Pacote/Serviço:", placeholder="Descreva o serviço detalhadamente...", height=68)
                 
                 c3, c4 = st.columns(2)
                 valor_recibo = c3.number_input("Valor R$:", min_value=0.0, format="%.2f")
@@ -1140,51 +1142,63 @@ with menu_abas[3]:
                 responsavel = c5.text_input("Assinatura:", value="Diretoria Grajautem /GeralJá")
                 zap_suporte = c6.text_input("WhatsApp:", value="(11) 99185-3488")
                 
-                gerar = st.form_submit_button("✨ GERAR RECIBO")
+                gerar = st.form_submit_button("✨ GERAR RECIBO OFICIAL")
 
             if gerar:
                 data_f = f"{data_recibo.day} de {meses[data_recibo.month]} de {data_recibo.year}"
                 
-                # Montagem do HTML (Design)
                 html_recibo = f"""
-                <div style="position: relative; padding: 40px; border: 2px solid #1e3a8a; border-radius: 10px; background-color: white; color: #333; font-family: sans-serif; max-width: 700px; margin: auto; min-height: 450px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden;">
-                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); font-size: 70px; color: rgba(30, 58, 138, 0.03); white-space: nowrap; pointer-events: none; z-index: 0; font-weight: bold; text-align: center; width: 100%;">
-                        GERALJÁ GERALJÁ<br>GERALJÁ GERALJÁ
+                <div style="position: relative; padding: 40px; border: 2px solid #0047AB; border-top: 10px solid #FF8C00; border-radius: 15px; background-color: white; color: #333; font-family: 'Inter', sans-serif; max-width: 700px; margin: auto; min-height: 480px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); overflow: hidden;">
+                    
+                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); font-size: 80px; color: rgba(0, 71, 171, 0.03); white-space: nowrap; pointer-events: none; z-index: 0; font-weight: 900; text-align: center; width: 100%;">
+                        GERALJÁ GERALJÁ<br>BRASIL ELITE
                     </div>
+
                     <div style="position: relative; z-index: 1;">
-                        <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #1e3a8a; padding-bottom: 10px; align-items: center;">
+                        <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; align-items: flex-start;">
                             <div>
-                                <h1 style="margin:0; color:#1e3a8a; font-size: 26px; font-weight: bold;">GERALJÁ</h1>
-                                <span style="font-size: 10px; color: #666; letter-spacing: 2px; font-weight: bold;">O GUIA OFICIAL DO GRAJAÚ</span>
+                                <div style="line-height: 1;">
+                                    <span style="color: #0047AB; font-weight: 900; font-size: 32px; letter-spacing: -1px;">GERAL</span><span style="color: #FF8C00; font-weight: 900; font-size: 32px; letter-spacing: -1px;">JÁ</span>
+                                </div>
+                                <div style="color:#64748B; font-weight:700; font-size: 10px; margin-top: 2px; letter-spacing: 1px;">BRASIL ELITE EDITION</div>
                             </div>
                             <div style="text-align: right;">
-                                <h2 style="margin:0; color:#1e3a8a; font-size: 22px;">R$ {valor_recibo:,.2f}</h2>
-                                <span style="font-size: 11px; font-weight: bold; color: #1e3a8a;">DOC Nº {datetime.now().strftime('%y%m%d%H%M')}</span>
+                                <div style="background: #0047AB; color: white; padding: 5px 15px; border-radius: 8px; font-weight: 900; font-size: 20px;">
+                                    R$ {valor_recibo:,.2f}
+                                </div>
+                                <div style="font-size: 10px; font-weight: bold; color: #64748B; margin-top: 5px; text-transform: uppercase;">
+                                    DOCUMENTO Nº {datetime.now().strftime('%y%m%d%H%M')}
+                                </div>
                             </div>
                         </div>
-                        <div style="margin-top: 35px; font-size: 17px; line-height: 1.6; text-align: justify;">
-                            Recebemos de <b>{nome_cliente.upper()}</b> a importância de 
-                            <span style="background: #f0f4f8; padding: 2px 5px; border-radius: 4px; border: 1px solid #d1d9e0;"><b>R$ {valor_recibo:,.2f}</b></span> 
-                            referente ao pagamento de: <br>
-                            <div style="margin-top: 10px; padding-left: 15px; border-left: 3px solid #1e3a8a; font-style: italic; color: #444;">
+                        
+                        <h3 style="text-align: center; color: #0047AB; font-size: 18px; font-weight: 900; margin-top: 30px; letter-spacing: 2px;">RECIBO DE QUITAÇÃO</h3>
+
+                        <div style="margin-top: 25px; font-size: 17px; line-height: 1.6; text-align: justify; color: #1e293b;">
+                            Recebemos de <b style="color: #0047AB;">{nome_cliente.upper()}</b> a importância de 
+                            <b style="color: #333;">R$ {valor_recibo:,.2f}</b> referente ao pagamento de:
+                            <div style="margin: 15px 0; padding: 15px; background: #F8FAFC; border-left: 4px solid #FF8C00; border-radius: 4px; font-style: italic; color: #475569;">
                                 {pacote}
                             </div>
-                            <p style="margin-top: 15px;">Pelo que firmamos o presente recibo dando plena quitação.</p>
+                            Confirmamos através deste o recebimento do valor supracitado, dando plena, geral e irrevogável quitação pelo serviço prestado.
                         </div>
-                        <p style="margin-top: 30px; text-align: right; font-weight: 500; color: #1e3a8a;">
+                        
+                        <p style="margin-top: 30px; text-align: right; font-weight: 700; color: #64748B; font-size: 14px;">
                             Grajaú, São Paulo — {data_f}
                         </p>
-                        <div style="margin-top: 50px; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 20px;">
-                            <div style="font-size: 12px; color: #444; line-height: 1.4; min-width: 200px;">
-                                <b style="color:#1e3a8a;">EMISSOR:</b> GERALJÁ INTERMEDIAÇÕES<br>
-                                <b>CONTATO:</b> {zap_suporte}<br>
-                                <b>LOCAL:</b> SÃO PAULO - SP
+
+                        <div style="margin-top: 50px; display: flex; justify-content: space-between; align-items: flex-end;">
+                            <div style="font-size: 11px; color: #64748B; line-height: 1.5; border-left: 2px solid #e2e8f0; padding-left: 10px;">
+                                <b style="color:#0047AB;">GERALJÁ INTERMEDIAÇÕES</b><br>
+                                <b>WhatsApp:</b> {zap_suporte}<br>
+                                <b>Grajaú - SP</b>
                             </div>
+                            
                             <div style="text-align: center; width: 280px;">
-                                <div style="font-family: 'Monsieur La Doulaise', cursive; font-size: 42px; color: #1e3a8a; margin-bottom: -12px;">
+                                <div style="font-family: 'Monsieur La Doulaise', cursive; font-size: 42px; color: #0047AB; margin-bottom: -15px;">
                                     {responsavel}
                                 </div>
-                                <div style="border-top: 1px solid #333; padding-top: 5px; font-size: 12px; font-weight: bold; text-transform: uppercase;">
+                                <div style="border-top: 2px solid #0047AB; padding-top: 5px; font-size: 11px; font-weight: 900; color: #0047AB; text-transform: uppercase; letter-spacing: 1px;">
                                     Assinatura Digital Autorizada
                                 </div>
                             </div>
@@ -1192,7 +1206,6 @@ with menu_abas[3]:
                     </div>
                 </div>
                 """
-                # ESTA LINHA ABAIXO É A QUE FAZ A MÁGICA:
                 st.markdown(html_recibo, unsafe_allow_html=True)
 # ==============================================================================
 # ABA 5: FEEDBACK
@@ -1279,6 +1292,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
