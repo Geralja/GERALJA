@@ -1,21 +1,24 @@
+# --- LISTA MESTRA GERALJÁ ---
 streamlit
+streamlit-js-eval==0.1.7
+streamlit-google-auth
 firebase-admin
 google-cloud-firestore
-pytz
-gTTS
-pandas
+gspread
+google-auth-oauthlib
+groq
+google-generativeai
 nltk
 fuzzywuzzy
 python-Levenshtein
-streamlit-js-eval==0.1.7
-groq
-Pillow
-streamlit-google-auth
-google-auth-oauthlib
-gspread
-google-generativeai
-feedparser
+gTTS
+pandas
 plotly
+Pillow
+pytz
 requests
+beautifulsoup4
+feedparser
+
 
 
