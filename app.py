@@ -1286,7 +1286,7 @@ with tab_profissionais:
                     st.markdown(html_final, unsafe_allow_html=True)
 
             with tab_recibos:
-    st.subheader("🎫 Emissor de Recibos Elite")
+            st.subheader("🎫 Emissor de Recibos Elite")
     
     # 1. ENTRADA DE DADOS
     with st.container(border=True):
@@ -1447,6 +1447,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
