@@ -955,19 +955,22 @@ with menu_abas[3]:
             return base64.b64encode(buffer.getvalue()).decode()
         except:
             return None
-    fuso_br = pytz.timezone('America/Sao_Paulo')
-    
-    if 'admin_logado' not in st.session_state: st.session_state.admin_logado = False
+fuso_br = pytz.timezone('America/Sao_Paulo')
+    
+    if 'admin_logado' not in st.session_state:
+        st.session_state.admin_logado = False
 
-    if not st.session_state.admin_logado:
-        st.markdown("### 🔐 Acesso Restrito à Diretoria")
-        with st.form("login_adm"):
-            u = st.text_input("Usuário Administrativo")
-            p = st.text_input("Senha de Acesso", type="password")
-            if st.form_submit_button("ACESSAR TORRE DE CONTROLE", use_container_width=True):
-                if u == st.secrets.get("ADMIN_USER", "geralja") and p == st.secrets.get("ADMIN_PASS", "Bps36ocara"):
-                    st.session_state.admin_logado = True; st.rerun()
-                else: st.error("Dados incorretos.")
+    if not st.session_state.admin_logado:
+        st.markdown("### 🔐 Acesso Restrito à Diretoria")
+        with st.form("login_adm"):
+            u = st.text_input("Usuário Administrativo")
+            p = st.text_input("Senha de Acesso", type="password")
+            if st.form_submit_button("ACESSAR TORRE DE CONTROLE", use_container_width=True):
+                if u == st.secrets.get("ADMIN_USER", "geralja") and p == st.secrets.get("ADMIN_PASS", "Bps36ocara"):
+                    st.session_state.admin_logado = True
+                    st.rerun()
+                else:
+                    st.error("Dados incorretos.")
   else:
         st.markdown("## 👑 Central de Comando GeralJá")
         if st.button("🚪 Sair", key="logout_adm"): 
@@ -1316,6 +1319,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
