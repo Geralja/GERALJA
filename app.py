@@ -1014,69 +1014,97 @@ with menu_abas[3]:
                         if st.button("🗑️", key=f"del_prof_{p_id}", use_container_width=True):
                             db.collection("profissionais").document(p_id).delete(); st.rerun()
 
-        # 2. NOTÍCIAS IA
+       # 2. 📰 NOTÍCIAS IA (RADAR 4 APIs) & 📻 RÁDIO GERALJÁ
         with tabs[1]:
-            st.subheader("🤖 Radar IA (Google News)")
-            if st.button("🔍 ESCANEAR ÚLTIMAS DO GRAJAÚ"):
-                feed = feedparser.parse("https://news.google.com/rss/search?q=Grajaú+São+Paulo&hl=pt-BR")
-                st.session_state['sugestoes_ia'] = [{"titulo": e.title, "link": e.link} for e in feed.entries[:5]]
-            
-            if 'sugestoes_ia' in st.session_state:
-                for idx, sug in enumerate(st.session_state['sugestoes_ia']):
-                    with st.expander(f"📰 {sug['titulo'][:70]}..."):
-                        t_edit = st.text_input("Editar Título", value=sug['titulo'], key=f"t_edit_{idx}")
-                        c_edit = st.selectbox("Categoria", ["URGENTE", "DESTAQUE", "UTILIDADE"], key=f"cat_edit_{idx}")
-                        if st.button("🚀 PUBLICAR NO PORTAL", key=f"pub_btn_{idx}", use_container_width=True):
-                            db.collection("noticias").add({
-                                "titulo": t_edit, "link_original": sug['link'], 
-                                "data": datetime.now(fuso_br), "categoria": c_edit,
-                                "imagem_url": "https://images.unsplash.com/photo-1504711432869-0df30d7eaf4d?w=800",
-                                "cliques": 0
-                            })
-                            st.success("Publicado com sucesso!"); st.rerun()
-
-        # 3. LOJA
-        with tabs[2]:
-            st.subheader("🛍️ Gestão da Loja")
-            with st.expander("➕ Adicionar Novo Produto"):
-                with st.form("add_loja_elite"):
-                    l_n = st.text_input("Nome do Produto")
-                    l_p = st.number_input("Preço (GeralCones)", min_value=1)
-                    l_f = st.file_uploader("Foto do Produto", type=['jpg','png','jpeg'])
-                    if st.form_submit_button("💎 CADASTRAR PRODUTO"):
-                        if l_n:
-                            img_b64 = otimizar_imagem_adm(l_f) if l_f else ""
-                            db.collection("loja").add({
-                                "nome": l_n, "preco": l_p, "foto": img_b64, 
-                                "data": datetime.now(fuso_br), "status": "ativo"
-                            })
-                            st.success("Produto na Vitrine!"); st.rerun()
+            # --- SEÇÃO 1: RÁDIO GERALJÁ (COMANDO CENTRAL) ---
+            st.markdown("### 📻 Comando de Transmissão - Rádio GeralJá")
+            with st.container(border=True):
+                col_r1, col_r2 = st.columns([2, 1])
+                with col_r1:
+                    st.markdown("#### 🎵 No Ar: **GeralJá Hits**")
+                    # Substitua pela sua URL de streaming real
+                    st.audio("https://streaming.radio.co/s6c7576f3d/listen", format="audio/mp3")
+                with col_m2:
+                    status_radio = st.toggle("📡 Sinal de Transmissão", value=True)
+                    if status_radio:
+                        st.success("AO VIVO")
+                    else:
+                        st.error("OFFLINE")
             
             st.divider()
-            prods = db.collection("loja").order_by("data", direction="DESCENDING").stream()
-            for pr in prods:
-                pd_d, pd_id = pr.to_dict(), pr.id
-                with st.container(border=True):
-                    cl1, cl2, cl3 = st.columns([1, 2, 1])
-                    with cl1: renderizar_imagem_segura(pd_d.get("foto"))
-                    cl2.write(f"**{pd_d.get('nome')}**")
-                    cl2.write(f"💰 {pd_d.get('preco')} G$")
-                    if cl3.button("🗑️ Deletar", key=f"del_prod_{pd_id}"):
-                        db.collection("loja").document(pd_id).delete(); st.rerun()
 
-        # 4. VENDAS (HISTÓRICO)
-        with tabs[3]:
-            st.subheader("📊 Histórico de Vendas")
-            v_ref = db.collection("vendas").order_by("data", direction="DESCENDING").stream()
-            v_data = [v.to_dict() for v in v_ref]
-            if v_data:
-                df_v = pd.DataFrame(v_data)
-                col_m1, col_m2 = st.columns(2)
-                col_m1.metric("Total de Vendas", len(df_v))
-                col_m2.metric("Volume R$", f"R$ {df_v['valor'].sum():,.2f}")
-                st.plotly_chart(px.area(df_v, x="data", y="valor", title="Fluxo de Caixa", color_discrete_sequence=['#FF8C00']), use_container_width=True)
-            else:
-                st.info("Nenhuma venda registrada até o momento.")
+            # --- SEÇÃO 2: RADAR IA (4 APIs DE CAPTAÇÃO) ---
+            st.subheader("🤖 Radar IA - Captação Multi-Fonte")
+            c_api1, c_api2, c_api3, c_api4 = st.columns(4)
+            
+            # API 1: GOOGLE NEWS
+            if c_api1.button("🔍 GOOGLE", use_container_width=True):
+                feed = feedparser.parse("https://news.google.com/rss/search?q=Grajaú+São+Paulo&hl=pt-BR")
+                st.session_state['sugestoes_ia'] = [{"titulo": e.title, "link": e.link, "fonte": "Google"} for e in feed.entries[:5]]
+            
+            # API 2: G1 SÃO PAULO
+            if c_api2.button("📺 G1 SP", use_container_width=True):
+                feed_g1 = feedparser.parse("https://g1.globo.com/rss/g1/sao-paulo/")
+                st.session_state['sugestoes_ia'] = [{"titulo": e.title, "link": e.link, "fonte": "G1"} for e in feed_g1.entries[:5]]
+            
+            # API 3: NEWS API (GLOBAL/LOCAL)
+            if c_api3.button("🌐 NEWS API", use_container_width=True):
+                key = st.secrets.get("NEWS_API_KEY", "")
+                url = f"https://newsapi.org/v2/everything?q=Grajaú+Brasil&apiKey={key}"
+                try:
+                    res = requests.get(url).json()
+                    st.session_state['sugestoes_ia'] = [{"titulo": a['title'], "link": a['url'], "fonte": "NewsAPI"} for a in res['articles'][:5]]
+                except: st.warning("Configure a NEWS_API_KEY nos Secrets.")
+
+            # API 4: BUSCA WEB (SIMULADA/RSS LOCAL)
+            if c_api4.button("📡 LOCAL", use_container_width=True):
+                # Aqui pode entrar um RSS de portal local ou busca customizada
+                st.session_state['sugestoes_ia'] = [{"titulo": "Oscilação de Energia no Pq. Novo Grajaú cresce", "link": "https://geralja.com", "fonte": "Radar Local"}]
+
+            # Exibição dos resultados do Radar
+            if 'sugestoes_ia' in st.session_state:
+                with st.container(border=True):
+                    st.caption("Selecione uma notícia para editar e publicar:")
+                    for idx, sug in enumerate(st.session_state['sugestoes_ia']):
+                        col_t, col_b = st.columns([4, 1])
+                        col_t.write(f"**[{sug['fonte']}]** {sug['titulo']}")
+                        if col_b.button("✅ USAR", key=f"ia_use_{idx}"):
+                            st.session_state['n_titulo'] = sug['titulo']
+                            st.session_state['n_link'] = sug['link']
+                            st.rerun()
+
+            st.divider()
+
+            # --- SEÇÃO 3: REDAÇÃO E PUBLICAÇÃO (POSTAGEM DA MATÉRIA DA ENEL) ---
+            st.markdown("### ✍️ Redação Final e Postagem")
+            with st.form("form_postagem_geral"):
+                nt = st.text_input("📌 Título da Matéria", value=st.session_state.get('n_titulo', ""))
+                nl = st.text_input("🔗 Link Oficial ou Vídeo", value=st.session_state.get('n_link', ""))
+                
+                c_f1, c_f2 = st.columns([1, 1])
+                nc = c_f1.selectbox("🏷️ Categoria", ["URGENTE", "DESTAQUE", "GRAJAÚ", "UTILIDADE", "RÁDIO"])
+                ni = c_f2.text_input("🖼️ URL da Imagem de Capa", value="https://images.unsplash.com/photo-1621905251918-48416bd8575a?w=800")
+                
+                # Onde você vai colar o relato da Enel
+                corpo_m = st.text_area("📝 Conteúdo da Matéria / Relato do Morador", height=200, placeholder="Ex: Moro no bairro Pq. Novo Grajaú. Há dias estamos sofrendo...")
+                
+                if st.form_submit_button("🚀 LANÇAR NO PORTAL GERALJÁ", use_container_width=True):
+                    if nt and nl:
+                        db.collection("noticias").add({
+                            "titulo": nt,
+                            "corpo": corpo_m,
+                            "link_original": nl,
+                            "imagem_url": ni,
+                            "categoria": nc,
+                            "data": datetime.now(fuso_br),
+                            "cliques": 0
+                        })
+                        st.balloons()
+                        st.success("✅ PUBLICADO! A voz do Grajaú foi ouvida.")
+                        st.session_state.pop('n_titulo', None)
+                        st.rerun()
+                    else:
+                        st.error("Preencha o título e o link para publicar.")
 
         # 5. RECIBOS
         with tabs[4]:
@@ -1225,6 +1253,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
