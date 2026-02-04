@@ -21,6 +21,62 @@ from fuzzywuzzy import process       # Para buscas com erros de digitação
 from urllib.parse import quote       # Para links de WhatsApp seguros
 import google.generativeai as genai  # IA Gemini
 from google_auth_oauthlib.flow import Flow # Login Google
+import re
+import ast
+import streamlit as st
+
+class OrganizadorElite:
+    """Sistema Independente de Saneamento e Injeção de Código"""
+    
+    @staticmethod
+    def limpar_fantasmas(codigo_sujo):
+        """Remove caracteres invisíveis e normaliza espaços HTML (U+00A0)"""
+        if not codigo_sujo:
+            return ""
+        # Substitui espaços inquebráveis por espaços simples
+        limpo = codigo_sujo.replace('\u00a0', ' ').replace('\xa0', ' ')
+        # Remove caracteres de controle estranhos, exceto quebras de linha e tabs
+        limpo = re.sub(r'[^\x20-\x7E\n\t]', '', limpo)
+        return limpo
+
+    @staticmethod
+    def validar_sintaxe(codigo):
+        """Verifica se o código é válido para o Python antes de rodar"""
+        try:
+            ast.parse(codigo)
+            return True, "✅ Sintaxe Perfeita"
+        except SyntaxError as e:
+            return False, f"❌ Erro na Linha {e.lineno}: {e.msg}"
+
+    @classmethod
+    def processar_e_instalar(cls, nome_modulo, codigo_bruto):
+        """Limpa, valida e prepara o código para integração"""
+        st.write(f"⚙️ Processando Módulo: **{nome_modulo}**...")
+        
+        codigo_saneado = cls.limpar_fantasmas(codigo_bruto)
+        valido, msg = cls.validar_sintaxe(codigo_saneado)
+        
+        if valido:
+            st.success(msg)
+            # Aqui o código saneado pode ser salvo ou executado via exec()
+            return codigo_saneado
+        else:
+            st.error(msg)
+            # Tenta conserto automático de identação comum
+            st.warning("Tentando conserto automático de recuo...")
+            return cls.limpar_fantasmas(codigo_bruto).strip()
+
+# --- IMPLEMENTAÇÃO NA TORRE DE CONTROLE ---
+def interface_organizador():
+    st.markdown("### 🛠️ Organizador Potente GeralJá")
+    txt_input = st.text_area("Cole o código 'sujo' ou o novo módulo aqui:", height=200)
+    
+    if st.button("⚡ SANEAR E ORGANIZAR"):
+        organizador = OrganizadorElite()
+        resultado = organizador.processar_e_instalar("Modulo_Externo", txt_input)
+        
+        st.code(resultado, language='python')
+        st.info("👆 Código purificado pronto para o app.py")
 
 # --- TENTA IMPORTAR COMPONENTES JS (EVITA QUEBRA SE NÃO INSTALADO) ---
 try:
@@ -1374,6 +1430,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
