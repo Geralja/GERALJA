@@ -53,62 +53,6 @@ from fuzzywuzzy import process       # Para buscas com erros de digitação
 from urllib.parse import quote       # Para links de WhatsApp seguros
 import google.generativeai as genai  # IA Gemini
 from google_auth_oauthlib.flow import Flow # Login Google
-import re
-import ast
-import streamlit as st
-
-class OrganizadorElite:
-    """Sistema Independente de Saneamento e Injeção de Código"""
-    
-    @staticmethod
-    def limpar_fantasmas(codigo_sujo):
-        """Remove caracteres invisíveis e normaliza espaços HTML (U+00A0)"""
-        if not codigo_sujo:
-            return ""
-        # Substitui espaços inquebráveis por espaços simples
-        limpo = codigo_sujo.replace('\u00a0', ' ').replace('\xa0', ' ')
-        # Remove caracteres de controle estranhos, exceto quebras de linha e tabs
-        limpo = re.sub(r'[^\x20-\x7E\n\t]', '', limpo)
-        return limpo
-
-    @staticmethod
-    def validar_sintaxe(codigo):
-        """Verifica se o código é válido para o Python antes de rodar"""
-        try:
-            ast.parse(codigo)
-            return True, "✅ Sintaxe Perfeita"
-        except SyntaxError as e:
-            return False, f"❌ Erro na Linha {e.lineno}: {e.msg}"
-
-    @classmethod
-    def processar_e_instalar(cls, nome_modulo, codigo_bruto):
-        """Limpa, valida e prepara o código para integração"""
-        st.write(f"⚙️ Processando Módulo: **{nome_modulo}**...")
-        
-        codigo_saneado = cls.limpar_fantasmas(codigo_bruto)
-        valido, msg = cls.validar_sintaxe(codigo_saneado)
-        
-        if valido:
-            st.success(msg)
-            # Aqui o código saneado pode ser salvo ou executado via exec()
-            return codigo_saneado
-        else:
-            st.error(msg)
-            # Tenta conserto automático de identação comum
-            st.warning("Tentando conserto automático de recuo...")
-            return cls.limpar_fantasmas(codigo_bruto).strip()
-
-# --- IMPLEMENTAÇÃO NA TORRE DE CONTROLE ---
-def interface_organizador():
-    st.markdown("### 🛠️ Organizador Potente GeralJá")
-    txt_input = st.text_area("Cole o código 'sujo' ou o novo módulo aqui:", height=200)
-    
-    if st.button("⚡ SANEAR E ORGANIZAR"):
-        organizador = OrganizadorElite()
-        resultado = organizador.processar_e_instalar("Modulo_Externo", txt_input)
-        
-        st.code(resultado, language='python')
-        st.info("👆 Código purificado pronto para o app.py")
 
 # --- TENTA IMPORTAR COMPONENTES JS (EVITA QUEBRA SE NÃO INSTALADO) ---
 try:
@@ -1017,38 +961,21 @@ with menu_abas[1]:
                         
             except Exception as e:
                 st.error(f"❌ Erro ao processar perfil: {e}")
-
 # ==============================================================================
-# ABA 4: 👑 TORRE DE CONTROLE MASTER (VERSÃO ELITE TURBINADA - SEM REMOÇÃO)
+# ABA 4: 👑 TORRE DE CONTROLE MASTER (COMPLETA + REGISTRO DE VENDAS)
 # ==============================================================================
 with menu_abas[3]:
     import pytz
     from datetime import datetime
     import pandas as pd
+    import time
+    from PIL import Image
     import io
     import base64
+    import requests
     import feedparser
     import urllib.parse
-    import requests
-    from PIL import Image
-    iwith st.expander("🚀 INJETOR DE CÓDIGO E AUTO-REPARO", expanded=False):
-        st.warning("CUIDADO: Você está operando no núcleo do sistema.")
-        nome_mod = st.text_input("Nome do Módulo (ex: reparo_enel)", "update_v1")
-        codigo_novo = st.text_area("Cole o código 'sujo' ou o novo script aqui:", height=300)
-        
-        if st.button("⚡ EXECUTAR SANEAMENTO E INSTALAÇÃO"):
-            sucesso, msg = engine.injetar_modulo(nome_mod, codigo_novo)
-            if sucesso:
-                st.success(msg)
-                # Executa o código limpo imediatamente no contexto do site
-                try:
-                    exec(engine.sanitizar(codigo_novo))
-                    st.balloons()
-                except Exception as e:
-                    st.error(f"Erro na execução dinâmica: {e}")
-            else:
-                st.error(msg)mport plotly.express as px
-    
+
     def otimizar_imagem(image_file, size=(500, 500)):
         try:
             img = Image.open(image_file)
@@ -1057,13 +984,12 @@ with menu_abas[3]:
             buffer = io.BytesIO()
             img.save(buffer, format="JPEG", quality=70)
             return base64.b64encode(buffer.getvalue()).decode()
-        except:
-            return None
-fuso_br = pytz.timezone('America/Sao_Paulo')
-    
-# Verificação de Sessão (Recuo de 4 espaços)
-    if 'admin_logado' not in st.session_state:
-        st.session_state.admin_logado = False
+        except: return None
+
+    fuso_br = pytz.timezone('America/Sao_Paulo')
+    agora_br = datetime.now(fuso_br)
+
+    if 'admin_logado' not in st.session_state: st.session_state.admin_logado = False
 
     if not st.session_state.admin_logado:
         st.markdown("### 🔐 Acesso Restrito à Diretoria")
@@ -1071,277 +997,160 @@ fuso_br = pytz.timezone('America/Sao_Paulo')
             u = st.text_input("Usuário Administrativo")
             p = st.text_input("Senha de Acesso", type="password")
             if st.form_submit_button("ACESSAR TORRE DE CONTROLE", use_container_width=True):
-                # O motor 'engine.sanitizar' pode ser usado aqui no futuro
                 if u == st.secrets.get("ADMIN_USER", "geralja") and p == st.secrets.get("ADMIN_PASS", "Bps36ocara"):
-                    st.session_state.admin_logado = True
-                    st.rerun()
-                else:
-                    st.error("Dados incorretos.")
+                    st.session_state.admin_logado = True; st.rerun()
+                else: st.error("Dados incorretos.")
     else:
-        # CONTEÚDO DA TORRE (Alinhado com o IF acima)
-        st.markdown("## 👑 Central de Comando GeralJá")
-        
+        st.markdown(f"## 👑 Central de Comando GeralJá")
         if st.button("🚪 Sair", key="logout_adm"): 
-            st.session_state.admin_logado = False
-            st.rerun()
+            st.session_state.admin_logado = False; st.rerun()
 
-        # Definição das Abas
-        tab_profissionais, tab_noticias, tab_loja, tab_vendas, tab_recibos, tab_categorias, tab_metricas = st.tabs([
-            "👥 Parceiros", "📰 Notícias", "🛍️ Loja", "📜 Vendas", "🎫 Recibos", "📁 Categorias", "📊 Métricas"
+        # Adicionada a Tab de Vendas
+        tab_profissionais, tab_noticias, tab_loja, tab_vendas, tab_categorias = st.tabs([
+            "👥 Parceiros", "📰 Gestão de Notícias", "🛍️ Loja", "📜 Vendas", "📁 Categorias"
         ])
 
-        with tab_categorias:
-            st.subheader("📁 Gestão de Profissões e Categorias")
-            # Seu código continua aqui...
-        with tab_categorias:
-            st.subheader("📁 Gestão de Profissões e Categorias")
-            
-            # Referência ao banco
-            doc_cat_ref = db.collection("configuracoes").document("categorias")
-            res_cat = doc_cat_ref.get()
-            
-            # Carrega a lista do Firebase ou a Oficial definida no seu código
-            lista_atual = res_cat.to_dict().get("lista", CATEGORIAS_OFICIAIS) if res_cat.exists else CATEGORIAS_OFICIAIS
-            
-            # --- ÁREA DE ADIÇÃO ---
-            with st.container(border=True):
-                c1, c2 = st.columns([3, 1])
-                nova_cat = c1.text_input("Nova Profissão ou Categoria:", placeholder="Ex: Eletricista, Encanador...")
-                if c2.button("➕ ADICIONAR", use_container_width=True):
-                    if nova_cat:
-                        nova_cat_clean = nova_cat.strip().upper()
-                        if nova_cat_clean not in [c.upper() for c in lista_atual]:
-                            lista_atual.append(nova_cat_clean)
-                            lista_atual.sort()
-                            doc_cat_ref.set({"lista": lista_atual})
-                            st.success(f"✅ {nova_cat_clean} adicionada!")
-                            st.rerun()
-                        else:
-                            st.warning("Esta categoria já existe.")
-                    else:
-                        st.error("Digite um nome!")
-
-            st.markdown("---")
-
-            # --- LISTA DE GESTÃO (Visual Elite) ---
-            st.write(f"📊 **{len(lista_atual)} Categorias Ativas**")
-            
-            # Criando uma grade para não ficar uma lista gigante vertical
-            cols_cat = st.columns(2) 
-            
-            for idx, cat in enumerate(lista_atual):
-                # Alterna entre a coluna 1 e 2
-                col_alvo = cols_cat[idx % 2]
-                
-                with col_alvo.container(border=True):
-                    c_txt, c_del = st.columns([4, 1])
-                    c_txt.markdown(f"**{cat}**")
-                    
-                    # Botão de remoção (Importante para manter a casa limpa)
-                    if c_del.button("🗑️", key=f"del_cat_{idx}"):
-                        lista_atual.remove(cat)
-                        doc_cat_ref.set({"lista": lista_atual})
-                        st.toast(f"Categoria {cat} removida!")
-                        st.rerun()
-
-            # --- BOTÃO DE RESET (Cuidado!) ---
-            with st.expander("⚠️ Zona de Perigo"):
-                if st.button("🔄 RESETAR PARA PADRÃO OFICIAL"):
-                    doc_cat_ref.set({"lista": CATEGORIAS_OFICIAIS})
-                    st.warning("Categorias resetadas para o padrão inicial.")
-                    st.rerun()
-
-        with tab_noticias:
-            st.subheader("🤖 Captação por IA (Radar 4 APIs)")
-            api_key_news = st.secrets.get("NEWS_API_KEY", "")
-            
-            c_ia1, c_ia2, c_ia3, c_ia4 = st.columns(4)
-            if c_ia1.button("🔍 GOOGLE"):
-                feed = feedparser.parse("https://news.google.com/rss/search?q=Grajaú+São+Paulo&hl=pt-BR&gl=BR&ceid=BR:pt-419")
-                st.session_state['sugestoes_ia'] = [{"titulo": e.title, "link": e.link, "fonte": "Google"} for e in feed.entries[:5]]
-            
-            if c_ia2.button("📰 G1 SP"):
-                feed = feedparser.parse("https://g1.globo.com/rss/sp/sao-paulo/")
-                st.session_state['sugestoes_ia'] = [{"titulo": e.title, "link": e.link, "fonte": "G1"} for e in feed.entries[:5]]
-
-            if c_ia3.button("🌍 NEWSAPI"):
-                if api_key_news:
-                    url = f"https://newsapi.org/v2/everything?q=Grajaú%20SP&language=pt&apiKey={api_key_news}"
-                    res = requests.get(url).json()
-                    if res.get('status') == 'ok':
-                        st.session_state['sugestoes_ia'] = [{"titulo": a['title'], "link": a['url'], "fonte": a['source']['name']} for a in res['articles'][:5]]
-                else: st.warning("Cadastre a NEWS_API_KEY no Secrets!")
-
-            if c_ia4.button("📊 IBGE"):
-                res = requests.get("https://servicodados.ibge.gov.br/api/v3/noticias/?qtd=5").json()
-                st.session_state['sugestoes_ia'] = [{"titulo": n['titulo'], "link": n['link'], "fonte": "IBGE"} for n in res['items']]
-            
-            if 'sugestoes_ia' in st.session_state:
-                for idx, sug in enumerate(st.session_state['sugestoes_ia']):
-                    col_t, col_b = st.columns([4, 1])
-                    col_t.write(f"**[{sug.get('fonte', 'IA')}]** {sug['titulo']}")
-                    if col_b.button(f"✅ USAR", key=f"ia_btn_{idx}"):
-                        st.session_state['temp_titulo'] = sug['titulo']; st.session_state['temp_link'] = sug['link']; st.rerun()
-
-            # --- UPGRADE: CENTRAL DE REDAÇÃO ELITE ---
-            st.markdown("### ✍️ Redação e Edição Final")
-            
-            # Preview da Notícia (Para você ver como vai ficar no app)
-            with st.expander("👁️ Visualizar Preview do Card", expanded=True):
-                col_pre1, col_pre2 = st.columns([1, 2])
-                p_url = st.session_state.get('temp_img', "https://images.unsplash.com/photo-1504711432869-0df30d7eaf4d?w=800")
-                p_tit = st.session_state.get('temp_titulo', "Título da Notícia")
-                
-                col_pre1.image(p_url, use_container_width=True)
-                col_pre2.markdown(f"**{p_tit}**")
-                col_pre2.caption(f"📅 {datetime.now(fuso_br).strftime('%d/%m/%Y')} | 🏷️ DESTAQUE")
-
-            with st.form("form_noticia_upgrade"):
-                col_f1, col_f2 = st.columns([2, 1])
-                nt = col_f1.text_input("📌 Título da Postagem", value=st.session_state.get('temp_titulo', ""), help="Título chamativo para o portal")
-                cat_n = col_f2.selectbox("🏷️ Categoria", ["URGENTE", "DESTAQUE", "GRAJAÚ", "UTILIDADE", "EVENTOS"])
-                
-                # Parte de Imagem Turbinada
-                ni = st.text_input("🖼️ URL da Imagem (Unsplash ou Link Direto)", value=p_url)
-                
-                st.markdown("---")
-                nl = st.text_input("🔗 Link Oficial da Matéria", value=st.session_state.get('temp_link', ""))
-                
-                # Botão de Publicação com Estilo
-                btn_pub = st.form_submit_button("🚀 PUBLICAR NO PORTAL GERALJÁ", use_container_width=True)
-                
-                if btn_pub:
-                    if nt and nl:
-                        # Envio completo para o Firebase
-                        db.collection("noticias").add({
-                            "titulo": nt, 
-                            "imagem_url": ni, 
-                            "link_original": nl, 
-                            "data": datetime.now(fuso_br), 
-                            "categoria": cat_n,
-                            "cliques": 0
-                        })
-                        st.balloons()
-                        st.success(f"✅ Notícia '{nt}' publicada com sucesso!")
-                        
-                        # Limpa o cache para a próxima notícia
-                        for key in ['temp_titulo', 'temp_link', 'temp_img']:
-                            if key in st.session_state: st.session_state.pop(key)
-                        
-                        st.rerun()
-                    else:
-                        st.error("Preencha o Título e o Link para continuar.")
-                        
-        with tab_recibos:
-            st.subheader("🎫 Gerador de Recibos Brasil Elite")
-            st.markdown("""
-                <style>
-                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@900&family=Monsieur+La+Doulaise&display=swap');
-                .marca-dagua {
-                    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); 
-                    font-size: 60px; color: rgba(0, 71, 171, 0.05); font-weight: 900; pointer-events: none; z-index: 0; width: 100%; text-align: center; white-space: nowrap;
-                }
-                </style>
-            """, unsafe_allow_html=True)
-            
-            meses = {1:"Janeiro", 2:"Fevereiro", 3:"Março", 4:"Abril", 5:"Maio", 6:"Junho", 7:"Julho", 8:"Agosto", 9:"Setembro", 10:"Outubro", 11:"Novembro", 12:"Dezembro"}
-
-            with st.container(border=True):
-                c1, c2 = st.columns(2)
-                nome_c = c1.text_input("Nome do Cliente:", key="n_rec_e")
-                pacote_c = c2.text_area("Serviço:", height=68, key="p_rec_e")
-                c3, c4 = st.columns(2)
-                valor_c = c3.number_input("Valor (R$):", min_value=0.0, format="%.2f", key="v_rec_e")
-                data_c = c4.date_input("Data:", value=datetime.now(fuso_br), key="d_rec_e")
-                c5, c6 = st.columns(2)
-                resp_c = c5.text_input("Assinatura:", value="Diretoria GeralJá", key="a_rec_e")
-                zap_c = c6.text_input("WhatsApp do Cliente:", value="11991853488", key="z_rec_e")
-                btn_gerar = st.button("✨ GERAR RECIBO", use_container_width=True, type="primary")
-
-            if btn_gerar and nome_c and pacote_c:
-                data_f = f"{data_c.day} de {meses[data_c.month]} de {data_c.year}"
-                num_doc = datetime.now().strftime('%y%m%d%H%M')
-                html_recibo = f"""
-                <div style="position: relative; padding: 40px; border: 2px solid #0047AB; border-top: 12px solid #FF8C00; border-radius: 15px; background: white; max-width: 650px; margin: 20px auto; box-shadow: 0 10px 30px rgba(0,0,0,0.1); overflow: hidden;">
-                    <div class="marca-dagua">GERALJÁ BRASIL</div>
-                    <div style="position: relative; z-index: 1;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px;">
-                            <div>
-                                <span style="color: #0047AB; font-weight: 900; font-size: 28px; font-family: 'Inter';">GERAL</span><span style="color: #FF8C00; font-weight: 900; font-size: 28px; font-family: 'Inter';">JÁ</span>
-                                <div style="font-size: 9px; font-weight: 700; color: #64748B; letter-spacing: 1px;">BRASIL ELITE EDITION</div>
-                            </div>
-                            <div style="text-align: right;">
-                                <div style="background: #0047AB; color: white; padding: 6px 14px; border-radius: 8px; font-weight: 900; font-size: 20px;">R$ {valor_c:,.2f}</div>
-                                <div style="font-size: 10px; color: #64748B; margin-top: 4px;">DOC Nº {num_doc}</div>
-                            </div>
-                        </div>
-                        <h2 style="text-align: center; color: #0047AB; font-size: 18px; font-weight: 900; margin: 35px 0; font-family: 'Inter';">RECIBO DE QUITAÇÃO</h2>
-                        <div style="font-size: 16px; line-height: 1.6; color: #1e293b; text-align: justify; font-family: sans-serif;">
-                            Recebemos de <b style="color: #0047AB;">{nome_c.upper()}</b> a importância de <b>R$ {valor_c:,.2f}</b> referente ao pagamento de:
-                            <div style="margin: 15px 0; padding: 15px; background: #f8fafc; border-left: 5px solid #FF8C00; font-style: italic; border-radius: 0 8px 8px 0;">{pacote_c}</div>
-                            Pelo que firmamos o presente recibo dando plena, geral e irrevogável quitação.
-                        </div>
-                        <p style="text-align: right; font-weight: 700; color: #64748B; margin-top: 30px; font-family: sans-serif;">Grajaú, São Paulo — {data_f}</p>
-                        <div style="margin-top: 50px; display: flex; justify-content: space-between; align-items: flex-end;">
-                            <div style="font-size: 11px; color: #94a3b8; font-family: sans-serif;"><b>EMISSOR:</b> GERALJÁ INTERMEDIAÇÕES</div>
-                            <div style="text-align: center; width: 230px;">
-                                <div style="font-family: 'Monsieur La Doulaise', cursive; font-size: 42px; color: #0047AB; margin-bottom: -10px;">{resp_c}</div>
-                                <div style="border-top: 1px solid #0047AB; font-size: 10px; font-weight: 900; color: #0047AB; padding-top: 5px; font-family: 'Inter';">ASSINATURA DIGITAL</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                """
-                st.markdown(html_recibo, unsafe_allow_html=True)
-                col_down, col_zap = st.columns(2)
-                col_down.download_button(label="📥 BAIXAR RECIBO (HTML/PDF)", data=html_recibo, file_name=f"Recibo_{nome_c.replace(' ', '_')}.html", mime="text/html", use_container_width=True)
-                msg_w = urllib.parse.quote(f"Olá {nome_c}! Seu recibo da GeralJá de R$ {valor_c:,.2f} foi gerado com sucesso. Vou te enviar o arquivo logo abaixo.")
-                col_zap.link_button("📲 AVISAR NO ZAP", f"https://wa.me/55{zap_c.replace(' ','').replace('-','')}?text={msg_w}", use_container_width=True)
-                st.info("☝️ **Como enviar o ARQUIVO:** 1. Clique em 'Baixar Recibo' acima. 2. No WhatsApp do cliente, anexe o arquivo que você baixou.")
-
-        with tab_profissionais:
-            st.subheader("👥 Gestão de Parceiros")
-
-        # 6. CATEGORIAS
-        with tabs[5]:
-            st.subheader("📁 Categorias de Serviço")
+        with tab_categorias:
             doc_cat_ref = db.collection("configuracoes").document("categorias")
             res_cat = doc_cat_ref.get()
-            lista_atual = res_cat.to_dict().get("lista", ["PEDREIRO", "ELETRICISTA", "ENTREGADOR"]) if res_cat.exists else ["PEDREIRO", "ELETRICISTA"]
-            
-            with st.container(border=True):
-                c1, c2 = st.columns([3, 1])
-                nova_cat = c1.text_input("Nova Profissão:", placeholder="Ex: Encanador...")
-                if c2.button("➕ SALVAR", use_container_width=True):
-                    if nova_cat:
-                        nova_cat_clean = nova_cat.strip().upper()
-                        if nova_cat_clean not in lista_atual:
-                            lista_atual.append(nova_cat_clean); lista_atual.sort()
-                            doc_cat_ref.set({"lista": lista_atual})
-                            st.success("Categoria adicionada!"); st.rerun()
+            lista_atual = res_cat.to_dict().get("lista", CATEGORIAS_OFICIAIS) if res_cat.exists else CATEGORIAS_OFICIAIS
+            c1, c2 = st.columns([3, 1])
+            nova_cat = c1.text_input("Nova Profissão:")
+            if c2.button("➕ ADICIONAR"):
+                if nova_cat and nova_cat not in lista_atual:
+                    lista_atual.append(nova_cat); lista_atual.sort()
+                    doc_cat_ref.set({"lista": lista_atual}); st.rerun()
 
-            st.write("Categorias Atuais:")
-            cols_cat = st.columns(3)
-            for idx, cat in enumerate(lista_atual):
-                with cols_cat[idx % 3].container(border=True):
-                    st.write(f"**{cat}**")
-                    if st.button("🗑️", key=f"del_c_{idx}"):
-                        lista_atual.remove(cat); doc_cat_ref.set({"lista": lista_atual}); st.rerun()
+        with tab_noticias:
+            st.subheader("🤖 Captação por IA")
+            c_ia1, c_ia2 = st.columns(2)
+            IMG_NEWS_DEFAULT = "https://images.unsplash.com/photo-1504711432869-0df30d7eaf4d?w=800"
 
-        # 7. MÉTRICAS
-        with tabs[6]:
-            st.subheader("📈 Performance Geral")
-            col_met1, col_met2, col_met3 = st.columns(3)
+            if c_ia1.button("🔍 CAPTAR GOOGLE NEWS"):
+                feed = feedparser.parse("https://news.google.com/rss/search?q=Grajaú+São+Paulo&hl=pt-BR&gl=BR&ceid=BR:pt-419")
+                st.session_state['sugestoes_ia'] = [{"titulo": e.title, "link": e.link, "img": IMG_NEWS_DEFAULT, "fonte": "Google"} for e in feed.entries[:3]]
             
-            count_prof = len(list(db.collection("profissionais").stream()))
-            count_news = len(list(db.collection("noticias").stream()))
-            count_loja = len(list(db.collection("loja").stream()))
-            
-            col_met1.metric("Parceiros", count_prof)
-            col_met2.metric("Notícias", count_news)
-            col_met3.metric("Itens na Loja", count_loja)
-            
-            st.info("💡 Todos os dados são atualizados em tempo real diretamente do Firebase.")
+            if c_ia2.button("📡 SCANNER NEWS API"):
+                try:
+                    res = requests.get(f"https://newsapi.org/v2/everything?q=Grajaú+São+Paulo&language=pt&apiKey={st.secrets.get('NEWS_API_KEY','516289bf44e1429784e0ca0102854a0d')}").json()
+                    st.session_state['sugestoes_ia'] = [{"titulo": a['title'], "link": a['url'], "img": a.get('urlToImage') or IMG_NEWS_DEFAULT, "res": a.get('description'), "fonte": "NewsAPI"} for a in res.get("articles", [])[:3]]
+                except: st.error("Erro na API.")
+
+            if 'sugestoes_ia' in st.session_state:
+                cols_sug = st.columns(3)
+                for idx, sug in enumerate(st.session_state['sugestoes_ia']):
+                    with cols_sug[idx]:
+                        if sug.get('img'): st.image(sug['img'], use_container_width=True)
+                        st.info(f"**{sug['titulo'][:60]}...**")
+                        if st.button("✅ USAR", key=f"sug_{idx}"):
+                            st.session_state['temp_titulo'] = sug['titulo']
+                            st.session_state['temp_link'] = sug['link']
+                            st.session_state['temp_img'] = sug.get('img', "")
+                            st.rerun()
+
+            with st.form("form_noticia"):
+                nt = st.text_input("Título", value=st.session_state.get('temp_titulo', ""))
+                ni = st.text_input("URL Imagem", value=st.session_state.get('temp_img', ""))
+                nl = st.text_input("Link Matéria", value=st.session_state.get('temp_link', ""))
+                if st.form_submit_button("🚀 PUBLICAR NO GERALJÁ"):
+                    db.collection("noticias").add({"titulo": nt, "imagem_url": ni, "link_original": nl, "data": datetime.now(fuso_br), "categoria": "DESTAQUE"})
+                    for k in ['temp_titulo','temp_img','temp_link','sugestoes_ia']: st.session_state.pop(k, None)
+                    st.success("Postado!"); st.rerun()
+
+            st.divider()
+            st.subheader("👀 Vitrine (6 Notícias)")
+            noticias_ref = db.collection("noticias").order_by("data", direction="DESCENDING").limit(6).stream()
+            lista_n = [n.to_dict() | {"id": n.id} for n in noticias_ref]
+            if lista_n:
+                for i in range(0, len(lista_n), 3):
+                    cols = st.columns(3)
+                    for j in range(3):
+                        if i + j < len(lista_n):
+                            n = lista_n[i + j]
+                            with cols[j]:
+                                st.markdown(f'<div style="height:110px;overflow:hidden;border-radius:8px;background:#eee;"><img src="{n.get("imagem_url","")}" style="width:100%;height:100%;object-fit:cover;"></div>', unsafe_allow_html=True)
+                                st.caption(f"**{n.get('titulo')[:40]}...**")
+                                if st.button("🗑️", key=f"del_n_{n['id']}"):
+                                    db.collection("noticias").document(n['id']).delete(); st.rerun()
+
+        with tab_loja:
+            st.subheader("🛒 Itens da Loja")
+            with st.form("add_loja"):
+                c1, c2, c3 = st.columns([2,1,1])
+                ln = c1.text_input("Nome")
+                lp = c2.number_input("Preço", min_value=1)
+                le = c3.number_input("Estoque", min_value=1)
+                lf = st.file_uploader("Foto", type=['jpg','png'])
+                if st.form_submit_button("SALVAR PRODUTO"):
+                    db.collection("loja").add({"nome": ln, "preco": lp, "estoque": le, "foto": otimizar_imagem(lf) if lf else ""})
+                    st.success("Produto Adicionado!"); st.rerun()
+            st.divider()
+            for it in db.collection("loja").stream():
+                item = it.to_dict()
+                with st.expander(f"📦 {item['nome']} - {item['preco']} 💎"):
+                    if item.get('foto'): st.image(f"data:image/jpeg;base64,{item['foto']}", width=100)
+                    if st.button("Remover", key=f"del_it_{it.id}"): db.collection("loja").document(it.id).delete(); st.rerun()
+
+        with tab_vendas:
+            st.subheader("📜 Histórico de Resgates")
+            vendas_ref = db.collection("vendas").order_by("data", direction="DESCENDING").limit(20).stream()
+            vendas_data = []
+            for v in vendas_ref:
+                vd = v.to_dict()
+                vendas_data.append({
+                    "Data": vd.get('data').astimezone(fuso_br).strftime('%d/%m %H:%M') if vd.get('data') else "---",
+                    "Cliente": vd.get('usuario_nome', 'Desconhecido'),
+                    "Produto": vd.get('produto_nome', '---'),
+                    "Preço": f"{vd.get('preco', 0)} 💎"
+                })
+            if vendas_data:
+                st.table(pd.DataFrame(vendas_data))
+            else:
+                st.info("Nenhuma venda registrada ainda.")
+
+        with tab_profissionais:
+            try:
+                profs_ref = db.collection("profissionais").stream()
+                profs_list = [p.to_dict() | {"id": p.id} for p in profs_ref]
+                df = pd.DataFrame(profs_list)
+                if not df.empty:
+                    busca = st.text_input("🔍 Localizar (Nome ou WhatsApp)")
+                    if busca: df = df[df['nome'].str.contains(busca, case=False, na=False) | df['whatsapp'].str.contains(busca, na=False)]
+                    
+                    m1, m2, m3 = st.columns(3)
+                    m1.metric("Total", len(df))
+                    m2.metric("Pendentes", len(df[df['aprovado'] == False]))
+                    m3.metric("GeralCones", f"💎 {int(df['saldo'].sum())}")
+
+                    for _, p in df.iterrows():
+                        pid = p['id']
+                        status = "🟢" if p.get('aprovado') else "🟡"
+                        with st.expander(f"{status} {p.get('nome','').upper()}"):
+                            with st.form(f"f_edit_{pid}"):
+                                c1, c2 = st.columns(2)
+                                n_nome = c1.text_input("Nome", value=p.get('nome'))
+                                n_area = c2.selectbox("Área", lista_atual, index=lista_atual.index(p.get('area')) if p.get('area') in lista_atual else 0)
+                                n_desc = st.text_area("Descrição", value=p.get('descricao'))
+                                c3, c4, c5 = st.columns(3)
+                                n_zap = c3.text_input("Zap", value=p.get('whatsapp'))
+                                n_saldo = c4.number_input("Saldo", value=int(p.get('saldo', 0)))
+                                n_status = c5.selectbox("Status", ["Aprovado", "Pendente"], index=0 if p.get('aprovado') else 1)
+                                st.divider()
+                                cf1, cf2 = st.columns([1, 2])
+                                with cf1:
+                                    if p.get('foto_url'): st.image(f"data:image/jpeg;base64,{p['foto_url']}" if len(p['foto_url']) > 100 else p['foto_url'], width=80)
+                                    up_p = st.file_uploader("Perfil", type=['jpg','png'], key=f"up_p_{pid}")
+                                with cf2:
+                                    up_v = st.file_uploader("Vitrine (Máx 4)", type=['jpg','png'], accept_multiple_files=True, key=f"up_v_{pid}")
+                                if st.form_submit_button("💾 SALVAR TUDO"):
+                                    upd = {"nome": n_nome, "area": n_area, "descricao": n_desc, "whatsapp": n_zap, "saldo": int(n_saldo), "aprovado": (n_status=="Aprovado")}
+                                    if up_p: upd["foto_url"] = otimizar_imagem(up_p, size=(350, 350))
+                                    if up_v:
+                                        for i in range(1, 5): upd[f'f{i}'] = None
+                                        for i, f in enumerate(up_v[:4]): upd[f"f{i+1}"] = otimizar_imagem(f)
+                                    db.collection("profissionais").document(pid).update(upd); st.rerun()
+                            if st.button("🗑️ EXCLUIR", key=f"del_p_{pid}"): db.collection("profissionais").document(pid).delete(); st.rerun()
+            except Exception as e: st.error(f"Erro: {e}")
 # ==============================================================================
 # ABA 5: FEEDBACK
 # ==============================================================================
@@ -1427,6 +1236,78 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
