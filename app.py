@@ -930,91 +930,133 @@ with menu_abas[1]:
             except Exception as e:
                 st.error(f"❌ Erro ao processar perfil: {e}")
 # ==============================================================================
-# 👑 TORRE DE CONTROLE GERALJÁ - VERSÃO CONTROLE TOTAL (FIX)
+# ABA 4: 👑 TORRE DE CONTROLE MASTER (VERSÃO FINAL BLINDADA)
 # ==============================================================================
 with menu_abas[3]:
-    # (Importações e Funções de Otimização já inclusas no topo do seu código)
-    
-    if not st.session_state.get('admin_logado'):
-        # ... (Sua lógica de Login aqui)
-        st.warning("Aguardando Login Administrativo...")
+    import pytz
+    from datetime import datetime
+    import pandas as pd
+    import io, base64, requests, feedparser, urllib.parse
+    from PIL import Image
+    import plotly.express as px
+
+    fuso_br = pytz.timezone('America/Sao_Paulo')
+
+    if 'admin_logado' not in st.session_state: st.session_state.admin_logado = False
+
+    if not st.session_state.admin_logado:
+        st.markdown("### 🔐 Acesso Restrito à Diretoria")
+        with st.form("login_adm"):
+            u = st.text_input("Usuário Administrativo")
+            p = st.text_input("Senha de Acesso", type="password")
+            if st.form_submit_button("ACESSAR TORRE DE CONTROLE", use_container_width=True):
+                if u == st.secrets.get("ADMIN_USER", "geralja") and p == st.secrets.get("ADMIN_PASS", "Bps36ocara"):
+                    st.session_state.admin_logado = True; st.rerun()
+                else: st.error("Dados incorretos.")
     else:
-        tab_profs, tab_news, tab_radio, tab_vendas, tab_recibos = st.tabs([
-            "👥 Parceiros", "📰 News IA", "📻 Rádio Hub", "📊 Financeiro", "🎫 Recibos"
+        # --- CABEÇALHO ---
+        col_t1, col_t2 = st.columns([4, 1])
+        col_t1.title("👑 Central GeralJá")
+        if col_t2.button("🚪 Sair"): st.session_state.admin_logado = False; st.rerun()
+
+        # --- ABAS ORGANIZADAS ---
+        t_parc, t_news, t_radio, t_loja, t_fin, t_rec, t_cat = st.tabs([
+            "👥 Parceiros", "📰 Notícias", "📻 Rádio", "🛍️ Loja", "📊 Financeiro", "🎫 Recibos", "📁 Config"
         ])
 
-        # --- 1. CONTROLE DE PARCEIROS (GESTÃO TOTAL) ---
-        with tab_profs:
+        # 1. PARCEIROS (CADASTROS E FILTROS)
+        with t_parc:
+            st.subheader("👥 Gestão de Cadastros")
             profs_ref = db.collection("profissionais").stream()
             df_p = pd.DataFrame([p.to_dict() | {"id": p.id} for p in profs_ref])
             
             if not df_p.empty:
-                # Métricas de Controle
-                c1, c2, c3, c4 = st.columns(4)
-                c1.metric("👥 Total", len(df_p))
-                c2.metric("⏳ Pendentes", len(df_p[df_p['aprovado'] == False]))
-                c3.metric("💎 Cones em Circulação", int(df_p['saldo'].sum()))
-                c4.metric("✅ Ativos", len(df_p[df_p['aprovado'] == True]))
+                c1, c2, c3 = st.columns(3)
+                c1.metric("Total", len(df_p))
+                c2.metric("Ativos", len(df_p[df_p.get('status') == 'ativo']))
+                c3.metric("Saldo 💎", int(df_p['saldo'].sum()) if 'saldo' in df_p else 0)
 
                 for _, p in df_p.iterrows():
                     with st.container(border=True):
-                        col_f, col_i, col_a = st.columns([1, 3, 2])
+                        col_f, col_d, col_a = st.columns([1, 3, 2])
                         with col_f:
-                            foto = p.get('foto_url', "https://placehold.co/100x100")
-                            st.markdown(f'<img src="{foto}" style="width:70px;height:70px;border-radius:50%;border:2px solid {"#28a745" if p["aprovado"] else "#ffc107"}">', unsafe_allow_html=True)
-                        with col_i:
-                            st.markdown(f"**{p['nome'].upper()}**")
+                            st.image(p.get('foto_url', "https://placehold.co/100x100"), width=70)
+                        with col_d:
+                            st.write(f"**{p['nome']}**")
                             st.caption(f"{p['area']} | 📱 {p['whatsapp']}")
                         with col_a:
-                            if st.button("✅ Aprovar" if not p['aprovado'] else "👎 Suspender", key=f"ap_{p['id']}"):
-                                db.collection("profissionais").document(p['id']).update({"aprovado": not p['aprovado']}); st.rerun()
-                            if st.button("🗑️ Deletar", key=f"del_{p['id']}"):
+                            status_txt = "🔴 Pendente" if p.get('status') != 'ativo' else "🟢 Ativo"
+                            if st.button(status_txt, key=f"st_{p['id']}"):
+                                novo_st = "ativo" if p.get('status') != 'ativo' else "pendente"
+                                db.collection("profissionais").document(p['id']).update({"status": novo_st}); st.rerun()
+                            if st.button("🗑️", key=f"del_{p['id']}"):
                                 db.collection("profissionais").document(p['id']).delete(); st.rerun()
 
-        # --- 2. NEWS IA & GOOGLE NEWS ---
-        with tab_news:
-            st.subheader("🤖 Scanner de Notícias Regional")
-            col_ia1, col_ia2 = st.columns(2)
+        # 2. NOTÍCIAS (IA + FEED)
+        with t_news:
+            st.subheader("🤖 Radar de Notícias IA")
+            if st.button("🔍 SCANNER GOOGLE NEWS"):
+                feed = feedparser.parse("https://news.google.com/rss/search?q=Grajaú+São+Paulo&hl=pt-BR")
+                st.session_state.news_ia = [{"titulo": e.title, "link": e.link} for e in feed.entries[:3]]
             
-            if col_ia1.button("🔍 SCAN GOOGLE NEWS"):
-                # Busca RSS do Google para Grajaú
-                feed = feedparser.parse("https://news.google.com/rss/search?q=Grajaú+São+Paulo&hl=pt-BR&gl=BR&ceid=BR:pt-419")
-                st.session_state.sugestoes = [{"titulo": e.title, "link": e.link, "fonte": "Google"} for e in feed.entries[:3]]
-            
-            if col_ia2.button("📡 NEWS API (MUNDIAL)"):
-                try:
-                    res = requests.get(f"https://newsapi.org/v2/everything?q=Grajaú&language=pt&apiKey={st.secrets.get('NEWS_API_KEY')}").json()
-                    st.session_state.sugestoes = [{"titulo": a['title'], "link": a['url'], "fonte": "NewsAPI"} for a in res.get("articles", [])[:3]]
-                except: st.error("Chave API News ausente.")
+            if 'news_ia' in st.session_state:
+                for n in st.session_state.news_ia:
+                    with st.expander(n['titulo']):
+                        if st.button("Publicar Agora", key=f"pub_{n['titulo']}"):
+                            db.collection("noticias").add({"titulo": n['titulo'], "link_original": n['link'], "data": datetime.now(fuso_br), "categoria": "DESTAQUE"})
+                            st.success("Postado na Vitrine!")
 
-            if 'sugestoes' in st.session_state:
-                for s in st.session_state.sugestoes:
-                    with st.expander(f"📌 {s['titulo'][:60]}..."):
-                        st.write(f"Fonte: {s['fonte']}")
-                        if st.button("PUBLICAR ESTA", key=f"pub_{s['titulo']}"):
-                            db.collection("noticias").add({"titulo": s['titulo'], "link_original": s['link'], "data": datetime.now(fuso_br), "categoria": "DESTAQUE"})
-                            st.success("Na vitrine!"); st.rerun()
+        # 3. RÁDIO (POSTAGENS DA RÁDIO)
+        with t_radio:
+            st.subheader("📻 Monitor de Postagens da Rádio")
+            # Puxa o que a rádio postou (ex: avisos, músicas, promos)
+            radio_posts = db.collection("radio_posts").order_by("data", direction="DESCENDING").limit(10).stream()
+            for rp in radio_posts:
+                post = rp.to_dict()
+                with st.chat_message("user"):
+                    st.write(f"🎙️ **{post.get('titulo')}**")
+                    st.caption(f"Postado em: {post.get('data').strftime('%d/%m %H:%M')}")
+                    if st.button("Remover", key=f"dr_{rp.id}"):
+                        db.collection("radio_posts").document(rp.id).delete(); st.rerun()
 
-        # --- 3. RÁDIO HUB (PUXAR POSTAGENS) ---
-        with tab_radio:
-            st.subheader("📻 Monitoramento Rádio GeralJá")
-            # Aqui simulamos o puxada do seu sistema de áudio ou banco de dados da rádio
-            try:
-                posts_radio = db.collection("radio_posts").order_by("data", direction="DESCENDING").limit(5).stream()
-                for post in posts_radio:
-                    pr = post.to_dict()
-                    with st.chat_message("user"):
-                        st.write(f"🎙️ **Programa:** {pr.get('titulo', 'Ao Vivo')}")
-                        st.caption(f"🕒 {pr.get('data').strftime('%d/%m %H:%M')}")
-                        if st.button("Remover do Ar", key=f"rad_{post.id}"):
-                            db.collection("radio_posts").document(post.id).delete(); st.rerun()
-            except: st.info("Nenhuma postagem da rádio detectada no banco.")
+        # 4. LOJA & FINANCEIRO
+        with t_fin:
+            st.subheader("📊 Fluxo de Caixa")
+            vendas_ref = db.collection("vendas").order_by("data", direction="DESCENDING").stream()
+            df_v = pd.DataFrame([v.to_dict() for v in vendas_ref])
+            if not df_v.empty:
+                st.plotly_chart(px.line(df_v, x="data", y="valor", title="Receita R$"), use_container_width=True)
+                st.table(df_v[["usuario_nome", "valor", "produto_nome"]].head(10))
 
-        # --- 4. FINANCEIRO & RECIBOS ---
-        with tab_recibos:
-            # (Seu código CSS do Recibo Elite entra aqui...)
-            st.markdown('<div class="recibo-frame"><h3>Emissor Elite</h3></div>', unsafe_allow_html=True)
-            # ... (Lógica de Gerar Recibo e Registrar em 'vendas')
+        # 5. RECIBOS (HTML ELITE)
+        with t_rec:
+            st.subheader("🎫 Emissor de Recibos")
+            with st.form("rec_form"):
+                cli = st.text_input("Nome do Cliente")
+                val = st.number_input("Valor", min_value=0.0)
+                serv = st.text_input("Serviço")
+                if st.form_submit_button("Gerar Documento"):
+                    st.markdown(f"""
+                    <div style="padding:20px; border:2px solid #0047AB; border-radius:10px; background:#f9f9f9; color:black">
+                        <h2 style="color:#0047AB">RECIBO GERALJÁ</h2>
+                        <p>Recebemos de <b>{cli}</b> o valor de <b>R$ {val:,.2f}</b></p>
+                        <p>Referente a: {serv}</p>
+                        <hr>
+                        <p align="right">São Paulo, {datetime.now().strftime('%d/%m/%Y')}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+        # 6. CONFIGURAÇÕES (CATEGORIAS)
+        with t_cat:
+            st.subheader("📁 Categorias do App")
+            # Sua lógica de categorias que você enviou acima...
+            doc_cat_ref = db.collection("configuracoes").document("categorias")
+            res_cat = doc_cat_ref.get()
+            lista_cat = res_cat.to_dict().get("lista", []) if res_cat.exists else []
+            new_cat = st.text_input("Nova Categoria")
+            if st.button("Salvar Categoria"):
+                lista_cat.append(new_cat.upper())
+                doc_cat_ref.set({"lista": lista_cat}); st.rerun()
 # ==============================================================================
 # ABA 5: FEEDBACK
 # ==============================================================================
@@ -1100,6 +1142,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
