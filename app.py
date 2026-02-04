@@ -934,8 +934,7 @@ with menu_abas[1]:
 # ABA 4: 👑 TORRE DE CONTROLE MASTER (VERSÃO ELITE TURBINADA - SEM REMOÇÃO)
 # ==============================================================================
     with menu_abas[3]:
-    import pytz
-    from datetime import datetime
+    from datetime import datetime
     import pandas as pd
     import io
     import base64
@@ -944,7 +943,7 @@ with menu_abas[1]:
     import requests
     from PIL import Image
     import plotly.express as px # Adicionado para o gráfico de performance
-
+    import pytz
     def otimizar_imagem(image_file, size=(500, 500)):
         try:
             img = Image.open(image_file)
@@ -1316,6 +1315,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
