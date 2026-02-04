@@ -930,7 +930,7 @@ with menu_abas[1]:
             except Exception as e:
                 st.error(f"❌ Erro ao processar perfil: {e}")
 # ==============================================================================
-# ABA 4: 👑 TORRE DE CONTROLE MASTER (VERSÃO ELITE TURBINADA - FINAL)
+# ABA 4: 👑 TORRE DE CONTROLE MASTER (VERSÃO ELITE TURBINADA - FINAL COMPLETA)
 # ==============================================================================
 with menu_abas[3]:
     import pytz
@@ -952,7 +952,7 @@ with menu_abas[3]:
         except: return None
 
     def renderizar_imagem_segura(url_ou_base64, largura=80):
-        """Renderiza imagem sem quebrar o app caso o link seja inválido"""
+        """Evita o erro MediaFileStorageError renderizando placeholders em caso de falha"""
         try:
             if not url_ou_base64:
                 st.image("https://placehold.co/100x100?text=Sem+Imagem", width=largura)
@@ -960,7 +960,7 @@ with menu_abas[3]:
                 st.image(url_ou_base64, width=largura)
             else:
                 st.image(f"data:image/jpeg;base64,{url_ou_base64}", width=largura)
-        except:
+        except Exception:
             st.image("https://placehold.co/100x100?text=Erro+Imagem", width=largura)
 
     fuso_br = pytz.timezone('America/Sao_Paulo')
@@ -980,7 +980,8 @@ with menu_abas[3]:
                 if u == adm_user and p == adm_pass:
                     st.session_state.admin_logado = True
                     st.rerun()
-                else: st.error("Dados incorretos.")
+                else: 
+                    st.error("Dados incorretos.")
     else:
         # --- CENTRAL LOGADA ---
         c_tit1, c_tit2 = st.columns([4, 1])
@@ -991,33 +992,7 @@ with menu_abas[3]:
 
         tabs = st.tabs(["👥 Parceiros", "📰 Notícias IA", "🛍️ Loja", "📊 Vendas", "🎫 Recibos", "📁 Categorias", "📈 Métricas"])
 
-        # 1. CATEGORIAS
-        with tabs[5]:
-            st.subheader("📁 Gestão de Profissões")
-            doc_cat_ref = db.collection("configuracoes").document("categorias")
-            res_cat = doc_cat_ref.get()
-            lista_atual = res_cat.to_dict().get("lista", ["PEDREIRO", "ELETRICISTA"]) if res_cat.exists else ["PEDREIRO", "ELETRICISTA"]
-            
-            with st.container(border=True):
-                c1, c2 = st.columns([3, 1])
-                nova_cat = c1.text_input("Nova Profissão:", placeholder="Ex: Pintor...")
-                if c2.button("➕ ADICIONAR", use_container_width=True):
-                    if nova_cat:
-                        nova_cat_clean = nova_cat.strip().upper()
-                        if nova_cat_clean not in lista_atual:
-                            lista_atual.append(nova_cat_clean); lista_atual.sort()
-                            doc_cat_ref.set({"lista": lista_atual})
-                            st.success("Adicionado!"); st.rerun()
-
-            cols = st.columns(2)
-            for idx, cat in enumerate(lista_atual):
-                with cols[idx % 2].container(border=True):
-                    ca_t, ca_d = st.columns([4, 1])
-                    ca_t.write(f"**{cat}**")
-                    if ca_d.button("🗑️", key=f"del_cat_{idx}"):
-                        lista_atual.remove(cat); doc_cat_ref.set({"lista": lista_atual}); st.rerun()
-
-        # 2. PARCEIROS (COM FIX DE IMAGEM)
+        # 1. PARCEIROS
         with tabs[0]:
             st.subheader("👥 Gestão de Parceiros")
             prof_ref = db.collection("profissionais").order_by("data_cadastro", direction="DESCENDING").stream()
@@ -1030,91 +1005,141 @@ with menu_abas[3]:
                     with c_info:
                         st.write(f"**{p_d.get('nome', 'Sem Nome')}**")
                         st.caption(f"{p_d.get('area', 'Geral')} | {p_d.get('whatsapp', '')}")
+                        st.write(f"💎 Saldo: {p_d.get('saldo', 0)}")
                     with c_ops:
                         st_atual = p_d.get('status', 'pendente')
-                        btn_color = "primary" if st_atual == "pendente" else "secondary"
-                        if st.button(f"{st_atual.upper()}", key=f"st_{p_id}"):
+                        if st.button(f"{st_atual.upper()}", key=f"st_{p_id}", use_container_width=True):
                             novo_st = "ativo" if st_atual == "pendente" else "pendente"
                             db.collection("profissionais").document(p_id).update({"status": novo_st}); st.rerun()
-                        if st.button("🗑️", key=f"del_prof_{p_id}"):
+                        if st.button("🗑️", key=f"del_prof_{p_id}", use_container_width=True):
                             db.collection("profissionais").document(p_id).delete(); st.rerun()
 
-        # 3. NOTÍCIAS IA
+        # 2. NOTÍCIAS IA
         with tabs[1]:
             st.subheader("🤖 Radar IA (Google News)")
-            if st.button("🔍 ESCANEAR GRAJAÚ"):
+            if st.button("🔍 ESCANEAR ÚLTIMAS DO GRAJAÚ"):
                 feed = feedparser.parse("https://news.google.com/rss/search?q=Grajaú+São+Paulo&hl=pt-BR")
                 st.session_state['sugestoes_ia'] = [{"titulo": e.title, "link": e.link} for e in feed.entries[:5]]
             
             if 'sugestoes_ia' in st.session_state:
                 for idx, sug in enumerate(st.session_state['sugestoes_ia']):
                     with st.expander(f"📰 {sug['titulo'][:70]}..."):
-                        t_edit = st.text_input("Título", value=sug['titulo'], key=f"t_{idx}")
-                        c_edit = st.selectbox("Categoria", ["URGENTE", "DESTAQUE", "UTILIDADE"], key=f"c_{idx}")
-                        if st.button("🚀 PUBLICAR", key=f"pub_{idx}"):
+                        t_edit = st.text_input("Editar Título", value=sug['titulo'], key=f"t_edit_{idx}")
+                        c_edit = st.selectbox("Categoria", ["URGENTE", "DESTAQUE", "UTILIDADE"], key=f"cat_edit_{idx}")
+                        if st.button("🚀 PUBLICAR NO PORTAL", key=f"pub_btn_{idx}", use_container_width=True):
                             db.collection("noticias").add({
                                 "titulo": t_edit, "link_original": sug['link'], 
                                 "data": datetime.now(fuso_br), "categoria": c_edit,
-                                "imagem_url": "https://images.unsplash.com/photo-1504711432869-0df30d7eaf4d?w=800"
+                                "imagem_url": "https://images.unsplash.com/photo-1504711432869-0df30d7eaf4d?w=800",
+                                "cliques": 0
                             })
-                            st.success("No ar!"); st.rerun()
+                            st.success("Publicado com sucesso!"); st.rerun()
 
-        # 4. LOJA
+        # 3. LOJA
         with tabs[2]:
-            st.subheader("🛍️ Inventário")
-            with st.form("add_loja"):
-                l_n = st.text_input("Nome do Produto")
-                l_p = st.number_input("Preço (G$)", min_value=1)
-                l_f = st.file_uploader("Foto", type=['jpg','png'])
-                if st.form_submit_button("💎 LANÇAR"):
-                    img_b64 = otimizar_imagem_adm(l_f) if l_f else ""
-                    db.collection("loja").add({"nome": l_n, "preco": l_p, "foto": img_b64, "data": datetime.now(fuso_br)})
-                    st.success("Lançado!"); st.rerun()
+            st.subheader("🛍️ Gestão da Loja")
+            with st.expander("➕ Adicionar Novo Produto"):
+                with st.form("add_loja_elite"):
+                    l_n = st.text_input("Nome do Produto")
+                    l_p = st.number_input("Preço (GeralCones)", min_value=1)
+                    l_f = st.file_uploader("Foto do Produto", type=['jpg','png','jpeg'])
+                    if st.form_submit_button("💎 CADASTRAR PRODUTO"):
+                        if l_n:
+                            img_b64 = otimizar_imagem_adm(l_f) if l_f else ""
+                            db.collection("loja").add({
+                                "nome": l_n, "preco": l_p, "foto": img_b64, 
+                                "data": datetime.now(fuso_br), "status": "ativo"
+                            })
+                            st.success("Produto na Vitrine!"); st.rerun()
             
+            st.divider()
             prods = db.collection("loja").order_by("data", direction="DESCENDING").stream()
             for pr in prods:
                 pd_d, pd_id = pr.to_dict(), pr.id
                 with st.container(border=True):
                     cl1, cl2, cl3 = st.columns([1, 2, 1])
                     with cl1: renderizar_imagem_segura(pd_d.get("foto"))
-                    cl2.write(f"**{pd_d.get('nome')}**\n{pd_d.get('preco')} G$")
-                    if cl3.button("🗑️", key=f"del_pd_{pd_id}"):
+                    cl2.write(f"**{pd_d.get('nome')}**")
+                    cl2.write(f"💰 {pd_d.get('preco')} G$")
+                    if cl3.button("🗑️ Deletar", key=f"del_prod_{pd_id}"):
                         db.collection("loja").document(pd_id).delete(); st.rerun()
 
-        # 5. VENDAS (FINANCEIRO)
+        # 4. VENDAS (HISTÓRICO)
         with tabs[3]:
-            st.subheader("📊 Fluxo Financeiro")
+            st.subheader("📊 Histórico de Vendas")
             v_ref = db.collection("vendas").order_by("data", direction="DESCENDING").stream()
             v_data = [v.to_dict() for v in v_ref]
             if v_data:
                 df_v = pd.DataFrame(v_data)
-                st.metric("Total de Vendas", f"R$ {df_v['valor'].sum():,.2f}")
-                st.plotly_chart(px.line(df_v, x="data", y="valor", title="Evolução de Receita"), use_container_width=True)
-            else: st.info("Sem vendas ainda.")
+                col_m1, col_m2 = st.columns(2)
+                col_m1.metric("Total de Vendas", len(df_v))
+                col_m2.metric("Volume R$", f"R$ {df_v['valor'].sum():,.2f}")
+                st.plotly_chart(px.area(df_v, x="data", y="valor", title="Fluxo de Caixa", color_discrete_sequence=['#FF8C00']), use_container_width=True)
+            else:
+                st.info("Nenhuma venda registrada até o momento.")
 
-        # 6. RECIBOS (INTERFACE ELITE)
+        # 5. RECIBOS
         with tabs[4]:
-            st.subheader("🎫 Gerador de Recibos")
+            st.subheader("🎫 Gerador de Recibos Profissionais")
             with st.container(border=True):
-                r_cli = st.text_input("Cliente")
-                r_val = st.number_input("Valor R$", min_value=0.0)
-                r_serv = st.text_area("Serviço")
-                if st.button("✨ GERAR RECIBO", use_container_width=True):
-                    st.markdown(f"""
-                    <div style="background:white; padding:20px; border-left:10px solid #FF8C00; color:black; border-radius:5px">
-                        <h2 style='color:#1E3A8A'>RECIBO GERALJÁ</h2>
-                        <p>Recebemos de <b>{r_cli.upper()}</b> o valor de <b>R$ {r_val:,.2f}</b></p>
-                        <p>Referente a: {r_serv}</p>
-                        <hr><p align='right'>{datetime.now().strftime('%d/%m/%Y')}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
+                r_cli = st.text_input("Nome do Cliente")
+                r_val = st.number_input("Valor Recebido R$", min_value=0.0)
+                r_serv = st.text_area("Descrição do Serviço")
+                if st.button("✨ GERAR RECIBO", use_container_width=True, type="primary"):
+                    if r_cli and r_serv:
+                        st.markdown(f"""
+                        <div style="background:white; padding:25px; border-left:12px solid #0047AB; color:#333; border-radius:10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1)">
+                            <h2 style='color:#0047AB; margin-top:0'>RECIBO GERALJÁ</h2>
+                            <p style="font-size:1.1em">Recebemos de <b>{r_cli.upper()}</b> a importância de <b>R$ {r_val:,.2f}</b>.</p>
+                            <p><b>Referente a:</b> {r_serv}</p>
+                            <hr style="border:0.5px solid #eee">
+                            <p align='right'><b>Grajaú, São Paulo</b><br>{datetime.now().strftime('%d/%m/%Y')}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        st.balloons()
+                    else:
+                        st.warning("Preencha o nome e o serviço para gerar o recibo.")
+
+        # 6. CATEGORIAS
+        with tabs[5]:
+            st.subheader("📁 Categorias de Serviço")
+            doc_cat_ref = db.collection("configuracoes").document("categorias")
+            res_cat = doc_cat_ref.get()
+            lista_atual = res_cat.to_dict().get("lista", ["PEDREIRO", "ELETRICISTA", "ENTREGADOR"]) if res_cat.exists else ["PEDREIRO", "ELETRICISTA"]
+            
+            with st.container(border=True):
+                c1, c2 = st.columns([3, 1])
+                nova_cat = c1.text_input("Nova Profissão:", placeholder="Ex: Encanador...")
+                if c2.button("➕ SALVAR", use_container_width=True):
+                    if nova_cat:
+                        nova_cat_clean = nova_cat.strip().upper()
+                        if nova_cat_clean not in lista_atual:
+                            lista_atual.append(nova_cat_clean); lista_atual.sort()
+                            doc_cat_ref.set({"lista": lista_atual})
+                            st.success("Categoria adicionada!"); st.rerun()
+
+            st.write("Categorias Atuais:")
+            cols_cat = st.columns(3)
+            for idx, cat in enumerate(lista_atual):
+                with cols_cat[idx % 3].container(border=True):
+                    st.write(f"**{cat}**")
+                    if st.button("🗑️", key=f"del_c_{idx}"):
+                        lista_atual.remove(cat); doc_cat_ref.set({"lista": lista_atual}); st.rerun()
 
         # 7. MÉTRICAS
         with tabs[6]:
             st.subheader("📈 Performance Geral")
-            m1, m2 = st.columns(2)
-            m1.metric("Total Parceiros", len(list(db.collection("profissionais").stream())))
-            m2.metric("Postagens News", len(list(db.collection("noticias").stream())))
+            col_met1, col_met2, col_met3 = st.columns(3)
+            
+            count_prof = len(list(db.collection("profissionais").stream()))
+            count_news = len(list(db.collection("noticias").stream()))
+            count_loja = len(list(db.collection("loja").stream()))
+            
+            col_met1.metric("Parceiros", count_prof)
+            col_met2.metric("Notícias", count_news)
+            col_met3.metric("Itens na Loja", count_loja)
+            
+            st.info("💡 Todos os dados são atualizados em tempo real diretamente do Firebase.")
 # ==============================================================================
 # ABA 5: FEEDBACK
 # ==============================================================================
@@ -1200,6 +1225,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
