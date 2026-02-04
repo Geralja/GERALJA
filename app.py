@@ -1129,8 +1129,10 @@ if btn_pub:
                     else: # Este else agora está alinhado com o 'if nt and nl:'
                         st.error("Preencha o Título e o Link para continuar.")
 
-       with tab_loja:
+        # FINAL da tab_noticias (O recuo volta para o nível das abas)
+        with tab_loja:
             st.subheader("🛍️ Gestão de Inventário Elite")
+            # ... resto do código da loja ...
             
             # --- FORMULÁRIO DE ADIÇÃO (TURBINADO) ---
             with st.expander("➕ Cadastrar Novo Produto", expanded=False):
@@ -1431,6 +1433,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
