@@ -1285,59 +1285,83 @@ with tab_profissionais:
                     
                     st.markdown(html_final, unsafe_allow_html=True)
 
-                   # 3. OPÇÕES DE EXPORTAÇÃO (VERSÃO TURBO)
-st.divider()
-col_d1, col_d2, col_d3 = st.columns(3)
+                  with tab_recibos:
+    st.subheader("🎫 Emissor de Recibos Elite")
+    
+    # 1. ENTRADA DE DADOS
+    with st.container(border=True):
+        col_e1, col_e2 = st.columns([2, 1])
+        nome_c = col_e1.text_input("👤 Beneficiário / Cliente", key="rec_nome")
+        valor_c = col_e2.number_input("💰 Valor Recebido (R$)", min_value=0.0, step=10.0, key="rec_val")
+        
+        col_e3, col_e4 = st.columns([2, 1])
+        serv_c = col_e3.text_input("📝 Referente a:", key="rec_serv")
+        data_manual = col_e4.date_input("📅 Data", datetime.now(fuso_br))
+        
+        lancar_venda = st.toggle("📊 Lançar no Financeiro", value=True)
 
-# --- BOTÃO 1: DOWNLOAD HTML (O SEGURO) ---
-col_d1.download_button(
-    "📄 BAIXAR HTML",
-    data=html_final,
-    file_name=f"Recibo_{id_recibo}.html",
-    mime="text/html",
-    use_container_width=True,
-    help="Salva o arquivo original para abrir em qualquer navegador."
-)
+    # 2. AÇÃO DE GERAR
+    if st.button("✨ GERAR E FINALIZAR DOCUMENTO", type="primary", use_container_width=True):
+        if not nome_c or not serv_c or valor_c <= 0:
+            st.error("⚠️ Preencha todos os campos corretamente.")
+        else:
+            id_recibo = f"REC-{datetime.now().strftime('%y%m%H%M%S')}"
+            
+            # Lógica de banco de dados
+            if lancar_venda:
+                db.collection("vendas").add({
+                    "data": datetime.combine(data_manual, datetime.min.time()),
+                    "valor": valor_c,
+                    "produto_nome": f"RECIBO: {serv_c}",
+                    "usuario_nome": nome_c,
+                    "id_documento": id_recibo
+                })
 
-# --- BOTÃO 2: IMPRIMIR / SALVAR PDF ---
-# Usamos um pequeno truque de JS para abrir a tela de impressão do navegador
-btn_print = f"""
-    <script>
-        function imprimirRecibo() {{
-            var conteudo = document.querySelector('.recibo-frame').innerHTML;
-            var win = window.open('', '', 'height=700,width=700');
-            win.document.write('<html><head><title>Recibo GeralJá</title>');
-            win.document.write('<style>body{{font-family:sans-serif;}} .recibo-frame{{border:1px solid #eee; padding:20px;}}</style></head><body>');
-            win.document.write(conteudo);
-            win.document.write('</body></html>');
-            win.document.close();
-            win.print();
-        }}
-    </script>
-    <button onclick="window.print()" style="
-        width: 100%;
-        background-color: #0047AB;
-        color: white;
-        border: none;
-        padding: 0.5rem;
-        border-radius: 0.5rem;
-        cursor: pointer;
-        font-weight: bold;
-        height: 38px;
-    ">🖨️ IMPRIMIR / PDF</button>
-"""
-with col_d2:
-    st.components.v1.html(btn_print, height=45)
+            # HTML do Recibo
+            html_final = f"""
+            <div class="recibo-frame" style="padding:40px; background:#fff; border-radius:15px; border-left:10px solid #0047AB; color:#333; box-shadow:0 4px 15px rgba(0,0,0,0.1); font-family:sans-serif;">
+                <h2 style="color:#0047AB; margin:0;">RECIBO GERALJÁ</h2>
+                <p style="color:#FF8C00; font-weight:bold;">Nº {id_recibo}</p>
+                <hr>
+                <p style="font-size:18px;">Recebemos de <b>{nome_c.upper()}</b> a importância de <b>R$ {valor_c:,.2f}</b>.</p>
+                <p>Referente a: {serv_c}</p>
+                <p align="right">Grajaú, {data_manual.strftime('%d/%m/%Y')}</p>
+            </div>
+            """
+            
+            st.markdown(html_final, unsafe_allow_html=True)
 
-# --- BOTÃO 3: WHATSAPP COM LINK DE IMAGEM ---
-msg_zap = quote(f"✅ *RECIBO GERALJÁ*\n\nOlá *{nome_c}*,\nConfirmamos o recebimento de *R$ {valor_c:,.2f}*.\nReferente a: {serv_c}.\n\nPara visualizar seu recibo oficial, acesse o portal GeralJá.")
-col_d3.link_button("💬 WHATSAPP", f"https://wa.me/?text={msg_zap}", use_container_width=True)
+            # --- 3. OPÇÕES DE EXPORTAÇÃO (AGORA PROTEGIDAS DENTRO DO ELSE) ---
+            st.divider()
+            col_d1, col_d2, col_d3 = st.columns(3)
 
-# --- BÔNUS: BOTÃO PARA CAPTURAR TELA (JPG) ---
-if st.button("📸 GERAR IMAGEM (PARA INSTAGRAM/ZAP)", use_container_width=True):
-    st.info("💡 Dica: No celular, basta tirar um print do recibo acima. O layout foi otimizado para caber na tela!")
+            # DOWNLOAD
+            col_d1.download_button(
+                "📄 BAIXAR HTML",
+                data=html_final,
+                file_name=f"Recibo_{id_recibo}.html",
+                mime="text/html",
+                use_container_width=True
+            )
 
-st.balloons()
+            # IMPRIMIR / PDF
+            btn_print = f"""
+                <button onclick="window.print()" style="width:100%; background-color:#0047AB; color:white; border:none; padding:8px; border-radius:8px; cursor:pointer; font-weight:bold; height:38px; font-family:sans-serif;">
+                    🖨️ IMPRIMIR / PDF
+                </button>
+            """
+            with col_d2:
+                st.components.v1.html(btn_print, height=45)
+
+            # WHATSAPP
+            msg_zap = quote(f"✅ *RECIBO GERALJÁ*\n\nOlá *{nome_c}*,\nConfirmamos o recebimento de *R$ {valor_c:,.2f}*.\nReferente a: {serv_c}.")
+            col_d3.link_button("💬 WHATSAPP", f"https://wa.me/?text={msg_zap}", use_container_width=True)
+
+            # BÔNUS: BOTÃO DE IMAGEM
+            if st.button("📸 GERAR IMAGEM (DICA)", use_container_width=True):
+                st.info("💡 Para enviar como foto, basta tirar um print do recibo acima!")
+
+            st.balloons()
 # ==============================================================================
 # ABA 5: FEEDBACK
 # ==============================================================================
@@ -1423,6 +1447,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
