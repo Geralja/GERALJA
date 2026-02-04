@@ -1121,18 +1121,14 @@ if btn_pub:
                         st.balloons()
                         st.success(f"✅ Notícia '{nt}' publicada com sucesso!")
                         
-                        # Limpa o cache
-                        for key in ['temp_titulo', 'temp_link', 'temp_img']:
-                            if key in st.session_state: st.session_state.pop(key)
-                        
-                        st.rerun()
-                    else: # Este else agora está alinhado com o 'if nt and nl:'
+                    st.rerun()
+                    else:
                         st.error("Preencha o Título e o Link para continuar.")
 
-        # FINAL da tab_noticias (O recuo volta para o nível das abas)
-    with tab_loja:
+        # --- FIM DA TAB NOTICIAS / INÍCIO DA TAB LOJA ---
+        # Note que o 'with' abaixo deve estar alinhado com o 'with tab_noticias'
+        with tab_loja:
             st.subheader("🛍️ Gestão de Inventário Elite")
-            # ... resto do código da loja ...
             
             # --- FORMULÁRIO DE ADIÇÃO (TURBINADO) ---
             with st.expander("➕ Cadastrar Novo Produto", expanded=False):
@@ -1143,6 +1139,22 @@ if btn_pub:
                     
                     ld = st.text_area("Descrição Curta (Opcional)")
                     lf = st.file_uploader("Foto do Produto", type=['jpg','png','jpeg'])
+                    
+                    if st.form_submit_button("💎 LANÇAR PRODUTO NA LOJA", use_container_width=True):
+                        if ln:
+                            img_base64 = otimizar_imagem(lf) if lf else ""
+                            db.collection("loja").add({
+                                "nome": ln, 
+                                "preco": lp, 
+                                "descricao": ld,
+                                "foto": img_base64, 
+                                "data": datetime.now(fuso_br),
+                                "status": "ativo"
+                            })
+                            st.success(f"🚀 {ln} já está na vitrine!")
+                            st.rerun()
+                        else:
+                            st.error("Dê um nome ao produto!")
                     
                     if st.form_submit_button("💎 LANÇAR PRODUTO NA LOJA", use_container_width=True):
                         if ln:
@@ -1433,6 +1445,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
