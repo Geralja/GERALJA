@@ -1119,6 +1119,177 @@ with menu_abas[3]:
                                     db.collection("profissionais").document(pid).update(upd); st.rerun()
                             if st.button("🗑️ EXCLUIR", key=f"del_p_{pid}"): db.collection("profissionais").document(pid).delete(); st.rerun()
             except Exception as e: st.error(f"Erro: {e}")
+                with tab_recibos:
+            st.markdown("### 🎫 Emissor de Recibos Profissional")
+            
+            # --- CSS AVANÇADO PARA O RECIBO ---
+            st.markdown("""
+                <style>
+                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Monsieur+La+Doulaise&display=swap');
+                
+                .recibo-frame {
+                    position: relative;
+                    padding: 50px;
+                    background: #fff;
+                    border-radius: 20px;
+                    border-left: 15px solid #0047AB;
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+                    color: #1e1e1e;
+                    overflow: hidden;
+                    margin-bottom: 20px;
+                }
+                .watermark {
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%) rotate(-25deg);
+                    font-size: 80px;
+                    font-weight: 900;
+                    color: rgba(0, 71, 171, 0.03);
+                    white-space: nowrap;
+                    pointer-events: none;
+                    z-index: 0;
+                }
+                .header-recibo {
+                    display: flex;
+                    justify-content: space-between;
+                    border-bottom: 2px solid #f0f0f0;
+                    padding-bottom: 20px;
+                    margin-bottom: 30px;
+                }
+                .valor-box {
+                    background: #f8f9fa;
+                    padding: 20px;
+                    border-radius: 12px;
+                    border: 1px dashed #0047AB;
+                    text-align: center;
+                }
+                </style>
+            """, unsafe_allow_html=True)
+
+            # --- PAINEL DE ENTRADA DE DADOS ---
+            with st.container(border=True):
+                col_e1, col_e2 = st.columns([2, 1])
+                nome_c = col_e1.text_input("👤 Beneficiário / Cliente", placeholder="Nome completo ou Razão Social")
+                valor_c = col_e2.number_input("💰 Valor Recebido (R$)", min_value=0.0, step=10.0, format="%.2f")
+                
+                col_e3, col_e4 = st.columns([2, 1])
+                serv_c = col_e3.text_input("📝 Referente a:", placeholder="Ex: Manutenção Elétrica / Venda de Kit Solar")
+                data_manual = col_e4.date_input("📅 Data do Documento", datetime.now(fuso_br))
+
+                # CHECKBOX MÁGICO: Lançar no Financeiro automaticamente
+                lancar_venda = st.toggle("📊 Lançar automaticamente no gráfico de vendas", value=True)
+
+            if st.button("✨ GERAR E FINALIZAR DOCUMENTO", type="primary", use_container_width=True):
+                if not nome_c or not serv_c or valor_c <= 0:
+                    st.error("⚠️ Preencha todos os campos para validar o recibo.")
+                else:
+                    # 1. LOGICA DE ARQUIVAMENTO (DATABASE)
+                    id_recibo = f"REC-{datetime.now().strftime('%y%m%H%M%S')}"
+                    
+                    if lancar_venda:
+                        # Adiciona na coleção de vendas para o seu gráfico na Tab Vendas atualizar sozinho
+                        db.collection("vendas").add({
+                            "data": datetime.combine(data_manual, datetime.min.time()),
+                            "valor": valor_c,
+                            "produto_nome": f"RECIBO: {serv_c}",
+                            "usuario_nome": nome_c,
+                            "id_documento": id_recibo
+                        })
+                        st.toast("✅ Venda registrada no financeiro!", icon="💰")
+
+                    # 2. CONSTRUÇÃO DO HTML DO RECIBO
+                    html_final = f"""
+                    <div class="recibo-frame">
+                        <div class="watermark">GERALJÁ ELITE</div>
+                        <div class="header-recibo">
+                            <div>
+                                <h1 style="margin:0; color:#0047AB; font-size:32px; font-weight:900;">RECIBO</h1>
+                                <p style="margin:0; color:#FF8C00; font-weight:bold; letter-spacing:2px;">Nº {id_recibo}</p>
+                            </div>
+                            <div class="valor-box">
+                                <span style="font-size:12px; color:#666; display:block;">VALOR TOTAL</span>
+                                <span style="font-size:24px; font-weight:900; color:#0047AB;">R$ {valor_c:,.2f}</span>
+                            </div>
+                        </div>
+
+                        <div style="z-index:1; position:relative;">
+                            <p style="font-size:18px; line-height:1.8;">
+                                Recebemos de <b>{nome_c.upper()}</b> a importância supra de 
+                                <span style="color:#0047AB; font-weight:bold;">R$ {valor_c:,.2f}</span>,
+                                referente a <i>{serv_c}</i>, pelo que firmamos o presente recibo dando plena quitação.
+                            </p>
+                        </div>
+
+                        <div style="margin-top:60px; display:flex; justify-content:space-between; align-items:flex-end;">
+                            <div style="font-size:14px; color:#666;">
+                                <p><b>Emitido por:</b> GeralJá Soluções Integradas</p>
+                                <p>Grajaú, São Paulo - SP</p>
+                                <p>Data: {data_manual.strftime('%d/%m/%Y')}</p>
+                            </div>
+                            <div style="text-align:center;">
+                                <div style="width:200px; border-top:1px solid #333; margin-bottom:5px;"></div>
+                                <p style="font-family:'Monsieur La Doulaise', cursive; font-size:28px; color:#0047AB; margin:0;">GeralJá Admin</p>
+                            </div>
+                        </div>
+                    </div>
+                    """
+                    
+                    st.markdown(html_final, unsafe_allow_html=True)
+
+                   # 3. OPÇÕES DE EXPORTAÇÃO (VERSÃO TURBO)
+st.divider()
+col_d1, col_d2, col_d3 = st.columns(3)
+
+# --- BOTÃO 1: DOWNLOAD HTML (O SEGURO) ---
+col_d1.download_button(
+    "📄 BAIXAR HTML",
+    data=html_final,
+    file_name=f"Recibo_{id_recibo}.html",
+    mime="text/html",
+    use_container_width=True,
+    help="Salva o arquivo original para abrir em qualquer navegador."
+)
+
+# --- BOTÃO 2: IMPRIMIR / SALVAR PDF ---
+# Usamos um pequeno truque de JS para abrir a tela de impressão do navegador
+btn_print = f"""
+    <script>
+        function imprimirRecibo() {{
+            var conteudo = document.querySelector('.recibo-frame').innerHTML;
+            var win = window.open('', '', 'height=700,width=700');
+            win.document.write('<html><head><title>Recibo GeralJá</title>');
+            win.document.write('<style>body{{font-family:sans-serif;}} .recibo-frame{{border:1px solid #eee; padding:20px;}}</style></head><body>');
+            win.document.write(conteudo);
+            win.document.write('</body></html>');
+            win.document.close();
+            win.print();
+        }}
+    </script>
+    <button onclick="window.print()" style="
+        width: 100%;
+        background-color: #0047AB;
+        color: white;
+        border: none;
+        padding: 0.5rem;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        font-weight: bold;
+        height: 38px;
+    ">🖨️ IMPRIMIR / PDF</button>
+"""
+with col_d2:
+    st.components.v1.html(btn_print, height=45)
+
+# --- BOTÃO 3: WHATSAPP COM LINK DE IMAGEM ---
+msg_zap = quote(f"✅ *RECIBO GERALJÁ*\n\nOlá *{nome_c}*,\nConfirmamos o recebimento de *R$ {valor_c:,.2f}*.\nReferente a: {serv_c}.\n\nPara visualizar seu recibo oficial, acesse o portal GeralJá.")
+col_d3.link_button("💬 WHATSAPP", f"https://wa.me/?text={msg_zap}", use_container_width=True)
+
+# --- BÔNUS: BOTÃO PARA CAPTURAR TELA (JPG) ---
+if st.button("📸 GERAR IMAGEM (PARA INSTAGRAM/ZAP)", use_container_width=True):
+    st.info("💡 Dica: No celular, basta tirar um print do recibo acima. O layout foi otimizado para caber na tela!")
+
+st.balloons()
 # ==============================================================================
 # ABA 5: FEEDBACK
 # ==============================================================================
@@ -1204,6 +1375,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
