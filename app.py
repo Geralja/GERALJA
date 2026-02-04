@@ -1288,9 +1288,55 @@ with menu_abas[3]:
                 col_zap.link_button("📲 AVISAR NO ZAP", f"https://wa.me/55{zap_c.replace(' ','').replace('-','')}?text={msg_w}", use_container_width=True)
                 st.info("☝️ **Como enviar o ARQUIVO:** 1. Clique em 'Baixar Recibo' acima. 2. No WhatsApp do cliente, anexe o arquivo que você baixou.")
 
+      # --- CONTINUAÇÃO DA ABA 4: TORRE DE CONTROLE ---
+        
         with tab_profissionais:
             st.subheader("👥 Gestão de Parceiros")
-            st.write("Lista de profissionais cadastrados para moderação.")
+            
+            # Busca profissionais que aguardam aprovação ou já estão ativos
+            profissionais_ref = db.collection("profissionais").order_by("data_cadastro", direction="DESCENDING").stream()
+            
+            for prof in profissionais_ref:
+                p_data = prof.to_dict()
+                p_id = prof.id
+                status = p_data.get("status", "pendente")
+                
+                with st.container(border=True):
+                    c_info, c_status, c_del = st.columns([3, 1, 1])
+                    
+                    c_info.markdown(f"**{p_data.get('nome')}** ({p_data.get('categoria')})")
+                    c_info.caption(f"📍 {p_data.get('bairro')} | 📞 {p_data.get('whatsapp')}")
+                    
+                    # Toggle de Status (Ativo/Inativo)
+                    cor_status = "green" if status == "ativo" else "orange"
+                    if c_status.button(f"St: {status.upper()}", key=f"stat_{p_id}", use_container_width=True):
+                        novo_status = "pendente" if status == "ativo" else "ativo"
+                        db.collection("profissionais").document(p_id).update({"status": novo_status})
+                        st.rerun()
+                        
+                    if c_del.button("🗑️", key=f"del_prof_{p_id}", use_container_width=True):
+                        db.collection("profissionais").document(p_id).delete()
+                        st.warning("Parceiro removido.")
+                        st.rerun()
+
+        with tab_metricas:
+            st.subheader("📊 Métricas de Engajamento")
+            
+            # Painel de Kpis Rápidos
+            col_k1, col_k2, col_k3 = st.columns(3)
+            
+            total_prof = len(list(db.collection("profissionais").stream()))
+            total_vendas = len(vendas_data) # Usando a lista carregada na tab_vendas
+            total_noticias = len(list(db.collection("noticias").stream()))
+            
+            col_k1.metric("Parceiros Cadastrados", total_prof)
+            col_k2.metric("Vendas Realizadas", total_vendas)
+            col_k3.metric("Postagens no Portal", total_noticias)
+            
+            st.markdown("---")
+            st.info("💡 As métricas acima são sincronizadas em tempo real com o banco de dados Firebase.")
+
+# FIM DA ESTRUTURA DA ABA 4
 # ==============================================================================
 # ABA 5: FEEDBACK
 # ==============================================================================
@@ -1376,6 +1422,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
