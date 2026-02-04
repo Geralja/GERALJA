@@ -929,7 +929,7 @@ with menu_abas[1]:
                         
             except Exception as e:
                 st.error(f"❌ Erro ao processar perfil: {e}")
-olha o tanto de cod que vc removeu. nao da pra confiar em vc # ==============================================================================
+# ==============================================================================
 # ABA 4: 👑 TORRE DE CONTROLE MASTER (VERSÃO ELITE TURBINADA - SEM REMOÇÃO)
 # ==============================================================================
 with menu_abas[3]:
@@ -1416,6 +1416,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
