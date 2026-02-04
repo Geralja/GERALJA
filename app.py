@@ -1076,51 +1076,99 @@ with menu_abas[3]:
             else:
                 st.info("Nenhuma venda registrada ainda.")
 
-        with tab_profissionais:
+with tab_profissionais:
             try:
+                # 1. BUSCA DE DADOS
                 profs_ref = db.collection("profissionais").stream()
                 profs_list = [p.to_dict() | {"id": p.id} for p in profs_ref]
                 df = pd.DataFrame(profs_list)
+                
                 if not df.empty:
-                    busca = st.text_input("🔍 Localizar (Nome ou WhatsApp)")
-                    if busca: df = df[df['nome'].str.contains(busca, case=False, na=False) | df['whatsapp'].str.contains(busca, na=False)]
+                    # --- HEADER DE CONTROLE ---
+                    c_b1, c_b2 = st.columns([2, 1])
+                    busca = c_b1.text_input("🔍 Localizar por Nome, Área ou Zap", placeholder="Ex: Eletricista...")
+                    filtro = c_b2.selectbox("🎯 Filtrar por", ["Todos", "Pendentes", "Aprovados", "VIPs (Saldo > 0)"])
                     
-                    m1, m2, m3 = st.columns(3)
-                    m1.metric("Total", len(df))
-                    m2.metric("Pendentes", len(df[df['aprovado'] == False]))
-                    m3.metric("GeralCones", f"💎 {int(df['saldo'].sum())}")
+                    # Aplicação dos filtros
+                    if busca: 
+                        df = df[df['nome'].str.contains(busca, case=False, na=False) | 
+                                df['area'].str.contains(busca, case=False, na=False) |
+                                df['whatsapp'].str.contains(busca, na=False)]
+                    
+                    if filtro == "Pendentes": df = df[df['aprovado'] == False]
+                    elif filtro == "Aprovados": df = df[df['aprovado'] == True]
+                    elif filtro == "VIPs (Saldo > 0)": df = df[df['saldo'] > 0]
 
+                    # --- MÉTRICAS ELITE ---
+                    m1, m2, m3, m4 = st.columns(4)
+                    m1.metric("👥 Total", len(df))
+                    m2.metric("⏳ Pendentes", len(df[df['aprovado'] == False]), delta_color="inverse")
+                    m3.metric("💎 GeralCones", f"{int(df['saldo'].sum())}")
+                    m4.metric("✅ Ativos", len(df[df['aprovado'] == True]))
+
+                    st.divider()
+
+                    # --- LISTAGEM ESTILIZADA ---
                     for _, p in df.iterrows():
                         pid = p['id']
-                        status = "🟢" if p.get('aprovado') else "🟡"
-                        with st.expander(f"{status} {p.get('nome','').upper()}"):
-                            with st.form(f"f_edit_{pid}"):
-                                c1, c2 = st.columns(2)
-                                n_nome = c1.text_input("Nome", value=p.get('nome'))
-                                n_area = c2.selectbox("Área", lista_atual, index=lista_atual.index(p.get('area')) if p.get('area') in lista_atual else 0)
-                                n_desc = st.text_area("Descrição", value=p.get('descricao'))
-                                c3, c4, c5 = st.columns(3)
-                                n_zap = c3.text_input("Zap", value=p.get('whatsapp'))
-                                n_saldo = c4.number_input("Saldo", value=int(p.get('saldo', 0)))
-                                n_status = c5.selectbox("Status", ["Aprovado", "Pendente"], index=0 if p.get('aprovado') else 1)
-                                st.divider()
-                                cf1, cf2 = st.columns([1, 2])
-                                with cf1:
-                                    if p.get('foto_url'): st.image(f"data:image/jpeg;base64,{p['foto_url']}" if len(p['foto_url']) > 100 else p['foto_url'], width=80)
-                                    up_p = st.file_uploader("Perfil", type=['jpg','png'], key=f"up_p_{pid}")
-                                with cf2:
-                                    up_v = st.file_uploader("Vitrine (Máx 4)", type=['jpg','png'], accept_multiple_files=True, key=f"up_v_{pid}")
-                                if st.form_submit_button("💾 SALVAR TUDO"):
-                                    upd = {"nome": n_nome, "area": n_area, "descricao": n_desc, "whatsapp": n_zap, "saldo": int(n_saldo), "aprovado": (n_status=="Aprovado")}
-                                    if up_p: upd["foto_url"] = otimizar_imagem(up_p, size=(350, 350))
-                                    if up_v:
-                                        for i in range(1, 5): upd[f'f{i}'] = None
-                                        for i, f in enumerate(up_v[:4]): upd[f"f{i+1}"] = otimizar_imagem(f)
-                                    db.collection("profissionais").document(pid).update(upd); st.rerun()
-                            if st.button("🗑️ EXCLUIR", key=f"del_p_{pid}"): db.collection("profissionais").document(pid).delete(); st.rerun()
-            except Exception as e: st.error(f"Erro: {e}")
-                with tab_recibos:
-            st.markdown("### 🎫 Emissor de Recibos Profissional")
+                        is_aprovado = p.get('aprovado', False)
+                        cor_status = "#28a745" if is_aprovado else "#ffc107"
+                        icone = "✅" if is_aprovado else "⏳"
+                        
+                        # Card Compacto de Parceiro
+                        with st.container(border=True):
+                            col_f, col_d, col_a = st.columns([1, 3, 2])
+                            
+                            # Foto de Perfil Redonda
+                            with col_f:
+                                foto = p.get('foto_url', "https://placehold.co/100x100?text=Sem+Foto")
+                                if len(str(foto)) > 100: # Se for base64
+                                    st.markdown(f'<img src="data:image/jpeg;base64,{foto}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid {cor_status}">', unsafe_allow_html=True)
+                                else:
+                                    st.image(foto, width=80)
+
+                            # Dados Principais
+                            with col_d:
+                                st.markdown(f"### {icone} {p.get('nome','').upper()}")
+                                st.caption(f"📍 {p.get('area')} | 📱 {p.get('whatsapp')}")
+                                st.markdown(f"💎 **Saldo:** {int(p.get('saldo', 0))} GeralCones")
+
+                            # Ações Rápidas (O Pulo da Gata)
+                            with col_a:
+                                c_a1, c_a2 = st.columns(2)
+                                if c_a1.button("👍 Aprovar" if not is_aprovado else "👎 Suspender", key=f"quick_ap_{pid}", use_container_width=True):
+                                    db.collection("profissionais").document(pid).update({"aprovado": not is_aprovado})
+                                    st.rerun()
+                                
+                                if c_a2.button("🗑️ Deletar", key=f"quick_del_{pid}", use_container_width=True):
+                                    db.collection("profissionais").document(pid).delete()
+                                    st.rerun()
+
+                                # Expander para Edição Completa
+                                with st.expander("📝 Editar Detalhes / Vitrine"):
+                                    with st.form(f"f_elite_edit_{pid}"):
+                                        en_nome = st.text_input("Nome", value=p.get('nome'))
+                                        en_desc = st.text_area("Descrição", value=p.get('descricao'))
+                                        
+                                        c_ed1, c_ed2 = st.columns(2)
+                                        en_area = c_ed1.selectbox("Área", lista_atual, index=lista_atual.index(p.get('area')) if p.get('area') in lista_atual else 0)
+                                        en_saldo = c_ed2.number_input("Ajustar Saldo", value=int(p.get('saldo', 0)))
+                                        
+                                        st.write("🖼️ **Atualizar Vitrine (Até 4 fotos)**")
+                                        up_v = st.file_uploader("Selecione as fotos", type=['jpg','png'], accept_multiple_files=True, key=f"up_v_elite_{pid}")
+                                        
+                                        if st.form_submit_button("💾 SALVAR ALTERAÇÕES", use_container_width=True):
+                                            upd = {"nome": en_nome, "area": en_area, "descricao": en_desc, "saldo": int(en_saldo)}
+                                            if up_v:
+                                                for i, f in enumerate(up_v[:4]): 
+                                                    upd[f"f{i+1}"] = otimizar_imagem(f)
+                                            db.collection("profissionais").document(pid).update(upd)
+                                            st.success("Dados atualizados!")
+                                            st.rerun()
+                else:
+                    st.info("Nenhum parceiro cadastrado.")
+            except Exception as e:
+                st.error(f"Erro na Torre de Parceiros: {e}")
             
             # --- CSS AVANÇADO PARA O RECIBO ---
             st.markdown("""
@@ -1375,6 +1423,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
