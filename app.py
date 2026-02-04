@@ -1159,106 +1159,79 @@ if btn_pub:
                             st.rerun()
                         else:
                             st.error("Dê um nome ao produto!")
-                    
-                    if st.form_submit_button("💎 LANÇAR PRODUTO NA LOJA", use_container_width=True):
-                        if ln:
-                            img_base64 = otimizar_imagem(lf) if lf else ""
-                            db.collection("loja").add({
-                                "nome": ln, 
-                                "preco": lp, 
-                                "descricao": ld,
-                                "foto": img_base64, 
-                                "data": datetime.now(fuso_br),
-                                "status": "ativo"
-                            })
-                            st.success(f"🚀 {ln} já está na vitrine!")
-                            st.rerun()
-                        else:
-                            st.error("Dê um nome ao produto!")
 
             st.markdown("---")
             
-            # --- VITRINE DE GESTÃO (GERENCIAR ESTOQUE) ---
-            st.write("### 🏬 Itens na Vitrine")
-            produtos = db.collection("loja").order_by("data", direction="DESCENDING").stream()
+ # --- VITRINE DE GESTÃO (DENTRO DA TAB LOJA) ---
+        st.write("### 🏬 Itens na Vitrine")
+        produtos = db.collection("loja").order_by("data", direction="DESCENDING").stream()
+        
+        for p in produtos:
+            p_data = p.to_dict()
+            p_id = p.id
             
-            for p in produtos:
-                p_data = p.to_dict()
-                p_id = p.id
+            with st.container(border=True):
+                col_img, col_info, col_acao = st.columns([1, 2, 1])
                 
-                # Criando um card visual para cada produto na administração
-                with st.container(border=True):
-                    col_img, col_info, col_acao = st.columns([1, 2, 1])
-                    
-                    # Coluna 1: Imagem
-                    if p_data.get("foto"):
-                        col_img.image(f"data:image/jpeg;base64,{p_data['foto']}", use_container_width=True)
-                    else:
-                        col_img.image("https://placehold.co/400x400?text=Sem+Foto", use_container_width=True)
-                    
-                    # Coluna 2: Informações
-                    col_info.subheader(f"{p_data.get('nome')}")
-                    col_info.write(f"**Preço:** R$ {p_data.get('preco'):,.2f}")
-                    if p_data.get("descricao"):
-                        col_info.caption(p_data.get("descricao"))
-                    
-                    # Coluna 3: Ações de Elite
-                    # Aqui você pode adicionar botões para deletar ou pausar venda
-                    if col_acao.button("🗑️ Excluir", key=f"del_{p_id}", use_container_width=True):
-                        db.collection("loja").document(p_id).delete()
-                        st.warning(f"Produto removido!")
-                        st.rerun()
-                    
-                    if col_acao.button("✏️ Promover", key=f"promo_{p_id}", use_container_width=True):
-                        st.toast(f"Promoção aplicada a {p_data.get('nome')}!")
+                if p_data.get("foto"):
+                    col_img.image(f"data:image/jpeg;base64,{p_data['foto']}", use_container_width=True)
+                else:
+                    col_img.image("https://placehold.co/400x400?text=Sem+Foto", use_container_width=True)
+                
+                col_info.subheader(f"{p_data.get('nome')}")
+                col_info.write(f"**Preço:** R$ {p_data.get('preco'):,.2f}")
+                if p_data.get("descricao"):
+                    col_info.caption(p_data.get("descricao"))
+                
+                if col_acao.button("🗑️ Excluir", key=f"del_{p_id}", use_container_width=True):
+                    db.collection("loja").document(p_id).delete()
+                    st.warning(f"Produto removido!")
+                    st.rerun()
+                
+                if col_acao.button("✏️ Promover", key=f"promo_{p_id}", use_container_width=True):
+                    st.toast(f"Promoção aplicada a {p_data.get('nome')}!")
 
-       with tab_vendas:
-            st.subheader("📊 Performance de Vendas")
+    # --- FIM DA TAB LOJA / INÍCIO DA TAB VENDAS (ALINHADOS) ---
+    with tab_vendas:
+        st.subheader("📊 Performance de Vendas")
+        
+        vendas_data = []
+        vendas_ref = db.collection("vendas").order_by("data", direction="DESCENDING").stream()
+        
+        for v in vendas_ref:
+            vd = v.to_dict()
+            # CONVERSÃO DE DATA PARA EVITAR ERRO NO GRÁFICO
+            data_venda = vd.get('data')
+            if hasattr(data_venda, 'timestamp'): # Se for timestamp do Firebase
+                data_venda = data_venda.strftime('%d/%m/%Y %H:%M')
+                
+            vendas_data.append({
+                "Data": data_venda, 
+                "Valor": vd.get('valor', 0), 
+                "Produto": vd.get('produto_nome'), 
+                "Cliente": vd.get('usuario_nome')
+            })
+
+        if vendas_data:
+            df = pd.DataFrame(vendas_data)
+            total_faturado = df['Valor'].sum()
+            st.info(f"💰 **Faturamento Acumulado:** R$ {total_faturado:,.2f}")
             
-            vendas_data = []
-            vendas_ref = db.collection("vendas").order_by("data", direction="DESCENDING").stream()
+            # Gráfico com correção de cor e layout
+            fig = px.area(df, x="Data", y="Valor", 
+                          title="Fluxo Financeiro GeralJá",
+                          line_shape='spline',
+                          color_discrete_sequence=['#FF8C00'])
+            st.plotly_chart(fig, use_container_width=True)
             
-            for v in vendas_ref:
-                vd = v.to_dict()
-                vendas_data.append({
-                    "Data": vd.get('data'), 
-                    "Valor": vd.get('valor', 0), 
-                    "Produto": vd.get('produto_nome'), 
-                    "Cliente": vd.get('usuario_nome')
-                })
+            with st.expander("📄 Ver Relatório Detalhado"):
+                st.dataframe(df, use_container_width=True)
+        else:
+            st.write("🦗 Nenhuma venda registrada ainda.")
 
-            if vendas_data:
-                df = pd.DataFrame(vendas_data)
-                
-                # Card de Faturamento Total
-                total_faturado = df['Valor'].sum()
-                st.info(f"💰 **Faturamento Acumulado:** R$ {total_faturado:,.2f}")
-                
-                # Gráfico Turbinado
-                fig = px.area(df, x="Data", y="Valor", 
-                              title="Fluxo Financeiro GeralJá",
-                              line_shape='spline', # Deixa a linha curvada, mais elegante
-                              color_discrete_sequence=['#FF8C00']) # Cor laranja da GeralJá
-                
-                st.plotly_chart(fig, use_container_width=True)
-                
-                # Tabela detalhada
-                with st.expander("📄 Ver Relatório Detalhado"):
-                    st.dataframe(df, use_container_width=True)
-            else:
-                st.write("🦗 Nenhuma venda registrada ainda.")
-
-        with tab_recibos:
-            st.subheader("🎫 Gerador de Recibos Brasil Elite")
-            st.markdown("""
-                <style>
-                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@900&family=Monsieur+La+Doulaise&display=swap');
-                .marca-dagua {
-                    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); 
-                    font-size: 60px; color: rgba(0, 71, 171, 0.05); font-weight: 900; pointer-events: none; z-index: 0; width: 100%; text-align: center; white-space: nowrap;
-                }
-                </style>
-            """, unsafe_allow_html=True)
+    with tab_recibos:
+        st.subheader("🎫 Gerador de Recibos Brasil Elite")
+        # O CSS que você enviou entra aqui...
             
             meses = {1:"Janeiro", 2:"Fevereiro", 3:"Março", 4:"Abril", 5:"Maio", 6:"Junho", 7:"Julho", 8:"Agosto", 9:"Setembro", 10:"Outubro", 11:"Novembro", 12:"Dezembro"}
 
@@ -1449,6 +1422,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
