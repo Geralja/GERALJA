@@ -956,31 +956,40 @@ with menu_abas[3]:
 
     fuso_br = pytz.timezone('America/Sao_Paulo')
     
-    if 'admin_logado' not in st.session_state: st.session_state.admin_logado = False
+# 1. Inicializa o estado de login se não existir
+    if 'admin_logado' not in st.session_state: 
+        st.session_state.admin_logado = False
 
+    # 2. Se NÃO estiver logado, mostra o formulário
     if not st.session_state.admin_logado:
         st.markdown("### 🔐 Acesso Restrito à Diretoria")
         with st.form("login_adm"):
             u = st.text_input("Usuário Administrativo")
             p = st.text_input("Senha de Acesso", type="password")
             if st.form_submit_button("ACESSAR TORRE DE CONTROLE", use_container_width=True):
-                if u == st.secrets.get("ADMIN_USER", "geralja") and p == st.secrets.get("ADMIN_PASS", "Bps36ocara"):
-                    st.session_state.admin_logado = True; st.rerun()
-                else: st.error("Dados incorretos.")
-  else:
+                # Busca do Secrets ou usa o padrão
+                adm_user = st.secrets.get("ADMIN_USER", "geralja")
+                adm_pass = st.secrets.get("ADMIN_PASS", "Bps36ocara")
+                
+                if u == adm_user and p == adm_pass:
+                    st.session_state.admin_logado = True
+                    st.rerun()
+                else: 
+                    st.error("Dados incorretos.")
+
+    # 3. Se ESTIVER logado (else do if de login), mostra o painel
+    else:
         st.markdown("## 👑 Central de Comando GeralJá")
         if st.button("🚪 Sair", key="logout_adm"): 
             st.session_state.admin_logado = False
             st.rerun()
 
-        # Alinhamento exato: 8 espaços (ou 2 Tabs) antes de começar a linha abaixo
+        # Definição das Tabs (Uma única vez)
         tab_profissionais, tab_noticias, tab_loja, tab_vendas, tab_recibos, tab_categorias, tab_metricas = st.tabs([
             "👥 Parceiros", "📰 Notícias", "🛍️ Loja", "📜 Vendas", "🎫 Recibos", "📁 Categorias", "📊 Métricas"
         ])
 
-        with tab_categorias:
-            st.subheader("📁 Gestão de Profissões e Categorias")
-            # Seu código continua aqui...
+        # --- CONTEÚDO DAS TABS ---
         with tab_categorias:
             st.subheader("📁 Gestão de Profissões e Categorias")
             
@@ -1422,6 +1431,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
