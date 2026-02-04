@@ -14,39 +14,7 @@ from datetime import datetime
 import pytz
 import unicodedata
 import requests
-import streamlit as st
-import re
-import sys
-import os
-import pytz
-from datetime import datetime
 
-# --- CONFIGURAÇÃO DE ALTO NÍVEL ---
-class GeralJaEngine:
-    def __init__(self):
-        self.fuso = pytz.timezone('America/Sao_Paulo')
-    
-    def sanitizar(self, codigo_bruto):
-        """Mata caracteres fantasmas e lixo de codificação instantaneamente"""
-        if not codigo_bruto: return ""
-        # Remove U+00A0 (espaço inquebrável) e normaliza espaços
-        limpo = codigo_bruto.replace('\u00a0', ' ').replace('\xa0', ' ')
-        # Filtra apenas caracteres ASCII visíveis + quebras de linha
-        return re.sub(r'[^\x20-\x7E\n\t\r]', '', limpo)
-
-    def injetar_modulo(self, nome_arquivo, conteudo):
-        """Instala novos códigos no servidor de forma independente"""
-        conteudo_limpo = self.sanitizar(conteudo)
-        try:
-            with open(f"{nome_arquivo}.py", "w", encoding="utf-8") as f:
-                f.write(conteudo_limpo)
-            return True, f"✅ Módulo {nome_arquivo} instalado e saneado!"
-        except Exception as e:
-            return False, f"❌ Falha na instalação: {str(e)}"
-
-# Inicializa o Motor Global
-engine = GeralJaEngine()
-fuso_br = engine.fuso
 # --- BIBLIOTECAS NÍVEL 5.0 ---
 from groq import Groq                # Para a IA avançada
 from fuzzywuzzy import process       # Para buscas com erros de digitação
@@ -1151,24 +1119,6 @@ with menu_abas[3]:
                                     db.collection("profissionais").document(pid).update(upd); st.rerun()
                             if st.button("🗑️ EXCLUIR", key=f"del_p_{pid}"): db.collection("profissionais").document(pid).delete(); st.rerun()
             except Exception as e: st.error(f"Erro: {e}")
-               
-            with st.expander("🚀 INJETOR DE CÓDIGO E AUTO-REPARO", expanded=False):
-        st.warning("CUIDADO: Você está operando no núcleo do sistema.")
-        nome_mod = st.text_input("Nome do Módulo (ex: reparo_enel)", "update_v1")
-        codigo_novo = st.text_area("Cole o código 'sujo' ou o novo script aqui:", height=300)
-        
-        if st.button("⚡ EXECUTAR SANEAMENTO E INSTALAÇÃO"):
-            sucesso, msg = engine.injetar_modulo(nome_mod, codigo_novo)
-            if sucesso:
-                st.success(msg)
-                # Executa o código limpo imediatamente no contexto do site
-                try:
-                    exec(engine.sanitizar(codigo_novo))
-                    st.balloons()
-                except Exception as e:
-                    st.error(f"Erro na execução dinâmica: {e}")
-            else:
-                st.error(msg)
 # ==============================================================================
 # ABA 5: FEEDBACK
 # ==============================================================================
@@ -1254,10 +1204,6 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
-
-
-
-
 
 
 
