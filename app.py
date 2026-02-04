@@ -1119,108 +1119,7 @@ with menu_abas[3]:
                         st.rerun()
                     else:
                         st.error("Preencha o Título e o Link para continuar.")
-
-       with tab_loja:
-            st.subheader("🛍️ Gestão de Inventário Elite")
-            
-            # --- FORMULÁRIO DE ADIÇÃO (TURBINADO) ---
-            with st.expander("➕ Cadastrar Novo Produto", expanded=False):
-                with st.form("add_loja"):
-                    c1, c2 = st.columns([2, 1])
-                    ln = c1.text_input("Nome do Produto")
-                    lp = c2.number_input("Preço (R$)", min_value=1.0, step=0.50)
-                    
-                    ld = st.text_area("Descrição Curta (Opcional)")
-                    lf = st.file_uploader("Foto do Produto", type=['jpg','png','jpeg'])
-                    
-                    if st.form_submit_button("💎 LANÇAR PRODUTO NA LOJA", use_container_width=True):
-                        if ln:
-                            img_base64 = otimizar_imagem(lf) if lf else ""
-                            db.collection("loja").add({
-                                "nome": ln, 
-                                "preco": lp, 
-                                "descricao": ld,
-                                "foto": img_base64, 
-                                "data": datetime.now(fuso_br),
-                                "status": "ativo"
-                            })
-                            st.success(f"🚀 {ln} já está na vitrine!")
-                            st.rerun()
-                        else:
-                            st.error("Dê um nome ao produto!")
-
-            st.markdown("---")
-            
-            # --- VITRINE DE GESTÃO (GERENCIAR ESTOQUE) ---
-            st.write("### 🏬 Itens na Vitrine")
-            produtos = db.collection("loja").order_by("data", direction="DESCENDING").stream()
-            
-            for p in produtos:
-                p_data = p.to_dict()
-                p_id = p.id
-                
-                # Criando um card visual para cada produto na administração
-                with st.container(border=True):
-                    col_img, col_info, col_acao = st.columns([1, 2, 1])
-                    
-                    # Coluna 1: Imagem
-                    if p_data.get("foto"):
-                        col_img.image(f"data:image/jpeg;base64,{p_data['foto']}", use_container_width=True)
-                    else:
-                        col_img.image("https://placehold.co/400x400?text=Sem+Foto", use_container_width=True)
-                    
-                    # Coluna 2: Informações
-                    col_info.subheader(f"{p_data.get('nome')}")
-                    col_info.write(f"**Preço:** R$ {p_data.get('preco'):,.2f}")
-                    if p_data.get("descricao"):
-                        col_info.caption(p_data.get("descricao"))
-                    
-                    # Coluna 3: Ações de Elite
-                    # Aqui você pode adicionar botões para deletar ou pausar venda
-                    if col_acao.button("🗑️ Excluir", key=f"del_{p_id}", use_container_width=True):
-                        db.collection("loja").document(p_id).delete()
-                        st.warning(f"Produto removido!")
-                        st.rerun()
-                    
-                    if col_acao.button("✏️ Promover", key=f"promo_{p_id}", use_container_width=True):
-                        st.toast(f"Promoção aplicada a {p_data.get('nome')}!")
-
-       with tab_vendas:
-            st.subheader("📊 Performance de Vendas")
-            
-            vendas_data = []
-            vendas_ref = db.collection("vendas").order_by("data", direction="DESCENDING").stream()
-            
-            for v in vendas_ref:
-                vd = v.to_dict()
-                vendas_data.append({
-                    "Data": vd.get('data'), 
-                    "Valor": vd.get('valor', 0), 
-                    "Produto": vd.get('produto_nome'), 
-                    "Cliente": vd.get('usuario_nome')
-                })
-
-            if vendas_data:
-                df = pd.DataFrame(vendas_data)
-                
-                # Card de Faturamento Total
-                total_faturado = df['Valor'].sum()
-                st.info(f"💰 **Faturamento Acumulado:** R$ {total_faturado:,.2f}")
-                
-                # Gráfico Turbinado
-                fig = px.area(df, x="Data", y="Valor", 
-                              title="Fluxo Financeiro GeralJá",
-                              line_shape='spline', # Deixa a linha curvada, mais elegante
-                              color_discrete_sequence=['#FF8C00']) # Cor laranja da GeralJá
-                
-                st.plotly_chart(fig, use_container_width=True)
-                
-                # Tabela detalhada
-                with st.expander("📄 Ver Relatório Detalhado"):
-                    st.dataframe(df, use_container_width=True)
-            else:
-                st.write("🦗 Nenhuma venda registrada ainda.")
-
+                        
         with tab_recibos:
             st.subheader("🎫 Gerador de Recibos Brasil Elite")
             st.markdown("""
@@ -1416,6 +1315,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
