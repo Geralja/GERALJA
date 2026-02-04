@@ -929,204 +929,367 @@ with menu_abas[1]:
                         
             except Exception as e:
                 st.error(f"❌ Erro ao processar perfil: {e}")
-# ==============================================================================
-# ABA 4: 👑 TORRE DE CONTROLE MASTER (VERSÃO ELITE TURBINADA - FINAL COMPLETA)
+olha o tanto de cod que vc removeu. nao da pra confiar em vc # ==============================================================================
+# ABA 4: 👑 TORRE DE CONTROLE MASTER (VERSÃO ELITE TURBINADA - SEM REMOÇÃO)
 # ==============================================================================
 with menu_abas[3]:
-    import pytz
-    from datetime import datetime
-    import pandas as pd
-    import io, base64, requests, feedparser
-    from PIL import Image
-    import plotly.express as px
+    import pytz
+    from datetime import datetime
+    import pandas as pd
+    import io
+    import base64
+    import feedparser
+    import urllib.parse
+    import requests
+    from PIL import Image
+    import plotly.express as px # Adicionado para o gráfico de performance
 
-    # --- FUNÇÕES DE APOIO ---
-    def otimizar_imagem_adm(image_file, size=(500, 500)):
-        try:
-            img = Image.open(image_file)
-            if img.mode in ("RGBA", "P"): img = img.convert("RGB")
-            img.thumbnail(size)
-            buffer = io.BytesIO()
-            img.save(buffer, format="JPEG", quality=70)
-            return base64.b64encode(buffer.getvalue()).decode()
-        except: return None
+    def otimizar_imagem(image_file, size=(500, 500)):
+        try:
+            img = Image.open(image_file)
+            if img.mode in ("RGBA", "P"): img = img.convert("RGB")
+            img.thumbnail(size)
+            buffer = io.BytesIO()
+            img.save(buffer, format="JPEG", quality=70)
+            return base64.b64encode(buffer.getvalue()).decode()
+        except: return None
 
-    def renderizar_imagem_segura(url_ou_base64, largura=80):
-        """Evita o erro MediaFileStorageError renderizando placeholders em caso de falha"""
-        try:
-            if not url_ou_base64:
-                st.image("https://placehold.co/100x100?text=Sem+Imagem", width=largura)
-            elif str(url_ou_base64).startswith("http"):
-                st.image(url_ou_base64, width=largura)
-            else:
-                st.image(f"data:image/jpeg;base64,{url_ou_base64}", width=largura)
-        except Exception:
-            st.image("https://placehold.co/100x100?text=Erro+Imagem", width=largura)
+    fuso_br = pytz.timezone('America/Sao_Paulo')
+    
+    if 'admin_logado' not in st.session_state: st.session_state.admin_logado = False
 
-    fuso_br = pytz.timezone('America/Sao_Paulo')
-    
-    if 'admin_logado' not in st.session_state: 
-        st.session_state.admin_logado = False
+    if not st.session_state.admin_logado:
+        st.markdown("### 🔐 Acesso Restrito à Diretoria")
+        with st.form("login_adm"):
+            u = st.text_input("Usuário Administrativo")
+            p = st.text_input("Senha de Acesso", type="password")
+            if st.form_submit_button("ACESSAR TORRE DE CONTROLE", use_container_width=True):
+                if u == st.secrets.get("ADMIN_USER", "geralja") and p == st.secrets.get("ADMIN_PASS", "Bps36ocara"):
+                    st.session_state.admin_logado = True; st.rerun()
+                else: st.error("Dados incorretos.")
+  else:
+        st.markdown("## 👑 Central de Comando GeralJá")
+        if st.button("🚪 Sair", key="logout_adm"): 
+            st.session_state.admin_logado = False
+            st.rerun()
 
-    # --- LOGIN DE ACESSO ---
-    if not st.session_state.admin_logado:
-        st.markdown("### 🔐 Acesso Restrito à Diretoria")
-        with st.form("login_adm_final"):
-            u = st.text_input("Usuário Administrativo")
-            p = st.text_input("Senha de Acesso", type="password")
-            if st.form_submit_button("ACESSAR TORRE DE CONTROLE", use_container_width=True):
-                adm_user = st.secrets.get("ADMIN_USER", "geralja")
-                adm_pass = st.secrets.get("ADMIN_PASS", "Bps36ocara")
-                if u == adm_user and p == adm_pass:
-                    st.session_state.admin_logado = True
-                    st.rerun()
-                else: 
-                    st.error("Dados incorretos.")
-    else:
-        # --- CENTRAL LOGADA ---
-        c_tit1, c_tit2 = st.columns([4, 1])
-        c_tit1.markdown("## 👑 Central de Comando GeralJá")
-        if c_tit2.button("🚪 Sair", key="logout_adm"): 
-            st.session_state.admin_logado = False
-            st.rerun()
+        # Alinhamento exato: 8 espaços (ou 2 Tabs) antes de começar a linha abaixo
+        tab_profissionais, tab_noticias, tab_loja, tab_vendas, tab_recibos, tab_categorias, tab_metricas = st.tabs([
+            "👥 Parceiros", "📰 Notícias", "🛍️ Loja", "📜 Vendas", "🎫 Recibos", "📁 Categorias", "📊 Métricas"
+        ])
 
-        tabs = st.tabs(["👥 Parceiros", "📰 Notícias IA", "🛍️ Loja", "📊 Vendas", "🎫 Recibos", "📁 Categorias", "📈 Métricas"])
+        with tab_categorias:
+            st.subheader("📁 Gestão de Profissões e Categorias")
+            # Seu código continua aqui...
+        with tab_categorias:
+            st.subheader("📁 Gestão de Profissões e Categorias")
+            
+            # Referência ao banco
+            doc_cat_ref = db.collection("configuracoes").document("categorias")
+            res_cat = doc_cat_ref.get()
+            
+            # Carrega a lista do Firebase ou a Oficial definida no seu código
+            lista_atual = res_cat.to_dict().get("lista", CATEGORIAS_OFICIAIS) if res_cat.exists else CATEGORIAS_OFICIAIS
+            
+            # --- ÁREA DE ADIÇÃO ---
+            with st.container(border=True):
+                c1, c2 = st.columns([3, 1])
+                nova_cat = c1.text_input("Nova Profissão ou Categoria:", placeholder="Ex: Eletricista, Encanador...")
+                if c2.button("➕ ADICIONAR", use_container_width=True):
+                    if nova_cat:
+                        nova_cat_clean = nova_cat.strip().upper()
+                        if nova_cat_clean not in [c.upper() for c in lista_atual]:
+                            lista_atual.append(nova_cat_clean)
+                            lista_atual.sort()
+                            doc_cat_ref.set({"lista": lista_atual})
+                            st.success(f"✅ {nova_cat_clean} adicionada!")
+                            st.rerun()
+                        else:
+                            st.warning("Esta categoria já existe.")
+                    else:
+                        st.error("Digite um nome!")
 
-        # 1. PARCEIROS
-        with tabs[0]:
-            st.subheader("👥 Gestão de Parceiros")
-            prof_ref = db.collection("profissionais").order_by("data_cadastro", direction="DESCENDING").stream()
-            for prof in prof_ref:
-                p_d, p_id = prof.to_dict(), prof.id
-                with st.container(border=True):
-                    c_img, c_info, c_ops = st.columns([1, 2, 1])
-                    with c_img:
-                        renderizar_imagem_segura(p_d.get("foto_url"))
-                    with c_info:
-                        st.write(f"**{p_d.get('nome', 'Sem Nome')}**")
-                        st.caption(f"{p_d.get('area', 'Geral')} | {p_d.get('whatsapp', '')}")
-                        st.write(f"💎 Saldo: {p_d.get('saldo', 0)}")
-                    with c_ops:
-                        st_atual = p_d.get('status', 'pendente')
-                        if st.button(f"{st_atual.upper()}", key=f"st_{p_id}", use_container_width=True):
-                            novo_st = "ativo" if st_atual == "pendente" else "pendente"
-                            db.collection("profissionais").document(p_id).update({"status": novo_st}); st.rerun()
-                        if st.button("🗑️", key=f"del_prof_{p_id}", use_container_width=True):
-                            db.collection("profissionais").document(p_id).delete(); st.rerun()
+            st.markdown("---")
 
-       # 2. 📰 NOTÍCIAS IA (RADAR 4 APIs) & 📻 RÁDIO GERALJÁ
-        with tabs[1]:
-            # --- SEÇÃO 1: RÁDIO GERALJÁ (COMANDO CENTRAL) ---
-            st.markdown("### 📻 Comando de Transmissão - Rádio GeralJá")
-            with st.container(border=True):
-                col_r1, col_r2 = st.columns([2, 1])
-                with col_r1:
-                    st.markdown("#### 🎵 No Ar: **GeralJá Hits**")
-                    # Substitua pela sua URL de streaming real
-                    st.audio("https://streaming.radio.co/s6c7576f3d/listen", format="audio/mp3")
-                with col_m2:
-                    status_radio = st.toggle("📡 Sinal de Transmissão", value=True)
-                    if status_radio:
-                        st.success("AO VIVO")
-                    else:
-                        st.error("OFFLINE")
-            
-            st.divider()
+            # --- LISTA DE GESTÃO (Visual Elite) ---
+            st.write(f"📊 **{len(lista_atual)} Categorias Ativas**")
+            
+            # Criando uma grade para não ficar uma lista gigante vertical
+            cols_cat = st.columns(2) 
+            
+            for idx, cat in enumerate(lista_atual):
+                # Alterna entre a coluna 1 e 2
+                col_alvo = cols_cat[idx % 2]
+                
+                with col_alvo.container(border=True):
+                    c_txt, c_del = st.columns([4, 1])
+                    c_txt.markdown(f"**{cat}**")
+                    
+                    # Botão de remoção (Importante para manter a casa limpa)
+                    if c_del.button("🗑️", key=f"del_cat_{idx}"):
+                        lista_atual.remove(cat)
+                        doc_cat_ref.set({"lista": lista_atual})
+                        st.toast(f"Categoria {cat} removida!")
+                        st.rerun()
 
-            # --- SEÇÃO 2: RADAR IA (4 APIs DE CAPTAÇÃO) ---
-            st.subheader("🤖 Radar IA - Captação Multi-Fonte")
-            c_api1, c_api2, c_api3, c_api4 = st.columns(4)
-            
-            # API 1: GOOGLE NEWS
-            if c_api1.button("🔍 GOOGLE", use_container_width=True):
-                feed = feedparser.parse("https://news.google.com/rss/search?q=Grajaú+São+Paulo&hl=pt-BR")
-                st.session_state['sugestoes_ia'] = [{"titulo": e.title, "link": e.link, "fonte": "Google"} for e in feed.entries[:5]]
-            
-            # API 2: G1 SÃO PAULO
-            if c_api2.button("📺 G1 SP", use_container_width=True):
-                feed_g1 = feedparser.parse("https://g1.globo.com/rss/g1/sao-paulo/")
-                st.session_state['sugestoes_ia'] = [{"titulo": e.title, "link": e.link, "fonte": "G1"} for e in feed_g1.entries[:5]]
-            
-            # API 3: NEWS API (GLOBAL/LOCAL)
-            if c_api3.button("🌐 NEWS API", use_container_width=True):
-                key = st.secrets.get("NEWS_API_KEY", "")
-                url = f"https://newsapi.org/v2/everything?q=Grajaú+Brasil&apiKey={key}"
-                try:
-                    res = requests.get(url).json()
-                    st.session_state['sugestoes_ia'] = [{"titulo": a['title'], "link": a['url'], "fonte": "NewsAPI"} for a in res['articles'][:5]]
-                except: st.warning("Configure a NEWS_API_KEY nos Secrets.")
+            # --- BOTÃO DE RESET (Cuidado!) ---
+            with st.expander("⚠️ Zona de Perigo"):
+                if st.button("🔄 RESETAR PARA PADRÃO OFICIAL"):
+                    doc_cat_ref.set({"lista": CATEGORIAS_OFICIAIS})
+                    st.warning("Categorias resetadas para o padrão inicial.")
+                    st.rerun()
 
-            # API 4: BUSCA WEB (SIMULADA/RSS LOCAL)
-            if c_api4.button("📡 LOCAL", use_container_width=True):
-                # Aqui pode entrar um RSS de portal local ou busca customizada
-                st.session_state['sugestoes_ia'] = [{"titulo": "Oscilação de Energia no Pq. Novo Grajaú cresce", "link": "https://geralja.com", "fonte": "Radar Local"}]
+        with tab_noticias:
+            st.subheader("🤖 Captação por IA (Radar 4 APIs)")
+            api_key_news = st.secrets.get("NEWS_API_KEY", "")
+            
+            c_ia1, c_ia2, c_ia3, c_ia4 = st.columns(4)
+            if c_ia1.button("🔍 GOOGLE"):
+                feed = feedparser.parse("https://news.google.com/rss/search?q=Grajaú+São+Paulo&hl=pt-BR&gl=BR&ceid=BR:pt-419")
+                st.session_state['sugestoes_ia'] = [{"titulo": e.title, "link": e.link, "fonte": "Google"} for e in feed.entries[:5]]
+            
+            if c_ia2.button("📰 G1 SP"):
+                feed = feedparser.parse("https://g1.globo.com/rss/sp/sao-paulo/")
+                st.session_state['sugestoes_ia'] = [{"titulo": e.title, "link": e.link, "fonte": "G1"} for e in feed.entries[:5]]
 
-            # Exibição dos resultados do Radar
-            if 'sugestoes_ia' in st.session_state:
-                with st.container(border=True):
-                    st.caption("Selecione uma notícia para editar e publicar:")
-                    for idx, sug in enumerate(st.session_state['sugestoes_ia']):
-                        col_t, col_b = st.columns([4, 1])
-                        col_t.write(f"**[{sug['fonte']}]** {sug['titulo']}")
-                        if col_b.button("✅ USAR", key=f"ia_use_{idx}"):
-                            st.session_state['n_titulo'] = sug['titulo']
-                            st.session_state['n_link'] = sug['link']
-                            st.rerun()
+            if c_ia3.button("🌍 NEWSAPI"):
+                if api_key_news:
+                    url = f"https://newsapi.org/v2/everything?q=Grajaú%20SP&language=pt&apiKey={api_key_news}"
+                    res = requests.get(url).json()
+                    if res.get('status') == 'ok':
+                        st.session_state['sugestoes_ia'] = [{"titulo": a['title'], "link": a['url'], "fonte": a['source']['name']} for a in res['articles'][:5]]
+                else: st.warning("Cadastre a NEWS_API_KEY no Secrets!")
 
-            st.divider()
+            if c_ia4.button("📊 IBGE"):
+                res = requests.get("https://servicodados.ibge.gov.br/api/v3/noticias/?qtd=5").json()
+                st.session_state['sugestoes_ia'] = [{"titulo": n['titulo'], "link": n['link'], "fonte": "IBGE"} for n in res['items']]
+            
+            if 'sugestoes_ia' in st.session_state:
+                for idx, sug in enumerate(st.session_state['sugestoes_ia']):
+                    col_t, col_b = st.columns([4, 1])
+                    col_t.write(f"**[{sug.get('fonte', 'IA')}]** {sug['titulo']}")
+                    if col_b.button(f"✅ USAR", key=f"ia_btn_{idx}"):
+                        st.session_state['temp_titulo'] = sug['titulo']; st.session_state['temp_link'] = sug['link']; st.rerun()
 
-            # --- SEÇÃO 3: REDAÇÃO E PUBLICAÇÃO (POSTAGEM DA MATÉRIA DA ENEL) ---
-            st.markdown("### ✍️ Redação Final e Postagem")
-            with st.form("form_postagem_geral"):
-                nt = st.text_input("📌 Título da Matéria", value=st.session_state.get('n_titulo', ""))
-                nl = st.text_input("🔗 Link Oficial ou Vídeo", value=st.session_state.get('n_link', ""))
-                
-                c_f1, c_f2 = st.columns([1, 1])
-                nc = c_f1.selectbox("🏷️ Categoria", ["URGENTE", "DESTAQUE", "GRAJAÚ", "UTILIDADE", "RÁDIO"])
-                ni = c_f2.text_input("🖼️ URL da Imagem de Capa", value="https://images.unsplash.com/photo-1621905251918-48416bd8575a?w=800")
-                
-                # Onde você vai colar o relato da Enel
-                corpo_m = st.text_area("📝 Conteúdo da Matéria / Relato do Morador", height=200, placeholder="Ex: Moro no bairro Pq. Novo Grajaú. Há dias estamos sofrendo...")
-                
-                if st.form_submit_button("🚀 LANÇAR NO PORTAL GERALJÁ", use_container_width=True):
-                    if nt and nl:
-                        db.collection("noticias").add({
-                            "titulo": nt,
-                            "corpo": corpo_m,
-                            "link_original": nl,
-                            "imagem_url": ni,
-                            "categoria": nc,
-                            "data": datetime.now(fuso_br),
-                            "cliques": 0
-                        })
-                        st.balloons()
-                        st.success("✅ PUBLICADO! A voz do Grajaú foi ouvida.")
-                        st.session_state.pop('n_titulo', None)
-                        st.rerun()
-                    else:
-                        st.error("Preencha o título e o link para publicar.")
+            # --- UPGRADE: CENTRAL DE REDAÇÃO ELITE ---
+            st.markdown("### ✍️ Redação e Edição Final")
+            
+            # Preview da Notícia (Para você ver como vai ficar no app)
+            with st.expander("👁️ Visualizar Preview do Card", expanded=True):
+                col_pre1, col_pre2 = st.columns([1, 2])
+                p_url = st.session_state.get('temp_img', "https://images.unsplash.com/photo-1504711432869-0df30d7eaf4d?w=800")
+                p_tit = st.session_state.get('temp_titulo', "Título da Notícia")
+                
+                col_pre1.image(p_url, use_container_width=True)
+                col_pre2.markdown(f"**{p_tit}**")
+                col_pre2.caption(f"📅 {datetime.now(fuso_br).strftime('%d/%m/%Y')} | 🏷️ DESTAQUE")
 
-        # 5. RECIBOS
-        with tabs[4]:
-            st.subheader("🎫 Gerador de Recibos Profissionais")
-            with st.container(border=True):
-                r_cli = st.text_input("Nome do Cliente")
-                r_val = st.number_input("Valor Recebido R$", min_value=0.0)
-                r_serv = st.text_area("Descrição do Serviço")
-                if st.button("✨ GERAR RECIBO", use_container_width=True, type="primary"):
-                    if r_cli and r_serv:
-                        st.markdown(f"""
-                        <div style="background:white; padding:25px; border-left:12px solid #0047AB; color:#333; border-radius:10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1)">
-                            <h2 style='color:#0047AB; margin-top:0'>RECIBO GERALJÁ</h2>
-                            <p style="font-size:1.1em">Recebemos de <b>{r_cli.upper()}</b> a importância de <b>R$ {r_val:,.2f}</b>.</p>
-                            <p><b>Referente a:</b> {r_serv}</p>
-                            <hr style="border:0.5px solid #eee">
-                            <p align='right'><b>Grajaú, São Paulo</b><br>{datetime.now().strftime('%d/%m/%Y')}</p>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        st.balloons()
-                    else:
-                        st.warning("Preencha o nome e o serviço para gerar o recibo.")
+            with st.form("form_noticia_upgrade"):
+                col_f1, col_f2 = st.columns([2, 1])
+                nt = col_f1.text_input("📌 Título da Postagem", value=st.session_state.get('temp_titulo', ""), help="Título chamativo para o portal")
+                cat_n = col_f2.selectbox("🏷️ Categoria", ["URGENTE", "DESTAQUE", "GRAJAÚ", "UTILIDADE", "EVENTOS"])
+                
+                # Parte de Imagem Turbinada
+                ni = st.text_input("🖼️ URL da Imagem (Unsplash ou Link Direto)", value=p_url)
+                
+                st.markdown("---")
+                nl = st.text_input("🔗 Link Oficial da Matéria", value=st.session_state.get('temp_link', ""))
+                
+                # Botão de Publicação com Estilo
+                btn_pub = st.form_submit_button("🚀 PUBLICAR NO PORTAL GERALJÁ", use_container_width=True)
+                
+                if btn_pub:
+                    if nt and nl:
+                        # Envio completo para o Firebase
+                        db.collection("noticias").add({
+                            "titulo": nt, 
+                            "imagem_url": ni, 
+                            "link_original": nl, 
+                            "data": datetime.now(fuso_br), 
+                            "categoria": cat_n,
+                            "cliques": 0
+                        })
+                        st.balloons()
+                        st.success(f"✅ Notícia '{nt}' publicada com sucesso!")
+                        
+                        # Limpa o cache para a próxima notícia
+                        for key in ['temp_titulo', 'temp_link', 'temp_img']:
+                            if key in st.session_state: st.session_state.pop(key)
+                        
+                        st.rerun()
+                    else:
+                        st.error("Preencha o Título e o Link para continuar.")
+
+       with tab_loja:
+            st.subheader("🛍️ Gestão de Inventário Elite")
+            
+            # --- FORMULÁRIO DE ADIÇÃO (TURBINADO) ---
+            with st.expander("➕ Cadastrar Novo Produto", expanded=False):
+                with st.form("add_loja"):
+                    c1, c2 = st.columns([2, 1])
+                    ln = c1.text_input("Nome do Produto")
+                    lp = c2.number_input("Preço (R$)", min_value=1.0, step=0.50)
+                    
+                    ld = st.text_area("Descrição Curta (Opcional)")
+                    lf = st.file_uploader("Foto do Produto", type=['jpg','png','jpeg'])
+                    
+                    if st.form_submit_button("💎 LANÇAR PRODUTO NA LOJA", use_container_width=True):
+                        if ln:
+                            img_base64 = otimizar_imagem(lf) if lf else ""
+                            db.collection("loja").add({
+                                "nome": ln, 
+                                "preco": lp, 
+                                "descricao": ld,
+                                "foto": img_base64, 
+                                "data": datetime.now(fuso_br),
+                                "status": "ativo"
+                            })
+                            st.success(f"🚀 {ln} já está na vitrine!")
+                            st.rerun()
+                        else:
+                            st.error("Dê um nome ao produto!")
+
+            st.markdown("---")
+            
+            # --- VITRINE DE GESTÃO (GERENCIAR ESTOQUE) ---
+            st.write("### 🏬 Itens na Vitrine")
+            produtos = db.collection("loja").order_by("data", direction="DESCENDING").stream()
+            
+            for p in produtos:
+                p_data = p.to_dict()
+                p_id = p.id
+                
+                # Criando um card visual para cada produto na administração
+                with st.container(border=True):
+                    col_img, col_info, col_acao = st.columns([1, 2, 1])
+                    
+                    # Coluna 1: Imagem
+                    if p_data.get("foto"):
+                        col_img.image(f"data:image/jpeg;base64,{p_data['foto']}", use_container_width=True)
+                    else:
+                        col_img.image("https://placehold.co/400x400?text=Sem+Foto", use_container_width=True)
+                    
+                    # Coluna 2: Informações
+                    col_info.subheader(f"{p_data.get('nome')}")
+                    col_info.write(f"**Preço:** R$ {p_data.get('preco'):,.2f}")
+                    if p_data.get("descricao"):
+                        col_info.caption(p_data.get("descricao"))
+                    
+                    # Coluna 3: Ações de Elite
+                    # Aqui você pode adicionar botões para deletar ou pausar venda
+                    if col_acao.button("🗑️ Excluir", key=f"del_{p_id}", use_container_width=True):
+                        db.collection("loja").document(p_id).delete()
+                        st.warning(f"Produto removido!")
+                        st.rerun()
+                    
+                    if col_acao.button("✏️ Promover", key=f"promo_{p_id}", use_container_width=True):
+                        st.toast(f"Promoção aplicada a {p_data.get('nome')}!")
+
+       with tab_vendas:
+            st.subheader("📊 Performance de Vendas")
+            
+            vendas_data = []
+            vendas_ref = db.collection("vendas").order_by("data", direction="DESCENDING").stream()
+            
+            for v in vendas_ref:
+                vd = v.to_dict()
+                vendas_data.append({
+                    "Data": vd.get('data'), 
+                    "Valor": vd.get('valor', 0), 
+                    "Produto": vd.get('produto_nome'), 
+                    "Cliente": vd.get('usuario_nome')
+                })
+
+            if vendas_data:
+                df = pd.DataFrame(vendas_data)
+                
+                # Card de Faturamento Total
+                total_faturado = df['Valor'].sum()
+                st.info(f"💰 **Faturamento Acumulado:** R$ {total_faturado:,.2f}")
+                
+                # Gráfico Turbinado
+                fig = px.area(df, x="Data", y="Valor", 
+                              title="Fluxo Financeiro GeralJá",
+                              line_shape='spline', # Deixa a linha curvada, mais elegante
+                              color_discrete_sequence=['#FF8C00']) # Cor laranja da GeralJá
+                
+                st.plotly_chart(fig, use_container_width=True)
+                
+                # Tabela detalhada
+                with st.expander("📄 Ver Relatório Detalhado"):
+                    st.dataframe(df, use_container_width=True)
+            else:
+                st.write("🦗 Nenhuma venda registrada ainda.")
+
+        with tab_recibos:
+            st.subheader("🎫 Gerador de Recibos Brasil Elite")
+            st.markdown("""
+                <style>
+                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@900&family=Monsieur+La+Doulaise&display=swap');
+                .marca-dagua {
+                    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); 
+                    font-size: 60px; color: rgba(0, 71, 171, 0.05); font-weight: 900; pointer-events: none; z-index: 0; width: 100%; text-align: center; white-space: nowrap;
+                }
+                </style>
+            """, unsafe_allow_html=True)
+            
+            meses = {1:"Janeiro", 2:"Fevereiro", 3:"Março", 4:"Abril", 5:"Maio", 6:"Junho", 7:"Julho", 8:"Agosto", 9:"Setembro", 10:"Outubro", 11:"Novembro", 12:"Dezembro"}
+
+            with st.container(border=True):
+                c1, c2 = st.columns(2)
+                nome_c = c1.text_input("Nome do Cliente:", key="n_rec_e")
+                pacote_c = c2.text_area("Serviço:", height=68, key="p_rec_e")
+                c3, c4 = st.columns(2)
+                valor_c = c3.number_input("Valor (R$):", min_value=0.0, format="%.2f", key="v_rec_e")
+                data_c = c4.date_input("Data:", value=datetime.now(fuso_br), key="d_rec_e")
+                c5, c6 = st.columns(2)
+                resp_c = c5.text_input("Assinatura:", value="Diretoria GeralJá", key="a_rec_e")
+                zap_c = c6.text_input("WhatsApp do Cliente:", value="11991853488", key="z_rec_e")
+                btn_gerar = st.button("✨ GERAR RECIBO", use_container_width=True, type="primary")
+
+            if btn_gerar and nome_c and pacote_c:
+                data_f = f"{data_c.day} de {meses[data_c.month]} de {data_c.year}"
+                num_doc = datetime.now().strftime('%y%m%d%H%M')
+                html_recibo = f"""
+                <div style="position: relative; padding: 40px; border: 2px solid #0047AB; border-top: 12px solid #FF8C00; border-radius: 15px; background: white; max-width: 650px; margin: 20px auto; box-shadow: 0 10px 30px rgba(0,0,0,0.1); overflow: hidden;">
+                    <div class="marca-dagua">GERALJÁ BRASIL</div>
+                    <div style="position: relative; z-index: 1;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px;">
+                            <div>
+                                <span style="color: #0047AB; font-weight: 900; font-size: 28px; font-family: 'Inter';">GERAL</span><span style="color: #FF8C00; font-weight: 900; font-size: 28px; font-family: 'Inter';">JÁ</span>
+                                <div style="font-size: 9px; font-weight: 700; color: #64748B; letter-spacing: 1px;">BRASIL ELITE EDITION</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="background: #0047AB; color: white; padding: 6px 14px; border-radius: 8px; font-weight: 900; font-size: 20px;">R$ {valor_c:,.2f}</div>
+                                <div style="font-size: 10px; color: #64748B; margin-top: 4px;">DOC Nº {num_doc}</div>
+                            </div>
+                        </div>
+                        <h2 style="text-align: center; color: #0047AB; font-size: 18px; font-weight: 900; margin: 35px 0; font-family: 'Inter';">RECIBO DE QUITAÇÃO</h2>
+                        <div style="font-size: 16px; line-height: 1.6; color: #1e293b; text-align: justify; font-family: sans-serif;">
+                            Recebemos de <b style="color: #0047AB;">{nome_c.upper()}</b> a importância de <b>R$ {valor_c:,.2f}</b> referente ao pagamento de:
+                            <div style="margin: 15px 0; padding: 15px; background: #f8fafc; border-left: 5px solid #FF8C00; font-style: italic; border-radius: 0 8px 8px 0;">{pacote_c}</div>
+                            Pelo que firmamos o presente recibo dando plena, geral e irrevogável quitação.
+                        </div>
+                        <p style="text-align: right; font-weight: 700; color: #64748B; margin-top: 30px; font-family: sans-serif;">Grajaú, São Paulo — {data_f}</p>
+                        <div style="margin-top: 50px; display: flex; justify-content: space-between; align-items: flex-end;">
+                            <div style="font-size: 11px; color: #94a3b8; font-family: sans-serif;"><b>EMISSOR:</b> GERALJÁ INTERMEDIAÇÕES</div>
+                            <div style="text-align: center; width: 230px;">
+                                <div style="font-family: 'Monsieur La Doulaise', cursive; font-size: 42px; color: #0047AB; margin-bottom: -10px;">{resp_c}</div>
+                                <div style="border-top: 1px solid #0047AB; font-size: 10px; font-weight: 900; color: #0047AB; padding-top: 5px; font-family: 'Inter';">ASSINATURA DIGITAL</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                """
+                st.markdown(html_recibo, unsafe_allow_html=True)
+                col_down, col_zap = st.columns(2)
+                col_down.download_button(label="📥 BAIXAR RECIBO (HTML/PDF)", data=html_recibo, file_name=f"Recibo_{nome_c.replace(' ', '_')}.html", mime="text/html", use_container_width=True)
+                msg_w = urllib.parse.quote(f"Olá {nome_c}! Seu recibo da GeralJá de R$ {valor_c:,.2f} foi gerado com sucesso. Vou te enviar o arquivo logo abaixo.")
+                col_zap.link_button("📲 AVISAR NO ZAP", f"https://wa.me/55{zap_c.replace(' ','').replace('-','')}?text={msg_w}", use_container_width=True)
+                st.info("☝️ **Como enviar o ARQUIVO:** 1. Clique em 'Baixar Recibo' acima. 2. No WhatsApp do cliente, anexe o arquivo que você baixou.")
+
+        with tab_profissionais:
+            st.subheader("👥 Gestão de Parceiros")
 
         # 6. CATEGORIAS
         with tabs[5]:
@@ -1253,6 +1416,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
