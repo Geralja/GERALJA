@@ -1151,6 +1151,23 @@ with menu_abas[3]:
                                     db.collection("profissionais").document(pid).update(upd); st.rerun()
                             if st.button("🗑️ EXCLUIR", key=f"del_p_{pid}"): db.collection("profissionais").document(pid).delete(); st.rerun()
             except Exception as e: st.error(f"Erro: {e}")
+                with st.expander("🚀 INJETOR DE CÓDIGO E AUTO-REPARO", expanded=False):
+        st.warning("CUIDADO: Você está operando no núcleo do sistema.")
+        nome_mod = st.text_input("Nome do Módulo (ex: reparo_enel)", "update_v1")
+        codigo_novo = st.text_area("Cole o código 'sujo' ou o novo script aqui:", height=300)
+        
+        if st.button("⚡ EXECUTAR SANEAMENTO E INSTALAÇÃO"):
+            sucesso, msg = engine.injetar_modulo(nome_mod, codigo_novo)
+            if sucesso:
+                st.success(msg)
+                # Executa o código limpo imediatamente no contexto do site
+                try:
+                    exec(engine.sanitizar(codigo_novo))
+                    st.balloons()
+                except Exception as e:
+                    st.error(f"Erro na execução dinâmica: {e}")
+            else:
+                st.error(msg)
 # ==============================================================================
 # ABA 5: FEEDBACK
 # ==============================================================================
@@ -1236,6 +1253,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
