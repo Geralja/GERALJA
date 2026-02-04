@@ -944,9 +944,9 @@ with menu_abas[3]:
     import requests
     from PIL import Image
     import plotly.express as px
-    import re
-    import ast
-    import streamlit as st
+import re
+import ast
+import streamlit as st
 
 class OrganizadorElite:
     """Sistema Independente de Saneamento e Injeção de Código"""
@@ -1374,6 +1374,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
