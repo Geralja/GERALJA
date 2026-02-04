@@ -929,10 +929,11 @@ with menu_abas[1]:
                         
             except Exception as e:
                 st.error(f"❌ Erro ao processar perfil: {e}")
+
 # ==============================================================================
 # ABA 4: 👑 TORRE DE CONTROLE MASTER (VERSÃO ELITE TURBINADA - SEM REMOÇÃO)
 # ==============================================================================
-with menu_abas[3]:
+    with menu_abas[3]:
     import pytz
     from datetime import datetime
     import pandas as pd
@@ -1315,6 +1316,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
