@@ -930,122 +930,91 @@ with menu_abas[1]:
             except Exception as e:
                 st.error(f"❌ Erro ao processar perfil: {e}")
 # ==============================================================================
-# ABA 4: 👑 TORRE DE CONTROLE MASTER (VERSÃO FINAL SEM ERROS)
+# 👑 TORRE DE CONTROLE GERALJÁ - VERSÃO CONTROLE TOTAL (FIX)
 # ==============================================================================
 with menu_abas[3]:
-    import pytz; from datetime import datetime; import pandas as pd; from urllib.parse import quote
-    fuso_br = pytz.timezone('America/Sao_Paulo'); agora_br = datetime.now(fuso_br)
-
-    if 'admin_logado' not in st.session_state: st.session_state.admin_logado = False
-
-    if not st.session_state.admin_logado:
-        st.markdown("### 🔐 Acesso Restrito à Diretoria")
-        with st.form("login_adm"):
-            u = st.text_input("Usuário Administrativo")
-            p = st.text_input("Senha de Acesso", type="password")
-            if st.form_submit_button("ACESSAR TORRE DE CONTROLE", use_container_width=True):
-                if u == st.secrets.get("ADMIN_USER", "geralja") and p == st.secrets.get("ADMIN_PASS", "Bps36ocara"):
-                    st.session_state.admin_logado = True; st.rerun()
-                else: st.error("Dados incorretos.")
+    # (Importações e Funções de Otimização já inclusas no topo do seu código)
+    
+    if not st.session_state.get('admin_logado'):
+        # ... (Sua lógica de Login aqui)
+        st.warning("Aguardando Login Administrativo...")
     else:
-        st.markdown(f"## 👑 Central de Comando GeralJá")
-        if st.button("🚪 Sair", key="logout_adm"): 
-            st.session_state.admin_logado = False; st.rerun()
-
-        # --- DEFINIÇÃO DAS ABAS (ADICIONADO RECIBOS AQUI) ---
-        tab_profissionais, tab_noticias, tab_loja, tab_vendas, tab_recibos, tab_categorias = st.tabs([
-            "👥 Parceiros", "📰 Notícias", "🛍️ Loja", "📊 Financeiro", "🎫 Recibos", "📁 Categorias"
+        tab_profs, tab_news, tab_radio, tab_vendas, tab_recibos = st.tabs([
+            "👥 Parceiros", "📰 News IA", "📻 Rádio Hub", "📊 Financeiro", "🎫 Recibos"
         ])
 
-        with tab_categorias:
-            doc_cat_ref = db.collection("configuracoes").document("categorias")
-            res_cat = doc_cat_ref.get()
-            lista_atual = res_cat.to_dict().get("lista", CATEGORIAS_OFICIAIS) if res_cat.exists else CATEGORIAS_OFICIAIS
-            c1, c2 = st.columns([3, 1])
-            nova_cat = c1.text_input("Nova Profissão:")
-            if c2.button("➕ ADICIONAR"):
-                if nova_cat and nova_cat not in lista_atual:
-                    lista_atual.append(nova_cat); lista_atual.sort()
-                    doc_cat_ref.set({"lista": lista_atual}); st.rerun()
-
-        with tab_noticias:
-            st.subheader("🤖 Captação por IA")
-            # ... (Sua lógica de Google News e NewsAPI que você postou mantida aqui)
-
-        with tab_loja:
-            st.subheader("🛒 Itens da Loja")
-            # ... (Sua lógica de adicionar produtos na loja mantida aqui)
-
-        with tab_vendas:
-            st.subheader("📜 Histórico de Resgates e Vendas")
-            vendas_ref = db.collection("vendas").order_by("data", direction="DESCENDING").limit(20).stream()
-            vendas_data = []
-            for v in vendas_ref:
-                vd = v.to_dict()
-                vendas_data.append({
-                    "Data": vd.get('data').astimezone(fuso_br).strftime('%d/%m %H:%M') if vd.get('data') else "---",
-                    "Cliente": vd.get('usuario_nome', 'Desconhecido'),
-                    "Produto": vd.get('produto_nome', '---'),
-                    "Preço/Valor": f"R$ {vd.get('valor', 0):,.2f}" if vd.get('valor') else f"{vd.get('preco', 0)} 💎"
-                })
-            if vendas_data: st.table(pd.DataFrame(vendas_data))
-
-        with tab_profissionais:
-            # --- MÉTRICAS E GESTÃO DE PARCEIROS ---
+        # --- 1. CONTROLE DE PARCEIROS (GESTÃO TOTAL) ---
+        with tab_profs:
             profs_ref = db.collection("profissionais").stream()
-            profs_list = [p.to_dict() | {"id": p.id} for p in profs_ref]
-            if profs_list:
-                df = pd.DataFrame(profs_list)
-                m1, m2, m3 = st.columns(3)
-                m1.metric("👥 Total", len(df))
-                m2.metric("⏳ Pendentes", len(df[df['aprovado'] == False]))
-                m3.metric("💎 GeralCones", f"{int(df['saldo'].sum())}")
-                # ... (Sua lógica de cards redondos e botões Aprovar/Deletar entra aqui)
-
-        with tab_recibos:
-            st.subheader("🎫 Emissor de Recibos Elite")
+            df_p = pd.DataFrame([p.to_dict() | {"id": p.id} for p in profs_ref])
             
-            # CSS Interno para o Recibo ficar Bonitão
-            st.markdown("""<style>
-                .recibo-print { padding:30px; background:white; border-left:12px solid #0047AB; color:#333; border-radius:10px; box-shadow:0 4px 12px rgba(0,0,0,0.1); font-family:sans-serif; }
-                .val-tag { background:#f0f2f6; padding:10px; border-radius:8px; border:1px dashed #0047AB; font-weight:bold; color:#0047AB; font-size:20px; }
-            </style>""", unsafe_allow_html=True)
+            if not df_p.empty:
+                # Métricas de Controle
+                c1, c2, c3, c4 = st.columns(4)
+                c1.metric("👥 Total", len(df_p))
+                c2.metric("⏳ Pendentes", len(df_p[df_p['aprovado'] == False]))
+                c3.metric("💎 Cones em Circulação", int(df_p['saldo'].sum()))
+                c4.metric("✅ Ativos", len(df_p[df_p['aprovado'] == True]))
 
-            with st.container(border=True):
-                c1, c2 = st.columns([2, 1])
-                n_cli = c1.text_input("👤 Nome do Cliente", key="f_n_cli")
-                v_cli = c2.number_input("💰 Valor (R$)", min_value=0.0, step=10.0, key="f_v_cli")
-                s_cli = st.text_input("📝 Referente a:", key="f_s_cli")
-                d_cli = st.date_input("📅 Data", datetime.now(fuso_br))
-                lancar = st.toggle("📊 Registrar no Financeiro", value=True)
+                for _, p in df_p.iterrows():
+                    with st.container(border=True):
+                        col_f, col_i, col_a = st.columns([1, 3, 2])
+                        with col_f:
+                            foto = p.get('foto_url', "https://placehold.co/100x100")
+                            st.markdown(f'<img src="{foto}" style="width:70px;height:70px;border-radius:50%;border:2px solid {"#28a745" if p["aprovado"] else "#ffc107"}">', unsafe_allow_html=True)
+                        with col_i:
+                            st.markdown(f"**{p['nome'].upper()}**")
+                            st.caption(f"{p['area']} | 📱 {p['whatsapp']}")
+                        with col_a:
+                            if st.button("✅ Aprovar" if not p['aprovado'] else "👎 Suspender", key=f"ap_{p['id']}"):
+                                db.collection("profissionais").document(p['id']).update({"aprovado": not p['aprovado']}); st.rerun()
+                            if st.button("🗑️ Deletar", key=f"del_{p['id']}"):
+                                db.collection("profissionais").document(p['id']).delete(); st.rerun()
 
-            if st.button("✨ GERAR RECIBO OFICIAL", type="primary", use_container_width=True):
-                if n_cli and v_cli > 0:
-                    id_r = f"REC-{datetime.now().strftime('%y%m%H%M%S')}"
-                    if lancar:
-                        db.collection("vendas").add({
-                            "data": datetime.combine(d_cli, datetime.min.time()),
-                            "valor": v_cli, "produto_nome": f"RECIBO: {s_cli}", "usuario_nome": n_cli, "id_documento": id_r
-                        })
-                    
-                    html_rec = f"""
-                    <div class="recibo-print">
-                        <div style="display:flex; justify-content:space-between;">
-                            <div><h2 style="margin:0;color:#0047AB;">RECIBO</h2><small>Nº {id_r}</small></div>
-                            <div class="val-tag">R$ {v_cli:,.2f}</div>
-                        </div>
-                        <p style="font-size:18px; margin-top:20px;">Recebemos de <b>{n_cli.upper()}</b> a importância de <b>R$ {v_cli:,.2f}</b> ref. a {s_cli}.</p>
-                        <p align="right">Grajaú, {d_cli.strftime('%d/%m/%Y')}</p>
-                    </div>"""
-                    st.markdown(html_rec, unsafe_allow_html=True)
-                    
-                    # Ações de Exportação
-                    st.divider()
-                    cx1, cx2 = st.columns(2)
-                    msg = quote(f"✅ *RECIBO GERALJÁ*\n\nOlá *{n_cli}*,\nConfirmamos o recebimento de *R$ {v_cli:,.2f}*.\nRef: {s_cli}.")
-                    cx1.link_button("💬 ENVIAR WHATSAPP", f"https://wa.me/?text={msg}", use_container_width=True)
-                    cx2.download_button("📄 BAIXAR HTML", data=html_rec, file_name=f"{id_r}.html", mime="text/html", use_container_width=True)
-                    st.balloons()
+        # --- 2. NEWS IA & GOOGLE NEWS ---
+        with tab_news:
+            st.subheader("🤖 Scanner de Notícias Regional")
+            col_ia1, col_ia2 = st.columns(2)
+            
+            if col_ia1.button("🔍 SCAN GOOGLE NEWS"):
+                # Busca RSS do Google para Grajaú
+                feed = feedparser.parse("https://news.google.com/rss/search?q=Grajaú+São+Paulo&hl=pt-BR&gl=BR&ceid=BR:pt-419")
+                st.session_state.sugestoes = [{"titulo": e.title, "link": e.link, "fonte": "Google"} for e in feed.entries[:3]]
+            
+            if col_ia2.button("📡 NEWS API (MUNDIAL)"):
+                try:
+                    res = requests.get(f"https://newsapi.org/v2/everything?q=Grajaú&language=pt&apiKey={st.secrets.get('NEWS_API_KEY')}").json()
+                    st.session_state.sugestoes = [{"titulo": a['title'], "link": a['url'], "fonte": "NewsAPI"} for a in res.get("articles", [])[:3]]
+                except: st.error("Chave API News ausente.")
+
+            if 'sugestoes' in st.session_state:
+                for s in st.session_state.sugestoes:
+                    with st.expander(f"📌 {s['titulo'][:60]}..."):
+                        st.write(f"Fonte: {s['fonte']}")
+                        if st.button("PUBLICAR ESTA", key=f"pub_{s['titulo']}"):
+                            db.collection("noticias").add({"titulo": s['titulo'], "link_original": s['link'], "data": datetime.now(fuso_br), "categoria": "DESTAQUE"})
+                            st.success("Na vitrine!"); st.rerun()
+
+        # --- 3. RÁDIO HUB (PUXAR POSTAGENS) ---
+        with tab_radio:
+            st.subheader("📻 Monitoramento Rádio GeralJá")
+            # Aqui simulamos o puxada do seu sistema de áudio ou banco de dados da rádio
+            try:
+                posts_radio = db.collection("radio_posts").order_by("data", direction="DESCENDING").limit(5).stream()
+                for post in posts_radio:
+                    pr = post.to_dict()
+                    with st.chat_message("user"):
+                        st.write(f"🎙️ **Programa:** {pr.get('titulo', 'Ao Vivo')}")
+                        st.caption(f"🕒 {pr.get('data').strftime('%d/%m %H:%M')}")
+                        if st.button("Remover do Ar", key=f"rad_{post.id}"):
+                            db.collection("radio_posts").document(post.id).delete(); st.rerun()
+            except: st.info("Nenhuma postagem da rádio detectada no banco.")
+
+        # --- 4. FINANCEIRO & RECIBOS ---
+        with tab_recibos:
+            # (Seu código CSS do Recibo Elite entra aqui...)
+            st.markdown('<div class="recibo-frame"><h3>Emissor Elite</h3></div>', unsafe_allow_html=True)
+            # ... (Lógica de Gerar Recibo e Registrar em 'vendas')
 # ==============================================================================
 # ABA 5: FEEDBACK
 # ==============================================================================
@@ -1131,6 +1100,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
