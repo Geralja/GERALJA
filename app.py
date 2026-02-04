@@ -1061,6 +1061,7 @@ with menu_abas[3]:
             return None
 fuso_br = pytz.timezone('America/Sao_Paulo')
     
+# Verificação de Sessão (Recuo de 4 espaços)
     if 'admin_logado' not in st.session_state:
         st.session_state.admin_logado = False
 
@@ -1070,21 +1071,24 @@ fuso_br = pytz.timezone('America/Sao_Paulo')
             u = st.text_input("Usuário Administrativo")
             p = st.text_input("Senha de Acesso", type="password")
             if st.form_submit_button("ACESSAR TORRE DE CONTROLE", use_container_width=True):
+                # O motor 'engine.sanitizar' pode ser usado aqui no futuro
                 if u == st.secrets.get("ADMIN_USER", "geralja") and p == st.secrets.get("ADMIN_PASS", "Bps36ocara"):
                     st.session_state.admin_logado = True
                     st.rerun()
                 else:
                     st.error("Dados incorretos.")
-  else:
-        st.markdown("## 👑 Central de Comando GeralJá")
-        if st.button("🚪 Sair", key="logout_adm"): 
-            st.session_state.admin_logado = False
-            st.rerun()
+    else:
+        # CONTEÚDO DA TORRE (Alinhado com o IF acima)
+        st.markdown("## 👑 Central de Comando GeralJá")
+        
+        if st.button("🚪 Sair", key="logout_adm"): 
+            st.session_state.admin_logado = False
+            st.rerun()
 
-        # Alinhamento exato: 8 espaços (ou 2 Tabs) antes de começar a linha abaixo
-        tab_profissionais, tab_noticias, tab_loja, tab_vendas, tab_recibos, tab_categorias, tab_metricas = st.tabs([
-            "👥 Parceiros", "📰 Notícias", "🛍️ Loja", "📜 Vendas", "🎫 Recibos", "📁 Categorias", "📊 Métricas"
-        ])
+        # Definição das Abas
+        tab_profissionais, tab_noticias, tab_loja, tab_vendas, tab_recibos, tab_categorias, tab_metricas = st.tabs([
+            "👥 Parceiros", "📰 Notícias", "🛍️ Loja", "📜 Vendas", "🎫 Recibos", "📁 Categorias", "📊 Métricas"
+        ])
 
         with tab_categorias:
             st.subheader("📁 Gestão de Profissões e Categorias")
@@ -1423,6 +1427,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
