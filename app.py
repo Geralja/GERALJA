@@ -933,27 +933,28 @@ with menu_abas[1]:
 # ==============================================================================
 # ABA 4: 👑 TORRE DE CONTROLE MASTER (VERSÃO ELITE TURBINADA - SEM REMOÇÃO)
 # ==============================================================================
-    with menu_abas[3]:
-    from datetime import datetime
-    import pandas as pd
-    import io
-    import base64
-    import feedparser
-    import urllib.parse
-    import requests
-    from PIL import Image
-    import plotly.express as px # Adicionado para o gráfico de performance
+with menu_abas[3]:
     import pytz
-    def otimizar_imagem(image_file, size=(500, 500)):
-        try:
-            img = Image.open(image_file)
-            if img.mode in ("RGBA", "P"): img = img.convert("RGB")
-            img.thumbnail(size)
-            buffer = io.BytesIO()
-            img.save(buffer, format="JPEG", quality=70)
-            return base64.b64encode(buffer.getvalue()).decode()
-        except: return None
+    from datetime import datetime
+    import pandas as pd
+    import io
+    import base64
+    import feedparser
+    import urllib.parse
+    import requests
+    from PIL import Image
+    import plotly.express as px
 
+    def otimizar_imagem(image_file, size=(500, 500)):
+        try:
+            img = Image.open(image_file)
+            if img.mode in ("RGBA", "P"): img = img.convert("RGB")
+            img.thumbnail(size)
+            buffer = io.BytesIO()
+            img.save(buffer, format="JPEG", quality=70)
+            return base64.b64encode(buffer.getvalue()).decode()
+        except:
+            return None
     fuso_br = pytz.timezone('America/Sao_Paulo')
     
     if 'admin_logado' not in st.session_state: st.session_state.admin_logado = False
@@ -1315,5 +1316,6 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
