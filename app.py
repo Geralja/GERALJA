@@ -1130,7 +1130,7 @@ if btn_pub:
                         st.error("Preencha o Título e o Link para continuar.")
 
         # FINAL da tab_noticias (O recuo volta para o nível das abas)
-        with tab_loja:
+    with tab_loja:
             st.subheader("🛍️ Gestão de Inventário Elite")
             # ... resto do código da loja ...
             
@@ -1433,6 +1433,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
