@@ -1121,7 +1121,11 @@ if btn_pub:
                         st.balloons()
                         st.success(f"✅ Notícia '{nt}' publicada com sucesso!")
                         
-                    st.rerun()
+                        # Limpa o cache para a próxima notícia
+                        for key in ['temp_titulo', 'temp_link', 'temp_img']:
+                            if key in st.session_state: st.session_state.pop(key)
+                        
+                        st.rerun()
                     else:
                         st.error("Preencha o Título e o Link para continuar.")
 
@@ -1445,6 +1449,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
