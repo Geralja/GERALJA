@@ -1149,6 +1149,27 @@ with menu_abas[3]:
                     st.info("Nenhum profissional cadastrado.")
             except Exception as e: 
                 st.error(f"Erro no processamento: {e}")
+                # --- INJETOR DE CÓDIGO COM AUTO-SANEAMENTO ---
+        with st.expander("🚀 INJETOR DE CÓDIGO E AUTO-REPARO", expanded=False):
+            st.warning("⚠️ CUIDADO: Você está operando no núcleo do sistema.")
+            
+            nome_mod = st.text_input("Nome do Módulo (ex: reparo_enel)", "update_v1")
+            
+            # O MOTOR TRABALHA AQUI: Sanitizando o que você cola em tempo real
+            codigo_bruto = st.text_area("Cole o código 'sujo' ou o novo script aqui:", height=300)
+            codigo_limpo = engine.sanitizar(codigo_bruto)
+            
+            if st.button("⚡ EXECUTAR SANEAMENTO E INSTALAÇÃO"):
+                if codigo_limpo:
+                    # Usa a função do motor que já está no seu arquivo
+                    sucesso, msg = engine.injetar_modulo(nome_mod, codigo_limpo)
+                    if sucesso:
+                        st.success(msg)
+                        st.balloons()
+                    else:
+                        st.error(msg)
+                else:
+                    st.error("O campo de código está vazio.")
 # ==============================================================================
 # ABA 5: FEEDBACK
 # ==============================================================================
@@ -1234,6 +1255,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
