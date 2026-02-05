@@ -1076,7 +1076,8 @@ with menu_abas[3]:
                                     db.collection("noticias").document(n['id']).delete()
                                     st.rerun()
 
-        with tab_profissionais:
+       with tab_profissionais:
+            # --- 1. GESTÃO DE PROFISSIONAIS ---
             try:
                 profs_ref = db.collection("profissionais").stream()
                 profs_list = [p.to_dict() | {"id": p.id} for p in profs_ref]
@@ -1100,7 +1101,7 @@ with menu_abas[3]:
                                 c1, c2 = st.columns(2)
                                 n_nome = c1.text_input("Nome", value=p.get('nome'))
                                 
-                                # Preservando a sua lista_atual de categorias
+                                # Preservação da lista de áreas/categorias
                                 n_area = c2.selectbox("Área", lista_atual, index=lista_atual.index(p.get('area')) if p.get('area') in lista_atual else 0)
                                 
                                 n_desc = st.text_area("Descrição", value=p.get('descricao'))
@@ -1120,7 +1121,7 @@ with menu_abas[3]:
                                     up_v = st.file_uploader("Vitrine (Máx 4)", type=['jpg','png'], accept_multiple_files=True, key=f"up_v_{pid}")
                                 
                                 if st.form_submit_button("💾 SALVAR TUDO"):
-                                    # MOTOR AUTOMÁTICO: Sanitizando os campos de texto
+                                    # MOTOR ATIVADO: Sanitizando dados antes de atualizar o Firebase
                                     upd = {
                                         "nome": engine.sanitizar(n_nome), 
                                         "area": n_area, 
@@ -1130,46 +1131,48 @@ with menu_abas[3]:
                                         "aprovado": (n_status=="Aprovado")
                                     }
                                     
-                                    # Mantendo sua função de otimização original
                                     if up_p: 
                                         upd["foto_url"] = engine.otimizar_img(up_p, size=(350, 350))
+                                    
                                     if up_v:
                                         for i in range(1, 5): upd[f'f{i}'] = None
                                         for i, f in enumerate(up_v[:4]): 
                                             upd[f"f{i+1}"] = engine.otimizar_img(f)
                                     
                                     db.collection("profissionais").document(pid).update(upd)
-                                    st.success("Dados atualizados!")
+                                    st.success("Dados atualizados com sucesso!")
                                     st.rerun()
                             
+                            # Botão de exclusão fora do formulário de edição
                             if st.button("🗑️ EXCLUIR", key=f"del_p_{pid}"): 
                                 db.collection("profissionais").document(pid).delete()
                                 st.rerun()
                 else:
-                    st.info("Nenhum profissional cadastrado.")
+                    st.info("Nenhum profissional cadastrado na base de dados.")
             except Exception as e: 
-                st.error(f"Erro no processamento: {e}")
-                # --- INJETOR DE CÓDIGO COM AUTO-SANEAMENTO ---
-        with st.expander("🚀 INJETOR DE CÓDIGO E AUTO-REPARO", expanded=False):
-            st.warning("⚠️ CUIDADO: Você está operando no núcleo do sistema.")
-            
-            nome_mod = st.text_input("Nome do Módulo (ex: reparo_enel)", "update_v1")
-            
-            # O MOTOR TRABALHA AQUI: Sanitizando o que você cola em tempo real
-            codigo_bruto = st.text_area("Cole o código 'sujo' ou o novo script aqui:", height=300)
-            codigo_limpo = engine.sanitizar(codigo_bruto)
-            
-            if st.button("⚡ EXECUTAR SANEAMENTO E INSTALAÇÃO"):
-                if codigo_limpo:
-                    # Usa a função do motor que já está no seu arquivo
-                    sucesso, msg = engine.injetar_modulo(nome_mod, codigo_limpo)
-                    if sucesso:
-                        st.success(msg)
-                        st.balloons()
+                st.error(f"Erro ao carregar lista de profissionais: {e}")
+
+            # --- 2. FERRAMENTAS DE NÚCLEO (INJETOR) ---
+            st.divider()
+            with st.expander("🚀 INJETOR DE CÓDIGO E AUTO-REPARO", expanded=False):
+                st.warning("⚠️ AVISO: A injeção direta de código altera ficheiros no servidor.")
+                
+                nome_mod = st.text_input("Nome do Módulo", "update_v1", key="input_nome_inj")
+                
+                # O motor limpa o código colado antes de permitir a instalação
+                codigo_bruto = st.text_area("Cole o novo script aqui:", height=250, key="input_code_inj")
+                
+                if st.button("⚡ EXECUTAR INSTALAÇÃO", key="btn_executar_inj"):
+                    if codigo_bruto:
+                        codigo_limpo = engine.sanitizar(codigo_bruto)
+                        sucesso, msg = engine.injetar_modulo(nome_mod, codigo_limpo)
+                        if sucesso:
+                            st.success(msg)
+                            st.balloons()
+                        else:
+                            st.error(msg)
                     else:
-                        st.error(msg)
-                else:
-                    st.error("O campo de código está vazio.")
+                        st.error("Por favor, insira o código para continuar.")
 # ==============================================================================
 # ABA 5: FEEDBACK
 # ==============================================================================
@@ -1255,6 +1258,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
