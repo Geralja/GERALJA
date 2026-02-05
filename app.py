@@ -979,9 +979,13 @@ with menu_abas[3]:
         if st.button("🚪 Sair", key="logout_adm"): 
             st.session_state.admin_logado = False; st.rerun()
 
-        # Adicionada a Tab de Vendas
-        tab_profissionais, tab_noticias, tab_categorias = st.tabs([
-            "👥 Parceiros", "📰 Gestão de Notícias", "🛍️ Loja", "📜 Vendas", "📁 Categorias"
+        # Definição das Abas - Sem Loja e Vendas
+        tab_profissionais, tab_noticias, tab_categorias, tab_recibos, tab_metricas = st.tabs([
+            "👥 Parceiros", 
+            "📰 Notícias", 
+            "📁 Categorias",
+            "🎫 Recibos", 
+            "📊 Métricas"
         ])
 
         with tab_categorias:
@@ -1230,6 +1234,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
