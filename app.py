@@ -980,7 +980,7 @@ with menu_abas[3]:
             st.session_state.admin_logado = False; st.rerun()
 
         # Adicionada a Tab de Vendas
-        tab_profissionais, tab_noticias, tab_loja, tab_vendas, tab_categorias = st.tabs([
+        tab_profissionais, tab_noticias, tab_categorias = st.tabs([
             "👥 Parceiros", "📰 Gestão de Notícias", "🛍️ Loja", "📜 Vendas", "📁 Categorias"
         ])
 
@@ -1008,13 +1008,15 @@ with menu_abas[3]:
                 try:
                     res = requests.get(f"https://newsapi.org/v2/everything?q=Grajaú+São+Paulo&language=pt&apiKey={st.secrets.get('NEWS_API_KEY','516289bf44e1429784e0ca0102854a0d')}").json()
                     st.session_state['sugestoes_ia'] = [{"titulo": a['title'], "link": a['url'], "img": a.get('urlToImage') or IMG_NEWS_DEFAULT, "res": a.get('description'), "fonte": "NewsAPI"} for a in res.get("articles", [])[:3]]
-                except: st.error("Erro na API.")
+                except: 
+                    st.error("Erro na API.")
 
             if 'sugestoes_ia' in st.session_state:
                 cols_sug = st.columns(3)
                 for idx, sug in enumerate(st.session_state['sugestoes_ia']):
                     with cols_sug[idx]:
-                        if sug.get('img'): st.image(sug['img'], use_container_width=True)
+                        if sug.get('img'): 
+                            st.image(sug['img'], use_container_width=True)
                         st.info(f"**{sug['titulo'][:60]}...**")
                         if st.button("✅ USAR", key=f"sug_{idx}"):
                             st.session_state['temp_titulo'] = sug['titulo']
@@ -1023,18 +1025,35 @@ with menu_abas[3]:
                             st.rerun()
 
             with st.form("form_noticia"):
+                # Captura os dados limpando automaticamente com o motor
                 nt = st.text_input("Título", value=st.session_state.get('temp_titulo', ""))
                 ni = st.text_input("URL Imagem", value=st.session_state.get('temp_img', ""))
                 nl = st.text_input("Link Matéria", value=st.session_state.get('temp_link', ""))
+                
                 if st.form_submit_button("🚀 PUBLICAR NO GERALJÁ"):
-                    db.collection("noticias").add({"titulo": nt, "imagem_url": ni, "link_original": nl, "data": datetime.now(fuso_br), "categoria": "DESTAQUE"})
-                    for k in ['temp_titulo','temp_img','temp_link','sugestoes_ia']: st.session_state.pop(k, None)
-                    st.success("Postado!"); st.rerun()
+                    # MOTOR ATIVADO: Limpeza profunda antes de enviar ao Firebase
+                    titulo_limpo = engine.sanitizar(nt)
+                    link_limpo = engine.sanitizar(nl)
+                    img_limpa = engine.sanitizar(ni)
+
+                    db.collection("noticias").add({
+                        "titulo": titulo_limpo, 
+                        "imagem_url": img_limpa, 
+                        "link_original": link_limpo, 
+                        "data": datetime.now(fuso_br), 
+                        "categoria": "DESTAQUE"
+                    })
+                    
+                    for k in ['temp_titulo','temp_img','temp_link','sugestoes_ia']: 
+                        st.session_state.pop(k, None)
+                    st.success("Postado com Sucesso e Proteção!")
+                    st.rerun()
 
             st.divider()
             st.subheader("👀 Vitrine (6 Notícias)")
             noticias_ref = db.collection("noticias").order_by("data", direction="DESCENDING").limit(6).stream()
             lista_n = [n.to_dict() | {"id": n.id} for n in noticias_ref]
+            
             if lista_n:
                 for i in range(0, len(lista_n), 3):
                     cols = st.columns(3)
@@ -1042,45 +1061,16 @@ with menu_abas[3]:
                         if i + j < len(lista_n):
                             n = lista_n[i + j]
                             with cols[j]:
-                                st.markdown(f'<div style="height:110px;overflow:hidden;border-radius:8px;background:#eee;"><img src="{n.get("imagem_url","")}" style="width:100%;height:100%;object-fit:cover;"></div>', unsafe_allow_html=True)
+                                # CSS inline para manter a vitrine organizada
+                                st.markdown(f'''
+                                    <div style="height:110px;overflow:hidden;border-radius:8px;background:#eee;">
+                                        <img src="{n.get("imagem_url","")}" style="width:100%;height:100%;object-fit:cover;">
+                                    </div>
+                                ''', unsafe_allow_html=True)
                                 st.caption(f"**{n.get('titulo')[:40]}...**")
                                 if st.button("🗑️", key=f"del_n_{n['id']}"):
-                                    db.collection("noticias").document(n['id']).delete(); st.rerun()
-
-        with tab_loja:
-            st.subheader("🛒 Itens da Loja")
-            with st.form("add_loja"):
-                c1, c2, c3 = st.columns([2,1,1])
-                ln = c1.text_input("Nome")
-                lp = c2.number_input("Preço", min_value=1)
-                le = c3.number_input("Estoque", min_value=1)
-                lf = st.file_uploader("Foto", type=['jpg','png'])
-                if st.form_submit_button("SALVAR PRODUTO"):
-                    db.collection("loja").add({"nome": ln, "preco": lp, "estoque": le, "foto": otimizar_imagem(lf) if lf else ""})
-                    st.success("Produto Adicionado!"); st.rerun()
-            st.divider()
-            for it in db.collection("loja").stream():
-                item = it.to_dict()
-                with st.expander(f"📦 {item['nome']} - {item['preco']} 💎"):
-                    if item.get('foto'): st.image(f"data:image/jpeg;base64,{item['foto']}", width=100)
-                    if st.button("Remover", key=f"del_it_{it.id}"): db.collection("loja").document(it.id).delete(); st.rerun()
-
-        with tab_vendas:
-            st.subheader("📜 Histórico de Resgates")
-            vendas_ref = db.collection("vendas").order_by("data", direction="DESCENDING").limit(20).stream()
-            vendas_data = []
-            for v in vendas_ref:
-                vd = v.to_dict()
-                vendas_data.append({
-                    "Data": vd.get('data').astimezone(fuso_br).strftime('%d/%m %H:%M') if vd.get('data') else "---",
-                    "Cliente": vd.get('usuario_nome', 'Desconhecido'),
-                    "Produto": vd.get('produto_nome', '---'),
-                    "Preço": f"{vd.get('preco', 0)} 💎"
-                })
-            if vendas_data:
-                st.table(pd.DataFrame(vendas_data))
-            else:
-                st.info("Nenhuma venda registrada ainda.")
+                                    db.collection("noticias").document(n['id']).delete()
+                                    st.rerun()
 
         with tab_profissionais:
             try:
@@ -1210,6 +1200,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
