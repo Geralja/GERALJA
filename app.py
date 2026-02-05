@@ -72,7 +72,38 @@ def conectar_banco_master():
 # Ativa o banco
 app_engine = conectar_banco_master()
 db = firestore.client()
+# ==============================================================================
+# MOTOR DE SEGURANÇA E SANEAMENTO (OBRIGATÓRIO)
+# ==============================================================================
+class GeralJaEngine:
+    def sanitizar(self, texto):
+        if not texto: return ""
+        # Remove espaços inquebráveis e limpa as pontas
+        return str(texto).replace('\u00a0', ' ').strip()
 
+    def otimizar_img(self, image_file, size=(500, 500)):
+        try:
+            from PIL import Image
+            import io
+            import base64
+            img = Image.open(image_file)
+            if img.mode in ("RGBA", "P"): img = img.convert("RGB")
+            img.thumbnail(size)
+            buffer = io.BytesIO()
+            img.save(buffer, format="JPEG", quality=70)
+            return base64.b64encode(buffer.getvalue()).decode()
+        except: return None
+
+    def injetar_modulo(self, nome, codigo):
+        try:
+            with open(f"{nome}.py", "w", encoding="utf-8") as f:
+                f.write(codigo)
+            return True, f"Módulo {nome} instalado com sucesso!"
+        except Exception as e:
+            return False, f"Erro na injeção: {e}"
+
+# INICIALIZAÇÃO DO MOTOR
+engine = GeralJaEngine()
 # ------------------------------------------------------------------------------
 # 1. CONFIGURAÇÃO DE AMBIENTE E PERFORMANCE
 # ------------------------------------------------------------------------------
@@ -1202,6 +1233,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
