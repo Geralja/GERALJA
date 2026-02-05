@@ -979,7 +979,7 @@ with menu_abas[3]:
         if st.button("🚪 Sair", key="logout_adm"): 
             st.session_state.admin_logado = False; st.rerun()
 
-        # Definição das Abas - Sem Loja e Vendas
+       # 1. Definição das Abas (Linha 983 aprox.)
         tab_profissionais, tab_noticias, tab_categorias, tab_recibos, tab_metricas = st.tabs([
             "👥 Parceiros", 
             "📰 Notícias", 
@@ -987,6 +987,63 @@ with menu_abas[3]:
             "🎫 Recibos", 
             "📊 Métricas"
         ])
+
+        # 2. Conteúdo da Aba de Profissionais (Onde deu o erro 1079)
+        with tab_profissionais:
+            try:
+                profs_ref = db.collection("profissionais").stream()
+                profs_list = [p.to_dict() | {"id": p.id} for p in profs_ref]
+                df = pd.DataFrame(profs_list)
+                
+                if not df.empty:
+                    busca = st.text_input("🔍 Localizar (Nome ou WhatsApp)", key="busca_prof")
+                    if busca: 
+                        df = df[df['nome'].str.contains(busca, case=False, na=False) | df['whatsapp'].str.contains(busca, na=False)]
+                    
+                    m1, m2, m3 = st.columns(3)
+                    m1.metric("Total", len(df))
+                    m2.metric("Pendentes", len(df[df['aprovado'] == False]))
+                    m3.metric("GeralCones", f"💎 {int(df['saldo'].sum())}")
+
+                    for _, p in df.iterrows():
+                        pid = p['id']
+                        status = "🟢" if p.get('aprovado') else "🟡"
+                        with st.expander(f"{status} {p.get('nome','').upper()}"):
+                            with st.form(f"f_edit_{pid}"):
+                                c1, c2 = st.columns(2)
+                                n_nome = c1.text_input("Nome", value=p.get('nome'))
+                                n_area = c2.selectbox("Área", lista_atual, index=lista_atual.index(p.get('area')) if p.get('area') in lista_atual else 0)
+                                n_desc = st.text_area("Descrição", value=p.get('descricao'))
+                                
+                                c3, c4, c5 = st.columns(3)
+                                n_zap = c3.text_input("Zap", value=p.get('whatsapp'))
+                                n_saldo = c4.number_input("Saldo", value=int(p.get('saldo', 0)))
+                                n_status = c5.selectbox("Status", ["Aprovado", "Pendente"], index=0 if p.get('aprovado') else 1)
+                                
+                                if st.form_submit_button("💾 SALVAR TUDO"):
+                                    upd = {
+                                        "nome": engine.sanitizar(n_nome), 
+                                        "area": n_area, 
+                                        "descricao": engine.sanitizar(n_desc), 
+                                        "whatsapp": engine.sanitizar(n_zap), 
+                                        "saldo": int(n_saldo), 
+                                        "aprovado": (n_status=="Aprovado")
+                                    }
+                                    db.collection("profissionais").document(pid).update(upd)
+                                    st.success("Atualizado!"); st.rerun()
+                            
+                            if st.button("🗑️ EXCLUIR", key=f"del_p_{pid}"): 
+                                db.collection("profissionais").document(pid).delete()
+                                st.rerun()
+                else:
+                    st.info("Lista vazia.")
+            except Exception as e: 
+                st.error(f"Erro: {e}")
+
+        # 3. Conteúdo da Aba de Notícias (Mesmo nível de identação)
+        with tab_noticias:
+            st.subheader("📰 Gestão de Conteúdo")
+            # ... (seu código de notícias aqui)
 
         with tab_categorias:
             doc_cat_ref = db.collection("configuracoes").document("categorias")
@@ -1258,6 +1315,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
