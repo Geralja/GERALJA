@@ -162,29 +162,7 @@ if "code" in query_params:
 # ------------------------------------------------------------------------------
 # 2. CAMADA DE PERSISTÊNCIA (FIREBASE)
 # ------------------------------------------------------------------------------
-@st.cache_resource
-def conectar_banco_master():
-    if not firebase_admin._apps:
-        try:
-            # Pega do grupo [firebase] que configuramos no Secrets
-            if "firebase" in st.secrets and "base64" in st.secrets["firebase"]:
-                b64_key = st.secrets["firebase"]["base64"]
-                decoded_json = base64.b64decode(b64_key).decode("utf-8")
-                cred_dict = json.loads(decoded_json)
-                cred = credentials.Certificate(cred_dict)
-                return firebase_admin.initialize_app(cred)
-            else:
-                st.error("⚠️ Configuração 'firebase.base64' não encontrada nos Secrets.")
-                st.stop()
-        except Exception as e:
-            st.error(f"❌ FALHA NA INFRAESTRUTURA: {e}")
-            st.stop()
-    return firebase_admin.get_app()
 
-app_engine = conectar_banco_master()
-
-if app_engine:
-    db = firestore.client()
 else:
     st.error("Erro ao conectar ao Firebase. Verifique suas configurações.")
     st.stop()
@@ -1202,6 +1180,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
