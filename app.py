@@ -14,7 +14,39 @@ from datetime import datetime
 import pytz
 import unicodedata
 import requests
+import streamlit as st
+import re
+import sys
+import os
+import pytz
+from datetime import datetime
 
+# --- CONFIGURAÇÃO DE ALTO NÍVEL ---
+class GeralJaEngine:
+    def __init__(self):
+        self.fuso = pytz.timezone('America/Sao_Paulo')
+    
+    def sanitizar(self, codigo_bruto):
+        """Mata caracteres fantasmas e lixo de codificação instantaneamente"""
+        if not codigo_bruto: return ""
+        # Remove U+00A0 (espaço inquebrável) e normaliza espaços
+        limpo = codigo_bruto.replace('\u00a0', ' ').replace('\xa0', ' ')
+        # Filtra apenas caracteres ASCII visíveis + quebras de linha
+        return re.sub(r'[^\x20-\x7E\n\t\r]', '', limpo)
+
+    def injetar_modulo(self, nome_arquivo, conteudo):
+        """Instala novos códigos no servidor de forma independente"""
+        conteudo_limpo = self.sanitizar(conteudo)
+        try:
+            with open(f"{nome_arquivo}.py", "w", encoding="utf-8") as f:
+                f.write(conteudo_limpo)
+            return True, f"✅ Módulo {nome_arquivo} instalado e saneado!"
+        except Exception as e:
+            return False, f"❌ Falha na instalação: {str(e)}"
+
+# Inicializa o Motor Global
+engine = GeralJaEngine()
+fuso_br = engine.fuso
 # --- BIBLIOTECAS NÍVEL 5.0 ---
 from groq import Groq                # Para a IA avançada
 from fuzzywuzzy import process       # Para buscas com erros de digitação
@@ -1178,6 +1210,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
