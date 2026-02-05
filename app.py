@@ -1077,9 +1077,11 @@ with menu_abas[3]:
                 profs_ref = db.collection("profissionais").stream()
                 profs_list = [p.to_dict() | {"id": p.id} for p in profs_ref]
                 df = pd.DataFrame(profs_list)
+                
                 if not df.empty:
                     busca = st.text_input("🔍 Localizar (Nome ou WhatsApp)")
-                    if busca: df = df[df['nome'].str.contains(busca, case=False, na=False) | df['whatsapp'].str.contains(busca, na=False)]
+                    if busca: 
+                        df = df[df['nome'].str.contains(busca, case=False, na=False) | df['whatsapp'].str.contains(busca, na=False)]
                     
                     m1, m2, m3 = st.columns(3)
                     m1.metric("Total", len(df))
@@ -1093,28 +1095,56 @@ with menu_abas[3]:
                             with st.form(f"f_edit_{pid}"):
                                 c1, c2 = st.columns(2)
                                 n_nome = c1.text_input("Nome", value=p.get('nome'))
+                                
+                                # Preservando a sua lista_atual de categorias
                                 n_area = c2.selectbox("Área", lista_atual, index=lista_atual.index(p.get('area')) if p.get('area') in lista_atual else 0)
+                                
                                 n_desc = st.text_area("Descrição", value=p.get('descricao'))
+                                
                                 c3, c4, c5 = st.columns(3)
                                 n_zap = c3.text_input("Zap", value=p.get('whatsapp'))
                                 n_saldo = c4.number_input("Saldo", value=int(p.get('saldo', 0)))
                                 n_status = c5.selectbox("Status", ["Aprovado", "Pendente"], index=0 if p.get('aprovado') else 1)
+                                
                                 st.divider()
                                 cf1, cf2 = st.columns([1, 2])
                                 with cf1:
-                                    if p.get('foto_url'): st.image(f"data:image/jpeg;base64,{p['foto_url']}" if len(p['foto_url']) > 100 else p['foto_url'], width=80)
+                                    if p.get('foto_url'): 
+                                        st.image(f"data:image/jpeg;base64,{p['foto_url']}" if len(p['foto_url']) > 100 else p['foto_url'], width=80)
                                     up_p = st.file_uploader("Perfil", type=['jpg','png'], key=f"up_p_{pid}")
                                 with cf2:
                                     up_v = st.file_uploader("Vitrine (Máx 4)", type=['jpg','png'], accept_multiple_files=True, key=f"up_v_{pid}")
+                                
                                 if st.form_submit_button("💾 SALVAR TUDO"):
-                                    upd = {"nome": n_nome, "area": n_area, "descricao": n_desc, "whatsapp": n_zap, "saldo": int(n_saldo), "aprovado": (n_status=="Aprovado")}
-                                    if up_p: upd["foto_url"] = otimizar_imagem(up_p, size=(350, 350))
+                                    # MOTOR AUTOMÁTICO: Sanitizando os campos de texto
+                                    upd = {
+                                        "nome": engine.sanitizar(n_nome), 
+                                        "area": n_area, 
+                                        "descricao": engine.sanitizar(n_desc), 
+                                        "whatsapp": engine.sanitizar(n_zap), 
+                                        "saldo": int(n_saldo), 
+                                        "aprovado": (n_status=="Aprovado")
+                                    }
+                                    
+                                    # Mantendo sua função de otimização original
+                                    if up_p: 
+                                        upd["foto_url"] = engine.otimizar_img(up_p, size=(350, 350))
                                     if up_v:
                                         for i in range(1, 5): upd[f'f{i}'] = None
-                                        for i, f in enumerate(up_v[:4]): upd[f"f{i+1}"] = otimizar_imagem(f)
-                                    db.collection("profissionais").document(pid).update(upd); st.rerun()
-                            if st.button("🗑️ EXCLUIR", key=f"del_p_{pid}"): db.collection("profissionais").document(pid).delete(); st.rerun()
-            except Exception as e: st.error(f"Erro: {e}")
+                                        for i, f in enumerate(up_v[:4]): 
+                                            upd[f"f{i+1}"] = engine.otimizar_img(f)
+                                    
+                                    db.collection("profissionais").document(pid).update(upd)
+                                    st.success("Dados atualizados!")
+                                    st.rerun()
+                            
+                            if st.button("🗑️ EXCLUIR", key=f"del_p_{pid}"): 
+                                db.collection("profissionais").document(pid).delete()
+                                st.rerun()
+                else:
+                    st.info("Nenhum profissional cadastrado.")
+            except Exception as e: 
+                st.error(f"Erro no processamento: {e}")
 # ==============================================================================
 # ABA 5: FEEDBACK
 # ==============================================================================
@@ -1200,6 +1230,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
