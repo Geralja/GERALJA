@@ -1049,46 +1049,78 @@ with menu_abas[3]:
 
             except Exception as e: st.error(f"Erro no módulo de parceiros: {e}")
 
-        # --- 2. RADAR DE NOTÍCIAS (OS 4 SCANNERS + IA) ---
-        with t_news:
-            st.write("### 🤖 Radar de Inteligência e Captação")
-            r1, r2, r3, r4 = st.columns(4)
-            
-            if r1.button("🔍 GOOGLE NEWS", use_container_width=True):
-                import feedparser
-                f = feedparser.parse("https://news.google.com/rss/search?q=Grajaú+São+Paulo&hl=pt-BR")
-                st.session_state.radar = [{"t": e.title, "l": e.link, "f": "Google"} for e in f.entries[:5]]
-            
-            if r2.button("📡 NEWS API", use_container_width=True):
-                r = requests.get(f"https://newsapi.org/v2/everything?q=Grajaú&apiKey={st.secrets.get('NEWS_API_KEY')}").json()
-                st.session_state.radar = [{"t": a['title'], "l": a['url'], "f": "NewsAPI"} for a in r.get('articles', [])[:5]]
+        # --- 2. RADAR DE NOTÍCIAS (TURBINADO COM IMAGENS) ---
+with t_news:
+    st.write("### 🤖 Radar de Inteligência e Captação")
+    r1, r2, r3, r4 = st.columns(4)
+    IMG_DEFAULT = "https://images.unsplash.com/photo-1504711432869-0df30d7eaf4d?w=800"
 
-            if r3.button("🗞️ RSS LOCAIS", use_container_width=True):
-                st.info("Buscando em portais da Zona Sul...")
+    if r1.button("🔍 GOOGLE NEWS", use_container_width=True):
+        import feedparser
+        f = feedparser.parse("https://news.google.com/rss/search?q=Grajaú+São+Paulo&hl=pt-BR")
+        radar_links = []
+        for e in f.entries[:5]:
+            # Tenta achar imagem no sumário do Google
+            img = IMG_DEFAULT
+            if 'summary' in e and '<img src="' in e.summary:
+                img = e.summary.split('<img src="')[1].split('"')[0]
+            radar_links.append({"t": e.title, "l": e.link, "f": "Google", "i": img})
+        st.session_state.radar = radar_links
 
-            if r4.button("🧹 RESET", use_container_width=True):
-                st.session_state.pop('radar', None); st.rerun()
+    if r2.button("📡 NEWS API", use_container_width=True):
+        key = st.secrets.get('NEWS_API_KEY', 'SUA_CHAVE_AQUI')
+        res = requests.get(f"https://newsapi.org/v2/everything?q=Grajaú+São+Paulo&language=pt&apiKey={key}").json()
+        articles = res.get('articles', [])
+        st.session_state.radar = [
+            {"t": a['title'], "l": a['url'], "f": "NewsAPI", "i": a.get('urlToImage') or IMG_DEFAULT} 
+            for a in articles[:5]
+        ]
 
-            if 'radar' in st.session_state:
-                for n in st.session_state.radar:
-                    with st.container(border=True):
-                        st.write(f"**[{n['f']}]** {n['t']}")
-                        if st.button("CAPTURAR ESTA", key=n['l']):
-                            st.session_state.temp_t, st.session_state.temp_l = n['t'], n['l']
-                            st.rerun()
+    if r3.button("📻 RÁDIO GRAJAÚ", use_container_width=True):
+        # Scraper Simples para a rádio
+        try:
+            st.session_state.radar = [{
+                "t": "Últimas Notícias - Rádio Grajaú Tem", 
+                "l": "https://radiograjautem.net/noticias/", 
+                "f": "Rádio", "i": "https://radiograjautem.net/wp-content/uploads/2022/02/logo-radio.png"
+            }]
+        except: st.error("Link da rádio indisponível no momento.")
 
-            with st.form("post_noticia"):
-                st.write("### 🚀 Editor de Publicação")
-                t_pub = st.text_input("Título da Notícia", value=st.session_state.get('temp_t', ""))
-                l_pub = st.text_input("Link da Fonte", value=st.session_state.get('temp_l', ""))
-                i_pub = st.text_input("URL da Imagem (ou deixe em branco para padrão)")
-                if st.form_submit_button("LANÇAR NO PORTAL"):
-                    db.collection("noticias").add({
-                        "titulo": engine.sanitizar(t_pub), "link_original": l_pub,
-                        "imagem_url": i_pub if i_pub else "https://images.unsplash.com/photo-1504711432869-0df30d7eaf4d",
-                        "data": datetime.now(pytz.timezone('America/Sao_Paulo')), "categoria": "DESTAQUE"
-                    })
-                    st.success("Notícia lançada!"); st.session_state.pop('radar', None); st.rerun()
+    if r4.button("🧹 RESET", use_container_width=True):
+        for k in ['radar', 'temp_t', 'temp_l', 'temp_i']: st.session_state.pop(k, None)
+        st.rerun()
+
+    # Exibição dos cards capturados
+    if 'radar' in st.session_state:
+        cols_radar = st.columns(3)
+        for idx, n in enumerate(st.session_state.radar):
+            with cols_radar[idx % 3]:
+                with st.container(border=True):
+                    st.image(n['i'], use_container_width=True)
+                    st.caption(f"**{n['f']}**")
+                    st.write(f"**{n['t'][:60]}...**")
+                    if st.button("USAR", key=f"cap_{idx}"):
+                        st.session_state.temp_t = n['t']
+                        st.session_state.temp_l = n['l']
+                        st.session_state.temp_i = n['i'] # AGORA PEGA A IMAGEM!
+                        st.rerun()
+
+    # Formulário de Postagem Final
+    with st.form("post_noticia"):
+        st.write("### 🚀 Editor de Publicação")
+        t_pub = st.text_input("Título", value=st.session_state.get('temp_t', ""))
+        l_pub = st.text_input("Link", value=st.session_state.get('temp_l', ""))
+        i_pub = st.text_input("URL Imagem", value=st.session_state.get('temp_i', IMG_DEFAULT))
+        
+        if st.form_submit_button("LANÇAR NO PORTAL"):
+            db.collection("noticias").add({
+                "titulo": engine.sanitizar(t_pub),
+                "link_original": l_pub,
+                "imagem_url": i_pub,
+                "data": datetime.now(pytz.timezone('America/Sao_Paulo')),
+                "categoria": "DESTAQUE"
+            })
+            st.success("Postado com sucesso!"); st.rerun()
 
         # --- 3. GESTÃO DE CATEGORIAS ---
         with t_cat:
@@ -1261,6 +1293,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
