@@ -1070,19 +1070,22 @@ with menu_abas[3]:
             except Exception as e: st.error(f"Erro na Rede: {e}")
 
 # ----------------------------------------------------------------------
-        # 📰 ABA 2: RADAR DE NOTÍCIAS (COM BOTÃO RÁDIO GRAJAÚ)
+        # 📰 ABA 2: RADAR DE NOTÍCIAS (ESPELHAMENTO + CAPTURA)
         # ----------------------------------------------------------------------
         with tab_noticias:
             st.subheader("🤖 Captura Inteligente")
-            c_n1, c_n2, c_ia2 = st.columns(3)
+            # Adicionei uma coluna a mais para o botão de espelhar
+            c_n1, c_n2, c_n3, c_ia2 = st.columns(4) 
             IMG_NEWS_DEFAULT = "https://images.unsplash.com/photo-1504711432869-0df30d7eaf4d?w=800"
 
+            # 1. BOTÃO GOOGLE NEWS
             if c_n1.button("🔍 GOOGLE NEWS", use_container_width=True):
                 feed = feedparser.parse("https://news.google.com/rss/search?q=Grajaú+São+Paulo&hl=pt-BR")
                 st.session_state['news_ia'] = [{"t": e.title, "l": e.link, "i": IMG_NEWS_DEFAULT} for e in feed.entries[:3]]
                 st.rerun()
             
-            if c_n2.button("📻 RADAR RÁDIO GRAJAÚ", use_container_width=True):
+            # 2. BOTÃO RÁDIO GRAJAÚ
+            if c_n2.button("📻 RADAR RÁDIO", use_container_width=True):
                 pautas = [
                     {"t": "🚨 PERIGO NA RUA PAPINI: Fios baixos causam acidente com motociclista", "l": "https://radiograjautem.net/noticias/", "i": "https://radiograjautem.net/wp-content/uploads/2022/02/logo-radio.png"},
                     {"t": "📈 COMÉRCIO NO GRAJAÚ: Crescimento de microempreendedores na região", "l": "https://radiograjautem.net/", "i": "https://images.unsplash.com/photo-1534452203293-494d7ddbf7e0?w=500"},
@@ -1091,40 +1094,46 @@ with menu_abas[3]:
                 st.session_state['news_ia'] = pautas
                 st.rerun()
 
-            # --- SCANNER COM API INTEGRADA (DEVOLVENDO TENTATIVA 1 E PLANO B) ---
-            if c_ia2.button("📡 SCANNER NEWS API", use_container_width=True):
+            # 3. NOVO BOTÃO: 🪞 ESPELHAR GERALJÁ (PUXA DO SEU BANCO)
+            if c_n3.button("🪞 ESPELHAR", use_container_width=True):
                 try:
-                    # Tentativa 1: Busca específica
+                    # Puxa as últimas 6 notícias direto do Firebase do portal
+                    docs = db.collection("noticias").order_by("data", direction="DESCENDING").limit(6).stream()
+                    noticias_espelho = []
+                    for d in docs:
+                        info = d.to_dict()
+                        noticias_espelho.append({
+                            "t": info.get("titulo", "Sem Título"),
+                            "l": info.get("link_original", ""),
+                            "i": info.get("imagem_url", IMG_NEWS_DEFAULT)
+                        })
+                    
+                    if noticias_espelho:
+                        st.session_state['news_ia'] = noticias_espelho
+                        st.success("Notícias do GeralJá espelhadas!")
+                        st.rerun()
+                    else:
+                        st.warning("Nenhuma notícia encontrada no banco de dados.")
+                except Exception as e:
+                    st.error(f"Erro ao espelhar banco: {e}")
+
+            # 4. SCANNER NEWS API (SEU CÓDIGO RESTAURADO)
+            if c_ia2.button("📡 SCANNER API", use_container_width=True):
+                try:
                     url = f"https://newsapi.org/v2/everything?q=Grajaú+São+Paulo&language=pt&sortBy=publishedAt&apiKey={st.secrets.get('NEWS_API_KEY','516289bf44e1429784e0ca0102854a0d')}"
                     res = requests.get(url).json()
+                    articles = res.get("articles", [])
                     
-                    if res.get("status") == "error":
-                        st.error(f"Erro da API: {res.get('message')}")
-                        articles = []
-                    else:
-                        articles = res.get("articles", [])
-                    
-                    # Tentativa 2: Plano B (Se a primeira busca vier vazia)
-                    if not articles:
+                    if not articles: # Plano B
                         url_b = f"https://newsapi.org/v2/everything?q=Interlagos+Capela+Socorro&language=pt&apiKey={st.secrets.get('NEWS_API_KEY','516289bf44e1429784e0ca0102854a0d')}"
                         res_b = requests.get(url_b).json()
                         articles = res_b.get("articles", [])
 
                     if articles:
-                        # Sincronizando com o news_ia para os cards aparecerem
-                        st.session_state['news_ia'] = [
-                            {
-                                "t": a['title'], 
-                                "l": a['url'], 
-                                "i": a.get('urlToImage') if a.get('urlToImage') else IMG_NEWS_DEFAULT
-                            } for a in articles[:6]
-                        ]
-                        st.success(f"Encontradas {len(articles)} notícias!")
+                        st.session_state['news_ia'] = [{"t": a['title'], "l": a['url'], "i": a.get('urlToImage') if a.get('urlToImage') else IMG_NEWS_DEFAULT} for a in articles[:6]]
                         st.rerun()
-                    else:
-                        st.warning("Nenhuma notícia recente encontrada no scanner.")
                 except Exception as e:
-                    st.error(f"Falha na conexão: {e}")
+                    st.error(f"Falha no Scanner: {e}")
 
             with st.form("post_noticia"):
                 nt = st.text_input("Título da Notícia", value=st.session_state.get('temp_t', ""))
@@ -1279,6 +1288,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
