@@ -961,36 +961,13 @@ with menu_abas[1]:
             except Exception as e:
                 st.error(f"❌ Erro ao processar perfil: {e}")
 # ==============================================================================
-# ABA 4: 👑 TORRE DE CONTROLE MASTER (VERSÃO PURIFICADA)
+# ABA 4: 👑 TORRE DE CONTROLE MASTER (COMPLETA E OPERAÇÕES IA)
 # ==============================================================================
 with menu_abas[3]:
-    import pytz
-    from datetime import datetime
-    import pandas as pd
-    import time
-    from PIL import Image
-    import io
-    import base64
-    import requests
-    import feedparser
-    import urllib.parse
-
     # Fuso horário e data
     fuso_br = pytz.timezone('America/Sao_Paulo')
-    agora_br = datetime.now(fuso_br)
-
-    # --- FUNÇÃO DE OTIMIZAÇÃO DE IMAGEM ---
-    def otimizar_imagem_local(image_file, size=(500, 500)):
-        try:
-            img = Image.open(image_file)
-            if img.mode in ("RGBA", "P"): img = img.convert("RGB")
-            img.thumbnail(size)
-            buffer = io.BytesIO()
-            img.save(buffer, format="JPEG", quality=70)
-            return base64.b64encode(buffer.getvalue()).decode()
-        except: return None
-
-    # --- SISTEMA DE LOGIN ---
+    
+    # --- SISTEMA DE LOGIN ADMINISTRATIVO ---
     if 'admin_logado' not in st.session_state: 
         st.session_state.admin_logado = False
 
@@ -1013,14 +990,12 @@ with menu_abas[3]:
             st.session_state.admin_logado = False
             st.rerun()
 
-        # Definição das Abas - LOJA E VENDAS REMOVIDAS
+        # Definição das Abas
         tab_profissionais, tab_noticias, tab_categorias = st.tabs([
-            "👥 Parceiros", 
-            "📰 Gestão de Notícias", 
-            "📁 Categorias"
+            "👥 Parceiros", "📰 Gestão de Notícias", "📁 Categorias"
         ])
 
-        # --- ABA: CATEGORIAS ---
+        # --- 1. ABA: CATEGORIAS ---
         with tab_categorias:
             doc_cat_ref = db.collection("configuracoes").document("categorias")
             res_cat = doc_cat_ref.get()
@@ -1039,28 +1014,36 @@ with menu_abas[3]:
                         st.success(f"{cat_limpa} adicionada!")
                         st.rerun()
 
-        # --- ABA: GESTÃO DE NOTÍCIAS ---
+        # --- 2. ABA: GESTÃO DE NOTÍCIAS (OS 4 SCANNERS IA) ---
         with tab_noticias:
             st.subheader("🤖 Captação por IA e RSS")
-            c_ia1, c_ia2 = st.columns(2)
+            c_ia1, c_ia2, c_ia3, c_ia4 = st.columns(4)
             IMG_NEWS_DEFAULT = "https://images.unsplash.com/photo-1504711432869-0df30d7eaf4d?w=800"
 
-            if c_ia1.button("🔍 CAPTAR GOOGLE NEWS", use_container_width=True):
+            if c_ia1.button("🔍 GOOGLE NEWS", use_container_width=True):
                 feed = feedparser.parse("https://news.google.com/rss/search?q=Grajaú+São+Paulo&hl=pt-BR&gl=BR&ceid=BR:pt-419")
                 st.session_state['sugestoes_ia'] = [{"titulo": e.title, "link": e.link, "img": IMG_NEWS_DEFAULT} for e in feed.entries[:3]]
             
-            if c_ia2.button("📡 SCANNER NEWS API", use_container_width=True):
+            if c_ia2.button("📡 NEWS API", use_container_width=True):
                 try:
                     res = requests.get(f"https://newsapi.org/v2/everything?q=Grajaú+São+Paulo&language=pt&apiKey={st.secrets.get('NEWS_API_KEY','516289bf44e1429784e0ca0102854a0d')}").json()
                     st.session_state['sugestoes_ia'] = [{"titulo": a['title'], "link": a['url'], "img": a.get('urlToImage') or IMG_NEWS_DEFAULT} for a in res.get("articles", [])[:3]]
                 except: st.error("Erro na API de notícias.")
+
+            if c_ia3.button("🗞️ RSS LOCAIS", use_container_width=True):
+                # Scanner secundário de apoio
+                feed_loc = feedparser.parse("https://news.google.com/rss/search?q=Zona+Sul+Sao+Paulo+Noticias&hl=pt-BR")
+                st.session_state['sugestoes_ia'] = [{"titulo": e.title, "link": e.link, "img": IMG_NEWS_DEFAULT} for e in feed_loc.entries[:3]]
+
+            if c_ia4.button("🧹 LIMPAR IA", use_container_width=True):
+                st.session_state.pop('sugestoes_ia', None)
+                st.rerun()
 
             if 'sugestoes_ia' in st.session_state:
                 cols_sug = st.columns(3)
                 for idx, sug in enumerate(st.session_state['sugestoes_ia']):
                     with cols_sug[idx]:
                         st.image(sug['img'], use_container_width=True)
-                        st.caption(f"**{sug['titulo'][:50]}...**")
                         if st.button("✅ USAR", key=f"sug_{idx}"):
                             st.session_state['temp_titulo'] = sug['titulo']
                             st.session_state['temp_link'] = sug['link']
@@ -1071,18 +1054,15 @@ with menu_abas[3]:
                 nt = st.text_input("Título", value=st.session_state.get('temp_titulo', ""))
                 ni = st.text_input("URL Imagem", value=st.session_state.get('temp_img', ""))
                 nl = st.text_input("Link Matéria", value=st.session_state.get('temp_link', ""))
-                if st.form_submit_button("🚀 PUBLICAR NO GERALJÁ"):
+                if st.form_submit_button("🚀 PUBLICAR NO PORTAL"):
                     db.collection("noticias").add({
-                        "titulo": engine.sanitizar(nt), 
-                        "imagem_url": ni, 
-                        "link_original": nl, 
-                        "data": datetime.now(fuso_br), 
-                        "categoria": "DESTAQUE"
+                        "titulo": engine.sanitizar(nt), "imagem_url": ni, "link_original": nl, 
+                        "data": datetime.now(fuso_br), "categoria": "DESTAQUE"
                     })
                     for k in ['temp_titulo','temp_img','temp_link','sugestoes_ia']: st.session_state.pop(k, None)
-                    st.success("Postado!"); st.rerun()
+                    st.success("Notícia publicada!"); st.rerun()
 
-        # --- ABA: PARCEIROS (PROFISSIONAIS) ---
+        # --- 3. ABA: PARCEIROS (GESTÃO TOTAL COM VITRINE) ---
         with tab_profissionais:
             try:
                 profs_ref = db.collection("profissionais").stream()
@@ -1090,7 +1070,7 @@ with menu_abas[3]:
                 df = pd.DataFrame(profs_list)
                 
                 if not df.empty:
-                    busca = st.text_input("🔍 Localizar Profissional (Nome ou WhatsApp)")
+                    busca = st.text_input("🔍 Localizar (Nome ou WhatsApp)")
                     if busca: 
                         df = df[df['nome'].str.contains(busca, case=False, na=False) | df['whatsapp'].str.contains(busca, na=False)]
                     
@@ -1118,36 +1098,27 @@ with menu_abas[3]:
                                 cf1, cf2 = st.columns([1, 2])
                                 with cf1:
                                     if p.get('foto_url'): 
-                                        st.image(f"data:image/jpeg;base64,{p['foto_url']}" if len(p['foto_url']) > 100 else p['foto_url'], width=80)
-                                    up_p = st.file_uploader("Perfil", type=['jpg','png'], key=f"up_p_{pid}")
+                                        st.image(p['foto_url'], width=80)
+                                    up_p = st.file_uploader("Trocar Perfil", type=['jpg','png'], key=f"up_p_{pid}")
                                 with cf2:
                                     up_v = st.file_uploader("Vitrine (Máx 4)", type=['jpg','png'], accept_multiple_files=True, key=f"up_v_{pid}")
                                 
                                 if st.form_submit_button("💾 SALVAR TUDO"):
                                     upd = {
-                                        "nome": engine.sanitizar(n_nome), 
-                                        "area": n_area, 
-                                        "descricao": engine.sanitizar(n_desc), 
-                                        "whatsapp": engine.sanitizar(n_zap), 
-                                        "saldo": int(n_saldo), 
-                                        "aprovado": (n_status=="Aprovado")
+                                        "nome": engine.sanitizar(n_nome), "area": n_area, 
+                                        "descricao": engine.sanitizar(n_desc), "whatsapp": n_zap, 
+                                        "saldo": int(n_saldo), "aprovado": (n_status=="Aprovado")
                                     }
-                                    if up_p: upd["foto_url"] = otimizar_imagem_local(up_p, size=(350, 350))
+                                    if up_p: upd["foto_url"] = engine.otimizar_img(up_p)
                                     if up_v:
-                                        for i in range(1, 5): upd[f'f{i}'] = None
-                                        for i, f in enumerate(up_v[:4]): upd[f"f{i+1}"] = otimizar_imagem_local(f)
-                                    
+                                        for i, f in enumerate(up_v[:4]): upd[f"f{i+1}"] = engine.otimizar_img(f)
                                     db.collection("profissionais").document(pid).update(upd)
-                                    st.success("Dados atualizados!")
-                                    st.rerun()
+                                    st.success("Atualizado!"); st.rerun()
                             
                             if st.button("🗑️ EXCLUIR REGISTRO", key=f"del_p_{pid}"): 
                                 db.collection("profissionais").document(pid).delete()
                                 st.rerun()
-                else:
-                    st.info("Nenhum profissional cadastrado.")
-            except Exception as e: 
-                st.error(f"Erro no processamento de parceiros: {e}")
+            except Exception as e: st.error(f"Erro: {e}")
 # ==============================================================================
 # ABA 5: FEEDBACK
 # ==============================================================================
@@ -1233,6 +1204,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
