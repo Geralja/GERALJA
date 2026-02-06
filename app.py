@@ -979,13 +979,14 @@ with menu_abas[3]:
         c_status1.subheader("👑 QG GeralJá | Controle de Operações")
         if c_status2.button("🚪 LOGOUT", use_container_width=True): 
             st.session_state.admin_logado = False; st.rerun()
-
-       t_pro, t_news, t_cat, tab_eng = st.tabs([
-    "👥 GESTÃO DE PARCEIROS", 
-    "📰 RADAR DE NOTÍCIAS", 
-    "📁 CATEGORIAS", 
-    "⚙️ NÚCLEO DO SISTEMA"
-])
+if autenticado:
+    # O t_pro tem que estar na mesma coluna que o código de cima
+    t_pro, t_news, t_cat, tab_eng = st.tabs([
+        "👥 GESTÃO DE PARCEIROS", 
+        "📰 RADAR DE NOTÍCIAS", 
+        "📁 CATEGORIAS", 
+        "⚙️ NÚCLEO DO SISTEMA"
+    ])
 
 with t_pro:
     try:
@@ -1295,6 +1296,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
