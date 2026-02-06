@@ -961,153 +961,208 @@ with menu_abas[1]:
             except Exception as e:
                 st.error(f"❌ Erro ao processar perfil: {e}")
 # ==============================================================================
-# ABA 4: 👑 TORRE DE CONTROLE MASTER (COMPLETA: GESTÃO DE REDE + CATEGORIAS)
+# 👑 TORRE DE CONTROLE MASTER ULTRA (UNIFICADA: REDE + MÍDIA + LOJA)
 # ==============================================================================
 with menu_abas[3]:
     import pytz
     from datetime import datetime
     import pandas as pd
     import time
+    from PIL import Image
+    import io
+    import base64
+    import requests
+    import feedparser
 
-    # 1. CONFIGURAÇÃO DE TEMPO E SEGURANÇA
+    # --- FUNÇÕES DE SUPORTE ---
+    def otimizar_imagem(image_file, size=(500, 500)):
+        try:
+            img = Image.open(image_file)
+            if img.mode in ("RGBA", "P"): img = img.convert("RGB")
+            img.thumbnail(size)
+            buffer = io.BytesIO()
+            img.save(buffer, format="JPEG", quality=70)
+            return base64.b64encode(buffer.getvalue()).decode()
+        except: return None
+
     fuso_br = pytz.timezone('America/Sao_Paulo')
     agora_br = datetime.now(fuso_br)
     
-    ADMIN_USER_OFICIAL = st.secrets.get("ADMIN_USER", "admin")
-    ADMIN_PASS_OFICIAL = st.secrets.get("ADMIN_PASS", "geralja2026")
-
-    if 'admin_logado' not in st.session_state:
-        st.session_state.admin_logado = False
+    if 'admin_logado' not in st.session_state: st.session_state.admin_logado = False
 
     if not st.session_state.admin_logado:
         st.markdown("### 🔐 Acesso Restrito à Diretoria")
-        with st.form("painel_login_adm"):
+        with st.form("login_adm"):
             u = st.text_input("Usuário Administrativo")
             p = st.text_input("Senha de Acesso", type="password")
-            if st.form_submit_button("ACESSAR TORRE DE CONTROLE", use_container_width=True):
-                if u == ADMIN_USER_OFICIAL and p == ADMIN_PASS_OFICIAL:
-                    st.session_state.admin_logado = True
-                    st.success("Acesso concedido!")
-                    time.sleep(1); st.rerun()
-                else:
-                    st.error("Credenciais inválidas.")
-    
+            if st.form_submit_button("ASSUMIR COMANDO MASTER", use_container_width=True):
+                if u == st.secrets.get("ADMIN_USER", "admin") and p == st.secrets.get("ADMIN_PASS", "geralja2026"):
+                    st.session_state.admin_logado = True; st.rerun()
+                else: st.error("Dados incorretos.")
     else:
-        st.markdown(f"## 👑 Central de Comando GeralJá")
-        st.caption(f"🕒 {agora_br.strftime('%H:%M:%S')} | Poder de Edição Total Ativo")
-        
-        if st.button("🚪 Sair do Sistema", key="logout_adm"):
-            st.session_state.admin_logado = False
-            st.rerun()
+        # --- CABEÇALHO ---
+        c_h1, c_h2 = st.columns([4, 1])
+        c_h1.markdown(f"## 👑 Central de Comando GeralJá")
+        if c_h2.button("🚪 Sair", key="logout_adm"): st.session_state.admin_logado = False; st.rerun()
+
+        # --- ABAS MASTER ---
+        tab_rede, tab_noticias, tab_loja, tab_vendas, tab_config = st.tabs([
+            "👥 GESTÃO DE PARCEIROS", "📰 RADAR DE NOTÍCIAS", "🛍️ LOJA VIRTUAL", "📜 HISTÓRICO VENDAS", "📁 CATEGORIAS"
+        ])
 
         # ----------------------------------------------------------------------
-        # 🟢 GESTÃO DE CATEGORIAS (ADICIONAR/REMOVER DO BANCO)
+        # 🟢 ABA 1: GESTÃO DE PARCEIROS (PODER TOTAL)
         # ----------------------------------------------------------------------
-        st.divider()
-        with st.expander("📁 GERENCIAR LISTA DE CATEGORIAS", expanded=False):
-            doc_cat_ref = db.collection("configuracoes").document("categorias")
-            res_cat = doc_cat_ref.get()
+        with tab_rede:
+            try:
+                # Sincronização de Categorias do Banco
+                doc_cat_ref = db.collection("configuracoes").document("categorias")
+                res_cat = doc_cat_ref.get()
+                lista_cats = res_cat.to_dict().get("lista", CATEGORIAS_OFICIAIS) if res_cat.exists else CATEGORIAS_OFICIAIS
+
+                profs_ref = list(db.collection("profissionais").stream())
+                profs_data = [p.to_dict() | {"id": p.id} for p in profs_ref]
+                df = pd.DataFrame(profs_data)
+
+                if not df.empty:
+                    df = df.fillna({"nome": "Sem Nome", "aprovado": False, "saldo": 0, "cliques": 0, "area": "Geral"})
+                    
+                    # Métricas de Performance
+                    m1, m2, m3, m4 = st.columns(4)
+                    m1.metric("Parceiros", len(df))
+                    m2.metric("Pendentes", len(df[df['aprovado'] == False]))
+                    m3.metric("Cliques Totais", int(df['cliques'].sum()))
+                    m4.metric("Economia 💎", f"{int(df['saldo'].sum())}")
+
+                    # Filtros de Busca
+                    st.divider()
+                    f1, f2 = st.columns(2)
+                    busca = f1.text_input("🔍 Localizar Nome ou WhatsApp")
+                    filtro_cat = f2.selectbox("Filtrar por Área", ["Todas"] + lista_cats)
+
+                    df_filt = df.copy()
+                    if busca: df_filt = df_filt[df_filt['nome'].str.contains(busca, case=False) | df_filt['id'].str.contains(busca)]
+                    if filtro_cat != "Todas": df_filt = df_filt[df_filt['area'] == filtro_cat]
+
+                    # Card de Gestão Individual
+                    for _, p in df_filt.iterrows():
+                        pid = p['id']
+                        cor = "🟢" if p['aprovado'] else "🟡"
+                        with st.expander(f"{cor} {p['nome'].upper()} ({p['area']})"):
+                            with st.form(f"master_edit_{pid}"):
+                                c1, c2, c3 = st.columns([2, 1, 1])
+                                n_nome = c1.text_input("Nome Comercial", value=p['nome'])
+                                n_zap = c2.text_input("WhatsApp", value=p.get('whatsapp', pid))
+                                n_area = c3.selectbox("Mudar Área", lista_cats, index=lista_cats.index(p['area']) if p['area'] in lista_cats else 0)
+                                
+                                c4, c5, c6 = st.columns(3)
+                                n_saldo = c4.number_input("Saldo GeralCones", value=int(p['saldo']))
+                                n_status = c5.selectbox("Status", ["Ativo", "Pendente"], index=0 if p['aprovado'] else 1)
+                                n_img = st.file_uploader("Trocar Foto Perfil", type=['jpg','png'], key=f"img_{pid}")
+                                
+                                if st.form_submit_button("💾 SALVAR ALTERAÇÕES"):
+                                    upd = {"nome": n_nome, "whatsapp": n_zap, "area": n_area, "saldo": int(n_saldo), "aprovado": (n_status == "Ativo")}
+                                    if n_img: upd["foto_url"] = otimizar_imagem(n_img)
+                                    db.collection("profissionais").document(pid).update(upd); st.rerun()
+                            
+                            if st.button(f"🗑️ BANIR DEFINITIVAMENTE {pid}", key=f"del_{pid}", type="secondary", use_container_width=True):
+                                db.collection("profissionais").document(pid).delete(); st.rerun()
+            except Exception as e: st.error(f"Erro na Rede: {e}")
+
+        # ----------------------------------------------------------------------
+        # 📰 ABA 2: RADAR DE NOTÍCIAS (COM BOTÃO RÁDIO GRAJAÚ)
+        # ----------------------------------------------------------------------
+        with tab_noticias:
+            st.subheader("🤖 Captura Inteligente")
+            c_n1, c_n2, c_n3 = st.columns(3)
+            IMG_NEWS_DEFAULT = "https://images.unsplash.com/photo-1504711432869-0df30d7eaf4d?w=800"
+
+            if c_n1.button("🔍 GOOGLE NEWS", use_container_width=True):
+                feed = feedparser.parse("https://news.google.com/rss/search?q=Grajaú+São+Paulo&hl=pt-BR")
+                st.session_state['news_ia'] = [{"t": e.title, "l": e.link, "i": IMG_NEWS_DEFAULT} for e in feed.entries[:3]]
             
-            # Puxa a lista dinâmica ou usa a CATEGORIAS_OFICIAIS atual
-            lista_atual = res_cat.to_dict().get("lista", CATEGORIAS_OFICIAIS) if res_cat.exists else CATEGORIAS_OFICIAIS
+            if c_n2.button("📻 PAUTA: RÁDIO GRAJAÚ", use_container_width=True):
+                st.session_state['temp_t'] = "🚨 PERIGO NA RUA PAPINI: Fios baixos causam acidente com motociclista"
+                st.session_state['temp_l'] = "https://radiograjautem.net/noticias/"
+                st.session_state['temp_i'] = "https://radiograjautem.net/wp-content/uploads/2022/02/logo-radio.png"
+                st.rerun()
+
+            if 'news_ia' in st.session_state:
+                cols = st.columns(3)
+                for idx, n in enumerate(st.session_state['news_ia']):
+                    with cols[idx]:
+                        st.caption(f"**{n['t'][:50]}...**")
+                        if st.button("USAR", key=f"use_{idx}"):
+                            st.session_state['temp_t'], st.session_state['temp_l'], st.session_state['temp_i'] = n['t'], n['l'], n['i']
+                            st.rerun()
+
+            with st.form("post_noticia"):
+                nt = st.text_input("Título da Notícia", value=st.session_state.get('temp_t', ""))
+                nl = st.text_input("Link Original", value=st.session_state.get('temp_l', ""))
+                ni = st.text_input("URL da Imagem", value=st.session_state.get('temp_i', IMG_NEWS_DEFAULT))
+                if st.form_submit_button("🚀 PUBLICAR NO PORTAL"):
+                    db.collection("noticias").add({"titulo": nt, "link_original": nl, "imagem_url": ni, "data": datetime.now(fuso_br), "categoria": "DESTAQUE"})
+                    for k in ['temp_t', 'temp_l', 'temp_i', 'news_ia']: st.session_state.pop(k, None)
+                    st.success("Publicado!"); st.rerun()
+
+        # ----------------------------------------------------------------------
+        # 🛒 ABA 3: LOJA VIRTUAL (SISTEMA DE TROCA)
+        # ----------------------------------------------------------------------
+        with tab_loja:
+            st.subheader("🛍️ Gerenciar Itens para Resgate")
+            with st.form("add_loja"):
+                c_l1, c_l2, c_l3 = st.columns([2,1,1])
+                ln = c_l1.text_input("Nome do Brinde")
+                lp = c_l2.number_input("Preço (💎)", min_value=1)
+                le = c_l3.number_input("Estoque", min_value=1)
+                lf = st.file_uploader("Foto do Produto", type=['jpg','png'])
+                if st.form_submit_button("➕ ADICIONAR ITEM"):
+                    db.collection("loja").add({"nome": ln, "preco": lp, "estoque": le, "foto": otimizar_imagem(lf) if lf else ""})
+                    st.success("Item adicionado!"); st.rerun()
             
-            c_cat1, c_cat2 = st.columns([3, 1])
-            nova_cat_input = c_cat1.text_input("Nova Profissão/Categoria:")
-            if c_cat2.button("➕ ADICIONAR", use_container_width=True):
-                if nova_cat_input and nova_cat_input not in lista_atual:
-                    lista_atual.append(nova_cat_input)
-                    lista_atual.sort()
-                    doc_cat_ref.set({"lista": lista_atual})
-                    st.success("Adicionada!"); time.sleep(0.5); st.rerun()
+            st.divider()
+            for it in db.collection("loja").stream():
+                item = it.to_dict()
+                with st.expander(f"📦 {item['nome']} - {item['preco']} 💎"):
+                    if item.get('foto'): st.image(f"data:image/jpeg;base64,{item['foto']}", width=150)
+                    if st.button("Remover Item", key=f"del_it_{it.id}"): 
+                        db.collection("loja").document(it.id).delete(); st.rerun()
+
+        # ----------------------------------------------------------------------
+        # 📜 ABA 4: HISTÓRICO DE VENDAS
+        # ----------------------------------------------------------------------
+        with tab_vendas:
+            st.subheader("📜 Log de Transações")
+            vendas = db.collection("vendas").order_by("data", direction="DESCENDING").limit(30).stream()
+            v_list = []
+            for v in vendas:
+                vd = v.to_dict()
+                v_list.append({
+                    "Data": vd.get('data').astimezone(fuso_br).strftime('%d/%m %H:%M'),
+                    "Parceiro": vd.get('usuario_nome'),
+                    "Produto": vd.get('produto_nome'),
+                    "Valor": f"{vd.get('preco')} 💎"
+                })
+            if v_list: st.table(pd.DataFrame(v_list))
+            else: st.info("Sem vendas registradas.")
+
+        # ----------------------------------------------------------------------
+        # 📁 ABA 5: CATEGORIAS (CONTROLE DO BANCO)
+        # ----------------------------------------------------------------------
+        with tab_config:
+            st.subheader("📁 Dicionário de Profissões")
+            c_c1, c_c2 = st.columns([3, 1])
+            nova_cat = c_c1.text_input("Cadastrar Nova Categoria:")
+            if c_c2.button("➕ ADICIONAR", use_container_width=True):
+                if nova_cat and nova_cat not in lista_cats:
+                    lista_cats.append(nova_cat); lista_cats.sort()
+                    doc_cat_ref.set({"lista": lista_cats}); st.rerun()
             
             st.write("---")
-            cat_del = st.selectbox("Remover Categoria Existente:", ["Selecione..."] + lista_atual)
-            if cat_del != "Selecione...":
-                if st.button(f"🗑️ EXCLUIR {cat_del}", type="secondary"):
-                    lista_atual.remove(cat_del)
-                    doc_cat_ref.set({"lista": lista_atual})
-                    st.error("Removida!"); time.sleep(0.5); st.rerun()
-
-        try:
-            # 2. COLETA DE DADOS
-            profs_ref = list(db.collection("profissionais").stream())
-            profs_data = [p.to_dict() | {"id": p.id} for p in profs_ref]
-            df = pd.DataFrame(profs_data)
-
-            if not df.empty:
-                # Sincronizando campo 'area'
-                df['categoria_display'] = df['area'].fillna("Geral") if 'area' in df.columns else "Geral"
-                df = df.fillna({"nome": "Sem Nome", "aprovado": False, "saldo": 0, "cliques": 0})
-
-            # 3. MÉTRICAS
-            m1, m2, m3, m4 = st.columns(4)
-            m1.metric("Parceiros", len(df))
-            m2.metric("Pendentes", len(df[df['aprovado'] == False]) if not df.empty else 0)
-            m3.metric("Cliques", int(df['cliques'].sum()) if not df.empty else 0)
-            m4.metric("GeralCones", f"💎 {int(df['saldo'].sum())}" if not df.empty else 0)
-
-            # 4. GESTÃO INDIVIDUAL (FILTROS)
-            st.divider()
-            f1, f2 = st.columns(2)
-            busca = f1.text_input("🔍 Buscar nome ou Zap:")
-            # Usa a lista atualizada do banco para o filtro
-            filtro_cat = f2.selectbox("Filtrar Exibição:", ["Todas"] + lista_atual)
-
-            df_display = df.copy()
-            if busca:
-                df_display = df_display[df_display['nome'].str.contains(busca, case=False, na=False) | 
-                                        df_display['id'].str.contains(busca, na=False)]
-            if filtro_cat != "Todas":
-                df_display = df_display[df_display['categoria_display'] == filtro_cat]
-
-            # 5. LISTAGEM COM TODAS AS FUNÇÕES
-            for _, p in df_display.iterrows():
-                pid = p['id']
-                status = "🟢" if p.get('aprovado') else "🟡"
-                cat_atual = p.get('area', 'Geral')
-                
-                with st.expander(f"{status} {p.get('nome').upper()} - ({cat_atual})"):
-                    col_info, col_edit, col_btn = st.columns([2, 2, 1.2])
-                    
-                    with col_info:
-                        st.write(f"**WhatsApp:** {pid}")
-                        st.write(f"**Saldo:** {p.get('saldo', 0)} 💎")
-                        st.write(f"**Cliques:** {p.get('cliques', 0)}")
-                    
-                    with col_edit:
-                        # ALTERAR CATEGORIA DO PROFISSIONAL
-                        try:
-                            idx = lista_atual.index(cat_atual)
-                        except:
-                            idx = 0
-                        
-                        nova_cat = st.selectbox(f"Mudar para", lista_atual, index=idx, key=f"cat_{pid}")
-                        if st.button("💾 Salvar Categoria", key=f"save_cat_{pid}"):
-                            db.collection("profissionais").document(pid).update({"area": nova_cat})
-                            st.success("Salvo!"); time.sleep(0.5); st.rerun()
-
-                    with col_btn:
-                        # Aprovação
-                        if not p.get('aprovado'):
-                            if st.button("✅ APROVAR", key=f"ok_{pid}", use_container_width=True, type="primary"):
-                                db.collection("profissionais").document(pid).update({"aprovado": True})
-                                st.rerun()
-                        else:
-                            if st.button("🚫 SUSPENDER", key=f"no_{pid}", use_container_width=True):
-                                db.collection("profissionais").document(pid).update({"aprovado": False})
-                                st.rerun()
-                        
-                        # Moedas e Banir
-                        col_sub1, col_sub2 = st.columns(2)
-                        if col_sub1.button("➕10", key=f"m10_{pid}"):
-                            db.collection("profissionais").document(pid).update({"saldo": p.get('saldo', 0) + 10})
-                            st.rerun()
-                        if col_sub2.button("🗑️", key=f"del_{pid}", help="Banir Profissional"):
-                            db.collection("profissionais").document(pid).delete()
-                            st.rerun()
-
-        except Exception as e:
-            st.error(f"Erro na Torre de Controle: {e}")
+            cat_del = st.selectbox("Remover Categoria:", ["Selecione..."] + lista_cats)
+            if cat_del != "Selecione..." and st.button(f"🗑️ EXCLUIR {cat_del}", type="secondary"):
+                lista_cats.remove(cat_del)
+                doc_cat_ref.set({"lista": lista_cats}); st.rerun()
 
 # ==============================================================================
 # ABA 5: FEEDBACK
@@ -1194,6 +1249,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
