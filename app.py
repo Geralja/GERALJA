@@ -1104,7 +1104,7 @@ with menu_abas[3]:
         st.session_state['news_ia'] = pautas
         st.rerun()
 
-            if c_ia2.button("📡 SCANNER NEWS API", use_container_width=True):
+    if c_ia2.button("📡 SCANNER NEWS API", use_container_width=True):
     try:
         # Tentativa 1: Busca específica
         url = f"https://newsapi.org/v2/everything?q=Grajaú+São+Paulo&language=pt&sortBy=publishedAt&apiKey={st.secrets.get('NEWS_API_KEY','516289bf44e1429784e0ca0102854a0d')}"
@@ -1287,6 +1287,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
