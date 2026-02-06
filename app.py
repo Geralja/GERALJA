@@ -1166,10 +1166,16 @@ with menu_abas[3]:
                 [LOG] {datetime.now().strftime('%H:%M:%S')} - IA Groq/Gemini: Standby
                 """, language="bash")
                             
-                            if st.button("🗑️ EXCLUIR REGISTRO", key=f"del_p_{pid}"): 
-                                db.collection("profissionais").document(pid).delete()
-                                st.rerun()
-            except Exception as e: st.error(f"Erro: {e}")
+                            # --- BOTÃO DE EXTERMÍNIO (FORA DO FORMULÁRIO) ---
+st.divider() # Linha visual para separar edição de exclusão
+if st.button(f"🗑️ EXCLUIR REGISTRO DEFINITIVAMENTE", key=f"del_final_{pid}", use_container_width=True, type="secondary"):
+    try:
+        db.collection("profissionais").document(pid).delete()
+        st.warning(f"Protocolo de exclusão executado: {p.get('nome')} removido.")
+        time.sleep(1) # Pausa para processar no Firebase
+        st.rerun()
+    except Exception as e:
+        st.error(f"Erro ao deletar: {e}")
 # ==============================================================================
 # ABA 5: FEEDBACK
 # ==============================================================================
@@ -1255,6 +1261,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
