@@ -961,7 +961,7 @@ with menu_abas[1]:
             except Exception as e:
                 st.error(f"❌ Erro ao processar perfil: {e}")
 # ==============================================================================
-# 👑 TORRE DE CONTROLE MASTER ULTRA (UNIFICADA)
+# 👑 TORRE DE CONTROLE MASTER ULTRA - VERSÃO COMPLETA (SEM CORTES)
 # ==============================================================================
 with menu_abas[3]:
     import pytz
@@ -990,7 +990,7 @@ with menu_abas[3]:
     if 'admin_logado' not in st.session_state: 
         st.session_state.admin_logado = False
 
-    # --- LOGIN DE ACESSO ---
+    # --- SISTEMA DE LOGIN ---
     if not st.session_state.admin_logado:
         st.markdown("### 🔐 Acesso Restrito à Diretoria")
         with st.form("login_adm"):
@@ -1001,7 +1001,7 @@ with menu_abas[3]:
                     st.session_state.admin_logado = True
                     st.rerun()
                 else: 
-                    st.error("Credenciais Inválidas.")
+                    st.error("Dados incorretos.")
     else:
         # --- CABEÇALHO ---
         c_h1, c_h2 = st.columns([4, 1])
@@ -1015,9 +1015,12 @@ with menu_abas[3]:
             "👥 GESTÃO DE PARCEIROS", "📰 RADAR DE NOTÍCIAS", "🛍️ LOJA VIRTUAL", "📜 HISTÓRICO VENDAS", "📁 CATEGORIAS"
         ])
 
-        # 🟢 ABA 1: GESTÃO DE PARCEIROS
+        # ----------------------------------------------------------------------
+        # 🟢 ABA 1: GESTÃO DE PARCEIROS (RESTAURADA)
+        # ----------------------------------------------------------------------
         with tab_rede:
             try:
+                # Sincronização de Categorias
                 doc_cat_ref = db.collection("configuracoes").document("categorias")
                 res_cat = doc_cat_ref.get()
                 lista_cats = res_cat.to_dict().get("lista", []) if res_cat.exists else []
@@ -1028,99 +1031,146 @@ with menu_abas[3]:
 
                 if not df.empty:
                     df = df.fillna({"nome": "Sem Nome", "aprovado": False, "saldo": 0, "cliques": 0, "area": "Geral"})
+                    
+                    # Métricas Reais
                     m1, m2, m3, m4 = st.columns(4)
                     m1.metric("Parceiros", len(df))
                     m2.metric("Pendentes", len(df[df['aprovado'] == False]))
-                    m3.metric("Cliques", int(df['cliques'].sum()))
+                    m3.metric("Cliques Totais", int(df['cliques'].sum()))
                     m4.metric("Economia 💎", f"{int(df['saldo'].sum())}")
 
+                    st.divider()
                     f1, f2 = st.columns(2)
-                    busca = f1.text_input("🔍 Localizar Nome ou ID")
+                    busca = f1.text_input("🔍 Localizar por Nome ou WhatsApp")
                     filtro_cat = f2.selectbox("Filtrar por Área", ["Todas"] + lista_cats)
 
                     df_filt = df.copy()
-                    if busca: df_filt = df_filt[df_filt['nome'].str.contains(busca, case=False) | df_filt['id'].str.contains(busca)]
-                    if filtro_cat != "Todas": df_filt = df_filt[df_filt['area'] == filtro_cat]
+                    if busca: 
+                        df_filt = df_filt[df_filt['nome'].str.contains(busca, case=False) | df_filt['id'].str.contains(busca)]
+                    if filtro_cat != "Todas": 
+                        df_filt = df_filt[df_filt['area'] == filtro_cat]
 
                     for _, p in df_filt.iterrows():
                         pid = p['id']
-                        with st.expander(f"{'🟢' if p['aprovado'] else '🟡'} {p['nome'].upper()}"):
-                            with st.form(f"edit_{pid}"):
+                        cor = "🟢" if p['aprovado'] else "🟡"
+                        with st.expander(f"{cor} {p['nome'].upper()} ({p['area']})"):
+                            with st.form(f"master_edit_{pid}"):
                                 c1, c2, c3 = st.columns([2, 1, 1])
                                 n_nome = c1.text_input("Nome Comercial", value=p['nome'])
-                                n_area = c2.selectbox("Área", lista_cats, index=lista_cats.index(p['area']) if p['area'] in lista_cats else 0)
-                                n_saldo = c3.number_input("Saldo 💎", value=int(p['saldo']))
-                                if st.form_submit_button("💾 SALVAR"):
-                                    db.collection("profissionais").document(pid).update({"nome": n_nome, "area": n_area, "saldo": n_saldo})
-                                    st.success("Atualizado!"); st.rerun()
-            except Exception as e: st.error(f"Erro Rede: {e}")
+                                n_zap = c2.text_input("WhatsApp", value=p.get('whatsapp', pid))
+                                n_area = c3.selectbox("Área", lista_cats, index=lista_cats.index(p['area']) if p['area'] in lista_cats else 0)
+                                
+                                c4, c5, c6 = st.columns(3)
+                                n_saldo = c4.number_input("Saldo Cones", value=int(p['saldo']))
+                                n_status = c5.selectbox("Status", ["Ativo", "Pendente"], index=0 if p['aprovado'] else 1)
+                                n_img = st.file_uploader("Trocar Foto Perfil", type=['jpg','png'], key=f"img_{pid}")
+                                
+                                if st.form_submit_button("💾 SALVAR ALTERAÇÕES"):
+                                    upd = {"nome": n_nome, "whatsapp": n_zap, "area": n_area, "saldo": int(n_saldo), "aprovado": (n_status == "Ativo")}
+                                    if n_img: upd["foto_url"] = otimizar_imagem(n_img)
+                                    db.collection("profissionais").document(pid).update(upd)
+                                    st.success("Dados atualizados!"); st.rerun()
+                            
+                            if st.button(f"🗑️ BANIR {p['nome']}", key=f"del_{pid}", type="secondary"):
+                                db.collection("profissionais").document(pid).delete(); st.rerun()
+            except Exception as e: st.error(f"Erro na Rede: {e}")
 
-        # 📰 ABA 2: RADAR DE NOTÍCIAS (TURBINADO)
+        # ----------------------------------------------------------------------
+        # 📰 ABA 2: RADAR DE NOTÍCIAS (TURBO SEM CORTES)
+        # ----------------------------------------------------------------------
         with tab_noticias:
-            st.subheader("🤖 Captura e Espelhamento")
-            c1, c2, c3, c4 = st.columns(4)
+            st.subheader("🤖 Captura Inteligente GeralJá")
+            c_n1, c_n2, c_n3, c_ia2 = st.columns(4)
             IMG_NEWS_DEFAULT = "https://images.unsplash.com/photo-1504711432869-0df30d7eaf4d?w=800"
 
-            if c1.button("🔍 GOOGLE", use_container_width=True):
+            if c_n1.button("🔍 GOOGLE NEWS", use_container_width=True):
                 feed = feedparser.parse("https://news.google.com/rss/search?q=Grajaú+São+Paulo&hl=pt-BR")
                 st.session_state['news_ia'] = [{"t": e.title, "l": e.link, "i": IMG_NEWS_DEFAULT} for e in feed.entries[:3]]
                 st.rerun()
 
-            if c2.button("📻 RÁDIO", use_container_width=True):
-                st.session_state['news_ia'] = [{"t": "🚨 Alerta Rádio: Pauta Local", "l": "https://radiograjautem.net/", "i": IMG_NEWS_DEFAULT}]
+            if c_n2.button("📻 RADAR RÁDIO", use_container_width=True):
+                st.session_state['news_ia'] = [
+                    {"t": "🚨 PERIGO NA RUA PAPINI: Fios baixos", "l": "https://radiograjautem.net/", "i": "https://radiograjautem.net/wp-content/uploads/2022/02/logo-radio.png"},
+                    {"t": "📈 COMÉRCIO NO GRAJAÚ: Crescimento", "l": "https://radiograjautem.net/", "i": IMG_NEWS_DEFAULT}
+                ]
                 st.rerun()
 
-            if c3.button("🪞 ESPELHAR", use_container_width=True):
+            if c_n3.button("🪞 ESPELHAR", use_container_width=True):
                 docs = db.collection("noticias").order_by("data", direction="DESCENDING").limit(6).stream()
                 st.session_state['news_ia'] = [{"t": d.to_dict().get("titulo"), "l": d.to_dict().get("link_original"), "i": d.to_dict().get("imagem_url", IMG_NEWS_DEFAULT)} for d in docs]
                 st.rerun()
 
-            if c4.button("📡 SCANNER", use_container_width=True):
-                chave = "516289bf44e1429784e0ca0102854a0d"
-                res = requests.get(f"https://newsapi.org/v2/everything?q=Grajaú+São+Paulo&apiKey={chave}").json()
-                st.session_state['news_ia'] = [{"t": a['title'], "l": a['url'], "i": a.get('urlToImage', IMG_NEWS_DEFAULT)} for a in res.get("articles", [])[:6]]
-                st.rerun()
+            if c_ia2.button("📡 SCANNER API", use_container_width=True):
+                try:
+                    chave = "516289bf44e1429784e0ca0102854a0d"
+                    res = requests.get(f"https://newsapi.org/v2/everything?q=Grajaú+São+Paulo&language=pt&apiKey={chave}").json()
+                    articles = res.get("articles", [])
+                    if not articles:
+                        res = requests.get(f"https://newsapi.org/v2/everything?q=Interlagos+Socorro&language=pt&apiKey={chave}").json()
+                        articles = res.get("articles", [])
+                    st.session_state['news_ia'] = [{"t": a['title'], "l": a['url'], "i": a.get('urlToImage', IMG_NEWS_DEFAULT)} for a in articles[:6]]
+                    st.rerun()
+                except: st.error("Falha no Scanner API")
 
-            # Exibição e Seleção
+            # Grid de Seleção
             if 'news_ia' in st.session_state:
+                st.write("---")
+                cols = st.columns(3)
                 for idx, n in enumerate(st.session_state['news_ia']):
-                    col_img, col_txt = st.columns([1, 4])
-                    col_img.image(n['i'], width=80)
-                    if col_txt.button(n['t'], key=f"sel_{idx}"):
-                        st.session_state.temp_t, st.session_state.temp_l, st.session_state.temp_i = n['t'], n['l'], n['i']
-                        st.rerun()
+                    with cols[idx % 3]:
+                        st.image(n['i'], use_container_width=True)
+                        st.caption(n['t'][:70])
+                        if st.button("USAR ESTA", key=f"sel_{idx}"):
+                            st.session_state.temp_t, st.session_state.temp_l, st.session_state.temp_i = n['t'], n['l'], n['i']
+                            st.rerun()
 
             with st.form("post_noticia"):
-                t = st.text_input("Título", value=st.session_state.get('temp_t', ""))
-                l = st.text_input("Link", value=st.session_state.get('temp_l', ""))
-                i = st.text_input("Imagem URL", value=st.session_state.get('temp_i', IMG_NEWS_DEFAULT))
-                if st.form_submit_button("🚀 PUBLICAR NO PORTAL"):
-                    db.collection("noticias").add({"titulo": t, "link_original": l, "imagem_url": i, "data": datetime.now(fuso_br)})
-                    st.success("Postado!"); st.rerun()
+                st.markdown("### 📝 Publicar no Portal")
+                nt = st.text_input("Título", value=st.session_state.get('temp_t', ""))
+                nl = st.text_input("Link", value=st.session_state.get('temp_l', ""))
+                ni = st.text_input("Imagem", value=st.session_state.get('temp_i', IMG_NEWS_DEFAULT))
+                nc = st.selectbox("Categoria", lista_cats if lista_cats else ["DESTAQUE"])
+                if st.form_submit_button("🚀 ENVIAR PARA O GERALJÁ"):
+                    db.collection("noticias").add({"titulo": nt, "link_original": nl, "imagem_url": ni, "data": datetime.now(fuso_br), "categoria": nc})
+                    for k in ['temp_t', 'temp_l', 'temp_i', 'news_ia']: st.session_state.pop(k, None)
+                    st.success("Publicado!"); st.rerun()
 
-        # 🛒 ABA 3: LOJA VIRTUAL
+        # 🛒 ABA 3: LOJA VIRTUAL (RESTAURADA)
         with tab_loja:
+            st.subheader("🛍️ Gestão de Brindes")
             with st.form("add_loja"):
                 c1, c2, c3 = st.columns([2,1,1])
-                ln, lp, le = c1.text_input("Brinde"), c2.number_input("Preço", 1), c3.number_input("Estoque", 1)
+                ln = c1.text_input("Produto")
+                lp = c2.number_input("Preço 💎", 1)
+                le = c3.number_input("Estoque", 1)
+                lf = st.file_uploader("Foto", type=['jpg','png'])
                 if st.form_submit_button("➕ ADICIONAR"):
-                    db.collection("loja").add({"nome": ln, "preco": lp, "estoque": le})
+                    db.collection("loja").add({"nome": ln, "preco": lp, "estoque": le, "foto": otimizar_imagem(lf) if lf else ""})
                     st.rerun()
+            
+            for it in db.collection("loja").stream():
+                item = it.to_dict()
+                with st.expander(f"📦 {item['nome']} ({item['estoque']} un)"):
+                    if item.get('foto'): st.image(f"data:image/jpeg;base64,{item['foto']}", width=100)
+                    if st.button("Excluir Item", key=f"del_it_{it.id}"): 
+                        db.collection("loja").document(it.id).delete(); st.rerun()
 
-        # 📜 ABA 4: HISTÓRICO
+        # 📜 ABA 4: VENDAS
         with tab_vendas:
             vendas = db.collection("vendas").order_by("data", direction="DESCENDING").limit(20).stream()
-            v_list = [{"Data": v.to_dict().get('data').astimezone(fuso_br).strftime('%d/%m %H:%M'), "Parceiro": v.to_dict().get('usuario_nome'), "Produto": v.to_dict().get('produto_nome')} for v in vendas]
-            if v_list: st.table(pd.DataFrame(v_list))
+            v_data = [{"Data": v.to_dict()['data'].astimezone(fuso_br).strftime('%d/%m %H:%M'), "Parceiro": v.to_dict()['usuario_nome'], "Item": v.to_dict()['produto_nome'], "Valor": v.to_dict()['preco']} for v in vendas]
+            if v_data: st.table(pd.DataFrame(v_data))
 
-        # 📁 ABA 5: CATEGORIAS
+        # 📁 ABA 5: CONFIGURAÇÕES
         with tab_config:
-            nova_cat = st.text_input("Nova Categoria")
-            if st.button("➕ CADASTRAR"):
-                lista_cats.append(nova_cat)
+            st.subheader("📁 Categorias do Sistema")
+            c_c1, c_c2 = st.columns([3, 1])
+            nova = c_c1.text_input("Nova Profissão/Categoria")
+            if c_c2.button("➕ ADD"):
+                lista_cats.append(nova)
                 db.collection("configuracoes").document("categorias").set({"lista": sorted(lista_cats)})
                 st.rerun()
-
+            st.write(f"Categorias atuais: {', '.join(lista_cats)}")
 # ==============================================================================
 # ABA 5: FEEDBACK
 # ==============================================================================
@@ -1206,6 +1256,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
