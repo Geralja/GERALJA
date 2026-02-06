@@ -980,74 +980,77 @@ with menu_abas[3]:
         if c_status2.button("🚪 LOGOUT", use_container_width=True): 
             st.session_state.admin_logado = False; st.rerun()
 
-        t_pro, t_news, t_cat, t_sys = st.tabs([
-            "👥 GESTÃO DE PARCEIROS", "📰 RADAR DE NOTÍCIAS", "📁 CATEGORIAS", "⚙️ NÚCLEO DO SISTEMA"
-        ])
+       t_pro, t_news, t_cat, tab_eng = st.tabs([
+    "👥 GESTÃO DE PARCEIROS", 
+    "📰 RADAR DE NOTÍCIAS", 
+    "📁 CATEGORIAS", 
+    "⚙️ NÚCLEO DO SISTEMA"
+])
 
-        # --- 1. GESTÃO DE PARCEIROS (DOMÍNIO FINANCEIRO E CADASTRO) ---
-        with t_pro:
-            try:
-                profs_ref = db.collection("profissionais").stream()
-                profs_list = [p.to_dict() | {"id": p.id} for p in profs_ref]
-                df = pd.DataFrame(profs_list)
-                
-                if not df.empty:
-                    # Filtros de Busca Avançada
-                    c_f1, c_f2 = st.columns([2, 1])
-                    busca = c_f1.text_input("🔍 Localizar por Nome/Zap")
-                    status_filtro = c_f2.selectbox("Filtro Status", ["Todos", "Ativos", "Pendentes"])
+with t_pro:
+    try:
+        profs_ref = db.collection("profissionais").stream()
+        profs_list = [p.to_dict() | {"id": p.id} for p in profs_ref]
+        df = pd.DataFrame(profs_list)
+        
+        if not df.empty:
+            c_f1, c_f2 = st.columns([2, 1])
+            busca = c_f1.text_input("🔍 Localizar por Nome/Zap")
+            status_filtro = c_f2.selectbox("Filtro Status", ["Todos", "Ativos", "Pendentes"])
+            
+            if busca:
+                df = df[df['nome'].str.contains(busca, case=False, na=False) | df['whatsapp'].str.contains(busca, na=False)]
+            if status_filtro == "Ativos": df = df[df['aprovado'] == True]
+            elif status_filtro == "Pendentes": df = df[df['aprovado'] == False]
+
+            m1, m2, m3, m4 = st.columns(4)
+            m1.metric("Parceiros", len(df))
+            m2.metric("Aguardando", len(df[df['aprovado'] == False]))
+            m3.metric("Capital GeralCones", f"💎 {int(df['saldo'].sum())}")
+            m4.metric("Ticket Médio", f"💎 {int(df['saldo'].mean()) if not df.empty else 0}")
+
+            for _, p in df.iterrows():
+                pid = p['id']
+                cor = "🟢" if p.get('aprovado') else "🟡"
+                with st.expander(f"{cor} {p.get('nome','').upper()} - Saldo: 💎 {p.get('saldo', 0)}"):
+                    with st.form(f"master_edit_{pid}"):
+                        c1, c2, c3 = st.columns([2, 2, 1])
+                        n_nome = c1.text_input("Nome Comercial", value=p.get('nome'))
+                        n_zap = c2.text_input("WhatsApp", value=p.get('whatsapp'))
+                        n_aprov = c3.selectbox("Status", ["Ativo", "Pendente"], index=0 if p.get('aprovado') else 1)
+                        
+                        c4, c5 = st.columns(2)
+                        n_area = c4.selectbox("Área de Atuação", lista_atual, index=lista_atual.index(p.get('area')) if p.get('area') in lista_atual else 0)
+                        n_saldo = c5.number_input("Injetar/Remover Saldo (GeralCones)", value=int(p.get('saldo', 0)))
+                        
+                        st.write("**🖼️ Vitrine e Perfil**")
+                        v_col1, v_col2 = st.columns([1, 3])
+                        with v_col1:
+                            if p.get('foto_url'): st.image(p['foto_url'], width=100)
+                            up_perfil = st.file_uploader("Trocar Perfil", key=f"per_{pid}")
+                        with v_col2:
+                            up_vitrine = st.file_uploader("Injetar na Vitrine (Máx 4)", accept_multiple_files=True, key=f"vit_{pid}")
+
+                        if st.form_submit_button("APLICAR ALTERAÇÕES MASTER"):
+                            upd = {
+                                "nome": engine.sanitizar(n_nome), "whatsapp": n_zap,
+                                "area": n_area, "saldo": int(n_saldo),
+                                "aprovado": (n_aprov == "Ativo")
+                            }
+                            if up_perfil: upd["foto_url"] = engine.otimizar_img(up_perfil)
+                            if up_vitrine:
+                                for i, f in enumerate(up_vitrine[:4]):
+                                    upd[f"f{i+1}"] = engine.otimizar_img(f)
+                            db.collection("profissionais").document(pid).update(upd)
+                            st.success("Comando executado!"); st.rerun()
                     
-                    if busca:
-                        df = df[df['nome'].str.contains(busca, case=False, na=False) | df['whatsapp'].str.contains(busca, na=False)]
-                    if status_filtro == "Ativos": df = df[df['aprovado'] == True]
-                    elif status_filtro == "Pendentes": df = df[df['aprovado'] == False]
+                    if st.button(f"🗑️ EXTERMINAR REGISTRO: {pid}", key=f"del_{pid}", type="secondary"):
+                        db.collection("profissionais").document(pid).delete(); st.rerun()
 
-                    # Métricas de Poder
-                    m1, m2, m3, m4 = st.columns(4)
-                    m1.metric("Parceiros", len(df))
-                    m2.metric("Aguardando", len(df[df['aprovado'] == False]))
-                    m3.metric("Capital GeralCones", f"💎 {int(df['saldo'].sum())}")
-                    m4.metric("Ticket Médio", f"💎 {int(df['saldo'].mean()) if not df.empty else 0}")
+    except Exception as e: st.error(f"Erro no módulo de parceiros: {e}")
 
-                    for _, p in df.iterrows():
-                        pid = p['id']
-                        cor = "🟢" if p.get('aprovado') else "🟡"
-                        with st.expander(f"{cor} {p.get('nome','').upper()} - Saldo: 💎 {p.get('saldo', 0)}"):
-                            with st.form(f"master_edit_{pid}"):
-                                c1, c2, c3 = st.columns([2, 2, 1])
-                                n_nome = c1.text_input("Nome Comercial", value=p.get('nome'))
-                                n_zap = c2.text_input("WhatsApp", value=p.get('whatsapp'))
-                                n_aprov = c3.selectbox("Status", ["Ativo", "Pendente"], index=0 if p.get('aprovado') else 1)
-                                
-                                c4, c5 = st.columns(2)
-                                n_area = c4.selectbox("Área de Atuação", lista_atual, index=lista_atual.index(p.get('area')) if p.get('area') in lista_atual else 0)
-                                n_saldo = c5.number_input("Injetar/Remover Saldo (GeralCones)", value=int(p.get('saldo', 0)))
-                                
-                                st.write("**🖼️ Vitrine e Perfil**")
-                                v_col1, v_col2 = st.columns([1, 3])
-                                with v_col1:
-                                    if p.get('foto_url'): st.image(p['foto_url'], width=100)
-                                    up_perfil = st.file_uploader("Trocar Perfil", key=f"per_{pid}")
-                                with v_col2:
-                                    up_vitrine = st.file_uploader("Injetar na Vitrine (Máx 4)", accept_multiple_files=True, key=f"vit_{pid}")
-
-                                if st.form_submit_button("APLICAR ALTERAÇÕES MASTER"):
-                                    upd = {
-                                        "nome": engine.sanitizar(n_nome), "whatsapp": n_zap,
-                                        "area": n_area, "saldo": int(n_saldo),
-                                        "aprovado": (n_aprov == "Ativo")
-                                    }
-                                    if up_perfil: upd["foto_url"] = engine.otimizar_img(up_perfil)
-                                    if up_vitrine:
-                                        for i, f in enumerate(up_vitrine[:4]):
-                                            upd[f"f{i+1}"] = engine.otimizar_img(f)
-                                    db.collection("profissionais").document(pid).update(upd)
-                                    st.success("Comando executado!"); st.rerun()
-                            
-                            if st.button(f"🗑️ EXTERMINAR REGISTRO: {pid}", type="secondary"):
-                                db.collection("profissionais").document(pid).delete(); st.rerun()
-
-            except Exception as e: st.error(f"Erro no módulo de parceiros: {e}")
+with tab_eng:
+    st.markdown("### 🛠️ Núcleo de Engenharia e Injeção")
 
         # --- 2. RADAR DE NOTÍCIAS (TURBINADO COM IMAGENS) ---
 with t_news:
@@ -1121,15 +1124,14 @@ with t_news:
                 "categoria": "DESTAQUE"
             })
             st.success("Postado com sucesso!"); st.rerun()
-
         # --- 3. GESTÃO DE CATEGORIAS ---
         with t_cat:
             st.write("### 📁 Arquivo de Profissões")
             # Código de categorias que você já tem (db.collection("configuracoes").document("categorias"))
 
-        # --- 4. NÚCLEO DO SISTEMA (CONSOLE DE ALTA PRIORIDADE) ---
-        with tab_eng:  # Ou t_sys conforme sua definição
-            st.markdown("### 🛠️ Núcleo de Engenharia e Injeção")
+       # --- 4. NÚCLEO DO SISTEMA (CONSOLE DE ALTA PRIORIDADE) ---
+with tab_eng:  
+    st.markdown("### 🛠️ Núcleo de Engenharia e Injeção")
             
             col_eng1, col_eng2 = st.columns([2, 1])
             
@@ -1293,6 +1295,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
