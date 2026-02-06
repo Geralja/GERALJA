@@ -1104,59 +1104,6 @@ with menu_abas[3]:
                 ok, msg = engine.injetar_modulo("comando_especial", cod_inj)
                 if ok: st.success(msg)
                 else: st.error(msg)
-
-        # --- 3. ABA: PARCEIROS (GESTÃO TOTAL COM VITRINE) ---
-        with tab_profissionais:
-            try:
-                profs_ref = db.collection("profissionais").stream()
-                profs_list = [p.to_dict() | {"id": p.id} for p in profs_ref]
-                df = pd.DataFrame(profs_list)
-                
-                if not df.empty:
-                    busca = st.text_input("🔍 Localizar (Nome ou WhatsApp)")
-                    if busca: 
-                        df = df[df['nome'].str.contains(busca, case=False, na=False) | df['whatsapp'].str.contains(busca, na=False)]
-                    
-                    m1, m2, m3 = st.columns(3)
-                    m1.metric("Total", len(df))
-                    m2.metric("Pendentes", len(df[df['aprovado'] == False]))
-                    m3.metric("GeralCones", f"💎 {int(df['saldo'].sum())}")
-
-                    for _, p in df.iterrows():
-                        pid = p['id']
-                        status_emoji = "🟢" if p.get('aprovado') else "🟡"
-                        with st.expander(f"{status_emoji} {p.get('nome','').upper()}"):
-                            with st.form(f"f_edit_{pid}"):
-                                c1, c2 = st.columns(2)
-                                n_nome = c1.text_input("Nome", value=p.get('nome'))
-                                n_area = c2.selectbox("Área", lista_atual, index=lista_atual.index(p.get('area')) if p.get('area') in lista_atual else 0)
-                                n_desc = st.text_area("Descrição", value=p.get('descricao'))
-                                
-                                c3, c4, c5 = st.columns(3)
-                                n_zap = c3.text_input("WhatsApp", value=p.get('whatsapp'))
-                                n_saldo = c4.number_input("Saldo", value=int(p.get('saldo', 0)))
-                                n_status = c5.selectbox("Status", ["Aprovado", "Pendente"], index=0 if p.get('aprovado') else 1)
-                                
-                                st.divider()
-                                cf1, cf2 = st.columns([1, 2])
-                                with cf1:
-                                    if p.get('foto_url'): 
-                                        st.image(p['foto_url'], width=80)
-                                    up_p = st.file_uploader("Trocar Perfil", type=['jpg','png'], key=f"up_p_{pid}")
-                                with cf2:
-                                    up_v = st.file_uploader("Vitrine (Máx 4)", type=['jpg','png'], accept_multiple_files=True, key=f"up_v_{pid}")
-                                
-                                if st.form_submit_button("💾 SALVAR TUDO"):
-                                    upd = {
-                                        "nome": engine.sanitizar(n_nome), "area": n_area, 
-                                        "descricao": engine.sanitizar(n_desc), "whatsapp": n_zap, 
-                                        "saldo": int(n_saldo), "aprovado": (n_status=="Aprovado")
-                                    }
-                                    if up_p: upd["foto_url"] = engine.otimizar_img(up_p)
-                                    if up_v:
-                                        for i, f in enumerate(up_v[:4]): upd[f"f{i+1}"] = engine.otimizar_img(f)
-                                    db.collection("profissionais").document(pid).update(upd)
-                                    st.success("Atualizado!"); st.rerun()
                             
                             if st.button("🗑️ EXCLUIR REGISTRO", key=f"del_p_{pid}"): 
                                 db.collection("profissionais").document(pid).delete()
@@ -1247,6 +1194,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
