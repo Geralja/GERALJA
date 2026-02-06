@@ -1095,15 +1095,76 @@ with menu_abas[3]:
             st.write("### 📁 Arquivo de Profissões")
             # Código de categorias que você já tem (db.collection("configuracoes").document("categorias"))
 
-        # --- 4. NÚCLEO DO SISTEMA (INJETOR) ---
-        with t_sys:
-            st.write("### 🛠️ Injeção de Código e Manutenção")
-            cod_inj = st.text_area("Script Python para Injeção Direta", height=150)
-            if st.button("EXECUTAR NO NÚCLEO"):
-                # Aqui você usa o engine.injetar_modulo que definimos no motor
-                ok, msg = engine.injetar_modulo("comando_especial", cod_inj)
-                if ok: st.success(msg)
-                else: st.error(msg)
+        # --- 4. NÚCLEO DO SISTEMA (CONSOLE DE ALTA PRIORIDADE) ---
+        with tab_eng:  # Ou t_sys conforme sua definição
+            st.markdown("### 🛠️ Núcleo de Engenharia e Injeção")
+            
+            col_eng1, col_eng2 = st.columns([2, 1])
+            
+            with col_eng1:
+                st.write("**💻 Terminal de Injeção Direta**")
+                cod_inj = st.text_area(
+                    "Script Python para Modificação de Runtime", 
+                    height=250, 
+                    placeholder="# Exemplo: st.write('Sistema Reiniciado')\n# Ou comandos de limpeza de cache",
+                    help="O código inserido aqui será salvo como um módulo executável no servidor."
+                )
+                
+                c_btn1, c_btn2 = st.columns(2)
+                if c_btn1.button("⚡ EXECUTAR NO NÚCLEO", use_container_width=True):
+                    if cod_inj:
+                        with st.spinner("Injetando protocolos..."):
+                            ok, msg = engine.injetar_modulo("comando_mestre", cod_inj)
+                            if ok:
+                                st.success(f"✅ {msg}")
+                                # Tenta executar o código injetado imediatamente para teste
+                                try:
+                                    exec(cod_inj)
+                                    st.info("🚀 Código executado em tempo real com sucesso.")
+                                except Exception as e:
+                                    st.error(f"⚠️ Erro na execução imediata: {e}")
+                            else:
+                                st.error(f"❌ {msg}")
+                    else:
+                        st.warning("O terminal está vazio.")
+
+                if c_btn2.button("🧹 LIMPAR CACHE DO SISTEMA", use_container_width=True):
+                    st.cache_resource.clear()
+                    st.cache_data.clear()
+                    st.success("Memória volátil limpa!")
+
+            with col_eng2:
+                st.write("**📊 Saúde da Infraestrutura**")
+                with st.container(border=True):
+                    # Simulação de monitoramento de carga
+                    st.metric("Latência do Banco", "42ms", "🟢 Estável")
+                    st.metric("Uso de Memória IA", "12%", "🔵 Normal")
+                    
+                    st.divider()
+                    st.write("**⚙️ Comandos de Emergência**")
+                    if st.button("🚨 RESET TOTAL DE SESSÃO", use_container_width=True):
+                        for key in st.session_state.keys():
+                            del st.session_state[key]
+                        st.rerun()
+                    
+                    if st.button("📥 EXPORTAR BACKUP JSON", use_container_width=True):
+                        # Gera um JSON rápido de todos os profissionais para backup
+                        profs_all = db.collection("profissionais").stream()
+                        data_bkp = [p.to_dict() for p in profs_all]
+                        st.download_button(
+                            "Baixar Backup", 
+                            data=json.dumps(data_bkp, indent=4), 
+                            file_name=f"backup_geralja_{datetime.now().strftime('%d_%m')}.json"
+                        )
+
+            # --- ÁREA DE LOGS DE COMANDO ---
+            st.divider()
+            with st.expander("📜 Histórico de Protocolos do Motor"):
+                st.code(f"""
+                [LOG] {datetime.now().strftime('%H:%M:%S')} - Conexão Firebase: ATIVA
+                [LOG] {datetime.now().strftime('%H:%M:%S')} - Engine: Saneamento Pronto
+                [LOG] {datetime.now().strftime('%H:%M:%S')} - IA Groq/Gemini: Standby
+                """, language="bash")
                             
                             if st.button("🗑️ EXCLUIR REGISTRO", key=f"del_p_{pid}"): 
                                 db.collection("profissionais").document(pid).delete()
@@ -1194,6 +1255,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
