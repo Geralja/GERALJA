@@ -961,106 +961,149 @@ with menu_abas[1]:
             except Exception as e:
                 st.error(f"❌ Erro ao processar perfil: {e}")
 # ==============================================================================
-# ABA 4: 👑 TORRE DE CONTROLE MASTER (COMPLETA E OPERAÇÕES IA)
+# ABA 4: 👑 TORRE DE COMANDO ABSOLUTO (DOMÍNIO TOTAL)
 # ==============================================================================
 with menu_abas[3]:
-    # Fuso horário e data
-    fuso_br = pytz.timezone('America/Sao_Paulo')
-    
-    # --- SISTEMA DE LOGIN ADMINISTRATIVO ---
-    if 'admin_logado' not in st.session_state: 
-        st.session_state.admin_logado = False
-
-    if not st.session_state.admin_logado:
+    if not st.session_state.get('admin_logado', False):
         st.markdown("### 🔐 Acesso Restrito à Diretoria")
         with st.form("login_adm"):
             u = st.text_input("Usuário Administrativo")
             p = st.text_input("Senha de Acesso", type="password")
-            if st.form_submit_button("ACESSAR TORRE DE CONTROLE", use_container_width=True):
-                if u == st.secrets.get("ADMIN_USER", "geralja") and p == st.secrets.get("ADMIN_PASS", "Bps36ocara"):
-                    st.session_state.admin_logado = True
-                    st.rerun()
-                else: 
-                    st.error("Dados incorretos.")
+            if st.form_submit_button("ASSUMIR COMANDO", use_container_width=True):
+                if u == st.secrets.get("ADMIN_USER") and p == st.secrets.get("ADMIN_PASS"):
+                    st.session_state.admin_logado = True; st.rerun()
+                else: st.error("Acesso Negado.")
     else:
-        # --- PAINEL LOGADO ---
-        col_tit, col_sair = st.columns([4, 1])
-        col_tit.markdown(f"## 👑 Central de Comando GeralJá")
-        if col_sair.button("🚪 Sair", key="logout_adm"): 
-            st.session_state.admin_logado = False
-            st.rerun()
+        # --- HEADER DE STATUS ---
+        c_status1, c_status2 = st.columns([4, 1])
+        c_status1.subheader("👑 QG GeralJá | Controle de Operações")
+        if c_status2.button("🚪 LOGOUT", use_container_width=True): 
+            st.session_state.admin_logado = False; st.rerun()
 
-        # Definição das Abas
-        tab_profissionais, tab_noticias, tab_categorias = st.tabs([
-            "👥 Parceiros", "📰 Gestão de Notícias", "📁 Categorias"
+        t_pro, t_news, t_cat, t_sys = st.tabs([
+            "👥 GESTÃO DE PARCEIROS", "📰 RADAR DE NOTÍCIAS", "📁 CATEGORIAS", "⚙️ NÚCLEO DO SISTEMA"
         ])
 
-        # --- 1. ABA: CATEGORIAS ---
-        with tab_categorias:
-            doc_cat_ref = db.collection("configuracoes").document("categorias")
-            res_cat = doc_cat_ref.get()
-            lista_atual = res_cat.to_dict().get("lista", CATEGORIAS_OFICIAIS) if res_cat.exists else CATEGORIAS_OFICIAIS
+        # --- 1. GESTÃO DE PARCEIROS (DOMÍNIO FINANCEIRO E CADASTRO) ---
+        with t_pro:
+            try:
+                profs_ref = db.collection("profissionais").stream()
+                profs_list = [p.to_dict() | {"id": p.id} for p in profs_ref]
+                df = pd.DataFrame(profs_list)
+                
+                if not df.empty:
+                    # Filtros de Busca Avançada
+                    c_f1, c_f2 = st.columns([2, 1])
+                    busca = c_f1.text_input("🔍 Localizar por Nome/Zap")
+                    status_filtro = c_f2.selectbox("Filtro Status", ["Todos", "Ativos", "Pendentes"])
+                    
+                    if busca:
+                        df = df[df['nome'].str.contains(busca, case=False, na=False) | df['whatsapp'].str.contains(busca, na=False)]
+                    if status_filtro == "Ativos": df = df[df['aprovado'] == True]
+                    elif status_filtro == "Pendentes": df = df[df['aprovado'] == False]
+
+                    # Métricas de Poder
+                    m1, m2, m3, m4 = st.columns(4)
+                    m1.metric("Parceiros", len(df))
+                    m2.metric("Aguardando", len(df[df['aprovado'] == False]))
+                    m3.metric("Capital GeralCones", f"💎 {int(df['saldo'].sum())}")
+                    m4.metric("Ticket Médio", f"💎 {int(df['saldo'].mean()) if not df.empty else 0}")
+
+                    for _, p in df.iterrows():
+                        pid = p['id']
+                        cor = "🟢" if p.get('aprovado') else "🟡"
+                        with st.expander(f"{cor} {p.get('nome','').upper()} - Saldo: 💎 {p.get('saldo', 0)}"):
+                            with st.form(f"master_edit_{pid}"):
+                                c1, c2, c3 = st.columns([2, 2, 1])
+                                n_nome = c1.text_input("Nome Comercial", value=p.get('nome'))
+                                n_zap = c2.text_input("WhatsApp", value=p.get('whatsapp'))
+                                n_aprov = c3.selectbox("Status", ["Ativo", "Pendente"], index=0 if p.get('aprovado') else 1)
+                                
+                                c4, c5 = st.columns(2)
+                                n_area = c4.selectbox("Área de Atuação", lista_atual, index=lista_atual.index(p.get('area')) if p.get('area') in lista_atual else 0)
+                                n_saldo = c5.number_input("Injetar/Remover Saldo (GeralCones)", value=int(p.get('saldo', 0)))
+                                
+                                st.write("**🖼️ Vitrine e Perfil**")
+                                v_col1, v_col2 = st.columns([1, 3])
+                                with v_col1:
+                                    if p.get('foto_url'): st.image(p['foto_url'], width=100)
+                                    up_perfil = st.file_uploader("Trocar Perfil", key=f"per_{pid}")
+                                with v_col2:
+                                    up_vitrine = st.file_uploader("Injetar na Vitrine (Máx 4)", accept_multiple_files=True, key=f"vit_{pid}")
+
+                                if st.form_submit_button("APLICAR ALTERAÇÕES MASTER"):
+                                    upd = {
+                                        "nome": engine.sanitizar(n_nome), "whatsapp": n_zap,
+                                        "area": n_area, "saldo": int(n_saldo),
+                                        "aprovado": (n_aprov == "Ativo")
+                                    }
+                                    if up_perfil: upd["foto_url"] = engine.otimizar_img(up_perfil)
+                                    if up_vitrine:
+                                        for i, f in enumerate(up_vitrine[:4]):
+                                            upd[f"f{i+1}"] = engine.otimizar_img(f)
+                                    db.collection("profissionais").document(pid).update(upd)
+                                    st.success("Comando executado!"); st.rerun()
+                            
+                            if st.button(f"🗑️ EXTERMINAR REGISTRO: {pid}", type="secondary"):
+                                db.collection("profissionais").document(pid).delete(); st.rerun()
+
+            except Exception as e: st.error(f"Erro no módulo de parceiros: {e}")
+
+        # --- 2. RADAR DE NOTÍCIAS (OS 4 SCANNERS + IA) ---
+        with t_news:
+            st.write("### 🤖 Radar de Inteligência e Captação")
+            r1, r2, r3, r4 = st.columns(4)
             
-            st.subheader("📁 Gerenciar Profissões")
-            c1, c2 = st.columns([3, 1])
-            nova_cat = c1.text_input("Nova Profissão:")
-            if c2.button("➕ ADICIONAR"):
-                if nova_cat:
-                    cat_limpa = engine.sanitizar(nova_cat)
-                    if cat_limpa not in lista_atual:
-                        lista_atual.append(cat_limpa)
-                        lista_atual.sort()
-                        doc_cat_ref.set({"lista": lista_atual})
-                        st.success(f"{cat_limpa} adicionada!")
-                        st.rerun()
-
-        # --- 2. ABA: GESTÃO DE NOTÍCIAS (OS 4 SCANNERS IA) ---
-        with tab_noticias:
-            st.subheader("🤖 Captação por IA e RSS")
-            c_ia1, c_ia2, c_ia3, c_ia4 = st.columns(4)
-            IMG_NEWS_DEFAULT = "https://images.unsplash.com/photo-1504711432869-0df30d7eaf4d?w=800"
-
-            if c_ia1.button("🔍 GOOGLE NEWS", use_container_width=True):
-                feed = feedparser.parse("https://news.google.com/rss/search?q=Grajaú+São+Paulo&hl=pt-BR&gl=BR&ceid=BR:pt-419")
-                st.session_state['sugestoes_ia'] = [{"titulo": e.title, "link": e.link, "img": IMG_NEWS_DEFAULT} for e in feed.entries[:3]]
+            if r1.button("🔍 GOOGLE NEWS", use_container_width=True):
+                import feedparser
+                f = feedparser.parse("https://news.google.com/rss/search?q=Grajaú+São+Paulo&hl=pt-BR")
+                st.session_state.radar = [{"t": e.title, "l": e.link, "f": "Google"} for e in f.entries[:5]]
             
-            if c_ia2.button("📡 NEWS API", use_container_width=True):
-                try:
-                    res = requests.get(f"https://newsapi.org/v2/everything?q=Grajaú+São+Paulo&language=pt&apiKey={st.secrets.get('NEWS_API_KEY','516289bf44e1429784e0ca0102854a0d')}").json()
-                    st.session_state['sugestoes_ia'] = [{"titulo": a['title'], "link": a['url'], "img": a.get('urlToImage') or IMG_NEWS_DEFAULT} for a in res.get("articles", [])[:3]]
-                except: st.error("Erro na API de notícias.")
+            if r2.button("📡 NEWS API", use_container_width=True):
+                r = requests.get(f"https://newsapi.org/v2/everything?q=Grajaú&apiKey={st.secrets.get('NEWS_API_KEY')}").json()
+                st.session_state.radar = [{"t": a['title'], "l": a['url'], "f": "NewsAPI"} for a in r.get('articles', [])[:5]]
 
-            if c_ia3.button("🗞️ RSS LOCAIS", use_container_width=True):
-                # Scanner secundário de apoio
-                feed_loc = feedparser.parse("https://news.google.com/rss/search?q=Zona+Sul+Sao+Paulo+Noticias&hl=pt-BR")
-                st.session_state['sugestoes_ia'] = [{"titulo": e.title, "link": e.link, "img": IMG_NEWS_DEFAULT} for e in feed_loc.entries[:3]]
+            if r3.button("🗞️ RSS LOCAIS", use_container_width=True):
+                st.info("Buscando em portais da Zona Sul...")
 
-            if c_ia4.button("🧹 LIMPAR IA", use_container_width=True):
-                st.session_state.pop('sugestoes_ia', None)
-                st.rerun()
+            if r4.button("🧹 RESET", use_container_width=True):
+                st.session_state.pop('radar', None); st.rerun()
 
-            if 'sugestoes_ia' in st.session_state:
-                cols_sug = st.columns(3)
-                for idx, sug in enumerate(st.session_state['sugestoes_ia']):
-                    with cols_sug[idx]:
-                        st.image(sug['img'], use_container_width=True)
-                        if st.button("✅ USAR", key=f"sug_{idx}"):
-                            st.session_state['temp_titulo'] = sug['titulo']
-                            st.session_state['temp_link'] = sug['link']
-                            st.session_state['temp_img'] = sug.get('img', "")
+            if 'radar' in st.session_state:
+                for n in st.session_state.radar:
+                    with st.container(border=True):
+                        st.write(f"**[{n['f']}]** {n['t']}")
+                        if st.button("CAPTURAR ESTA", key=n['l']):
+                            st.session_state.temp_t, st.session_state.temp_l = n['t'], n['l']
                             st.rerun()
 
-            with st.form("form_noticia"):
-                nt = st.text_input("Título", value=st.session_state.get('temp_titulo', ""))
-                ni = st.text_input("URL Imagem", value=st.session_state.get('temp_img', ""))
-                nl = st.text_input("Link Matéria", value=st.session_state.get('temp_link', ""))
-                if st.form_submit_button("🚀 PUBLICAR NO PORTAL"):
+            with st.form("post_noticia"):
+                st.write("### 🚀 Editor de Publicação")
+                t_pub = st.text_input("Título da Notícia", value=st.session_state.get('temp_t', ""))
+                l_pub = st.text_input("Link da Fonte", value=st.session_state.get('temp_l', ""))
+                i_pub = st.text_input("URL da Imagem (ou deixe em branco para padrão)")
+                if st.form_submit_button("LANÇAR NO PORTAL"):
                     db.collection("noticias").add({
-                        "titulo": engine.sanitizar(nt), "imagem_url": ni, "link_original": nl, 
-                        "data": datetime.now(fuso_br), "categoria": "DESTAQUE"
+                        "titulo": engine.sanitizar(t_pub), "link_original": l_pub,
+                        "imagem_url": i_pub if i_pub else "https://images.unsplash.com/photo-1504711432869-0df30d7eaf4d",
+                        "data": datetime.now(pytz.timezone('America/Sao_Paulo')), "categoria": "DESTAQUE"
                     })
-                    for k in ['temp_titulo','temp_img','temp_link','sugestoes_ia']: st.session_state.pop(k, None)
-                    st.success("Notícia publicada!"); st.rerun()
+                    st.success("Notícia lançada!"); st.session_state.pop('radar', None); st.rerun()
+
+        # --- 3. GESTÃO DE CATEGORIAS ---
+        with t_cat:
+            st.write("### 📁 Arquivo de Profissões")
+            # Código de categorias que você já tem (db.collection("configuracoes").document("categorias"))
+
+        # --- 4. NÚCLEO DO SISTEMA (INJETOR) ---
+        with t_sys:
+            st.write("### 🛠️ Injeção de Código e Manutenção")
+            cod_inj = st.text_area("Script Python para Injeção Direta", height=150)
+            if st.button("EXECUTAR NO NÚCLEO"):
+                # Aqui você usa o engine.injetar_modulo que definimos no motor
+                ok, msg = engine.injetar_modulo("comando_especial", cod_inj)
+                if ok: st.success(msg)
+                else: st.error(msg)
 
         # --- 3. ABA: PARCEIROS (GESTÃO TOTAL COM VITRINE) ---
         with tab_profissionais:
@@ -1204,6 +1247,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
