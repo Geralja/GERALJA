@@ -961,26 +961,10 @@ with menu_abas[1]:
             except Exception as e:
                 st.error(f"❌ Erro ao processar perfil: {e}")
 # ==============================================================================
-# ABA 4: 👑 TORRE DE COMANDO ABSOLUTO (DOMÍNIO TOTAL)
+# ABA PRINCIPAL: TORRE DE COMANDO
 # ==============================================================================
-with menu_abas[3]:
-    if not st.session_state.get('admin_logado', False):
-        st.markdown("### 🔐 Acesso Restrito à Diretoria")
-        with st.form("login_adm"):
-            u = st.text_input("Usuário Administrativo")
-            p = st.text_input("Senha de Acesso", type="password")
-            if st.form_submit_button("ASSUMIR COMANDO", use_container_width=True):
-                if u == st.secrets.get("ADMIN_USER") and p == st.secrets.get("ADMIN_PASS"):
-                    st.session_state.admin_logado = True; st.rerun()
-                else: st.error("Acesso Negado.")
-    else:
-        # --- HEADER DE STATUS ---
-        c_status1, c_status2 = st.columns([4, 1])
-        c_status1.subheader("👑 QG GeralJá | Controle de Operações")
-        if c_status2.button("🚪 LOGOUT", use_container_width=True): 
-            st.session_state.admin_logado = False; st.rerun()
 if autenticado:
-    # O t_pro tem que estar na mesma coluna que o código de cima
+    # 1. Definição Única das Abas (Nomes sincronizados para evitar NameError)
     t_pro, t_news, t_cat, tab_eng = st.tabs([
         "👥 GESTÃO DE PARCEIROS", 
         "📰 RADAR DE NOTÍCIAS", 
@@ -988,229 +972,136 @@ if autenticado:
         "⚙️ NÚCLEO DO SISTEMA"
     ])
 
-with t_pro:
-    try:
-        profs_ref = db.collection("profissionais").stream()
-        profs_list = [p.to_dict() | {"id": p.id} for p in profs_ref]
-        df = pd.DataFrame(profs_list)
-        
-        if not df.empty:
-            c_f1, c_f2 = st.columns([2, 1])
-            busca = c_f1.text_input("🔍 Localizar por Nome/Zap")
-            status_filtro = c_f2.selectbox("Filtro Status", ["Todos", "Ativos", "Pendentes"])
-            
-            if busca:
-                df = df[df['nome'].str.contains(busca, case=False, na=False) | df['whatsapp'].str.contains(busca, na=False)]
-            if status_filtro == "Ativos": df = df[df['aprovado'] == True]
-            elif status_filtro == "Pendentes": df = df[df['aprovado'] == False]
-
-            m1, m2, m3, m4 = st.columns(4)
-            m1.metric("Parceiros", len(df))
-            m2.metric("Aguardando", len(df[df['aprovado'] == False]))
-            m3.metric("Capital GeralCones", f"💎 {int(df['saldo'].sum())}")
-            m4.metric("Ticket Médio", f"💎 {int(df['saldo'].mean()) if not df.empty else 0}")
-
-            for _, p in df.iterrows():
-                pid = p['id']
-                cor = "🟢" if p.get('aprovado') else "🟡"
-                with st.expander(f"{cor} {p.get('nome','').upper()} - Saldo: 💎 {p.get('saldo', 0)}"):
-                    with st.form(f"master_edit_{pid}"):
-                        c1, c2, c3 = st.columns([2, 2, 1])
-                        n_nome = c1.text_input("Nome Comercial", value=p.get('nome'))
-                        n_zap = c2.text_input("WhatsApp", value=p.get('whatsapp'))
-                        n_aprov = c3.selectbox("Status", ["Ativo", "Pendente"], index=0 if p.get('aprovado') else 1)
-                        
-                        c4, c5 = st.columns(2)
-                        n_area = c4.selectbox("Área de Atuação", lista_atual, index=lista_atual.index(p.get('area')) if p.get('area') in lista_atual else 0)
-                        n_saldo = c5.number_input("Injetar/Remover Saldo (GeralCones)", value=int(p.get('saldo', 0)))
-                        
-                        st.write("**🖼️ Vitrine e Perfil**")
-                        v_col1, v_col2 = st.columns([1, 3])
-                        with v_col1:
-                            if p.get('foto_url'): st.image(p['foto_url'], width=100)
-                            up_perfil = st.file_uploader("Trocar Perfil", key=f"per_{pid}")
-                        with v_col2:
-                            up_vitrine = st.file_uploader("Injetar na Vitrine (Máx 4)", accept_multiple_files=True, key=f"vit_{pid}")
-
-                        if st.form_submit_button("APLICAR ALTERAÇÕES MASTER"):
-                            upd = {
-                                "nome": engine.sanitizar(n_nome), "whatsapp": n_zap,
-                                "area": n_area, "saldo": int(n_saldo),
-                                "aprovado": (n_aprov == "Ativo")
-                            }
-                            if up_perfil: upd["foto_url"] = engine.otimizar_img(up_perfil)
-                            if up_vitrine:
-                                for i, f in enumerate(up_vitrine[:4]):
-                                    upd[f"f{i+1}"] = engine.otimizar_img(f)
-                            db.collection("profissionais").document(pid).update(upd)
-                            st.success("Comando executado!"); st.rerun()
-                    
-                    if st.button(f"🗑️ EXTERMINAR REGISTRO: {pid}", key=f"del_{pid}", type="secondary"):
-                        db.collection("profissionais").document(pid).delete(); st.rerun()
-
-    except Exception as e: st.error(f"Erro no módulo de parceiros: {e}")
-
-with tab_eng:
-    st.markdown("### 🛠️ Núcleo de Engenharia e Injeção")
-
-        # --- 2. RADAR DE NOTÍCIAS (TURBINADO COM IMAGENS) ---
-with t_news:
-    st.write("### 🤖 Radar de Inteligência e Captação")
-    r1, r2, r3, r4 = st.columns(4)
-    IMG_DEFAULT = "https://images.unsplash.com/photo-1504711432869-0df30d7eaf4d?w=800"
-
-    if r1.button("🔍 GOOGLE NEWS", use_container_width=True):
-        import feedparser
-        f = feedparser.parse("https://news.google.com/rss/search?q=Grajaú+São+Paulo&hl=pt-BR")
-        radar_links = []
-        for e in f.entries[:5]:
-            # Tenta achar imagem no sumário do Google
-            img = IMG_DEFAULT
-            if 'summary' in e and '<img src="' in e.summary:
-                img = e.summary.split('<img src="')[1].split('"')[0]
-            radar_links.append({"t": e.title, "l": e.link, "f": "Google", "i": img})
-        st.session_state.radar = radar_links
-
-    if r2.button("📡 NEWS API", use_container_width=True):
-        key = st.secrets.get('NEWS_API_KEY', 'SUA_CHAVE_AQUI')
-        res = requests.get(f"https://newsapi.org/v2/everything?q=Grajaú+São+Paulo&language=pt&apiKey={key}").json()
-        articles = res.get('articles', [])
-        st.session_state.radar = [
-            {"t": a['title'], "l": a['url'], "f": "NewsAPI", "i": a.get('urlToImage') or IMG_DEFAULT} 
-            for a in articles[:5]
-        ]
-
-    if r3.button("📻 RÁDIO GRAJAÚ", use_container_width=True):
-        # Scraper Simples para a rádio
+    # --- ABA 1: GESTÃO DE PARCEIROS ---
+    with t_pro:
         try:
-            st.session_state.radar = [{
-                "t": "Últimas Notícias - Rádio Grajaú Tem", 
-                "l": "https://radiograjautem.net/noticias/", 
-                "f": "Rádio", "i": "https://radiograjautem.net/wp-content/uploads/2022/02/logo-radio.png"
-            }]
-        except: st.error("Link da rádio indisponível no momento.")
-
-    if r4.button("🧹 RESET", use_container_width=True):
-        for k in ['radar', 'temp_t', 'temp_l', 'temp_i']: st.session_state.pop(k, None)
-        st.rerun()
-
-    # Exibição dos cards capturados
-    if 'radar' in st.session_state:
-        cols_radar = st.columns(3)
-        for idx, n in enumerate(st.session_state.radar):
-            with cols_radar[idx % 3]:
-                with st.container(border=True):
-                    st.image(n['i'], use_container_width=True)
-                    st.caption(f"**{n['f']}**")
-                    st.write(f"**{n['t'][:60]}...**")
-                    if st.button("USAR", key=f"cap_{idx}"):
-                        st.session_state.temp_t = n['t']
-                        st.session_state.temp_l = n['l']
-                        st.session_state.temp_i = n['i'] # AGORA PEGA A IMAGEM!
-                        st.rerun()
-
-    # Formulário de Postagem Final
-    with st.form("post_noticia"):
-        st.write("### 🚀 Editor de Publicação")
-        t_pub = st.text_input("Título", value=st.session_state.get('temp_t', ""))
-        l_pub = st.text_input("Link", value=st.session_state.get('temp_l', ""))
-        i_pub = st.text_input("URL Imagem", value=st.session_state.get('temp_i', IMG_DEFAULT))
-        
-        if st.form_submit_button("LANÇAR NO PORTAL"):
-            db.collection("noticias").add({
-                "titulo": engine.sanitizar(t_pub),
-                "link_original": l_pub,
-                "imagem_url": i_pub,
-                "data": datetime.now(pytz.timezone('America/Sao_Paulo')),
-                "categoria": "DESTAQUE"
-            })
-            st.success("Postado com sucesso!"); st.rerun()
-        # --- 3. GESTÃO DE CATEGORIAS ---
-        with t_cat:
-            st.write("### 📁 Arquivo de Profissões")
-            # Código de categorias que você já tem (db.collection("configuracoes").document("categorias"))
-
-       # --- 4. NÚCLEO DO SISTEMA (CONSOLE DE ALTA PRIORIDADE) ---
-with tab_eng:  
-    st.markdown("### 🛠️ Núcleo de Engenharia e Injeção")
+            profs_ref = db.collection("profissionais").stream()
+            profs_list = [p.to_dict() | {"id": p.id} for p in profs_ref]
+            df = pd.DataFrame(profs_list)
             
-            col_eng1, col_eng2 = st.columns([2, 1])
-            
-            with col_eng1:
-                st.write("**💻 Terminal de Injeção Direta**")
-                cod_inj = st.text_area(
-                    "Script Python para Modificação de Runtime", 
-                    height=250, 
-                    placeholder="# Exemplo: st.write('Sistema Reiniciado')\n# Ou comandos de limpeza de cache",
-                    help="O código inserido aqui será salvo como um módulo executável no servidor."
-                )
+            if not df.empty:
+                c_f1, c_f2 = st.columns([2, 1])
+                busca = c_f1.text_input("🔍 Localizar por Nome/Zap")
+                status_filtro = c_f2.selectbox("Filtro Status", ["Todos", "Ativos", "Pendentes"])
                 
-                c_btn1, c_btn2 = st.columns(2)
-                if c_btn1.button("⚡ EXECUTAR NO NÚCLEO", use_container_width=True):
-                    if cod_inj:
-                        with st.spinner("Injetando protocolos..."):
-                            ok, msg = engine.injetar_modulo("comando_mestre", cod_inj)
-                            if ok:
-                                st.success(f"✅ {msg}")
-                                # Tenta executar o código injetado imediatamente para teste
-                                try:
-                                    exec(cod_inj)
-                                    st.info("🚀 Código executado em tempo real com sucesso.")
-                                except Exception as e:
-                                    st.error(f"⚠️ Erro na execução imediata: {e}")
-                            else:
-                                st.error(f"❌ {msg}")
-                    else:
-                        st.warning("O terminal está vazio.")
+                if busca:
+                    df = df[df['nome'].str.contains(busca, case=False, na=False) | df['whatsapp'].str.contains(busca, na=False)]
+                if status_filtro == "Ativos": df = df[df['aprovado'] == True]
+                elif status_filtro == "Pendentes": df = df[df['aprovado'] == False]
 
-                if c_btn2.button("🧹 LIMPAR CACHE DO SISTEMA", use_container_width=True):
-                    st.cache_resource.clear()
-                    st.cache_data.clear()
-                    st.success("Memória volátil limpa!")
+                m1, m2, m3, m4 = st.columns(4)
+                m1.metric("Parceiros", len(df))
+                m2.metric("Aguardando", len(df[df['aprovado'] == False]))
+                m3.metric("Capital GeralCones", f"💎 {int(df['saldo'].sum())}")
+                m4.metric("Ticket Médio", f"💎 {int(df['saldo'].mean()) if not df.empty else 0}")
 
-            with col_eng2:
-                st.write("**📊 Saúde da Infraestrutura**")
-                with st.container(border=True):
-                    # Simulação de monitoramento de carga
-                    st.metric("Latência do Banco", "42ms", "🟢 Estável")
-                    st.metric("Uso de Memória IA", "12%", "🔵 Normal")
-                    
-                    st.divider()
-                    st.write("**⚙️ Comandos de Emergência**")
-                    if st.button("🚨 RESET TOTAL DE SESSÃO", use_container_width=True):
-                        for key in st.session_state.keys():
-                            del st.session_state[key]
-                        st.rerun()
-                    
-                    if st.button("📥 EXPORTAR BACKUP JSON", use_container_width=True):
-                        # Gera um JSON rápido de todos os profissionais para backup
-                        profs_all = db.collection("profissionais").stream()
-                        data_bkp = [p.to_dict() for p in profs_all]
-                        st.download_button(
-                            "Baixar Backup", 
-                            data=json.dumps(data_bkp, indent=4), 
-                            file_name=f"backup_geralja_{datetime.now().strftime('%d_%m')}.json"
-                        )
-
-            # --- ÁREA DE LOGS DE COMANDO ---
-            st.divider()
-            with st.expander("📜 Histórico de Protocolos do Motor"):
-                st.code(f"""
-                [LOG] {datetime.now().strftime('%H:%M:%S')} - Conexão Firebase: ATIVA
-                [LOG] {datetime.now().strftime('%H:%M:%S')} - Engine: Saneamento Pronto
-                [LOG] {datetime.now().strftime('%H:%M:%S')} - IA Groq/Gemini: Standby
-                """, language="bash")
+                for _, p in df.iterrows():
+                    pid = p['id']
+                    cor = "🟢" if p.get('aprovado') else "🟡"
+                    with st.expander(f"{cor} {str(p.get('nome','')).upper()} - Saldo: 💎 {p.get('saldo', 0)}"):
+                        with st.form(f"master_edit_{pid}"):
+                            c1, c2, c3 = st.columns([2, 2, 1])
+                            n_nome = c1.text_input("Nome Comercial", value=p.get('nome'))
+                            n_zap = c2.text_input("WhatsApp", value=p.get('whatsapp'))
+                            n_aprov = c3.selectbox("Status", ["Ativo", "Pendente"], index=0 if p.get('aprovado') else 1)
                             
-                            # --- BOTÃO DE EXTERMÍNIO (FORA DO FORMULÁRIO) ---
-st.divider() # Linha visual para separar edição de exclusão
-if st.button(f"🗑️ EXCLUIR REGISTRO DEFINITIVAMENTE", key=f"del_final_{pid}", use_container_width=True, type="secondary"):
-    try:
-        db.collection("profissionais").document(pid).delete()
-        st.warning(f"Protocolo de exclusão executado: {p.get('nome')} removido.")
-        time.sleep(1) # Pausa para processar no Firebase
-        st.rerun()
-    except Exception as e:
-        st.error(f"Erro ao deletar: {e}")
+                            c4, c5 = st.columns(2)
+                            area_idx = lista_atual.index(p.get('area')) if p.get('area') in lista_atual else 0
+                            n_area = c4.selectbox("Área de Atuação", lista_atual, index=area_idx)
+                            n_saldo = c5.number_input("Injetar/Remover Saldo", value=int(p.get('saldo', 0)))
+                            
+                            st.write("**🖼️ Vitrine e Perfil**")
+                            v_col1, v_col2 = st.columns([1, 3])
+                            with v_col1:
+                                if p.get('foto_url'): st.image(p['foto_url'], width=100)
+                                up_perfil = st.file_uploader("Trocar Perfil", key=f"per_{pid}")
+                            with v_col2:
+                                up_vitrine = st.file_uploader("Injetar na Vitrine (Máx 4)", accept_multiple_files=True, key=f"vit_{pid}")
+
+                            if st.form_submit_button("APLICAR ALTERAÇÕES MASTER"):
+                                upd = {
+                                    "nome": engine.sanitizar(n_nome), "whatsapp": n_zap,
+                                    "area": n_area, "saldo": int(n_saldo),
+                                    "aprovado": (n_aprov == "Ativo")
+                                }
+                                if up_perfil: upd["foto_url"] = engine.otimizar_img(up_perfil)
+                                if up_vitrine:
+                                    for i, f in enumerate(up_vitrine[:4]):
+                                        upd[f"f{i+1}"] = engine.otimizar_img(f)
+                                db.collection("profissionais").document(pid).update(upd)
+                                st.success("Comando executado!"); st.rerun()
+                        
+                        if st.button(f"🗑️ EXTERMINAR REGISTRO: {pid}", key=f"del_{pid}", type="secondary", use_container_width=True):
+                            db.collection("profissionais").document(pid).delete()
+                            st.rerun()
+        except Exception as e: st.error(f"Erro em Parceiros: {e}")
+
+    # --- ABA 2: RADAR DE NOTÍCIAS ---
+    with t_news:
+        st.write("### 🤖 Radar de Inteligência e Captação")
+        r1, r2, r3, r4 = st.columns(4)
+        IMG_DEFAULT = "https://images.unsplash.com/photo-1504711432869-0df30d7eaf4d?w=800"
+
+        if r1.button("🔍 GOOGLE NEWS", use_container_width=True):
+            import feedparser
+            f = feedparser.parse("https://news.google.com/rss/search?q=Grajaú+São+Paulo&hl=pt-BR")
+            st.session_state.radar = [{"t": e.title, "l": e.link, "f": "Google", "i": IMG_DEFAULT} for e in f.entries[:6]]
+
+        if r2.button("📡 NEWS API", use_container_width=True):
+            key = st.secrets.get('NEWS_API_KEY')
+            res = requests.get(f"https://newsapi.org/v2/everything?q=Grajaú+São+Paulo&language=pt&apiKey={key}").json()
+            st.session_state.radar = [{"t": a['title'], "l": a['url'], "f": "NewsAPI", "i": a.get('urlToImage') or IMG_DEFAULT} for a in res.get('articles', [])[:6]]
+
+        if r4.button("🧹 RESET", use_container_width=True):
+            st.session_state.pop('radar', None); st.rerun()
+
+        if 'radar' in st.session_state:
+            cols_r = st.columns(3)
+            for idx, n in enumerate(st.session_state.radar):
+                with cols_r[idx % 3]:
+                    with st.container(border=True):
+                        st.image(n['i'], use_container_width=True)
+                        st.write(f"**{n['t'][:50]}...**")
+                        if st.button("USAR", key=f"cap_{idx}"):
+                            st.session_state.temp_t, st.session_state.temp_l, st.session_state.temp_i = n['t'], n['l'], n['i']
+                            st.rerun()
+
+        with st.form("post_noticia"):
+            st.write("### 🚀 Editor de Publicação")
+            t_pub = st.text_input("Título", value=st.session_state.get('temp_t', ""))
+            l_pub = st.text_input("Link", value=st.session_state.get('temp_l', ""))
+            i_pub = st.text_input("URL Imagem", value=st.session_state.get('temp_i', IMG_DEFAULT))
+            if st.form_submit_button("LANÇAR NO PORTAL"):
+                db.collection("noticias").add({"titulo": t_pub, "link_original": l_pub, "imagem_url": i_pub, "data": datetime.now()})
+                st.success("Postado!"); st.rerun()
+
+    # --- ABA 3: CATEGORIAS ---
+    with t_cat:
+        st.write("### 📁 Arquivo de Profissões")
+        # Insira aqui seu código de categorias se necessário
+
+    # --- ABA 4: NÚCLEO DO SISTEMA ---
+    with tab_eng:
+        if not st.session_state.get('admin_logado', False):
+            st.markdown("### 🔐 Acesso Restrito à Diretoria")
+            with st.form("login_adm"):
+                u = st.text_input("Usuário Administrativo")
+                p = st.text_input("Senha de Acesso", type="password")
+                if st.form_submit_button("ASSUMIR COMANDO"):
+                    if u == st.secrets.get("ADMIN_USER") and p == st.secrets.get("ADMIN_PASS"):
+                        st.session_state.admin_logado = True; st.rerun()
+                    else: st.error("Acesso Negado.")
+        else:
+            st.markdown("### 🛠️ Núcleo de Engenharia")
+            col_e1, col_e2 = st.columns([2, 1])
+            with col_e1:
+                cod_inj = st.text_area("Script Python de Runtime", height=200)
+                if st.button("⚡ EXECUTAR"):
+                    try: exec(cod_inj); st.success("Executado!")
+                    except Exception as e: st.error(e)
+            with col_e2:
+                if st.button("🚪 LOGOUT ADM"): st.session_state.admin_logado = False; st.rerun()
+                if st.button("🧹 LIMPAR CACHE"): st.cache_data.clear(); st.success("Limpo!")
 # ==============================================================================
 # ABA 5: FEEDBACK
 # ==============================================================================
@@ -1296,6 +1187,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
