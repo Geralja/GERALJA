@@ -1106,38 +1106,49 @@ with menu_abas[3]:
 
 if c_ia2.button("📡 SCANNER NEWS API", use_container_width=True):
             try:
-                api_key = st.secrets.get('NEWS_API_KEY','516289bf44e1429784e0ca0102854a0d')
+                # Tentativa 1: Busca específica
+                url = f"https://newsapi.org/v2/everything?q=Grajaú+São+Paulo&language=pt&sortBy=publishedAt&apiKey={st.secrets.get('NEWS_API_KEY','516289bf44e1429784e0ca0102854a0d')}"
+                res = requests.get(url).json()
                 
-                # --- ESTRATÉGIA HÁGNA: BUSCA FLEXÍVEL ---
-                # Tentamos Grajaú. Se não vier nada, tentamos Zona Sul SP.
-                termos_busca = ["Grajaú São Paulo", "Capela do Socorro", "Interlagos São Paulo"]
-                articles = []
-                
-                for termo in termos_busca:
-                    url = f"https://newsapi.org/v2/everything?q={termo}&language=pt&sortBy=publishedAt&apiKey={api_key}"
-                    res = requests.get(url).json()
-                    
-                    if res.get("status") == "ok":
-                        found = res.get("articles", [])
-                        if found:
-                            articles = found
-                            break # Achou notícia? Para de buscar e usa essas.
-                
-                if articles:
-                    st.session_state['news_ia'] = [
-                        {
-                            "t": a['title'], 
-                            "l": a['url'], 
-                            "i": a.get('urlToImage') if a.get('urlToImage') else "https://images.unsplash.com/photo-1504711432869-0df30d7eaf4d?w=800"
-                        } for a in articles[:6]
-                    ]
-                    st.success(f"Radar ativo! Encontramos notícias em: {termo}")
-                    st.rerun()
+                # PONTO CHAVE: Verificar se a API retornou erro de chave ou limite
+                if res.get("status") == "error":
+                    st.error(f"Erro da API: {res.get('message')}")
+                    articles = []
                 else:
-                    st.warning("Nenhuma notícia recente nos portais nacionais. Use o botão da Rádio ou Google News!")
+                    articles = res.get("articles", [])
                     
+                    if articles:
+                        # LIGANDO AS PONTAS: Salva no news_ia para os cards aparecerem
+                        st.session_state['news_ia'] = [
+                            {
+                                "t": a['title'], 
+                                "l": a['url'], 
+                                "i": a.get('urlToImage') if a.get('urlToImage') else "https://images.unsplash.com/photo-1504711432869-0df30d7eaf4d?w=800"
+                            } for a in articles[:3]
+                        ]
+                        st.success(f"Encontradas {len(articles)} notícias!")
+                        st.rerun() 
+                    else:
+                        # Tentativa 2: Plano B (Se a primeira busca vier vazia)
+                        url_b = f"https://newsapi.org/v2/everything?q=Interlagos+Capela+Socorro&language=pt&apiKey={st.secrets.get('NEWS_API_KEY','516289bf44e1429784e0ca0102854a0d')}"
+                        res_b = requests.get(url_b).json()
+                        articles = res_b.get("articles", [])
+                        
+                        if articles:
+                            st.session_state['news_ia'] = [
+                                {
+                                    "t": a['title'], 
+                                    "l": a['url'], 
+                                    "i": a.get('urlToImage') if a.get('urlToImage') else "https://images.unsplash.com/photo-1504711432869-0df30d7eaf4d?w=800"
+                                } for a in articles[:6]
+                            ]
+                            st.success(f"Radar ativo! Plano B em ação.")
+                            st.rerun()
+                        else:
+                            st.warning("Nenhuma notícia encontrada com esse termo.")
+
             except Exception as e:
-                st.error(f"Erro de Conexão: {e}")
+                st.error(f"Falha na conexão: {e}")
         try:
             # Tentativa 1: Busca específica
             url = f"https://newsapi.org/v2/everything?q=Grajaú+São+Paulo&language=pt&sortBy=publishedAt&apiKey={st.secrets.get('NEWS_API_KEY','516289bf44e1429784e0ca0102854a0d')}"
@@ -1340,6 +1351,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
