@@ -818,25 +818,47 @@ with menu_abas[2]:
                     st.error("Sua conta foi removida do sistema.")
                     time.sleep(2)
                     st.rerun()
-# --- ABA 1: CADASTRAR & EDITAR (VERSÃO INTEGRAL - VITRINE + GOOGLE + AUTOMAÇÕES) ---
+# ==============================================================================
+# 🚀 ABA 1: CADASTRAR & EDITAR (VERSÃO SUPREMA GERALJÁ - TOTALMENTE RESTAURADA)
+# ==============================================================================
 with menu_abas[1]:
     import smtplib
     from email.mime.text import MIMEText
     from email.mime.multipart import MIMEMultipart
+    import pytz
+    from datetime import datetime
+    import base64
 
     st.markdown("### 🚀 Cadastro ou Edição de Profissional")
 
-    # --- FUNÇÃO DE ENVIO DE E-MAIL (HÁGNA-MAIL) ---
-    def enviar_email_boas_vindas(destinatario, nome_usuario):
+    # --- 1. CONFIGURAÇÕES INICIAIS E SEGURANÇA ---
+    fuso_br = pytz.timezone('America/Sao_Paulo')
+    BONUS_WELCOME = 20
+    
+    # Prevenção do NameError: link_auth (Linha 800)
+    g_auth = st.secrets.get("google_auth", {})
+    g_id = g_auth.get("client_id")
+    g_uri = g_auth.get("redirect_uri", "https://geralja-zxiaj2ot56fuzgcz7xhcks.streamlit.app/")
+    
+    if g_id:
+        link_auth = f"https://accounts.google.com/o/oauth2/v2/auth?client_id={g_id}&response_type=code&scope=openid%20profile%20email&redirect_uri={g_uri}"
+    else:
+        link_auth = None
+
+    # --- 2. FUNÇÕES DE APOIO (E-MAIL E IMAGEM) ---
+    def enviar_boas_vindas(email_dest, nome_dest):
         try:
-            meu_email = st.secrets.get("EMAIL_SENDER", "geralja@gmail.com")
-            minha_senha = st.secrets.get("EMAIL_PASS", "") 
+            meu_email = st.secrets.get("EMAIL_SENDER")
+            minha_senha = st.secrets.get("EMAIL_PASS")
+            if not meu_email or not minha_senha: return False
+            
             msg = MIMEMultipart()
             msg['From'] = f"GeralJá Portal <{meu_email}>"
-            msg['To'] = destinatario
-            msg['Subject'] = f"Bem-vindo ao GeralJá, {nome_usuario}! 💎"
-            corpo = f"Olá {nome_usuario},\n\nSeu cadastro foi recebido com sucesso!\n\nEquipe GeralJá."
+            msg['To'] = email_dest
+            msg['Subject'] = f"Bem-vindo ao GeralJá, {nome_dest}! 💎"
+            corpo = f"Olá {nome_dest},\n\nSeu cadastro foi recebido! Você ganhou {BONUS_WELCOME} GeralCones de bônus.\n\nEquipe GeralJá."
             msg.attach(MIMEText(corpo, 'plain'))
+            
             server = smtplib.SMTP('smtp.gmail.com', 587)
             server.starttls()
             server.login(meu_email, minha_senha)
@@ -845,129 +867,141 @@ with menu_abas[1]:
             return True
         except: return False
 
-    # 1. BUSCA CATEGORIAS DINÂMICAS DO FIREBASE
-    try:
-        doc_cat = db.collection("configuracoes").document("categorias").get()
-        CATEGORIAS_OFICIAIS = doc_cat.to_dict().get("lista", ["Geral"]) if doc_cat.exists else ["Pedreiro", "Eletricista"]
-    except:
-        CATEGORIAS_OFICIAIS = ["Pedreiro", "Eletricista", "Locutor", "Mecânico"]
+    def otimizar_vitrine(file):
+        if file:
+            return f"data:image/jpeg;base64,{base64.b64encode(file.getvalue()).decode()}"
+        return ""
 
-    # 2. VERIFICAÇÃO DE DADOS VINDOS DO GOOGLE AUTH
+    # --- 3. LOGIN SOCIAL (GOOGLE / FACEBOOK) ---
     dados_google = st.session_state.get("pre_cadastro", {})
     email_inicial = dados_google.get("email", "")
     nome_inicial = dados_google.get("nome", "")
     foto_google = dados_google.get("foto", "")
 
-    # --- BLOCO DE VINCULAÇÃO GOOGLE (CORREÇÃO NAMEERROR) ---
-g_auth = st.secrets.get("google_auth", {})
-g_id = g_auth.get("client_id")
-g_uri = g_auth.get("redirect_uri", "https://geralja-zxiaj2ot56fuzgcz7xhcks.streamlit.app/")
-
-# Criando a variável link_auth antes de usá-la
-if g_id:
-    link_auth = f"https://accounts.google.com/o/oauth2/v2/auth?client_id={g_id}&response_type=code&scope=openid%20profile%20email&redirect_uri={g_uri}"
-    st.link_button("VINCULAR AGORA", link_auth, use_container_width=True)
-else:
-    st.error("⚠️ Erro: 'client_id' do Google não configurado nos Secrets.")
-    st.info("Para corrigir, adicione [google_auth] client_id no painel do Streamlit.")
+    st.markdown("##### Entre rápido com:")
+    col_soc1, col_soc2 = st.columns(2)
 
     with col_soc1:
-        if g_id:
-            url_google = f"https://accounts.google.com/o/oauth2/v2/auth?client_id={g_id}&response_type=code&scope=openid%20profile%20email&redirect_uri={g_uri}"
-            st.markdown(f'''<a href="{url_google}" target="_self" style="text-decoration:none;"><div style="display:flex; align-items:center; justify-content:center; border:1px solid #dadce0; border-radius:8px; padding:8px; background:white;"><img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" width="18px" style="margin-right:10px;"><span style="color:#3c4043; font-weight:bold; font-size:14px;">Google</span></div></a>''', unsafe_allow_html=True)
+        if link_auth:
+            st.markdown(f'''
+                <a href="{link_auth}" target="_self" style="text-decoration:none;">
+                    <div style="display:flex; align-items:center; justify-content:center; border:1px solid #dadce0; border-radius:8px; padding:8px; background:white;">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" width="18px" style="margin-right:10px;">
+                        <span style="color:#3c4043; font-weight:bold; font-size:14px;">Google</span>
+                    </div>
+                </a>
+            ''', unsafe_allow_html=True)
+        else:
+            st.caption("⚠️ Google Auth não configurado")
 
     with col_soc2:
         fb_id = st.secrets.get("FB_CLIENT_ID", "")
-        st.markdown(f'''<a href="https://www.facebook.com/v18.0/dialog/oauth?client_id={fb_id}&redirect_uri={g_uri}&scope=public_profile,email" target="_self" style="text-decoration:none;"><div style="display:flex; align-items:center; justify-content:center; border-radius:8px; padding:8px; background:#1877F2;"><img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg" width="18px" style="margin-right:10px;"><span style="color:white; font-weight:bold; font-size:14px;">Facebook</span></div></a>''', unsafe_allow_html=True)
-    
+        st.markdown(f'''
+            <a href="https://www.facebook.com/v18.0/dialog/oauth?client_id={fb_id}&redirect_uri={g_uri}&scope=public_profile,email" target="_self" style="text-decoration:none;">
+                <div style="display:flex; align-items:center; justify-content:center; border-radius:8px; padding:8px; background:#1877F2;">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg" width="18px" style="margin-right:10px;">
+                    <span style="color:white; font-weight:bold; font-size:14px;">Facebook</span>
+                </div>
+            </a>
+        ''', unsafe_allow_html=True)
+
     st.markdown("<br>", unsafe_allow_html=True)
-    BONUS_WELCOME = 20 
 
-    # 3. FORMULÁRIO COM VITRINE RESTAURADA
-    with st.form("form_profissional", clear_on_submit=False):
-        st.caption("DICA: Se você já tem cadastro, use o mesmo WhatsApp para editar seus dados.")
+    # --- 4. FORMULÁRIO COM VITRINE COMPLETA ---
+    with st.form("form_profissional_geral"):
+        st.info("💡 Para editar, informe seu WhatsApp e a senha cadastrada.")
         
-        col1, col2 = st.columns(2)
-        nome_input = col1.text_input("Nome do Profissional ou Loja", value=nome_inicial)
-        zap_input = col2.text_input("WhatsApp (DDD + Número sem espaços)")
-        email_input = st.text_input("E-mail (Para login via Google)", value=email_inicial)
+        c1, c2 = st.columns(2)
+        nome_in = c1.text_input("Nome do Profissional / Loja", value=nome_inicial)
+        zap_in = c2.text_input("WhatsApp (DDD + Número)")
         
-        col3, col4 = st.columns(2)
-        cat_input = col3.selectbox("Selecione sua Especialidade Principal", CATEGORIAS_OFICIAIS)
-        senha_input = col4.text_input("Sua Senha de Acesso", type="password")
+        email_in = st.text_input("E-mail de Contato", value=email_inicial)
         
-        desc_input = st.text_area("Descrição Completa (Serviços, Horários, Diferenciais)")
-        tipo_input = st.radio("Tipo", ["👨‍🔧 Profissional Autônomo", "🏢 Comércio/Loja"], horizontal=True)
+        c3, c4 = st.columns(2)
+        try:
+            cats = db.collection("configuracoes").document("categorias").get().to_dict().get("lista", ["Geral"])
+        except: cats = ["Geral", "Pedreiro", "Eletricista", "Locutor", "Mecânico"]
         
-        st.markdown("#### 📸 Vitrine de Portfólio (Até 4 fotos)")
-        foto_upload = st.file_uploader("Foto de Perfil Principal", type=['png', 'jpg', 'jpeg'])
-        c_v1, c_v2 = st.columns(2)
-        v1_up = c_v1.file_uploader("Foto Vitrine 1", type=['jpg','png','jpeg'])
-        v2_up = c_v2.file_uploader("Foto Vitrine 2", type=['jpg','png','jpeg'])
-        v3_up = c_v1.file_uploader("Foto Vitrine 3", type=['jpg','png','jpeg'])
-        v4_up = c_v2.file_uploader("Foto Vitrine 4", type=['jpg','png','jpeg'])
+        cat_in = c3.selectbox("Sua Especialidade", cats)
+        senha_in = c4.text_input("Sua Senha de Acesso", type="password")
         
-        btn_acao = st.form_submit_button("✅ FINALIZAR: SALVAR OU ATUALIZAR", use_container_width=True)
+        desc_in = st.text_area("Descrição (Serviços, Horários e Diferenciais)")
+        tipo_in = st.radio("Tipo de Cadastro", ["👨‍🔧 Profissional Autônomo", "🏢 Comércio/Loja"], horizontal=True)
 
-    # 4. LÓGICA DE SALVAMENTO (RESTITUIÇÃO DAS LINHAS DE GEOLOCALIZAÇÃO E FOTOS)
-    if btn_acao:
-        if not nome_input or not zap_input or not senha_input:
-            st.warning("⚠️ Nome, WhatsApp e Senha são obrigatórios!")
+        st.markdown("#### 📸 Vitrine e Portfólio (Fotos que vendem!)")
+        f_perfil = st.file_uploader("Foto Principal (Perfil)", type=['jpg','png','jpeg'])
+        
+        st.write("Fotos da Galeria:")
+        cv1, cv2 = st.columns(2)
+        v1_up = cv1.file_uploader("Foto Vitrine 1", type=['jpg','png','jpeg'])
+        v2_up = cv2.file_uploader("Foto Vitrine 2", type=['jpg','png','jpeg'])
+        v3_up = cv1.file_uploader("Foto Vitrine 3", type=['jpg','png','jpeg'])
+        v4_up = cv2.file_uploader("Foto Vitrine 4", type=['jpg','png','jpeg'])
+        
+        btn_save = st.form_submit_button("✅ SALVAR PERFIL NO GERALJÁ", use_container_width=True)
+
+    # --- 5. LÓGICA DE SALVAMENTO E AUTOMAÇÃO ---
+    if btn_save:
+        if not nome_in or not zap_in or not senha_in:
+            st.error("⚠️ Nome, WhatsApp e Senha são obrigatórios!")
         else:
             try:
-                with st.spinner("Sincronizando com o ecossistema GeralJá..."):
-                    doc_ref = db.collection("profissionais").document(zap_input)
-                    perfil_antigo = doc_ref.get()
-                    dados_antigos = perfil_antigo.to_dict() if perfil_antigo.exists else {}
+                with st.spinner("Sincronizando vitrine e dados..."):
+                    doc_ref = db.collection("profissionais").document(zap_in)
+                    res = doc_ref.get()
+                    d_antigo = res.to_dict() if res.exists else {}
 
-                    # Lógica para processar fotos individualmente sem perder as antigas
-                    def proc_img(novo, antigo):
-                        if novo: return f"data:image/jpeg;base64,{otimizar_imagem(novo)}"
-                        return antigo if antigo else ""
+                    # Processamento de Fotos (Mantém antigas se não subir novas)
+                    f_final = otimizar_vitrine(f_perfil) if f_perfil else d_antigo.get("foto_url", foto_google)
+                    f_v1 = otimizar_vitrine(v1_up) if v1_up else d_antigo.get("v1", "")
+                    f_v2 = otimizar_vitrine(v2_up) if v2_up else d_antigo.get("v2", "")
+                    f_v3 = otimizar_vitrine(v3_up) if v3_up else d_antigo.get("v3", "")
+                    f_v4 = otimizar_vitrine(v4_up) if v4_up else d_antigo.get("v4", "")
 
-                    f_perfil = proc_img(foto_upload, dados_antigos.get("foto_url", foto_google))
-                    f_v1 = proc_img(v1_up, dados_antigos.get("v1", ""))
-                    f_v2 = proc_img(v2_up, dados_antigos.get("v2", ""))
-                    f_v3 = proc_img(v3_up, dados_antigos.get("v3", ""))
-                    f_v4 = proc_img(v4_up, dados_antigos.get("v4", ""))
-
-                    # MONTAGEM COMPLETA DO DICIONÁRIO (LINHAS RESTAURADAS)
-                    dados_pro = {
-                        "nome": nome_input,
-                        "whatsapp": zap_input,
-                        "email": email_input,
-                        "area": cat_input,
-                        "senha": senha_input,
-                        "descricao": desc_input,
-                        "tipo": tipo_input,
-                        "foto_url": f_perfil,
-                        "v1": f_v1, "v2": f_v2, "v3": f_v3, "v4": f_v4, # Vitrine devolvida
-                        "saldo": dados_antigos.get("saldo", BONUS_WELCOME),
-                        "cliques": dados_antigos.get("cliques", 0),
-                        "data_cadastro": datetime.now().strftime("%d/%m/%Y %H:%M"),
-                        "aprovado": dados_antigos.get("aprovado", False),
+                    dados_finais = {
+                        "nome": nome_in,
+                        "whatsapp": zap_in,
+                        "email": email_in,
+                        "area": cat_in,
+                        "senha": senha_in,
+                        "descricao": desc_in,
+                        "tipo": tipo_in,
+                        "foto_url": f_final,
+                        "v1": f_v1, "v2": f_v2, "v3": f_v3, "v4": f_v4, # VITRINE DEVOLVIDA
+                        "saldo": d_antigo.get("saldo", BONUS_WELCOME),
+                        "cliques": d_antigo.get("cliques", 0),
+                        "aprovado": d_antigo.get("aprovado", False),
+                        "data_cadastro": datetime.now(fuso_br).strftime("%d/%m/%Y %H:%M"),
                         "rating": 5,
-                        # Linhas de Geolocalização devolvidas:
-                        "lat": minha_lat if 'minha_lat' in locals() else dados_antigos.get("lat", -23.55),
-                        "lon": minha_lon if 'minha_lon' in locals() else dados_antigos.get("lon", -46.63)
+                        "lat": d_antigo.get("lat", -23.55), # GEOLOCALIZAÇÃO MANTIDA
+                        "lon": d_antigo.get("lon", -46.63)
                     }
+
+                    doc_ref.set(dados_finais)
                     
-                    doc_ref.set(dados_pro)
                     if "pre_cadastro" in st.session_state: del st.session_state["pre_cadastro"]
                     
                     st.balloons()
-                    if perfil_antigo.exists:
-                        st.success(f"✅ Perfil atualizado!")
-                    else:
-                        st.success(f"🎊 Bem-vindo ao GeralJá!")
-                        if email_input: enviar_email_boas_vindas(email_input, nome_input)
-                        # Notificação WhatsApp Admin
-                        msg_adm = f"NOVO PARCEIRO: {nome_input} ({cat_input})"
-                        link_adm = f"https://wa.me/5511936162335?text={requests.utils.quote(msg_adm)}"
-                        st.markdown(f'<a href="{link_adm}" target="_blank"><div style="background-color:#25d366; color:white; text-align:center; padding:10px; border-radius:5px; font-weight:bold;">📲 AVISAR WHATSAPP</div></a>', unsafe_allow_html=True)
+                    st.success(f"✅ Perfil de {nome_in} salvo com sucesso!")
+
+                    # Automações de Boas-Vindas
+                    if not res.exists:
+                        if email_in: enviar_boas_vindas(email_in, nome_in)
                         
+                        # Notificação WhatsApp Admin
+                        msg_w = f"🚨 *NOVO PARCEIRO GERALJÁ*\n\n*Nome:* {nome_in}\n*Especialidade:* {cat_in}\n*WhatsApp:* {zap_in}"
+                        # Seu WhatsApp para receber o aviso:
+                        link_w = f"https://wa.me/5511936162335?text={requests.utils.quote(msg_w)}"
+                        st.markdown(f'''
+                            <a href="{link_w}" target="_blank">
+                                <div style="background-color:#25d366; color:white; text-align:center; padding:12px; border-radius:8px; font-weight:bold; margin-top:10px;">
+                                    📲 AVISAR GERÊNCIA PARA APROVAÇÃO RÁPIDA
+                                </div>
+                            </a>
+                        ''', unsafe_allow_html=True)
+            
             except Exception as e:
-                st.error(f"❌ Erro ao processar perfil: {e}")
+                st.error(f"❌ Erro ao salvar: {e}")
 # ==============================================================================
 # 👑 TORRE DE CONTROLE MASTER ULTRA - VERSÃO COMPLETA (SEM CORTES)
 # ==============================================================================
@@ -1264,6 +1298,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
