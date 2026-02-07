@@ -102,7 +102,7 @@ class GeralJaEngine:
         except Exception as e:
             return False, f"Erro na injeção: {e}"
 
-# INICIALIZAÇÃO DO MOTOR
+# INICIALIZAÇÃO DO MOTOR AUTO
 engine = GeralJaEngine()
 # ------------------------------------------------------------------------------
 # 1. CONFIGURAÇÃO DE AMBIENTE E PERFORMANCE
@@ -1298,6 +1298,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
