@@ -858,12 +858,18 @@ with menu_abas[1]:
     nome_inicial = dados_google.get("nome", "")
     foto_google = dados_google.get("foto", "")
 
-    # Interface Visual de Login Social
-    st.markdown("##### Entre rápido com:")
-    col_soc1, col_soc2 = st.columns(2)
-    g_auth = st.secrets.get("google_auth", {})
-    g_id = g_auth.get("client_id")
-    g_uri = g_auth.get("redirect_uri", "https://geralja-zxiaj2ot56fuzgcz7xhcks.streamlit.app/")
+    # --- BLOCO DE VINCULAÇÃO GOOGLE (CORREÇÃO NAMEERROR) ---
+g_auth = st.secrets.get("google_auth", {})
+g_id = g_auth.get("client_id")
+g_uri = g_auth.get("redirect_uri", "https://geralja-zxiaj2ot56fuzgcz7xhcks.streamlit.app/")
+
+# Criando a variável link_auth antes de usá-la
+if g_id:
+    link_auth = f"https://accounts.google.com/o/oauth2/v2/auth?client_id={g_id}&response_type=code&scope=openid%20profile%20email&redirect_uri={g_uri}"
+    st.link_button("VINCULAR AGORA", link_auth, use_container_width=True)
+else:
+    st.error("⚠️ Erro: 'client_id' do Google não configurado nos Secrets.")
+    st.info("Para corrigir, adicione [google_auth] client_id no painel do Streamlit.")
 
     with col_soc1:
         if g_id:
@@ -1258,6 +1264,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
