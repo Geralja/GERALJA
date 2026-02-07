@@ -818,19 +818,39 @@ with menu_abas[2]:
                     st.error("Sua conta foi removida do sistema.")
                     time.sleep(2)
                     st.rerun()
-# --- ABA 1: CADASTRAR & EDITAR (VERSÃO ULTRA - TUDO + NOTIFICAÇÕES) ---
+# --- ABA 1: CADASTRAR & EDITAR (VERSÃO INTEGRAL - VITRINE + GOOGLE + AUTOMAÇÕES) ---
 with menu_abas[1]:
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+
     st.markdown("### 🚀 Cadastro ou Edição de Profissional")
+
+    # --- FUNÇÃO DE ENVIO DE E-MAIL (HÁGNA-MAIL) ---
+    def enviar_email_boas_vindas(destinatario, nome_usuario):
+        try:
+            meu_email = st.secrets.get("EMAIL_SENDER", "geralja@gmail.com")
+            minha_senha = st.secrets.get("EMAIL_PASS", "") 
+            msg = MIMEMultipart()
+            msg['From'] = f"GeralJá Portal <{meu_email}>"
+            msg['To'] = destinatario
+            msg['Subject'] = f"Bem-vindo ao GeralJá, {nome_usuario}! 💎"
+            corpo = f"Olá {nome_usuario},\n\nSeu cadastro foi recebido com sucesso!\n\nEquipe GeralJá."
+            msg.attach(MIMEText(corpo, 'plain'))
+            server = smtplib.SMTP('smtp.gmail.com', 587)
+            server.starttls()
+            server.login(meu_email, minha_senha)
+            server.send_message(msg)
+            server.quit()
+            return True
+        except: return False
 
     # 1. BUSCA CATEGORIAS DINÂMICAS DO FIREBASE
     try:
         doc_cat = db.collection("configuracoes").document("categorias").get()
-        if doc_cat.exists:
-            CATEGORIAS_OFICIAIS = doc_cat.to_dict().get("lista", ["Geral"])
-        else:
-            CATEGORIAS_OFICIAIS = ["Pedreiro", "Locutor", "Eletricista", "Mecânico"]
+        CATEGORIAS_OFICIAIS = doc_cat.to_dict().get("lista", ["Geral"]) if doc_cat.exists else ["Pedreiro", "Eletricista"]
     except:
-        CATEGORIAS_OFICIAIS = ["Pedreiro", "Locutor", "Eletricista", "Mecânico"]
+        CATEGORIAS_OFICIAIS = ["Pedreiro", "Eletricista", "Locutor", "Mecânico"]
 
     # 2. VERIFICAÇÃO DE DADOS VINDOS DO GOOGLE AUTH
     dados_google = st.session_state.get("pre_cadastro", {})
@@ -841,7 +861,6 @@ with menu_abas[1]:
     # Interface Visual de Login Social
     st.markdown("##### Entre rápido com:")
     col_soc1, col_soc2 = st.columns(2)
-    
     g_auth = st.secrets.get("google_auth", {})
     g_id = g_auth.get("client_id")
     g_uri = g_auth.get("redirect_uri", "https://geralja-zxiaj2ot56fuzgcz7xhcks.streamlit.app/")
@@ -849,54 +868,42 @@ with menu_abas[1]:
     with col_soc1:
         if g_id:
             url_google = f"https://accounts.google.com/o/oauth2/v2/auth?client_id={g_id}&response_type=code&scope=openid%20profile%20email&redirect_uri={g_uri}"
-            st.markdown(f'''
-                <a href="{url_google}" target="_self" style="text-decoration:none;">
-                    <div style="display:flex; align-items:center; justify-content:center; border:1px solid #dadce0; border-radius:8px; padding:8px; background:white;">
-                        <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" width="18px" style="margin-right:10px;">
-                        <span style="color:#3c4043; font-weight:bold; font-size:14px;">Google</span>
-                    </div>
-                </a>
-            ''', unsafe_allow_html=True)
-        else:
-            st.caption("⚠️ Google Auth não configurado")
+            st.markdown(f'''<a href="{url_google}" target="_self" style="text-decoration:none;"><div style="display:flex; align-items:center; justify-content:center; border:1px solid #dadce0; border-radius:8px; padding:8px; background:white;"><img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" width="18px" style="margin-right:10px;"><span style="color:#3c4043; font-weight:bold; font-size:14px;">Google</span></div></a>''', unsafe_allow_html=True)
 
     with col_soc2:
         fb_id = st.secrets.get("FB_CLIENT_ID", "")
-        st.markdown(f'''
-            <a href="https://www.facebook.com/v18.0/dialog/oauth?client_id={fb_id}&redirect_uri={g_uri}&scope=public_profile,email" target="_self" style="text-decoration:none;">
-                <div style="display:flex; align-items:center; justify-content:center; border-radius:8px; padding:8px; background:#1877F2;">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg" width="18px" style="margin-right:10px;">
-                    <span style="color:white; font-weight:bold; font-size:14px;">Facebook</span>
-                </div>
-            </a>
-        ''', unsafe_allow_html=True)
+        st.markdown(f'''<a href="https://www.facebook.com/v18.0/dialog/oauth?client_id={fb_id}&redirect_uri={g_uri}&scope=public_profile,email" target="_self" style="text-decoration:none;"><div style="display:flex; align-items:center; justify-content:center; border-radius:8px; padding:8px; background:#1877F2;"><img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg" width="18px" style="margin-right:10px;"><span style="color:white; font-weight:bold; font-size:14px;">Facebook</span></div></a>''', unsafe_allow_html=True)
     
     st.markdown("<br>", unsafe_allow_html=True)
     BONUS_WELCOME = 20 
 
-    # 3. FORMULÁRIO INTELIGENTE
+    # 3. FORMULÁRIO COM VITRINE RESTAURADA
     with st.form("form_profissional", clear_on_submit=False):
         st.caption("DICA: Se você já tem cadastro, use o mesmo WhatsApp para editar seus dados.")
         
         col1, col2 = st.columns(2)
         nome_input = col1.text_input("Nome do Profissional ou Loja", value=nome_inicial)
         zap_input = col2.text_input("WhatsApp (DDD + Número sem espaços)")
-        
         email_input = st.text_input("E-mail (Para login via Google)", value=email_inicial)
         
         col3, col4 = st.columns(2)
         cat_input = col3.selectbox("Selecione sua Especialidade Principal", CATEGORIAS_OFICIAIS)
-        senha_input = col4.text_input("Sua Senha de Acesso", type="password", help="Necessária para salvar alterações")
+        senha_input = col4.text_input("Sua Senha de Acesso", type="password")
         
         desc_input = st.text_area("Descrição Completa (Serviços, Horários, Diferenciais)")
         tipo_input = st.radio("Tipo", ["👨‍🔧 Profissional Autônomo", "🏢 Comércio/Loja"], horizontal=True)
         
-        # Componente de Upload
-        foto_upload = st.file_uploader("Atualizar Foto de Perfil ou Logo", type=['png', 'jpg', 'jpeg'])
+        st.markdown("#### 📸 Vitrine de Portfólio (Até 4 fotos)")
+        foto_upload = st.file_uploader("Foto de Perfil Principal", type=['png', 'jpg', 'jpeg'])
+        c_v1, c_v2 = st.columns(2)
+        v1_up = c_v1.file_uploader("Foto Vitrine 1", type=['jpg','png','jpeg'])
+        v2_up = c_v2.file_uploader("Foto Vitrine 2", type=['jpg','png','jpeg'])
+        v3_up = c_v1.file_uploader("Foto Vitrine 3", type=['jpg','png','jpeg'])
+        v4_up = c_v2.file_uploader("Foto Vitrine 4", type=['jpg','png','jpeg'])
         
         btn_acao = st.form_submit_button("✅ FINALIZAR: SALVAR OU ATUALIZAR", use_container_width=True)
 
-    # 4. LÓGICA DE SALVAMENTO, EDIÇÃO E NOTIFICAÇÃO
+    # 4. LÓGICA DE SALVAMENTO (RESTITUIÇÃO DAS LINHAS DE GEOLOCALIZAÇÃO E FOTOS)
     if btn_acao:
         if not nome_input or not zap_input or not senha_input:
             st.warning("⚠️ Nome, WhatsApp e Senha são obrigatórios!")
@@ -907,22 +914,18 @@ with menu_abas[1]:
                     perfil_antigo = doc_ref.get()
                     dados_antigos = perfil_antigo.to_dict() if perfil_antigo.exists else {}
 
-                    # --- LÓGICA DE FOTO MANTIDA ---
-                    foto_b64 = dados_antigos.get("foto_url", "")
-                    if foto_upload is not None:
-                        file_ext = foto_upload.name.split('.')[-1]
-                        img_bytes = foto_upload.getvalue()
-                        encoded_img = base64.b64encode(img_bytes).decode()
-                        foto_b64 = f"data:image/{file_ext};base64,{encoded_img}"
-                    elif not foto_b64 and foto_google:
-                        foto_b64 = foto_google
+                    # Lógica para processar fotos individualmente sem perder as antigas
+                    def proc_img(novo, antigo):
+                        if novo: return f"data:image/jpeg;base64,{otimizar_imagem(novo)}"
+                        return antigo if antigo else ""
 
-                    # --- PRESERVAÇÃO DE SALDO E CLIQUES ---
-                    saldo_final = dados_antigos.get("saldo", BONUS_WELCOME)
-                    cliques_atuais = dados_antigos.get("cliques", 0)
-                    status_aprovacao = dados_antigos.get("aprovado", False) # Novos começam como False para aprovação
+                    f_perfil = proc_img(foto_upload, dados_antigos.get("foto_url", foto_google))
+                    f_v1 = proc_img(v1_up, dados_antigos.get("v1", ""))
+                    f_v2 = proc_img(v2_up, dados_antigos.get("v2", ""))
+                    f_v3 = proc_img(v3_up, dados_antigos.get("v3", ""))
+                    f_v4 = proc_img(v4_up, dados_antigos.get("v4", ""))
 
-                    # --- MONTAGEM DO DICIONÁRIO COMPLETO ---
+                    # MONTAGEM COMPLETA DO DICIONÁRIO (LINHAS RESTAURADAS)
                     dados_pro = {
                         "nome": nome_input,
                         "whatsapp": zap_input,
@@ -931,45 +934,31 @@ with menu_abas[1]:
                         "senha": senha_input,
                         "descricao": desc_input,
                         "tipo": tipo_input,
-                        "foto_url": foto_b64,
-                        "saldo": saldo_final,
-                        "data_cadastro": datetime.now(pytz.timezone('America/Sao_Paulo')).strftime("%d/%m/%Y %H:%M"),
-                        "aprovado": status_aprovacao,
-                        "cliques": cliques_atuais,
+                        "foto_url": f_perfil,
+                        "v1": f_v1, "v2": f_v2, "v3": f_v3, "v4": f_v4, # Vitrine devolvida
+                        "saldo": dados_antigos.get("saldo", BONUS_WELCOME),
+                        "cliques": dados_antigos.get("cliques", 0),
+                        "data_cadastro": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                        "aprovado": dados_antigos.get("aprovado", False),
                         "rating": 5,
-                        "lat": minha_lat if 'minha_lat' in locals() else -23.55,
-                        "lon": minha_lon if 'minha_lon' in locals() else -46.63
+                        # Linhas de Geolocalização devolvidas:
+                        "lat": minha_lat if 'minha_lat' in locals() else dados_antigos.get("lat", -23.55),
+                        "lon": minha_lon if 'minha_lon' in locals() else dados_antigos.get("lon", -46.63)
                     }
                     
-                    # Salva no Banco de Dados
                     doc_ref.set(dados_pro)
-                    
-                    # Limpa cache de pré-cadastro
-                    if "pre_cadastro" in st.session_state:
-                        del st.session_state["pre_cadastro"]
+                    if "pre_cadastro" in st.session_state: del st.session_state["pre_cadastro"]
                     
                     st.balloons()
                     if perfil_antigo.exists:
-                        st.success(f"✅ Perfil de {nome_input} atualizado com sucesso!")
+                        st.success(f"✅ Perfil atualizado!")
                     else:
-                        st.success(f"🎊 Bem-vindo ao GeralJá! Cadastro concluído!")
-                        
-                        # --- NOVO: NOTIFICAÇÃO VIA WHATSAPP ---
-                        msg_admin = f"🚨 *NOVO CADASTRO GERALJÁ*\n\n*Nome:* {nome_input}\n*Área:* {cat_input}\n*WhatsApp:* {zap_input}\n\nAcesse o painel para aprovar!"
-                        # Substitua pelo seu número de administrador abaixo
-                        zap_admin = "5511936162335" # Exemplo: Rádio Grajaú
-                        link_zap = f"https://wa.me/{zap_admin}?text={requests.utils.quote(msg_admin)}"
-                        
-                        st.markdown(f'''
-                            <div style="background-color:#d4edda; padding:15px; border-radius:10px; border:1px solid #c3e6cb; margin-top:10px;">
-                                <p style="color:#155724; margin-bottom:10px;"><strong>Quase lá!</strong> Seu perfil foi enviado para análise.</p>
-                                <a href="{link_zap}" target="_blank" style="text-decoration:none;">
-                                    <div style="background-color:#25d366; color:white; text-align:center; padding:10px; border-radius:5px; font-weight:bold;">
-                                        📲 AVISAR GERÊNCIA NO WHATSAPP
-                                    </div>
-                                </a>
-                            </div>
-                        ''', unsafe_allow_html=True)
+                        st.success(f"🎊 Bem-vindo ao GeralJá!")
+                        if email_input: enviar_email_boas_vindas(email_input, nome_input)
+                        # Notificação WhatsApp Admin
+                        msg_adm = f"NOVO PARCEIRO: {nome_input} ({cat_input})"
+                        link_adm = f"https://wa.me/5511936162335?text={requests.utils.quote(msg_adm)}"
+                        st.markdown(f'<a href="{link_adm}" target="_blank"><div style="background-color:#25d366; color:white; text-align:center; padding:10px; border-radius:5px; font-weight:bold;">📲 AVISAR WHATSAPP</div></a>', unsafe_allow_html=True)
                         
             except Exception as e:
                 st.error(f"❌ Erro ao processar perfil: {e}")
@@ -1269,6 +1258,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
