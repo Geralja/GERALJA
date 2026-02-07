@@ -818,7 +818,7 @@ with menu_abas[2]:
                     st.error("Sua conta foi removida do sistema.")
                     time.sleep(2)
                     st.rerun()
-# --- ABA 1: CADASTRAR & EDITAR (VERSÃO FINAL GERALJÁ CORRIGIDA) ---
+# --- ABA 1: CADASTRAR & EDITAR (VERSÃO ULTRA - TUDO + NOTIFICAÇÕES) ---
 with menu_abas[1]:
     st.markdown("### 🚀 Cadastro ou Edição de Profissional")
 
@@ -896,37 +896,33 @@ with menu_abas[1]:
         
         btn_acao = st.form_submit_button("✅ FINALIZAR: SALVAR OU ATUALIZAR", use_container_width=True)
 
-    # 4. LÓGICA DE SALVAMENTO E EDIÇÃO
+    # 4. LÓGICA DE SALVAMENTO, EDIÇÃO E NOTIFICAÇÃO
     if btn_acao:
         if not nome_input or not zap_input or not senha_input:
             st.warning("⚠️ Nome, WhatsApp e Senha são obrigatórios!")
         else:
             try:
                 with st.spinner("Sincronizando com o ecossistema GeralJá..."):
-                    # Referência do documento no Firebase
                     doc_ref = db.collection("profissionais").document(zap_input)
                     perfil_antigo = doc_ref.get()
                     dados_antigos = perfil_antigo.to_dict() if perfil_antigo.exists else {}
 
-                    # --- LÓGICA DE FOTO CORRIGIDA ---
-                    foto_b64 = dados_antigos.get("foto_url", "") # Mantém a antiga por padrão
-
-                    # Se o usuário subir uma foto nova agora
+                    # --- LÓGICA DE FOTO MANTIDA ---
+                    foto_b64 = dados_antigos.get("foto_url", "")
                     if foto_upload is not None:
                         file_ext = foto_upload.name.split('.')[-1]
-                        img_bytes = foto_upload.getvalue() # getvalue() é mais estável que read()
+                        img_bytes = foto_upload.getvalue()
                         encoded_img = base64.b64encode(img_bytes).decode()
                         foto_b64 = f"data:image/{file_ext};base64,{encoded_img}"
-                    
-                    # Se não houver foto no banco E não houver upload, tenta pegar a do Google
                     elif not foto_b64 and foto_google:
                         foto_b64 = foto_google
 
-                    # --- LÓGICA DE SALDO E CLIQUES ---
+                    # --- PRESERVAÇÃO DE SALDO E CLIQUES ---
                     saldo_final = dados_antigos.get("saldo", BONUS_WELCOME)
                     cliques_atuais = dados_antigos.get("cliques", 0)
+                    status_aprovacao = dados_antigos.get("aprovado", False) # Novos começam como False para aprovação
 
-                    # --- MONTAGEM DO DICIONÁRIO ---
+                    # --- MONTAGEM DO DICIONÁRIO COMPLETO ---
                     dados_pro = {
                         "nome": nome_input,
                         "whatsapp": zap_input,
@@ -937,8 +933,8 @@ with menu_abas[1]:
                         "tipo": tipo_input,
                         "foto_url": foto_b64,
                         "saldo": saldo_final,
-                        "data_cadastro": datetime.now().strftime("%d/%m/%Y"),
-                        "aprovado": True,
+                        "data_cadastro": datetime.now(pytz.timezone('America/Sao_Paulo')).strftime("%d/%m/%Y %H:%M"),
+                        "aprovado": status_aprovacao,
                         "cliques": cliques_atuais,
                         "rating": 5,
                         "lat": minha_lat if 'minha_lat' in locals() else -23.55,
@@ -957,6 +953,23 @@ with menu_abas[1]:
                         st.success(f"✅ Perfil de {nome_input} atualizado com sucesso!")
                     else:
                         st.success(f"🎊 Bem-vindo ao GeralJá! Cadastro concluído!")
+                        
+                        # --- NOVO: NOTIFICAÇÃO VIA WHATSAPP ---
+                        msg_admin = f"🚨 *NOVO CADASTRO GERALJÁ*\n\n*Nome:* {nome_input}\n*Área:* {cat_input}\n*WhatsApp:* {zap_input}\n\nAcesse o painel para aprovar!"
+                        # Substitua pelo seu número de administrador abaixo
+                        zap_admin = "5511936162335" # Exemplo: Rádio Grajaú
+                        link_zap = f"https://wa.me/{zap_admin}?text={requests.utils.quote(msg_admin)}"
+                        
+                        st.markdown(f'''
+                            <div style="background-color:#d4edda; padding:15px; border-radius:10px; border:1px solid #c3e6cb; margin-top:10px;">
+                                <p style="color:#155724; margin-bottom:10px;"><strong>Quase lá!</strong> Seu perfil foi enviado para análise.</p>
+                                <a href="{link_zap}" target="_blank" style="text-decoration:none;">
+                                    <div style="background-color:#25d366; color:white; text-align:center; padding:10px; border-radius:5px; font-weight:bold;">
+                                        📲 AVISAR GERÊNCIA NO WHATSAPP
+                                    </div>
+                                </a>
+                            </div>
+                        ''', unsafe_allow_html=True)
                         
             except Exception as e:
                 st.error(f"❌ Erro ao processar perfil: {e}")
@@ -1256,6 +1269,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
