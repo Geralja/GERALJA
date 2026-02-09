@@ -418,26 +418,34 @@ def processar_ia_avancada(texto):
     except:
         return "NAO_ENCONTRADO" # Se tudo der errado
 
-# --- LOGICA DE ECONOMIA GERALJÁ ---
+import base64
+
+# --- 1. FUNÇÃO DE CONVERSÃO DE IMAGEM (ESSENCIAL PARA O LAYOUT) ---
+def converter_img_b64(file):
+    """Converte arquivo de imagem para base64 para exibição no Streamlit"""
+    if file is None: return ""
+    try: 
+        # Importante: não altera o ponteiro do arquivo se for usado múltiplas vezes
+        content = file.getvalue() if hasattr(file, 'getvalue') else file.read()
+        return base64.b64encode(content).decode()
+    except: return ""
+
+# --- 2. LOGICA DE ECONOMIA GERALJÁ (MOTOR DE RANKING) ---
 def calcular_prioridade(row):
     """
     Calcula o rank baseado em moedas e distância.
-    Ajuste os pesos conforme necessário.
+    O Score define quem aparece primeiro na lista.
     """
-    peso_moeda = 5.0  # Cada GeralCoin dá um impulso forte
-    peso_distancia = 2.0 # Cada KM 'pesa' negativamente
+    peso_moeda = 5.0      # Multiplicador de visibilidade por moeda
+    peso_distancia = 2.0  # Penalidade por distância (em KM)
     
-    # Se o profissional não tem moedas, o saldo é 0
+    # Busca o saldo e a distância (com valores padrão para evitar erros)
     saldo = row.get('geralcoins', 0)
     dist = row.get('distancia_km', 99.0)
     
+    # Cálculo do Score: Moedas elevam, Distância reduz
     score = (saldo * peso_moeda) - (dist * peso_distancia)
     return score
-def converter_img_b64(file):
-    if file is None: return ""
-    try: return base64.b64encode(file.read()).decode()
-    except: return ""
-
 # --- FUNCIONALIDADE DO ARQUIVO: O VARREDOR (Rodapé Automático) ---
 def finalizar_e_alinhar_layout():
     """
@@ -1322,6 +1330,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
