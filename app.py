@@ -237,24 +237,34 @@ def buscar_opcoes_dinamicas(documento, padrao):
         return padrao
         # --- COLOCAR LOGO ABAIXO DA CONEXÃO DB ---
 
+import streamlit as st
+
+# 1. Configuração de Inicialização (Modo Noite como False para iniciar no Dia)
 if 'modo_noite' not in st.session_state:
-    st.session_state.modo_noite = True 
+    st.session_state.modo_noite = False 
 
-# Layout do topo (Toggle)
-c_t1, c_t2 = st.columns([2, 8])
-with c_t1:
-    st.session_state.modo_noite = st.toggle("🌙 Modo Noite", value=st.session_state.modo_noite)
-
-# Bloco CSS Dinâmico
-estilo_dinamico = f"""
+# 2. Bloco de CSS para Redução de Espaço e Cores
+estilo_ajustado = f"""
 <style>
+    /* Reduz o espaço entre o topo e o conteúdo (Capa) */
+    .block-container {{
+        padding-top: 1rem !important;
+        padding-bottom: 0rem !important;
+        max-width: 95% !important;
+    }}
+    
+    /* Esconde o header padrão do Streamlit para ganhar espaço */
+    header {{visibility: hidden;}}
+    #MainMenu {{visibility: hidden;}}
+    footer {{visibility: hidden;}}
+
     /* Ajustes Mobile */
     @media (max-width: 640px) {{
-        .main .block-container {{ padding: 1rem !important; }}
-        h1 {{ font-size: 1.8rem !important; }}
+        .main .block-container {{ padding: 0.5rem !important; }}
+        h1 {{ font-size: 1.6rem !important; }}
     }}
 
-  /* Lógica de Cores - Estilo Branco Neve */
+    /* Lógica de Cores - Estilo Branco Neve */
     .stApp {{
         background-color: {"#0D1117" if st.session_state.modo_noite else "#FFFAFA"} !important;
         color: {"#FFFFFF" if st.session_state.modo_noite else "#1A1A1B"} !important;
@@ -268,7 +278,16 @@ estilo_dinamico = f"""
     }}
 </style>
 """
-st.markdown(estilo_dinamico, unsafe_allow_html=True)
+st.markdown(estilo_ajustado, unsafe_allow_html=True)
+
+# 3. Layout do topo (Toggle)
+c_t1, c_t2 = st.columns([2, 8])
+with c_t1:
+    st.session_state.modo_noite = st.toggle("🌙 Modo Noite", value=st.session_state.modo_noite)
+
+# Exemplo de Capa (para você testar o recuo)
+st.markdown("---")
+st.markdown("## 📻 Rádio Grajaú Tem")
 # ==========================================================
 # FUNÇÕES DE SUPORTE (COLE NO TOPO DO ARQUIVO)
 # ==========================================================
@@ -1298,6 +1317,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
