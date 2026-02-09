@@ -250,7 +250,7 @@ estilo_ajustado = f"""
     .block-container {{
         padding-top: 1rem !important;
         padding-bottom: 0rem !important;
-        max-width: 95% !important;
+        max-width: 100% !important;
     }}
     
     /* Esconde o header padrão do Streamlit para ganhar espaço */
@@ -287,7 +287,7 @@ with c_t1:
 
 # Exemplo de Capa (para você testar o recuo)
 st.markdown("---")
-st.markdown("## 📻 Rádio Grajaú Tem")
+st.markdown("## SOLUÇÕES iMEDIATAS")
 # ==========================================================
 # FUNÇÕES DE SUPORTE (COLE NO TOPO DO ARQUIVO)
 # ==========================================================
@@ -1317,6 +1317,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
