@@ -281,13 +281,12 @@ estilo_ajustado = f"""
 st.markdown(estilo_ajustado, unsafe_allow_html=True)
 
 # 3. Layout do topo (Toggle)
-c_t1, c_t2 = st.columns([2, 8])
+c_t1, c_t2 = st.columns([2, 6])
 with c_t1:
     st.session_state.modo_noite = st.toggle("🌙 Modo Noite", value=st.session_state.modo_noite)
 
 # Exemplo de Capa (para você testar o recuo)
 st.markdown("---")
-st.markdown("## SOLUÇÕES iMEDIATAS")
 # ==========================================================
 # FUNÇÕES DE SUPORTE (COLE NO TOPO DO ARQUIVO)
 # ==========================================================
@@ -1317,6 +1316,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
