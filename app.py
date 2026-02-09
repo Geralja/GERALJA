@@ -418,14 +418,38 @@ def processar_ia_avancada(texto):
     except:
         return "NAO_ENCONTRADO" # Se tudo der errado
 
+import math
+
 def calcular_distancia_real(lat1, lon1, lat2, lon2):
+    """
+    Calcula a distância entre dois pontos usando Haversine.
+    Melhoria: Adição de validação de tipos e limites geográficos.
+    """
     try:
-        if None in [lat1, lon1, lat2, lon2]: return 999.0
-        R = 6371 
-        dlat, dlon = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
-        a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
-        return round(R * (2 * math.atan2(math.sqrt(a), math.sqrt(1-a))), 1)
-    except: return 999.0
+        # Verifica se as coordenadas são válidas e numéricas
+        if not all(isinstance(i, (int, float)) for i in [lat1, lon1, lat2, lon2]):
+            return float('inf') # Retorna infinito para indicar erro/distância impossível
+
+        # Converte para radianos uma única vez para ganhar performance
+        phi1, phi2 = math.radians(lat1), math.radians(lat2)
+        dphi = math.radians(lat2 - lat1)
+        dlambda = math.radians(lon2 - lon1)
+
+        # Fórmula de Haversine
+        a = math.sin(dphi / 2)**2 + \
+            math.cos(phi1) * math.cos(phi2) * \
+            math.sin(dlambda / 2)**2
+        
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        R = 6371.0  # Raio da Terra em KM
+        
+        distancia = R * c
+        
+        # Retorna com precisão de 2 casas decimais (10 metros de precisão)
+        return round(distancia, 2)
+        
+    except Exception:
+        return float('inf') # Uso de infinito facilita a ordenação (o erro fica por último)
 
 def converter_img_b64(file):
     if file is None: return ""
@@ -1316,6 +1340,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
