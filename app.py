@@ -418,39 +418,21 @@ def processar_ia_avancada(texto):
     except:
         return "NAO_ENCONTRADO" # Se tudo der errado
 
-import math
-
-def calcular_distancia_real(lat1, lon1, lat2, lon2):
+# --- LOGICA DE ECONOMIA GERALJÁ ---
+def calcular_prioridade(row):
     """
-    Calcula a distância entre dois pontos usando Haversine.
-    Melhoria: Adição de validação de tipos e limites geográficos.
+    Calcula o rank baseado em moedas e distância.
+    Ajuste os pesos conforme necessário.
     """
-    try:
-        # Verifica se as coordenadas são válidas e numéricas
-        if not all(isinstance(i, (int, float)) for i in [lat1, lon1, lat2, lon2]):
-            return float('inf') # Retorna infinito para indicar erro/distância impossível
-
-        # Converte para radianos uma única vez para ganhar performance
-        phi1, phi2 = math.radians(lat1), math.radians(lat2)
-        dphi = math.radians(lat2 - lat1)
-        dlambda = math.radians(lon2 - lon1)
-
-        # Fórmula de Haversine
-        a = math.sin(dphi / 2)**2 + \
-            math.cos(phi1) * math.cos(phi2) * \
-            math.sin(dlambda / 2)**2
-        
-        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-        R = 6371.0  # Raio da Terra em KM
-        
-        distancia = R * c
-        
-        # Retorna com precisão de 2 casas decimais (10 metros de precisão)
-        return round(distancia, 2)
-        
-    except Exception:
-        return float('inf') # Uso de infinito facilita a ordenação (o erro fica por último)
-
+    peso_moeda = 5.0  # Cada GeralCoin dá um impulso forte
+    peso_distancia = 2.0 # Cada KM 'pesa' negativamente
+    
+    # Se o profissional não tem moedas, o saldo é 0
+    saldo = row.get('geralcoins', 0)
+    dist = row.get('distancia_km', 99.0)
+    
+    score = (saldo * peso_moeda) - (dist * peso_distancia)
+    return score
 def converter_img_b64(file):
     if file is None: return ""
     try: return base64.b64encode(file.read()).decode()
@@ -1340,6 +1322,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
