@@ -760,17 +760,43 @@ with menu_abas[2]:
                 doc_ref.update({"lat": loc['coords']['latitude'], "lon": loc['coords']['longitude']})
                 st.success("✅ Localização GPS Atualizada!")
 
-       # --- EDIÇÃO DE PERFIL E VITRINE ---
+       # --- ESTILIZAÇÃO MODERNA (CSS) ---
+st.markdown("""
+<style>
+    .stForm {
+        border: 2px solid #ffaa00 !important;
+        border-radius: 20px !important;
+        padding: 20px !important;
+    }
+    .stButton>button {
+        background-color: #ffaa00 !important;
+        color: black !important;
+        font-weight: bold !important;
+        border-radius: 10px !important;
+        border: none !important;
+        transition: 0.3s;
+    }
+    .stButton>button:hover {
+        background-color: #e69900 !important;
+        transform: scale(1.02);
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# --- EDIÇÃO DE PERFIL E VITRINE ---
 with st.expander("📝 EDITAR MEU PERFIL & VITRINE", expanded=False):
     
-    # 1. Garanta que os dados (d) existam. 
-    # Se sua variável de dados do Firebase tiver outro nome, mude 'd' abaixo:
-    if 'd' not in locals() and 'd' not in globals():
-        st.error("Erro: Dados do perfil não carregados.")
+    # 1. Verificação de Segurança das Variáveis
+    # d = dados vindos do Firestore; doc_ref = referência do documento no Firebase
+    if 'd' not in locals() or 'doc_ref' not in locals():
+        st.error("⚠️ Erro de conexão: Dados do usuário não localizados.")
     else:
-        # Função de tratamento de imagem interna
-        def otimizar_imagem(arq, qualidade=50, size=(800, 800)):
+        # Função de tratamento de imagem interna e robusta
+        def otimizar_imagem(arq, qualidade=60, size=(800, 800)):
             try:
+                from PIL import Image
+                import io
+                import base64
                 img = Image.open(arq)
                 if img.mode in ("RGBA", "P"): 
                     img = img.convert("RGB")
@@ -779,55 +805,89 @@ with st.expander("📝 EDITAR MEU PERFIL & VITRINE", expanded=False):
                 img.save(output, format="JPEG", quality=qualidade, optimize=True)
                 return f"data:image/jpeg;base64,{base64.b64encode(output.getvalue()).decode()}"
             except Exception as e:
-                st.error(f"Erro ao processar imagem: {e}")
+                st.error(f"Erro no processamento da imagem: {e}")
                 return None
 
-        # INÍCIO DO FORMULÁRIO
-        with st.form("perfil_v8"):
-            st.subheader("🚀 Edição de Vitrine Profissional")
+        # INÍCIO DO FORMULÁRIO MODERNO
+        with st.form("perfil_v8_pro"):
+            st.markdown("### 🚀 Sua Vitrine no Grajaú Tem")
+            st.caption("Mantenha seus dados atualizados para atrair mais clientes.")
             
-            col1, col2 = st.columns([2, 1])
-            with col1:
-                # Usamos d.get para evitar erro se a chave não existir
-                n_nome = st.text_input("🏢 Nome Comercial", d.get('nome', ''))
-            with col2:
-                # Certifique-se que CATEGORIAS_OFICIAIS está definida no topo do seu script
-                n_area = st.selectbox("📌 Segmento", CATEGORIAS_OFICIAIS, 
-                                     index=CATEGORIAS_OFICIAIS.index(d.get('area')) if d.get('area') in CATEGORIAS_OFICIAIS else 0)
+            # Linha 1: Nome e Segmento
+            col_nome, col_seg = st.columns([2, 1])
+            with col_nome:
+                n_nome = st.text_input("🏢 Nome Comercial ou Profissional", d.get('nome', ''))
+            with col_seg:
+                # Caso CATEGORIAS_OFICIAIS não esteja definida, usamos uma lista padrão
+                categorias = CATEGORIAS_OFICIAIS if 'CATEGORIAS_OFICIAIS' in globals() else ["Serviços", "Comércio", "Outros"]
+                area_atual = d.get('area', categorias[0])
+                idx_area = categorias.index(area_atual) if area_atual in categorias else 0
+                n_area = st.selectbox("📌 Segmento Principal", categorias, index=idx_area)
             
-            n_desc = st.text_area("📝 Descrição", d.get('descricao', ''), height=150)
+            # Descrição
+            n_desc = st.text_area("📝 Descrição Completa", d.get('descricao', ''), 
+                                help="Destaque seus diferenciais, horários e bairros que atende.", height=120)
             
             st.markdown("---")
-            n_foto = st.file_uploader("Trocar Foto de Perfil", type=['jpg','png','jpeg'])
-            n_portfolio = st.file_uploader("Vitrine (Máx 4)", type=['jpg','png','jpeg'], accept_multiple_files=True)
+            
+            # Seção de Fotos
+            st.write("🖼️ **Gestão Visual**")
+            c_perfil, c_vitrine = st.columns(2)
+            
+            with c_perfil:
+                st.markdown("**Foto de Perfil (Logo)**")
+                n_foto = st.file_uploader("Upload Logo", type=['jpg','png','jpeg'], key="perfil")
+                if not n_foto and d.get('foto_url'):
+                    st.image(d.get('foto_url'), width=80, caption="Atual")
+            
+            with c_vitrine:
+                st.markdown("**Fotos da Vitrine (Portfolio)**")
+                n_portfolio = st.file_uploader("Upload Vitrine (Máx 4)", type=['jpg','png','jpeg'], 
+                                               accept_multiple_files=True, key="vitrine")
+                st.caption("Dica: Use fotos reais dos seus serviços.")
 
-            # O BOTÃO DEVE ESTAR AQUI, DENTRO DO 'WITH ST.FORM'
-            submit = st.form_submit_button("💾 SALVAR TODAS AS ALTERAÇÕES", use_container_width=True)
+            # Preview em tempo real da vitrine selecionada
+            if n_portfolio:
+                pre_cols = st.columns(4)
+                for i, file in enumerate(n_portfolio[:4]):
+                    pre_cols[i].image(file, use_container_width=True)
 
-            if submit:
-                with st.spinner("Salvando..."):
+            st.markdown("###") # Espaço extra
+
+            # O BOTÃO DE SUBMIT (FUNDAMENTAL DENTRO DO BLOCO)
+            btn_salvar = st.form_submit_button("💾 SALVAR ALTERAÇÕES NA VITRINE", use_container_width=True)
+
+            if btn_salvar:
+                with st.spinner("✨ Otimizando sua vitrine..."):
                     updates = {
                         "nome": n_nome,
                         "area": n_area,
-                        "descricao": n_desc
+                        "descricao": n_desc,
+                        "ultima_atualizacao": time.strftime("%Y-%m-%d %H:%M:%S")
                     }
                     
+                    # Processa Foto de Perfil
                     if n_foto:
-                        img_64 = otimizar_imagem(n_foto, qualidade=60, size=(350, 350))
+                        img_64 = otimizar_imagem(n_foto, qualidade=60, size=(400, 400))
                         if img_64: updates["foto_url"] = img_64
 
+                    # Processa Fotos da Vitrine (f1 a f4)
                     if n_portfolio:
+                        # Limpa slots antigos antes de atualizar
                         for i in range(1, 5): updates[f'f{i}'] = None
+                        
                         for i, f in enumerate(n_portfolio[:4]):
-                            img_p_64 = otimizar_imagem(f)
+                            img_p_64 = otimizar_imagem(f, qualidade=75, size=(1024, 768))
                             if img_p_64: updates[f"f{i+1}"] = img_p_64
                     
-                    # Salva no Firebase (certifique-se que doc_ref existe)
-                    doc_ref.update(updates)
-                    st.success("✅ Atualizado com sucesso!")
-                    time.sleep(1)
-                    st.rerun()
-        # --- FAQ ---
+                    try:
+                        doc_ref.update(updates)
+                        st.balloons()
+                        st.success("✅ Perfil atualizado! Suas mudanças já estão ao vivo.")
+                        time.sleep(2)
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Erro ao salvar no banco de dados: {e}")
         with st.expander("❓ PERGUNTAS FREQUENTES"):
             st.write("**Como ganho o selo Elite?**")
             st.write("Mantenha seu saldo acima de 10 moedas e perfil completo com fotos.")
@@ -1339,6 +1399,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
