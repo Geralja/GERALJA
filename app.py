@@ -237,34 +237,24 @@ def buscar_opcoes_dinamicas(documento, padrao):
         return padrao
         # --- COLOCAR LOGO ABAIXO DA CONEXÃO DB ---
 
-import streamlit as st
-
-# 1. Configuração de Inicialização (Modo Noite como False para iniciar no Dia)
 if 'modo_noite' not in st.session_state:
-    st.session_state.modo_noite = False 
+    st.session_state.modo_noite = True 
 
-# 2. Bloco de CSS para Redução de Espaço e Cores
-estilo_ajustado = f"""
+# Layout do topo (Toggle)
+c_t1, c_t2 = st.columns([2, 8])
+with c_t1:
+    st.session_state.modo_noite = st.toggle("🌙 Modo Noite", value=st.session_state.modo_noite)
+
+# Bloco CSS Dinâmico
+estilo_dinamico = f"""
 <style>
-    /* Reduz o espaço entre o topo e o conteúdo (Capa) */
-    .block-container {{
-        padding-top: 1rem !important;
-        padding-bottom: 0rem !important;
-        max-width: 100% !important;
-    }}
-    
-    /* Esconde o header padrão do Streamlit para ganhar espaço */
-    header {{visibility: hidden;}}
-    #MainMenu {{visibility: hidden;}}
-    footer {{visibility: hidden;}}
-
     /* Ajustes Mobile */
     @media (max-width: 640px) {{
-        .main .block-container {{ padding: 0.5rem !important; }}
-        h1 {{ font-size: 1.6rem !important; }}
+        .main .block-container {{ padding: 1rem !important; }}
+        h1 {{ font-size: 1.8rem !important; }}
     }}
 
-    /* Lógica de Cores - Estilo Branco Neve */
+  /* Lógica de Cores - Estilo Branco Neve */
     .stApp {{
         background-color: {"#0D1117" if st.session_state.modo_noite else "#FFFAFA"} !important;
         color: {"#FFFFFF" if st.session_state.modo_noite else "#1A1A1B"} !important;
@@ -278,15 +268,7 @@ estilo_ajustado = f"""
     }}
 </style>
 """
-st.markdown(estilo_ajustado, unsafe_allow_html=True)
-
-# 3. Layout do topo (Toggle)
-c_t1, c_t2 = st.columns([2, 6])
-with c_t1:
-    st.session_state.modo_noite = st.toggle("🌙 Modo Noite", value=st.session_state.modo_noite)
-
-# Exemplo de Capa (para você testar o recuo)
-st.markdown("---")
+st.markdown(estilo_dinamico, unsafe_allow_html=True)
 # ==========================================================
 # FUNÇÕES DE SUPORTE (COLE NO TOPO DO ARQUIVO)
 # ==========================================================
@@ -418,34 +400,20 @@ def processar_ia_avancada(texto):
     except:
         return "NAO_ENCONTRADO" # Se tudo der errado
 
-import base64
+def calcular_distancia_real(lat1, lon1, lat2, lon2):
+    try:
+        if None in [lat1, lon1, lat2, lon2]: return 999.0
+        R = 6371 
+        dlat, dlon = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
+        a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
+        return round(R * (2 * math.atan2(math.sqrt(a), math.sqrt(1-a))), 1)
+    except: return 999.0
 
-# --- 1. FUNÇÃO DE CONVERSÃO DE IMAGEM (ESSENCIAL PARA O LAYOUT) ---
 def converter_img_b64(file):
-    """Converte arquivo de imagem para base64 para exibição no Streamlit"""
     if file is None: return ""
-    try: 
-        # Importante: não altera o ponteiro do arquivo se for usado múltiplas vezes
-        content = file.getvalue() if hasattr(file, 'getvalue') else file.read()
-        return base64.b64encode(content).decode()
+    try: return base64.b64encode(file.read()).decode()
     except: return ""
 
-# --- 2. LOGICA DE ECONOMIA GERALJÁ (MOTOR DE RANKING) ---
-def calcular_prioridade(row):
-    """
-    Calcula o rank baseado em moedas e distância.
-    O Score define quem aparece primeiro na lista.
-    """
-    peso_moeda = 5.0      # Multiplicador de visibilidade por moeda
-    peso_distancia = 2.0  # Penalidade por distância (em KM)
-    
-    # Busca o saldo e a distância (com valores padrão para evitar erros)
-    saldo = row.get('geralcoins', 0)
-    dist = row.get('distancia_km', 99.0)
-    
-    # Cálculo do Score: Moedas elevam, Distância reduz
-    score = (saldo * peso_moeda) - (dist * peso_distancia)
-    return score
 # --- FUNCIONALIDADE DO ARQUIVO: O VARREDOR (Rodapé Automático) ---
 def finalizar_e_alinhar_layout():
     """
@@ -486,7 +454,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<div class="header-container"><span class="logo-azul">GERAL</span><span class="logo-laranja">JÁ</span><br><small style="color:#64748B; font-weight:700;">ENTREGANDO SOLUÇÕES</small></div>', unsafe_allow_html=True)
+st.markdown('<div class="header-container"><span class="logo-azul">GERAL</span><span class="logo-laranja">JÁ</span><br><small style="color:#64748B; font-weight:700;">BRASIL ELITE EDITION</small></div>', unsafe_allow_html=True)
 
 lista_abas = ["🔍 BUSCAR", "🚀 CADASTRAR", "👤 MEU PERFIL", "👑 ADMIN", "⭐ FEEDBACK"]
 comando = st.sidebar.text_input("Comando Secreto", type="password")
@@ -760,134 +728,65 @@ with menu_abas[2]:
                 doc_ref.update({"lat": loc['coords']['latitude'], "lon": loc['coords']['longitude']})
                 st.success("✅ Localização GPS Atualizada!")
 
-       # --- ESTILIZAÇÃO MODERNA (CSS) ---
-st.markdown("""
-<style>
-    .stForm {
-        border: 2px solid #ffaa00 !important;
-        border-radius: 20px !important;
-        padding: 20px !important;
-    }
-    .stButton>button {
-        background-color: #ffaa00 !important;
-        color: black !important;
-        font-weight: bold !important;
-        border-radius: 10px !important;
-        border: none !important;
-        transition: 0.3s;
-    }
-    .stButton>button:hover {
-        background-color: #e69900 !important;
-        transform: scale(1.02);
-    }
-</style>
-""", unsafe_allow_html=True)
+        # --- EDIÇÃO DE PERFIL E VITRINE ---
+        with st.expander("📝 EDITAR MEU PERFIL & VITRINE", expanded=False):
+            # Função de tratamento de imagem interna e robusta
+            def otimizar_imagem(arq, qualidade=50, size=(800, 800)):
+                try:
+                    img = Image.open(arq)
+                    if img.mode in ("RGBA", "P"): 
+                        img = img.convert("RGB")
+                    img.thumbnail(size)
+                    output = io.BytesIO()
+                    img.save(output, format="JPEG", quality=qualidade, optimize=True)
+                    return f"data:image/jpeg;base64,{base64.b64encode(output.getvalue()).decode()}"
+                except Exception as e:
+                    st.error(f"Erro ao processar imagem: {e}")
+                    return None
 
-# --- EDIÇÃO DE PERFIL E VITRINE ---
-with st.expander("📝 EDITAR MEU PERFIL & VITRINE", expanded=False):
-    
-    # 1. Verificação de Segurança das Variáveis
-    # d = dados vindos do Firestore; doc_ref = referência do documento no Firebase
-    if 'd' not in locals() or 'doc_ref' not in locals():
-        st.error("⚠️ Erro de conexão: Dados do usuário não localizados.")
-    else:
-        # Função de tratamento de imagem interna e robusta
-        def otimizar_imagem(arq, qualidade=60, size=(800, 800)):
-            try:
-                from PIL import Image
-                import io
-                import base64
-                img = Image.open(arq)
-                if img.mode in ("RGBA", "P"): 
-                    img = img.convert("RGB")
-                img.thumbnail(size)
-                output = io.BytesIO()
-                img.save(output, format="JPEG", quality=qualidade, optimize=True)
-                return f"data:image/jpeg;base64,{base64.b64encode(output.getvalue()).decode()}"
-            except Exception as e:
-                st.error(f"Erro no processamento da imagem: {e}")
-                return None
-
-        # INÍCIO DO FORMULÁRIO MODERNO
-        with st.form("perfil_v8_pro"):
-            st.markdown("### 🚀 Sua Vitrine no Grajaú Tem")
-            st.caption("Mantenha seus dados atualizados para atrair mais clientes.")
-            
-            # Linha 1: Nome e Segmento
-            col_nome, col_seg = st.columns([2, 1])
-            with col_nome:
-                n_nome = st.text_input("🏢 Nome Comercial ou Profissional", d.get('nome', ''))
-            with col_seg:
-                # Caso CATEGORIAS_OFICIAIS não esteja definida, usamos uma lista padrão
-                categorias = CATEGORIAS_OFICIAIS if 'CATEGORIAS_OFICIAIS' in globals() else ["Serviços", "Comércio", "Outros"]
-                area_atual = d.get('area', categorias[0])
-                idx_area = categorias.index(area_atual) if area_atual in categorias else 0
-                n_area = st.selectbox("📌 Segmento Principal", categorias, index=idx_area)
-            
-            # Descrição
-            n_desc = st.text_area("📝 Descrição Completa", d.get('descricao', ''), 
-                                help="Destaque seus diferenciais, horários e bairros que atende.", height=120)
-            
-            st.markdown("---")
-            
-            # Seção de Fotos
-            st.write("🖼️ **Gestão Visual**")
-            c_perfil, c_vitrine = st.columns(2)
-            
-            with c_perfil:
-                st.markdown("**Foto de Perfil (Logo)**")
-                n_foto = st.file_uploader("Upload Logo", type=['jpg','png','jpeg'], key="perfil")
-                if not n_foto and d.get('foto_url'):
-                    st.image(d.get('foto_url'), width=80, caption="Atual")
-            
-            with c_vitrine:
-                st.markdown("**Fotos da Vitrine (Portfolio)**")
-                n_portfolio = st.file_uploader("Upload Vitrine (Máx 4)", type=['jpg','png','jpeg'], 
-                                               accept_multiple_files=True, key="vitrine")
-                st.caption("Dica: Use fotos reais dos seus serviços.")
-
-            # Preview em tempo real da vitrine selecionada
-            if n_portfolio:
-                pre_cols = st.columns(4)
-                for i, file in enumerate(n_portfolio[:4]):
-                    pre_cols[i].image(file, use_container_width=True)
-
-            st.markdown("###") # Espaço extra
-
-            # O BOTÃO DE SUBMIT (FUNDAMENTAL DENTRO DO BLOCO)
-            btn_salvar = st.form_submit_button("💾 SALVAR ALTERAÇÕES NA VITRINE", use_container_width=True)
-
-            if btn_salvar:
-                with st.spinner("✨ Otimizando sua vitrine..."):
+            with st.form("perfil_v8"):
+                n_nome = st.text_input("Nome Comercial", d.get('nome', ''))
+                # CATEGORIAS_OFICIAIS deve estar definida no início do código globalmente
+                n_area = st.selectbox("Segmento", CATEGORIAS_OFICIAIS, 
+                                     index=CATEGORIAS_OFICIAIS.index(d.get('area')) if d.get('area') in CATEGORIAS_OFICIAIS else 0)
+                n_desc = st.text_area("Descrição do Serviço", d.get('descricao', ''))
+                
+                st.markdown("---")
+                st.write("📷 **Fotos**")
+                n_foto = st.file_uploader("Trocar Foto de Perfil", type=['jpg','png','jpeg'])
+                n_portfolio = st.file_uploader("Vitrine de Serviços (Máx 4 fotos)", type=['jpg','png','jpeg'], accept_multiple_files=True)
+                
+                if st.form_submit_button("💾 SALVAR TODAS AS ALTERAÇÕES", use_container_width=True):
                     updates = {
                         "nome": n_nome,
                         "area": n_area,
-                        "descricao": n_desc,
-                        "ultima_atualizacao": time.strftime("%Y-%m-%d %H:%M:%S")
+                        "descricao": n_desc
                     }
                     
-                    # Processa Foto de Perfil
+                    # Processa foto de perfil se houver upload
                     if n_foto:
-                        img_64 = otimizar_imagem(n_foto, qualidade=60, size=(400, 400))
-                        if img_64: updates["foto_url"] = img_64
+                        img_base64 = otimizar_imagem(n_foto, qualidade=60, size=(350, 350))
+                        if img_base64:
+                            updates["foto_url"] = img_base64
 
-                    # Processa Fotos da Vitrine (f1 a f4)
+                    # Processa fotos da vitrine (f1, f2, f3, f4)
                     if n_portfolio:
-                        # Limpa slots antigos antes de atualizar
-                        for i in range(1, 5): updates[f'f{i}'] = None
+                        # Limpa as fotos antigas da vitrine para subir as novas
+                        for i in range(1, 5):
+                            updates[f'f{i}'] = None
                         
                         for i, f in enumerate(n_portfolio[:4]):
-                            img_p_64 = otimizar_imagem(f, qualidade=75, size=(1024, 768))
-                            if img_p_64: updates[f"f{i+1}"] = img_p_64
+                            img_p_base64 = otimizar_imagem(f)
+                            if img_p_base64:
+                                updates[f"f{i+1}"] = img_p_base64
                     
-                    try:
-                        doc_ref.update(updates)
-                        st.balloons()
-                        st.success("✅ Perfil atualizado! Suas mudanças já estão ao vivo.")
-                        time.sleep(2)
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Erro ao salvar no banco de dados: {e}")
+                    # Envia para o Firebase
+                    doc_ref.update(updates)
+                    st.success("✅ Perfil e Vitrine atualizados com sucesso!")
+                    time.sleep(1)
+                    st.rerun()
+
+        # --- FAQ ---
         with st.expander("❓ PERGUNTAS FREQUENTES"):
             st.write("**Como ganho o selo Elite?**")
             st.write("Mantenha seu saldo acima de 10 moedas e perfil completo com fotos.")
@@ -1399,19 +1298,6 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
