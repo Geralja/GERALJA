@@ -761,7 +761,7 @@ with menu_abas[2]:
                 st.success("✅ Localização GPS Atualizada!")
 
         # --- EDIÇÃO DE PERFIL E VITRINE ---
-        with st.expander("📝 EDITAR MEU PERFIL & VITRINE", expanded=False):
+                        with st.expander("📝 EDITAR MEU PERFIL & VITRINE", expanded=False):
             # Função de tratamento de imagem interna e robusta
             def otimizar_imagem(arq, qualidade=50, size=(800, 800)):
                 try:
@@ -1356,6 +1356,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
