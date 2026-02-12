@@ -777,47 +777,73 @@ with menu_abas[2]:
                     return None
 
             with st.form("perfil_v8"):
-                n_nome = st.text_input("Nome Comercial", d.get('nome', ''))
-                # CATEGORIAS_OFICIAIS deve estar definida no início do código globalmente
-                n_area = st.selectbox("Segmento", CATEGORIAS_OFICIAIS, 
-                                     index=CATEGORIAS_OFICIAIS.index(d.get('area')) if d.get('area') in CATEGORIAS_OFICIAIS else 0)
-                n_desc = st.text_area("Descrição do Serviço", d.get('descricao', ''))
-                
-                st.markdown("---")
-                st.write("📷 **Fotos**")
-                n_foto = st.file_uploader("Trocar Foto de Perfil", type=['jpg','png','jpeg'])
-                n_portfolio = st.file_uploader("Vitrine de Serviços (Máx 4 fotos)", type=['jpg','png','jpeg'], accept_multiple_files=True)
-                
-                if st.form_submit_button("💾 SALVAR TODAS AS ALTERAÇÕES", use_container_width=True):
-                    updates = {
-                        "nome": n_nome,
-                        "area": n_area,
-                        "descricao": n_desc
-                    }
-                    
-                    # Processa foto de perfil se houver upload
-                    if n_foto:
-                        img_base64 = otimizar_imagem(n_foto, qualidade=60, size=(350, 350))
-                        if img_base64:
-                            updates["foto_url"] = img_base64
+    st.subheader("🚀 Edição de Vitrine Profissional")
+    
+    # Layout em colunas para campos de texto
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        n_nome = st.text_input("🏢 Nome Comercial", d.get('nome', ''))
+    with col2:
+        n_area = st.selectbox("📌 Segmento", CATEGORIAS_OFICIAIS, 
+                             index=CATEGORIAS_OFICIAIS.index(d.get('area')) if d.get('area') in CATEGORIAS_OFICIAIS else 0)
+    
+    n_desc = st.text_area("📝 Descrição do Serviço (Diferenciais e Horários)", d.get('descricao', ''), height=150)
+    
+    st.markdown("---")
+    
+    # Seção de Imagens com Previews
+    st.write("📷 **Identidade Visual e Vitrine**")
+    
+    c1, c2 = st.columns(2)
+    with c1:
+        n_foto = st.file_uploader("Trocar Foto de Perfil (Logo)", type=['jpg','png','jpeg'])
+        # Preview da foto atual se não houver novo upload
+        if not n_foto and d.get('foto_url'):
+            st.image(d.get('foto_url'), caption="Foto Atual", width=100)
+            
+    with c2:
+        n_portfolio = st.file_uploader("Atualizar Vitrine (Máx 4 fotos)", type=['jpg','png','jpeg'], accept_multiple_files=True)
+        # Mostra ícones das fotos já existentes na vitrine
+        st.caption("A vitrine atual será substituída se você subir novas fotos.")
 
-                    # Processa fotos da vitrine (f1, f2, f3, f4)
-                    if n_portfolio:
-                        # Limpa as fotos antigas da vitrine para subir as novas
-                        for i in range(1, 5):
-                            updates[f'f{i}'] = None
-                        
-                        for i, f in enumerate(n_portfolio[:4]):
-                            img_p_base64 = otimizar_imagem(f)
-                            if img_p_base64:
-                                updates[f"f{i+1}"] = img_p_base64
-                    
-                    # Envia para o Firebase
-                    doc_ref.update(updates)
-                    st.success("✅ Perfil e Vitrine atualizados com sucesso!")
-                    time.sleep(1)
-                    st.rerun()
+    # Feedback Visual da Vitrine Selecionada
+    if n_portfolio:
+        cols_pre = st.columns(len(n_portfolio[:4]))
+        for idx, file in enumerate(n_portfolio[:4]):
+            cols_pre[idx].image(file, use_container_width=True)
 
+    st.markdown("###") # Espaçamento
+    
+    if st.form_submit_button("💾 SALVAR TODAS AS ALTERAÇÕES", use_container_width=True):
+        with st.spinner("Otimizando imagens e salvando..."):
+            updates = {
+                "nome": n_nome,
+                "area": n_area,
+                "descricao": n_desc
+            }
+            
+            # Processa foto de perfil
+            if n_foto:
+                img_base64 = otimizar_imagem(n_foto, qualidade=60, size=(350, 350))
+                if img_base64:
+                    updates["foto_url"] = img_base64
+
+            # Processa fotos da vitrine
+            if n_portfolio:
+                # Resetando chaves antigas para garantir integridade
+                for i in range(1, 5):
+                    updates[f'f{i}'] = None
+                
+                for i, f in enumerate(n_portfolio[:4]):
+                    img_p_base64 = otimizar_imagem(f, qualidade=70, size=(800, 600)) # Vitrine pode ter mais resolução
+                    if img_p_base64:
+                        updates[f"f{i+1}"] = img_p_base64
+            
+            # Envia para o Firebase
+            doc_ref.update(updates)
+            st.success("✅ Tudo pronto! Seu perfil no Grajaú Tem foi atualizado.")
+            time.sleep(1.5)
+            st.rerun()
         # --- FAQ ---
         with st.expander("❓ PERGUNTAS FREQUENTES"):
             st.write("**Como ganho o selo Elite?**")
@@ -1330,6 +1356,7 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+
 
 
 
