@@ -38,9 +38,7 @@ class GeralJaEngine:
     def sanitizar(self, codigo_bruto):
         """Mata caracteres fantasmas e lixo de codificação instantaneamente"""
         if not codigo_bruto: return ""
-        # Remove U+00A0 (espaço inquebrável) e normaliza espaços
         limpo = codigo_bruto.replace('\u00a0', ' ').replace('\xa0', ' ')
-        # Filtra apenas caracteres ASCII visíveis + quebras de linha
         return re.sub(r'[^\x20-\x7E\n\t\r]', '', limpo)
 
     def injetar_modulo(self, nome_arquivo, conteudo):
@@ -72,13 +70,11 @@ except ImportError:
 
 # --- CONFIGURAÇÃO DE CHAVES (PUXANDO DO SECRETS) ---
 try:
-    # Chaves de Autenticação Social
     FB_ID = st.secrets["FB_CLIENT_ID"]
     FB_SECRET = st.secrets["FB_CLIENT_SECRET"]
     FIREBASE_API_KEY = st.secrets["FIREBASE_API_KEY"]
     REDIRECT_URI = "https://geralja-zxiaj2ot56fuzgcz7xhcks.streamlit.app/"
     
-    # Configuração de APIs de IA
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
     client_groq = Groq(api_key=st.secrets["GROQ_API_KEY"])
     
@@ -111,15 +107,13 @@ def conectar_banco_master():
             st.stop()
     return firebase_admin.get_app()
 
-# Ativa o banco
 app_engine = conectar_banco_master()
 db = firestore.client()
 
-# --- FUNCIONALIDADE DO ARQUIVO: TEMA MANUAL ---
 if 'tema_claro' not in st.session_state:
     st.session_state.tema_claro = False
 
-# Mantém os menus escondidos
+# Mantém os menus originais do Streamlit ocultos para visual limpo
 st.markdown("""
     <style>
         #MainMenu {visibility: hidden;}
@@ -146,7 +140,6 @@ def get_google_flow():
         redirect_uri=g_auth["redirect_uri"]
     )
 
-# Verifica se o Google enviou o código na URL
 query_params = st.query_params
 if "code" in query_params:
     try:
@@ -528,7 +521,7 @@ def criar_link_zap(numero, msg):
     return f"https://api.whatsapp.com/send?phone={numero}&text={quote(msg)}"
 
 # ==============================================================================
-# --- ABA 0: PORTAL GRAJAÚ TEM (VITRINE ESTILO REDE SOCIAL) ---
+# --- ABA 0: PORTAL GRAJAÚ TEM (VITRINE ESTILO REDE SOCIAL CORRIGIDA) ---
 # ==============================================================================
 with menu_abas[0]:
     st.markdown("### 🏙️ O que você precisa no Grajaú?")
@@ -548,83 +541,94 @@ with menu_abas[0]:
     termo_busca = c1.text_input("Ex: 'Cano estourado' ou 'Pizzaria'", key="main_search_v4")
     raio_km = c2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 20, 50, 500], value=5)
 
-    if termo_busca:
-        with st.status("🔍 Buscando...", expanded=False) as status:
-            st.write("📂 Verificando categorias oficiais...")
-            doc_cat = db.collection("configuracoes").document("categorias").get()
-            lista_oficial = doc_cat.to_dict().get("lista", []) if doc_cat.exists else []
-            
-            cat_ia = None
+    # --- ENGENHARIA DE CARREGAMENTO AUTOMÁTICO DA VITRINE ---
+    with st.spinner("Carregando vitrine de profissionais..."):
+        # Puxa todas as categorias atualizadas do Firebase
+        doc_cat = db.collection("configuracoes").document("categorias").get()
+        lista_oficial = doc_cat.to_dict().get("lista", CATEGORIAS_OFICIAIS) if doc_cat.exists else CATEGORIAS_OFICIAIS
+        
+        # Puxa os profissionais aprovados do banco de dados
+        profs_fluxo = db.collection("profissionais").where("aprovado", "==", True).stream()
+        lista_ranking = []
+        
+        # Mapeamento prévio inteligente caso haja termo de busca
+        cat_ia = None
+        if termo_busca:
             for c in lista_oficial:
                 if c.lower() in termo_busca.lower():
                     cat_ia = c
                     break
-            
             if not cat_ia:
-                st.write("🤖 IA classificando seu pedido...")
                 cat_ia = processar_ia_avancada(termo_busca)
+
+        for p_doc in profs_fluxo:
+            p = p_doc.to_dict()
+            p['id'] = p_doc.id
+            dist = calcular_distancia_real(minha_lat, minha_lon, p.get('lat', LAT_REF), p.get('lon', LON_REF))
             
-            profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
-            
-            lista_ranking = []
-            for p_doc in profs:
-                p = p_doc.to_dict()
-                p['id'] = p_doc.id
-                dist = calcular_distancia_real(minha_lat, minha_lon, p.get('lat', LAT_REF), p.get('lon', LON_REF))
+            if dist <= raio_km:
+                p['dist'] = dist
+                p['score_elite'] = (1000 if p.get('verificado') and p.get('saldo', 0) > 0 else 0)
                 
-                if dist <= raio_km:
-                    p['dist'] = dist
-                    p['score_elite'] = (1000 if p.get('verificado') and p.get('saldo', 0) > 0 else 0)
+                # Regra de filtro: Se houver busca, valida correspondência. Se não, exibe direto.
+                if termo_busca:
+                    t_norm = normalizar(termo_busca)
+                    n_norm = normalizar(p.get('nome', ''))
+                    a_norm = normalizar(p.get('area', ''))
+                    d_norm = normalizar(p.get('descricao', ''))
+                    
+                    if (t_norm in n_norm) or (t_norm in a_norm) or (t_norm in d_norm) or (cat_ia and p.get('area') == cat_ia):
+                        lista_ranking.append(p)
+                else:
                     lista_ranking.append(p)
 
-            lista_ranking.sort(key=lambda x: (x['dist'], -x['score_elite']))
-            status.update(label=f"Resultados para {cat_ia} encontrados!", state="complete")
+        # Ordenação Social Inteligente: Destaques Elite no topo + Proximidade
+        lista_ranking.sort(key=lambda x: (-x['score_elite'], x['dist']))
 
-        if not lista_ranking:
-            st.warning(f"Nenhum profissional de '{cat_ia}' encontrado nesta distância.")
-        else:
-            # --- RENDERIZAÇÃO DO GRID ESTILO REDE SOCIAL MODERNA ---
-            html_cards = '<div class="social-feed-grid">'
+    # --- RENDERIZAÇÃO DIRECT-TO-SCREEN ---
+    if not lista_ranking:
+        st.warning("Nenhum profissional encontrado nesta área ou distância no momento.")
+    else:
+        html_cards = '<div class="social-feed-grid">'
+        
+        for p in lista_ranking:
+            f_perfil = p.get('foto_url', '')
+            if f_perfil and not str(f_perfil).startswith("http"):
+                f_perfil = f"data:image/jpeg;base64,{f_perfil}"
+            elif not f_perfil:
+                f_perfil = "https://cdn-icons-png.flaticon.com/512/149/149071.png"
             
-            for p in lista_ranking:
-                f_perfil = p.get('foto_url', '')
-                if f_perfil and not str(f_perfil).startswith("http"):
-                    f_perfil = f"data:image/jpeg;base64,{f_perfil}"
-                elif not f_perfil:
-                    f_perfil = "https://cdn-icons-png.flaticon.com/512/149/149071.png"
-                
-                is_elite = p['score_elite'] > 0
-                badge_html = '<span class="social-badge-elite">🏆 ELITE</span>' if is_elite else ''
-                zap_link = f"https://wa.me/{limpar_whatsapp(p.get('whatsapp',''))}?text=Vi+seu+perfil+no+GeralJa"
-                
-                # Renderizador HTML estruturado do Card Social
-                html_cards += f"""
-                <div class="social-card">
-                    <div class="social-banner">
-                        {badge_html}
-                        <div class="social-avatar-container">
-                            <img src="{f_perfil}" class="social-avatar">
-                        </div>
-                    </div>
-                    <div class="social-card-content">
-                        <div>
-                            <h4 class="social-pro-title">{str(p.get('nome','')).upper()}</h4>
-                            <span class="social-pro-tag">{p.get('area', 'Profissional')}</span>
-                            <p class="social-desc">{str(p.get('descricao',''))}</p>
-                        </div>
-                        <div>
-                            <div class="social-metrics">
-                                <span class="social-dist">📍 <b>{p['dist']:.1f} km</b> de você</span>
-                                <span class="social-stars">⭐⭐⭐⭐⭐ {p.get('rating', '5.0')}</span>
-                            </div>
-                            <a href="{zap_link}" target="_blank" class="social-action-btn">💬 CONTACTAR PARCEIRO</a>
-                        </div>
+            is_elite = p['score_elite'] > 0
+            badge_html = '<span class="social-badge-elite">🏆 ELITE</span>' if is_elite else ''
+            zap_link = f"https://wa.me/{limpar_whatsapp(p.get('whatsapp',''))}?text=Vi+seu+perfil+no+GeralJa"
+            
+            html_cards += f"""
+            <div class="social-card">
+                <div class="social-banner">
+                    {badge_html}
+                    <div class="social-avatar-container">
+                        <img src="{f_perfil}" class="social-avatar">
                     </div>
                 </div>
-                """
-                
-            html_cards += '</div>'
-            st.markdown(html_cards, unsafe_allow_html=True)
+                <div class="social-card-content">
+                    <div>
+                        <h4 class="social-pro-title">{str(p.get('nome','')).upper()}</h4>
+                        <span class="social-pro-tag">{p.get('area', 'Profissional')}</span>
+                        <p class="social-desc">{str(p.get('descricao',''))}</p>
+                    </div>
+                    <div>
+                        <div class="social-metrics">
+                            <span class="social-dist">📍 <b>{p['dist']:.1f} km</b> de você</span>
+                            <span class="social-stars">⭐⭐⭐⭐⭐ {p.get('rating', '5.0')}</span>
+                        </div>
+                        <a href="{zap_link}" target="_blank" class="social-action-btn">💬 CONTACTAR PARCEIRO</a>
+                    </div>
+                </div>
+            </div>
+            """
+            
+        html_cards += '</div>'
+        st.markdown(html_cards, unsafe_allow_html=True)
 
 # ==============================================================================
 # --- SEÇÃO DE NOTÍCIAS HÍBRIDA ---
@@ -817,7 +821,7 @@ with menu_abas[1]:
                     
                     st.balloons()
                     if perfil_antigo.exists:
-                        st.success(f"✅ Perfil de {nome_input} atualizado com sucesso!")
+                        st.success(f"✅ Perfil de {nome_input} updated com sucesso!")
                     else:
                         st.success(f"🎊 Bem-vindo ao GeralJá! Cadastro concluído!")
             except Exception as e:
@@ -1196,88 +1200,3 @@ if "security_check" not in st.session_state:
     time.sleep(1)
     st.session_state.security_check = True
     st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
