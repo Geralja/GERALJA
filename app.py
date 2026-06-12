@@ -2,6 +2,15 @@
 # GERALJÁ: CRIANDO SOLUÇÕES - MÓDULO 1: INFRAESTRUTURA
 # ==============================================================================
 import streamlit as st
+
+# --- CONFIGURAÇÃO DE AMBIENTE E PERFORMANCE (Movido para o topo para evitar quebras) ---
+st.set_page_config(
+    page_title="GeralJá | Criando Soluções",
+    page_icon="🇧🇷",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+
 import firebase_admin
 from firebase_admin import credentials, firestore
 import base64
@@ -14,12 +23,12 @@ from datetime import datetime
 import pytz
 import unicodedata
 import requests
-import streamlit as st
-import re
 import sys
 import os
-import pytz
-from datetime import datetime
+
+# Imports globais necessários para manipulação de imagens em todas as abas
+from PIL import Image
+import io
 
 # --- CONFIGURAÇÃO DE ALTO NÍVEL ---
 class GeralJaEngine:
@@ -104,16 +113,6 @@ def conectar_banco_master():
 # Ativa o banco
 app_engine = conectar_banco_master()
 db = firestore.client()
-
-# ------------------------------------------------------------------------------
-# 1. CONFIGURAÇÃO DE AMBIENTE E PERFORMANCE
-# ------------------------------------------------------------------------------
-st.set_page_config(
-    page_title="GeralJá | Criando Soluções",
-    page_icon="🇧🇷",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
 
 # --- FUNCIONALIDADE DO ARQUIVO: TEMA MANUAL ---
 if 'tema_claro' not in st.session_state:
@@ -705,7 +704,7 @@ with menu_abas[2]:
 
         # --- EDIÇÃO DE PERFIL E VITRINE ---
         with st.expander("📝 EDITAR MEU PERFIL & VITRINE", expanded=False):
-            # Função de tratamento de imagem interna e robusta
+            # Função de tratamento de imagem interna e robusta (Usa PIL e io globais agora)
             def otimizar_imagem(arq, qualidade=50, size=(800, 800)):
                 try:
                     img = Image.open(arq)
@@ -757,7 +756,7 @@ with menu_abas[2]:
                     
                     # Envia para o Firebase
                     doc_ref.update(updates)
-                    st.success("✅ Perfil e Vitrine atualizados com sucesso!")
+                    st.success("✅ Perfil e Vitrine updated successfully!")
                     time.sleep(1)
                     st.rerun()
 
@@ -1198,7 +1197,7 @@ with st.expander("📄 Transparência e Privacidade (LGPD)"):
     **Como tratamos seus dados:**
     1. **Finalidade:** Seus dados são usados exclusivamente para conectar você a clientes no Grajaú.
     2. **Exclusão:** Você possui controle total. A exclusão definitiva pode ser feita no seu painel mediante senha de segurança.
-    3. **Vírus e Malware:** Todas as fotos enviadas passam por um processo de normalização de bits para evitar a execução de códigos ocultos em arquivos de imagem.
+    3. **Vírus e Malware:** Todas as fotos enviadas passam por um processo de normalização de bits para evitar a execução de códigos ocultos in arquivos de imagem.
     
     *Em conformidade com a Lei Federal nº 13.709 (LGPD).*
     """)
@@ -1209,7 +1208,7 @@ if "security_check" not in st.session_state:
     st.toast("🛡️ IA: Verificando integridade da conexão...", icon="🔍")
     time.sleep(1)
     st.session_state.security_check = True
-    st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️") 
+    st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")  
 
 
 
