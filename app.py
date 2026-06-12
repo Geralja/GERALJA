@@ -1209,7 +1209,7 @@ if "security_check" not in st.session_state:
     st.toast("🛡️ IA: Verificando integridade da conexão...", icon="🔍")
     time.sleep(1)
     st.session_state.security_check = True
-    st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️")
+    st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡️") 
 
 
 
