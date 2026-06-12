@@ -681,7 +681,11 @@ with menu_abas[1]:
     except:
         pass
 
+    # CORREÇÃO CRÍTICA CONTRA ATTRIBUTEERROR: Garante que dados_google seja sempre um dicionário
     dados_google = st.session_state.get("pre_cadastro", {})
+    if not isinstance(dados_google, dict):
+        dados_google = {}
+        
     email_inicial = dados_google.get("email", "")
     nome_inicial = dados_google.get("nome", "")
     foto_google = dados_google.get("foto", "")
@@ -780,7 +784,7 @@ with menu_abas[1]:
                             del st.session_state["pre_cadastro"]
                         st.balloons()
                         if perfil_antigo.exists:
-                            st.success(f"✅ Perfil de {nome_input} atualizado com sucesso!")
+                            st.success(f"✅ Perfil de {nome_input} updated com sucesso!")
                         else:
                             st.success(f"🎊 Bem-vindo ao GeralJá! Cadastro concluído!")
                 except Exception as e:
@@ -925,7 +929,7 @@ with menu_abas[2]:
                 n_senha = st.text_input("Alterar Senha", d.get('senha', ''), type="password")
                 n_foto = st.file_uploader("Substituir Foto de Perfil", type=['jpg','png','jpeg'])
                 
-                btn_salvar_dados = st.form_submit_button("💾 SALVAR ALTERAÇÕES CADASTRAIS")
+                st.form_submit_button("💾 SALVAR ALTERAÇÕES CADASTRAIS")
                 if btn_salvar_dados:
                     nova_foto_perfil = d.get('foto_url', '')
                     if n_foto is not None:
