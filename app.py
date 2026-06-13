@@ -453,13 +453,26 @@ with st.sidebar:
         lista_abas.extend(["👑 ADMIN", "📊 FINANCEIRO"])
 
 menu_abas = st.tabs(lista_abas)
+
+# MAPEAMENTO SEGURO DE ABAS - Evita IndexError
+abas_dict = {}
+for i, nome in enumerate(lista_abas):
+    if "BUSCAR" in nome: abas_dict['buscar'] = i
+    elif "CADASTRAR" in nome: abas_dict['cadastrar'] = i
+    elif "MEU PERFIL" in nome: abas_dict['perfil'] = i
+    elif "ADMIN" in nome: abas_dict['admin'] = i
+    elif "FEEDBACK" in nome: abas_dict['feedback'] = i
+    elif "FINANCEIRO" in nome: abas_dict['financeiro'] = i
+
 ZAP_VENDAS = "5511980168513"
 
 def criar_link_zap(numero, msg):
     return f"https://api.whatsapp.com/send?phone={numero}&text={urllib.parse.quote(msg)}"
 
 # ABA BUSCAR
-with menu_abas[0]:
+if 'buscar' in abas_dict:
+    if True:
+    with menu_abas[abas_dict['buscar']]:
     st.markdown("### 🏙️ O que você precisa no Grajaú?")
     
     with st.expander("📍 Seus dados de Localização (GPS)", expanded=False):
@@ -597,7 +610,9 @@ if noticias:
             """, unsafe_allow_html=True)
 
 # ABA MEU PERFIL - COM VITRINE
-with menu_abas[2]:
+if 'perfil' in abas_dict:
+    if True:
+    with menu_abas[abas_dict['perfil']]:
     if not st.session_state.auth:
         st.info("Faça login para ver seu perfil")
     else:
@@ -669,11 +684,422 @@ with menu_abas[2]:
                                 produtos.pop(idx)
                                 db.collection("profissionais").document(user_id).update({"produtos": produtos})
                                 st.rerun()
+                                produtos = p.get('produtos', [])
+                produtos_ativos = [pr for pr in produtos if pr.get('ativo', True)][:3]
+                if produtos_ativos and p.get('tipo_conta') == 'comerciante':
+                    st.markdown("<div style='margin-top:10px;'><b>🛍 Destaques:</b></div>", unsafe_allow_html=True)
+                    cols = st.columns(len(produtos_ativos))
+                    for idx, prod in enumerate(produtos_ativos):
+                        with cols[idx]:
+                            st.image(safe_image_src(prod.get('foto_b64', '')), use_container_width=True)
+                            st.markdown(f"<div class='produto-card'><b>{prod.get('nome','')}</b><br>R$ {prod.get('preco',0):.2f}</div>", unsafe_allow_html=True)
+                            link_prod = criar_link_zap(limpar_whatsapp(p.get('whatsapp','')), f"Olá! Vi no GeralJá e quero 1x {prod.get('nome','')}")
+                            st.link_button("Pedir", link_prod, use_container_width=True)
+
+                st.markdown(f"""
+                    <a href="{zap_link}" target="_blank" style="display:block; background:#25D366; color:white; text-align:center; padding:12px; border-radius:12px; text-decoration:none; font-weight:bold; margin-top:12px;">💬 CHAMAR NO WHATSAPP</a>
+                </div>
+                """, unsafe_allow_html=True)
+
+# NOTÍCIAS
+st.markdown("---")
+st.subheader("📰 Plantão Grajaú Tem")
+
+@st.cache_data(ttl=600)
+def buscar_noticias_rss(busca="Grajaú São Paulo"):
+    try:
+        url_rss = f"https://news.google.com/rss/search?q={urllib.parse.quote(busca)}&hl=pt-BR&gl=BR&ceid=BR:pt-419"
+        feed = feedparser.parse(url_rss)
+        return feed.entries[:4]
+    except:
+        return []
+
+noticias = buscar_noticias_rss()
+if noticias:
+    cols = st.columns(4)
+    for i, n in enumerate(noticias):
+        with cols[i]:
+            img = "https://placehold.co/300x200/0047AB/FFFFFF?text=GeralJá"
+            if 'media_content' in n and n.media_content:
+                img = n.media_content[0]['url']
+            fonte = n.source.get('title', 'Google News') if hasattr(n, 'source') else 'Google News'
+            st.markdown(f"""
+            <a href="{n.link}" target="_blank" style="text-decoration:none; color:inherit;">
+                <div style="border:1px solid #ddd; border-radius:10px; overflow:hidden; height:280px; background:white;">
+                    <img src="{img}" style="width:100%; height:120px; object-fit:cover;">
+                    <div style="padding:10px;">
+                        <p style="font-size:12px; font-weight:bold; margin:0; color:#333;">{n.title[:80]}...</p>
+                        <p style="font-size:10px; color:#888; margin-top:8px;">{fonte}</p>
+                    </div>
+                </div>
+            </a>
+            """, unsafe_allow_html=True)
+
+# ABA MEU PERFIL - COM VITRINE
+with menu_abas[2]:
+    if not st.session_state.auth:
+        st.info("Faça login para ver seu perfil")
+    else:
+        user_id = st.session_state.user_id
+        user_doc = db.collection("profissionais").document(user_id).get()
+        if user_doc.exists:
+            user_data = user_doc.to_dict()
+            st.subheader(f"👤 {user_data.get('nome', 'Usuário')}")
+
+            tab_perfil, tab_produtos = st.tabs(["Dados", "🛍 Meus Produtos"])
+
+            with tab_perfil:
+                st.write(f"**Área:** {user_data.get('area', '')}")
+                st.write(f"**WhatsApp:** {user_data.get('whatsapp', '')}")
+                st.write(f"**Tipo de conta:** {user_data.get('tipo_conta', 'prestador')}")
+
+            with tab_produtos:
+                tipo_conta = user_data.get('tipo_conta', 'prestador')
+                if tipo_conta!= 'comerciante':
+                    st.info("Ative o modo Comerciante no cadastro para vender produtos.")
+                    if st.button("Virar Comerciante"):
+                        db.collection("profissionais").document(user_id).update({"tipo_conta": "comerciante"})
+                        st.rerun()
+                else:
+                    produtos = user_data.get('produtos', [])
+                    st.write(f"**Produtos cadastrados:** {len(produtos)}/10 grátis")
+
+                    with st.form("novo_produto", clear_on_submit=True):
+                        st.markdown("##### Adicionar produto")
+                        p_nome = st.text_input("Nome do produto")
+                        p_preco = st.number_input("Preço R$", min_value=0.0, format="%.2f")
+                        p_desc = st.text_area("Descrição", max_chars=200)
+                        p_foto = st.file_uploader("Foto do produto", type=['jpg', 'jpeg', 'png'])
+                        p_destaque = st.checkbox("Marcar como destaque na busca")
+
+                        if st.form_submit_button("Cadastrar Produto"):
+                            if p_nome and p_preco > 0 and p_foto:
+                                foto_b64 = otimizar_imagem_admin(p_foto)
+                                if foto_b64:
+                                    novo_prod = {
+                                        "nome": p_nome,
+                                        "preco": float(p_preco),
+                                        "desc": p_desc,
+                                        "foto_b64": foto_b64,
+                                        "ativo": True,
+                                        "destaque": p_destaque,
+                                        "criado_em": datetime.now(fuso_br)
+                                    }
+                                    produtos.append(novo_prod)
+                                    db.collection("profissionais").document(user_id).update({"produtos": produtos})
+                                    st.success("Produto cadastrado!")
+                                    st.rerun()
+                                else:
+                                    st.error("Erro ao processar imagem")
+                            else:
+                                st.warning("Preencha nome, preço e foto")
+
+                    st.markdown("---")
+                    st.markdown("##### Seus produtos")
+                    for idx, prod in enumerate(produtos):
+                        col1, col2, col3 = st.columns([1,3,1])
+                        with col1:
+                            st.image(safe_image_src(prod.get('foto_b64')), width=80)
+                        with col2:
+                            st.markdown(f"**{prod.get('nome')}** - R$ {prod.get('preco',0):.2f}")
+                            st.caption(prod.get('desc','')[:60])
+                        with col3:
+                            if st.button("🗑", key=f"del_{idx}"):
+                                produtos.pop(idx)
+                                db.collection("profissionais").document(user_id).update({"produtos": produtos})
+                                st.rerun()
+
+# ABA ADMIN - mantém original + contador de produtos
+# [restante do código original mantido...]
 
 # ==============================================================================
-# BLOCO C: INTERFACE PRINCIPAL E ABAS - CONTINUAÇÃO
+# --- ABA 1: CADASTRAR & EDITAR (VERSÃO FINAL GERALJÁ CORRIGIDA) ---
 # ==============================================================================
+with menu_abas[1]:
+    st.markdown("### 🚀 Cadastro ou Edição de Profissional")
 
+    try:
+        doc_cat = db.collection("configuracoes").document("categorias").get()
+        if doc_cat.exists:
+            CATEGORIAS_OFICIAIS = doc_cat.to_dict().get("lista", ["Geral"])
+        else:
+            CATEGORIAS_OFICIAIS = ["Pedreiro", "Locutor", "Eletricista", "Mecânico"]
+    except:
+        CATEGORIAS_OFICIAIS = ["Pedreiro", "Locutor", "Eletricista", "Mecânico"]
+
+    dados_google = st.session_state.get("pre_cadastro", {})
+    email_inicial = dados_google.get("email", "")
+    nome_inicial = dados_google.get("nome", "")
+    foto_google = dados_google.get("foto", "")
+
+    st.markdown("##### Entre rápido com:")
+    col_soc1, col_soc2 = st.columns(2)
+
+    g_auth = st.secrets.get("google_auth", {})
+    g_id = g_auth.get("client_id")
+    g_uri = g_auth.get("redirect_uri", "https://geralja-zxiaj2ot56fuzgcz7xhcks.streamlit.app/")
+
+    with col_soc1:
+        if g_id:
+            url_google = f"https://accounts.google.com/o/oauth2/v2/auth?client_id={g_id}&response_type=code&scope=openid%20profile%20email&redirect_uri={g_uri}"
+            st.markdown(f'''
+                <a href="{url_google}" target="_self" style="text-decoration:none;">
+                    <div style="display:flex; align-items:center; justify-content:center; border:1px solid #dadce0; border-radius:8px; padding:8px; background:white;">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" width="18px" style="margin-right:10px;">
+                        <span style="color:#3c4043; font-weight:bold; font-size:14px;">Google</span>
+                    </div>
+                </a>
+            ''', unsafe_allow_html=True)
+        else:
+            st.caption("⚠ Google Auth não configurado")
+
+    with col_soc2:
+        fb_id = st.secrets.get("FB_CLIENT_ID", "")
+        st.markdown(f'''
+            <a href="https://www.facebook.com/v18.0/dialog/oauth?client_id={fb_id}&redirect_uri={g_uri}&scope=public_profile,email" target="_self" style="text-decoration:none;">
+                <div style="display:flex; align-items:center; justify-content:center; border-radius:8px; padding:8px; background:#1877F2;">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg" width="18px" style="margin-right:10px;">
+                    <span style="color:white; font-weight:bold; font-size:14px;">Facebook</span>
+                </div>
+            </a>
+        ''', unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    BONUS_WELCOME = 20
+
+    with st.form("form_profissional", clear_on_submit=False):
+        st.caption("DICA: Se você já tem cadastro, use o mesmo WhatsApp para editar seus dados.")
+
+        col1, col2 = st.columns(2)
+        nome_input = col1.text_input("Nome do Profissional ou Loja", value=nome_inicial)
+        zap_input = col2.text_input("WhatsApp (DDD + Número sem espaços)")
+
+        email_input = st.text_input("E-mail (Para login via Google)", value=email_inicial)
+
+        col3, col4 = st.columns(2)
+        cat_input = col3.selectbox("Selecione sua Especialidade Principal", CATEGORIAS_OFICIAIS)
+        senha_input = col4.text_input("Sua Senha de Acesso", type="password", help="Necessária para salvar alterações")
+
+        desc_input = st.text_area("Descrição Completa (Serviços, Horários, Diferenciais)")
+        tipo_input = st.radio("Tipo", ["👨🔧 Profissional Autônomo", "🏢 Comércio/Loja"], horizontal=True)
+
+        foto_upload = st.file_uploader("Atualizar Foto de Perfil ou Logo", type=['png', 'jpg', 'jpeg'])
+
+        btn_acao = st.form_submit_button("✅ FINALIZAR: SALVAR OU ATUALIZAR", use_container_width=True)
+
+    if btn_acao:
+        if not nome_input or not zap_input or not senha_input:
+            st.warning("⚠ Nome, WhatsApp e Senha são obrigatórios!")
+        else:
+            try:
+                with st.spinner("Sincronizando com o ecossistema GeralJá..."):
+                    doc_ref = db.collection("profissionais").document(zap_input)
+                    perfil_antigo = doc_ref.get()
+                    dados_antigos = perfil_antigo.to_dict() if perfil_antigo.exists else {}
+
+                    foto_b64 = dados_antigos.get("foto_url", "")
+
+                    if foto_upload is not None:
+                        file_ext = foto_upload.name.split('.')[-1]
+                        img_bytes = foto_upload.getvalue()
+                        encoded_img = base64.b64encode(img_bytes).decode()
+                        foto_b64 = f"data:image/{file_ext};base64,{encoded_img}"
+                    elif not foto_b64 and foto_google:
+                        foto_b64 = foto_google
+
+                    saldo_final = dados_antigos.get("saldo", BONUS_WELCOME)
+                    cliques_atuais = dados_antigos.get("cliques", 0)
+
+                    dados_pro = {
+                        "nome": nome_input,
+                        "whatsapp": zap_input,
+                        "email": email_input,
+                        "area": cat_input,
+                        "senha": senha_input,
+                        "descricao": desc_input,
+                        "tipo": tipo_input,
+                        "foto_url": foto_b64,
+                        "saldo": saldo_final,
+                        "data_cadastro": datetime.now().strftime("%d/%m/%Y"),
+                        "aprovado": True,
+                        "cliques": cliques_atuais,
+                        "rating": 5,
+                        "lat": st.session_state.minha_lat,
+                        "lon": st.session_state.minha_lon
+                    }
+
+                    doc_ref.set(dados_pro)
+
+                    if "pre_cadastro" in st.session_state:
+                        del st.session_state["pre_cadastro"]
+
+                    st.balloons()
+                    if perfil_antigo.exists:
+                        st.success(f"✅ Perfil de {nome_input} atualizado com sucesso!")
+                    else:
+                        st.success(f"🎊 Bem-vindo ao GeralJá! Cadastro concluído!")
+
+            except Exception as e:
+                st.error(f"❌ Erro ao processar perfil: {e}")
+
+# ==============================================================================
+# ABA 2: 👤 MEU PERFIL / PAINEL DO PARCEIRO
+# ==============================================================================
+with menu_abas[2]:
+    params = st.query_params
+    if "uid" in params and not st.session_state.auth:
+        fb_uid = params["uid"]
+        user_query = db.collection("profissionais").where("fb_uid", "==", fb_uid).limit(1).get()
+        if user_query:
+            doc = user_query[0]
+            st.session_state.auth = True
+            st.session_state.user_id = doc.id
+            st.success(f"✅ Bem-vindo!")
+            time.sleep(1)
+            st.rerun()
+
+    if not st.session_state.auth:
+        st.subheader("🚀 Acesso ao Painel")
+
+        fb_id = st.secrets.get("FB_CLIENT_ID", "")
+        redirect_uri = "https://geralja-zxiaj2ot56fuzgcz7xhcks.streamlit.app/"
+        url_direta_fb = f"https://www.facebook.com/v18.0/dialog/oauth?client_id={fb_id}&redirect_uri={redirect_uri}&scope=public_profile,email"
+        link_auth = url_direta_fb
+
+        st.markdown(f'''
+            <a href="{url_direta_fb}" target="_top" style="text-decoration:none;">
+                <div style="background:#1877F2;color:white;padding:12px;border-radius:8px;text-align:center;font-weight:bold;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow: 0px 4px 6px rgba(0,0,0,0.1);">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg" width="20px" style="margin-right:10px;">
+                    ENTRAR COM FACEBOOK
+                </div>
+            </a>
+        ''', unsafe_allow_html=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.write("--- ou use seus dados ---")
+
+        col1, col2 = st.columns(2)
+        l_zap = col1.text_input("WhatsApp", key="login_zap_geralja_v10", placeholder="Ex: 11999999999")
+        l_pw = col2.text_input("Senha", type="password", key="login_pw_geralja_v10")
+
+        if st.button("ENTRAR NO PAINEL", key="btn_entrar_geralja_v10", use_container_width=True):
+            try:
+                u = db.collection("profissionais").document(l_zap).get()
+                if u.exists:
+                    dados_user = u.to_dict()
+                    if str(dados_user.get('senha')) == str(l_pw):
+                        st.session_state.auth = True
+                        st.session_state.user_id = l_zap
+                        st.success("Login realizado com sucesso!")
+                        st.rerun()
+                    else:
+                        st.error("❌ Senha incorreta.")
+                else:
+                    st.error("❌ WhatsApp não cadastrado.")
+            except Exception as e:
+                st.error(f"Erro ao acessar banco de dados: {e}")
+    else:
+        doc_ref = db.collection("profissionais").document(st.session_state.user_id)
+        d = doc_ref.get().to_dict()
+
+        st.write(f"### Olá, {d.get('nome', 'Parceiro')}!")
+
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Saldo 🪙", f"{d.get('saldo', 0)}")
+        m2.metric("Cliques 🚀", f"{d.get('cliques', 0)}")
+        m3.metric("Status", "🟢 ATIVO" if d.get('aprovado') else "🟡 PENDENTE")
+
+        if st.button("📍 ATUALIZAR MEU GPS", use_container_width=True):
+            if streamlit_js_eval:
+                loc = streamlit_js_eval(js_expressions="navigator.geolocation.getCurrentPosition(s => s)", key='gps_v8')
+                if loc and 'coords' in loc:
+                    doc_ref.update({"lat": loc['coords']['latitude'], "lon": loc['coords']['longitude']})
+                    st.success("✅ Localização GPS Atualizada!")
+            else:
+                st.error("Recurso JavaScript indisponível no momento.")
+
+        with st.expander("📝 EDITAR MEU PERFIL & VITRINE", expanded=False):
+            def otimizar_imagem_local(arq, qualidade=50, size=(800, 800)):
+                try:
+                    img = Image.open(arq)
+                    if img.mode in ("RGBA", "P"):
+                        img = img.convert("RGB")
+                    img.thumbnail(size)
+                    output = io.BytesIO()
+                    img.save(output, format="JPEG", quality=qualidade, optimize=True)
+                    return f"data:image/jpeg;base64,{base64.b64encode(output.getvalue()).decode()}"
+                except Exception as e:
+                    st.error(f"Erro ao processar imagem: {e}")
+                    return None
+
+            with st.form("perfil_v8"):
+                n_nome = st.text_input("Nome Comercial", d.get('nome', ''))
+                n_area = st.selectbox("Segmento", CATEGORIAS_OFICIAIS,
+                                     index=CATEGORIAS_OFICIAIS.index(d.get('area')) if d.get('area') in CATEGORIAS_OFICIAIS else 0)
+                n_desc = st.text_area("Descrição do Serviço", d.get('descricao', ''))
+
+                st.markdown("---")
+                st.write("📷 **Fotos**")
+                n_foto = st.file_uploader("Trocar Foto de Perfil", type=['jpg','png','jpeg'])
+                n_portfolio = st.file_uploader("Vitrine de Serviços (Máx 4 fotos)", type=['jpg','png','jpeg'], accept_multiple_files=True)
+
+                if st.form_submit_button("💾 SALVAR TODAS AS ALTERAÇÕES", use_container_width=True):
+                    updates = {
+                        "nome": n_nome,
+                        "area": n_area,
+                        "descricao": n_desc
+                    }
+
+                    if n_foto:
+                        img_base64 = otimizar_imagem_local(n_foto, qualidade=60, size=(350, 350))
+                        if img_base64:
+                            updates["foto_url"] = img_base64
+
+                    if n_portfolio:
+                        for i in range(1, 5):
+                            updates[f'f{i}'] = None
+
+                        for i, f in enumerate(n_portfolio[:4]):
+                            img_p_base64 = otimizar_imagem_local(f)
+                            if img_p_base64:
+                                updates[f"f{i+1}"] = img_p_base64
+
+                    doc_ref.update(updates)
+                    st.success("✅ Perfil e Vitrine updated com sucesso!")
+                    time.sleep(1)
+                    st.rerun()
+
+        with st.expander("❓ PERGUNTAS FREQUENTES"):
+            st.write("**Como ganho o selo Elite?**")
+            st.write("Mantenha seu saldo acima de 10 moedas e perfil completo com fotos.")
+            st.write("**Como funciona a cobrança?**")
+            st.write("Cada clique no seu botão de WhatsApp desconta 1 moeda do seu saldo atual.")
+
+        if not d.get('fb_uid'):
+            with st.expander("🔗 CONECTAR FACEBOOK"):
+                st.info("Conecte seu Facebook para fazer login rápido sem senha.")
+                st.link_button("VINCULAR AGORA", link_auth, use_container_width=True)
+
+        st.divider()
+
+        col_out, col_del = st.columns(2)
+
+        with col_out:
+            if st.button("🚪 SAIR DO PAINEL", use_container_width=True):
+                st.session_state.auth = False
+                st.rerun()
+
+        with col_del:
+            with st.expander("⚠ EXCLUIR CONTA"):
+                st.write("Atenção: Isso apaga todos os seus dados permanentemente.")
+                if st.button("CONFIRMAR EXCLUSÃO", type="secondary", use_container_width=True):
+                    doc_ref.delete()
+                    st.session_state.auth = False
+                    st.error("Sua conta foi removida do sistema.")
+                    time.sleep(2)
+                    st.rerun()
+
+# ==============================================================================
 # ABA 3: 👑 TORRE DE CONTROLE MASTER (COMPLETA + REGISTRO DE VENDAS)
 # ==============================================================================
 with menu_abas[3]:
@@ -878,7 +1304,7 @@ with menu_abas[4]:
 # ==============================================================================
 # ABA 5: 📊 FINANCEIRO (EASTER EGG - COMANDO SECRETO)
 # ==============================================================================
-if len(menu_abas) > 5 and "FINANCEIRO" in menu_abas[5]:
+if comando == "abracadabra" and len(menu_abas) > 5:
     with menu_abas[5]:
         st.header("📊 Painel Financeiro GeralJá")
         st.write("Visão geral e faturamento estratégico de moedas da plataforma.")
@@ -892,8 +1318,8 @@ if len(menu_abas) > 5 and "FINANCEIRO" in menu_abas[5]:
                 total_cliques = df_fin['cliques'].sum() if 'cliques' in df_fin else 0
 
                 col_f1, col_f2 = st.columns(2)
-                col_f1.metric("Moedas Ativas em Circulação", f"🪙 {int(total_moedas)}")
-                col_f2.metric("Total de Cliques Convertidos", f"🚀 {int(total_cliques)}")
+                col_f1.metric("Moedas Ativas em Circulação", f"🪙 {total_moedas}")
+                col_f2.metric("Total de Cliques Convertidos", f"🚀 {total_cliques}")
             else:
                 st.info("Nenhum dado financeiro para listar.")
         except Exception as e:
@@ -902,63 +1328,35 @@ if len(menu_abas) > 5 and "FINANCEIRO" in menu_abas[5]:
 # ------------------------------------------------------------------------------
 # FINALIZAÇÃO & RODAPÉ BLINDADO (LGPD & SECURITY SHIELD)
 # ------------------------------------------------------------------------------
-def finalizar_e_alinhar_layout():
-    st.markdown("---")
-    st.markdown("""
-    <style>
-       .footer-container {
-            text-align: center;
-            padding: 20px;
-            color: #64748B;
-            font-size: 12px;
-        }
-       .security-badge {
-            display: inline-flex;
-            align-items: center;
-            background: #f1f5f9;
-            border: 1px solid #cbd5e1;
-            border-radius: 20px;
-            padding: 5px 15px;
-            margin-bottom: 10px;
-            color: #0f172a;
-            font-weight: bold;
-        }
-       .shield-icon {
-            color: #22c55e;
-            margin-right: 8px;
-        }
-    </style>
-    """, unsafe_allow_html=True)
-
-    st.markdown("""
-    <div class="footer-container">
-        <div class="security-badge">
-            <span class="shield-icon">🛡</span> IA de Proteção Ativa: Monitorando Contra Ameaças
-        </div>
-        <p>© 2026 GeralJá - Grajaú, São Paulo</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    with st.expander("📄 Transparência e Privacidade (LGPD)"):
-        st.write("### 🛡 Protocolo de Segurança e Privacidade")
-        st.info("""
-        **Proteção contra Invasões:** Este sistema utiliza criptografia de ponta a ponta via Google Cloud.
-        Tentativas de injeção de SQL ou scripts maliciosos (XSS) são bloqueadas automaticamente pela nossa camada de firewall.
-        """)
-
-        st.markdown("""
-        **Como tratamos seus dados:**
-        1. **Finalidade:** Seus dados são usados exclusivamente para conectar você a clientes no Grajaú.
-        2. **Exclusão:** Você possui controle total. A exclusão definitiva pode ser feita no seu painel mediante senha de segurança.
-        3. **Vírus e Malware:** Todas as fotos enviadas passam por um processo de normalização de bits para evitar a execução de códigos ocultos em arquivos de imagem.
-
-        *Em conformidade com a Lei Federal nº 13.709 (LGPD).*
-        """)
-
-    if "security_check" not in st.session_state:
-        st.toast("🛡 IA: Verificando integridade da conexão...", icon="🔍")
-        time.sleep(1)
-        st.session_state.security_check = True
-        st.toast("✅ Conexão Segura: Firewall GeralJá Ativo!", icon="🛡")
-
 finalizar_e_alinhar_layout()
+
+st.markdown("""
+<style>
+   .footer-container {
+        text-align: center;
+        padding: 20px;
+        color: #64748B;
+        font-size: 12px;
+    }
+   .security-badge {
+        display: inline-flex;
+        align-items: center;
+        background: #f1f5f9;
+        border: 1px solid #cbd5e1;
+        border-radius: 20px;
+        padding: 5px 15px;
+        margin-bottom: 10px;
+        color: #0f172a;
+        font-weight: bold;
+    }
+   .shield-icon {
+        color: #22c55e;
+        margin-right: 8px;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown("""
+<div class="footer-container">
+    <div class="security-badge">
+        <span class="shield-icon">🛡</span> IA de Proteção Ativa: Monitorando Contra Ameaças
