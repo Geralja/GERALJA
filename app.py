@@ -117,8 +117,10 @@ st.markdown("""
         h1 { font-size: 1.6rem !important; }
         .stButton button { width: 100%; }
     }
-</style># --- INICIALIZAÇÃO DE ESTADOS SEGUROS ---
+</style>
+""", unsafe_allow_html=True)
 
+# --- INICIALIZAÇÃO DE ESTADOS SEGUROS ---
 # --- DETECÇÃO DE MODO DIA/NOITE ADAPTÁVEL ---
 if 'modo_noite' not in st.session_state:
     if streamlit_js_eval:
@@ -154,7 +156,6 @@ st.markdown("""
         }
     </style>
 """, unsafe_allow_html=True)
-
 
 # ==============================================================================
 # BLOCO A: CONFIGURAÇÃO E INICIALIZAÇÃO
@@ -203,7 +204,9 @@ except Exception as e:
     st.error(f"⚠️ Erro ao carregar Secrets: {e}")
     st.stop()
 
-HANDLER_URL = "https://geralja-5bb49.firebaseapp.com/__/auth/handler"# ------------------------------------------------------------------------------
+HANDLER_URL = "https://geralja-5bb49.firebaseapp.com/__/auth/handler"
+
+# ------------------------------------------------------------------------------
 # 3. CONEXÃO FIREBASE
 # ------------------------------------------------------------------------------
 @st.cache_resource
@@ -246,7 +249,7 @@ def calcular_distancia_real(lat1, lon1, lat2, lon2):
         if None in [lat1, lon1, lat2, lon2]: 
             return 999.0
         R = 6371
-        dlat = math.radians(lat2 - Math.radians(lat1)) # Corrigido math.radians
+        dlat = math.radians(lat2 - lat1)
         dlon = math.radians(lon2 - lon1)
         a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
         c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
@@ -325,7 +328,9 @@ def criar_link_zap(numero, msg):
     return f"https://api.whatsapp.com/send?phone={numero}&text={urllib.parse.quote(msg)}"
 
 def finalizar_e_alinhar_layout():
-    pass# ==============================================================================
+    pass
+
+# ==============================================================================
 # BLOCO B: AUTENTICAÇÃO E LOGIN
 # ==============================================================================
 
@@ -452,7 +457,9 @@ CONCEITOS_EXPANDIDOS = {
     "carro": "Mecânico", "motor": "Mecânico", "pneu": "Borracheiro", "guincho": "Guincho 24h",
     "frete": "Freteiro", "mudanca": "Freteiro", "faxina": "Diarista", "limpeza": "Diarista",
     "jardim": "Jardineiro", "piscina": "Piscineiro"
-}# ==============================================================================
+}
+
+# ==============================================================================
 # BLOCO C: INTERFACE PRINCIPAL E ABAS
 # ==============================================================================
 
@@ -626,7 +633,9 @@ if 'buscar' in abas_dict:
                             </div>
                         </div>
                     </a>
-                    """, unsafe_allow_html=True)# ABA CADASTRAR
+                    """, unsafe_allow_html=True)
+
+# ABA CADASTRAR
 if 'cadastrar' in abas_dict:
     with menu_abas[abas_dict['cadastrar']]:
         st.header("🚀 Cadastre-se como Profissional")
@@ -686,8 +695,11 @@ if 'perfil' in abas_dict:
             user_doc = db.collection("profissionais").document(user_id).get()
             if user_doc.exists:
                 user_data = user_doc.to_dict()
+                
+                # HEADER ESTILO REDE SOCIAL
                 foto_perfil = safe_image_src(user_data.get('foto_url', ''))
                 modo_noite_class = "dark-mode" if st.session_state.modo_noite else ""
+                
                 st.markdown(f"""
                 <div class="{modo_noite_class}">
                     <div class="social-profile-header">
@@ -697,9 +709,122 @@ if 'perfil' in abas_dict:
                         <h1 class="social-name">{user_data.get('nome', 'Usuário')} {'✅' if user_data.get('verificado') else ''}</h1>
                         <p class="social-tag">@{normalizar(user_data.get('nome', 'user')).replace(' ', '')} • {user_data.get('area', 'Profissional')}</p>
                         <p class="social-bio">{user_data.get('descricao', 'Sem descrição disponível.')}</p>
+                        <div class="social-stats">
+                            <div class="stat-item">
+                                <span class="stat-value">{user_data.get('cliques', 0)}</span>
+                                <span class="stat-label">Cliques</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value">💎 {user_data.get('saldo', 0)}</span>
+                                <span class="stat-label">Saldo</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value">{'🟢' if user_data.get('aprovado') else '🟡'}</span>
+                                <span class="stat-label">Status</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
+                
+                # ABAS INTERNAS MODERNAS
+                tab_vitrine, tab_config, tab_ajuda = st.tabs(["🛍️ MINHA VITRINE", "⚙️ CONFIGURAÇÕES", "❓ AJUDA"])
+                
+                with tab_vitrine:
+                    tipo_conta = user_data.get('tipo_conta', 'prestador')
+                    if tipo_conta != 'comerciante':
+                        st.info("💡 Você está no modo Prestador. Ative o modo Comerciante para vender produtos diretamente.")
+                        if st.button("ATIVAR MODO COMERCIANTE", use_container_width=True):
+                            db.collection("profissionais").document(user_id).update({"tipo_conta": "comerciante"})
+                            st.success("Modo Comerciante activated!")
+                            time.sleep(1)
+                            st.rerun()
+                    else:
+                        produtos = user_data.get('produtos', [])
+                        
+                        # Grid de Produtos Existentes
+                        if produtos:
+                            st.markdown("#### Meus Produtos")
+                            cols = st.columns(2)
+                            for idx, prod in enumerate(produtos):
+                                with cols[idx % 2]:
+                                    st.markdown(f"""
+                                    <div class="produto-card">
+                                        <div style="display:flex; gap:10px; align-items:center;">
+                                            <img src="{safe_image_src(prod.get('foto_b64'))}" style="width:60px; height:60px; border-radius:8px; object-fit:cover;">
+                                            <div style="flex:1;">
+                                                <div style="font-weight:bold;">{prod.get('nome')}</div>
+                                                <div style="color:#25D366; font-weight:900;">R$ {prod.get('preco',0):.2f}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                    if st.button(f"Remover {prod.get('nome')}", key=f"del_p_{idx}", use_container_width=True):
+                                        produtos.pop(idx)
+                                        db.collection("profissionais").document(user_id).update({"produtos": produtos})
+                                        st.rerun()
+                        
+                        st.markdown("---")
+                        # Formulário de Adição Moderno
+                        with st.expander("➕ ADICIONAR NOVO PRODUTO", expanded=False):
+                            with st.form("novo_produto_social", clear_on_submit=True):
+                                p_nome = st.text_input("Nome do Produto")
+                                c1, c2 = st.columns(2)
+                                p_preco = c1.number_input("Preço R$", min_value=0.0, format="%.2f")
+                                p_foto = c2.file_uploader("Foto", type=['jpg', 'jpeg', 'png'])
+                                p_desc = st.text_area("Breve descrição")
+                                p_destaque = st.checkbox("Destaque na busca")
+                                
+                                if st.form_submit_button("PUBLICAR PRODUTO", use_container_width=True):
+                                    if p_nome and p_preco > 0 and p_foto:
+                                        foto_b64 = otimizar_imagem_admin(p_foto)
+                                        if foto_b64:
+                                            novo_prod = {
+                                                "nome": p_nome,
+                                                "preco": float(p_preco),
+                                                "desc": p_desc,
+                                                "foto_b64": foto_b64,
+                                                "ativo": True,
+                                                "destaque": p_destaque,
+                                                "criado_em": datetime.now(fuso_br)
+                                            }
+                                            produtos.append(novo_prod)
+                                            db.collection("profissionais").document(user_id).update({"produtos": produtos})
+                                            st.success("Produto publicado com sucesso!")
+                                            time.sleep(1)
+                                            st.rerun()
+                                            
+                with tab_config:
+                    st.markdown("#### Editar Perfil")
+                    with st.form("edit_perfil_social"):
+                        n_nome = st.text_input("Nome de Exibição", value=user_data.get('nome'))
+                        n_area = st.selectbox("Área de Atuação", CATEGORIAS_OFICIAIS, index=CATEGORIAS_OFICIAIS.index(user_data.get('area')) if user_data.get('area') in CATEGORIAS_OFICIAIS else 0)
+                        n_zap = st.text_input("WhatsApp", value=user_data.get('whatsapp'))
+                        n_desc = st.text_area("Bio / Descrição", value=user_data.get('descricao'))
+                        n_foto = st.file_uploader("Trocar Foto de Perfil", type=['jpg', 'png', 'jpeg'])
+                        
+                        if st.form_submit_button("SALVAR ALTERAÇÕES", use_container_width=True):
+                            upd = {"nome": n_nome, "area": n_area, "whatsapp": limpar_whatsapp(n_zap), "descricao": n_desc}
+                            if n_foto:
+                                img_b64 = otimizar_imagem_admin(n_foto)
+                                if img_b64:
+                                    upd["foto_url"] = img_b64
+                            db.collection("profissionais").document(user_id).update(upd)
+                            st.success("Perfil atualizado!")
+                            time.sleep(1)
+                            st.rerun()
+                    st.divider()
+                    if st.button("🚪 SAIR DA CONTA", use_container_width=True):
+                        st.session_state.auth = False
+                        st.rerun()
+                        
+                with tab_ajuda:
+                    st.markdown("#### Central de Ajuda")
+                    st.write("Dúvidas sobre como melhorar seu perfil?")
+                    st.info("💡 Perfis com fotos de alta qualidade e descrições detalhadas recebem 3x mais cliques!")
+                    st.write("**Como funciona o saldo?**")
+                    st.caption("Cada clique no seu botão de WhatsApp consome 1 moeda (💎). Recarregue com o administrador.")
+                    st.link_button("FALAR COM SUPORTE", criar_link_zap(ZAP_ADMIN, "Olá, preciso de ajuda com meu perfil no GeralJá"))
 
 # ABA FEEDBACK
 if 'feedback' in abas_dict:
@@ -711,10 +836,134 @@ if 'feedback' in abas_dict:
         if st.button("Enviar Feedback"):
             st.success("Obrigado! Sua mensagem foi enviada para nossa equipe.")
 
-# ABA ADMIN
-if 'admin' in abas_dict:
-    with menu_abas[abas_dict['admin']]:
-        st.write("Painel administrativo carregado.")
+# ==============================================================================
+# CONTINUAÇÃO: ABA ADMIN & COMPONENTES FINAIS
+# ==============================================================================
+
+            st.header("👑 Painel de Administração")
+            
+            # Sub-abas do Administrador
+            tab_validar, tab_moedas, tab_gerenciar = st.tabs(["📋 VALIDAR CADASTROS", "💎 ADICIONAR CRÉDITOS", "🛠️ CONFIGURAÇÕES SISTEMA"])
+            
+            with tab_validar:
+                st.subheader("Profissionais Pendentes de Aprovação")
+                pendentes = db.collection("profissionais").where("aprovado", "==", False).stream()
+                
+                count_p = 0
+                for doc in pendentes:
+                    count_p += 1
+                    dados = doc.to_dict()
+                    with st.expander(f"📋 {dados.get('nome')} — {dados.get('area')}"):
+                        st.write(f"**E-mail:** {dados.get('email')}")
+                        st.write(f"**WhatsApp:** {dados.get('whatsapp')}")
+                        st.write(f"**Descrição:** {dados.get('descricao')}")
+                        
+                        col_adm1, col_adm2 = st.columns(2)
+                        if col_adm1.button("✅ Aprovar", key=f"aprov_{doc.id}"):
+                            db.collection("profissionais").document(doc.id).update({"aprovado": True})
+                            st.success("Cadastro aprovado!")
+                            time.sleep(0.5)
+                            st.rerun()
+                            
+                        if col_adm2.button("🗑️ Recusar / Eliminar", key=f"recus_{doc.id}"):
+                            db.collection("profissionais").document(doc.id).delete()
+                            st.warning("Cadastro eliminado do sistema.")
+                            time.sleep(0.5)
+                            st.rerun()
+                if count_p == 0:
+                    st.info("Nenhum profissional pendente de aprovação por agora.")
+                    
+            with tab_moedas:
+                st.subheader("Gestão de Saldo (Moedas 💎)")
+                todos_profs = db.collection("profissionais").stream()
+                opcoes_profs = {doc.to_dict().get('nome'): doc.id for doc in todos_profs if doc.to_dict().get('nome')}
+                
+                if opcoes_profs:
+                    prof_selecionado = st.selectbox("Selecione o Profissional", options=list(opcoes_profs.keys()))
+                    moedas_add = st.number_input("Quantidade de Moedas a Adicionar", min_value=1, value=10)
+                    verificar_check = st.checkbox("Tornar este perfil Selo Verificado 🏆?")
+                    
+                    if st.button("💎 Confirmar Créditos", use_container_width=True):
+                        p_id = opcoes_profs[prof_selecionado]
+                        p_ref = db.collection("profissionais").document(p_id)
+                        p_atual = p_ref.get().to_dict()
+                        
+                        novo_saldo = p_atual.get('saldo', 0) + moedas_add
+                        update_dict = {"saldo": novo_saldo}
+                        if verificar_check:
+                            update_dict["verificado"] = True
+                            
+                        p_ref.update(update_dict)
+                        st.success(f"Adicionadas {moedas_add} moedas a {prof_selecionado}! Novo saldo: {novo_saldo}")
+                else:
+                    st.warning("Nenhum profissional cadastrado no sistema.")
+
+            with tab_gerenciar:
+                st.subheader("Configurações do Grajaú Tem / GeralJá")
+                
+                # Editor de Categorias Oficiais Dinâmicas
+                st.markdown("#### Categorias Disponíveis no App")
+                cat_doc = db.collection("configuracoes").document("categorias").get()
+                lista_atual_cats = cat_doc.to_dict().get("lista", CATEGORIAS_OFICIAIS) if cat_doc.exists else CATEGORIAS_OFICIAIS
+                
+                novas_cats_texto = st.text_area("Categorias separadas por vírgula:", value=", ".join(lista_atual_cats))
+                if st.button("💾 Salvar Categorias"):
+                    nova_lista = [c.strip() for c in novas_cats_texto.split(",") if c.strip()]
+                    db.collection("configuracoes").document("categorias").set({"lista": nova_lista})
+                    st.success("Lista de categorias atualizada!")
+
+# ==============================================================================
+# ABA FINANCEIRO (ESCONDIDA)
+# ==============================================================================
+if 'financeiro' in abas_dict:
+    with menu_abas[abas_dict['financeiro']]:
+        st.header("📊 Painel Financeiro e Comercial")
+        st.write("Visão geral de pacotes e faturamento simulado de anúncios.")
+        
+        col_f1, col_f2, col_f3 = st.columns(3)
+        col_f1.metric("Vitrine Unitária", "R$ 100")
+        col_f2.metric("Vitrine Mensal", "R$ 600")
+        col_f3.metric("Rádio Grajaú Tem", "R$ 300/mês")
+        
+        st.markdown("#### 📦 Tabela de Pacotes Atuais")
+        st.markdown("""
+        - **🥉 Bronze:** 1 post = **R$ 150**
+        - **🥈 Prata:** 3 posts = **R$ 400**
+        - **🥇 Ouro:** 10 posts = **R$ 700**
+        """)
+        
+        st.info("Para fechamento oficial de anúncios, use os contactos de vendas integrados no motor.")
+
+# ==============================================================================
+# --- MÓDULO LOJA DE PRODUTOS / MARKETPLACE GERAL ---
+# ==============================================================================
+st.markdown("<br>", unsafe_allow_html=True)
+st.divider()
+st.subheader("🏪 Vitrine Geral de Produtos da Região")
+
+loja_itens = db.collection("loja").stream()
+lista_loja = []
+for it_doc in loja_itens:
+    it_dados = it_doc.to_dict()
+    it_dados['id'] = it_doc.id
+    lista_loja.append(it_dados)
+
+if not lista_loja:
+    st.info("Nenhum item em destaque na vitrine comum neste momento.")
+else:
+    cols_loja = st.columns(4)
+    for idx, item in enumerate(lista_loja):
+        with cols_loja[idx % 4]:
+            st.image(safe_image_src(item.get('foto_b64')), use_container_width=True)
+            st.markdown(f"**{item.get('nome')}** — Preço: `{item.get('preco')} Moedas` | Estoque: `{item.get('estoque')} un`")
+            
+            # Botão de remoção se for Administrador logado
+            if comando == "abracadabra" or comando == "geralja_master":
+                if st.button("🗑️", key=f"del_loja_{item['id']}"):
+                    db.collection("loja").document(item['id']).delete()
+                    st.success("Item removido.")
+                    time.sleep(0.5)
+                    st.rerun()
 
 # ==============================================================================
 # --- RODAPÉ INSTITUCIONAL (FORA DE QUALQUER ABA) ---
@@ -735,4 +984,10 @@ with col_foot1:
         </p>
     </div>
     """, unsafe_allow_html=True)
-""", unsafe_allow_html=True)
+
+with col_foot2:
+    st.markdown("""
+    <div style='text-align: right;'>
+        <span style='font-size: 12px; font-weight: bold; color: #FF8C00;'>Versão 5.0 Social</span>
+    </div>
+    """, unsafe_allow_html=True)
