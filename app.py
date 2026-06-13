@@ -2,6 +2,15 @@
 # GERALJÁ: CRIANDO SOLUÇÕES - MÓDULO 1: INFRAESTRUTURA & SEGURANÇA MÁXIMA
 # ==============================================================================
 import streamlit as st
+
+# --- CONFIGURAÇÃO DE ALTO NÍVEL (DEVE SER A PRIMEIRA INSTRUÇÃO STREAMLIT) ---
+st.set_page_config(
+    page_title="GeralJá | Criando Soluções",
+    page_icon="🇧🇷",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+
 import firebase_admin
 from firebase_admin import credentials, firestore
 import base64
@@ -105,16 +114,6 @@ def conectar_banco_master():
 # Ativa o banco
 app_engine = conectar_banco_master()
 db = firestore.client()
-
-# ------------------------------------------------------------------------------
-# 1. CONFIGURAÇÃO DE AMBIENTE E PERFORMANCE
-# ------------------------------------------------------------------------------
-st.set_page_config(
-    page_title="GeralJá | Criando Soluções",
-    page_icon="🇧🇷",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
 
 # --- INICIALIZAÇÃO DE ESTADOS SEGUROS NO SESSION STATE ---
 if 'tema_claro' not in st.session_state:
@@ -222,7 +221,7 @@ st.markdown(estilo_dinamico, unsafe_allow_html=True)
 # FUNÇÕES DE SUPORTE GLOBAL
 # ==========================================================
 def limpar_whatsapp(numero):
-    """Remove parênteses, espaços e traços do número."""
+    """Remove parênteses, spaces e traços do número."""
     num = re.sub(r'\D', '', str(numero))
     if not num.startswith('55') and len(num) >= 10:
         num = f"55{num}"
@@ -528,11 +527,14 @@ for n in noticias_fb:
 
 for n in noticias_auto:
     if len(fila_noticias) >= 2: break
+    fonte_nome = "Google News"
+    if hasattr(n, 'source'):
+        fonte_nome = n.source.get('title', 'Google News') if isinstance(n.source, dict) else getattr(n.source, 'title', 'Google News')
     fila_noticias.append({
-        "titulo": n.title.split(' - ')[0],
-        "link": n.link,
+        "titulo": n.title.split(' - ')[0] if hasattr(n, 'title') else 'Sem título',
+        "link": n.link if hasattr(n, 'link') else '#',
         "img": IMG_PADRAO,
-        "fonte": f"📡 {n.source.get('title', 'Google News')}",
+        "fonte": f"📡 {fonte_nome}",
         "cor": "#0047AB"
     })
 
@@ -682,7 +684,7 @@ with menu_abas[1]:
                     
                     st.balloons()
                     if perfil_antigo.exists:
-                        st.success(f"✅ Perfil de {nome_input} atualizado com sucesso!")
+                        st.success(f"✅ Perfil de {nome_input} updated com sucesso!")
                     else:
                         st.success(f"🎊 Bem-vindo ao GeralJá! Cadastro concluído!")
                         
@@ -994,17 +996,18 @@ with menu_abas[3]:
                 df = pd.DataFrame(profs_list)
                 if not df.empty:
                     busca = st.text_input("🔍 Localizar (Nome ou WhatsApp)")
-                    if busca: df = df[df['nome'].str.contains(busca, case=False, na=False) | df['whatsapp'].str.contains(busca, na=False)]
+                    if busca: 
+                        df = df[df['nome'].astype(str).str.contains(busca, case=False, na=False) | df['whatsapp'].astype(str).str.contains(busca, na=False)]
                     
                     m1, m2, m3 = st.columns(3)
                     m1.metric("Total", len(df))
                     m2.metric("Pendentes", len(df[df['aprovado'] == False]))
-                    m3.metric("GeralCones", f"💎 {int(df['saldo'].sum())}")
+                    m3.metric("GeralCones", f"💎 {int(df['saldo'].sum()) if 'saldo' in df.columns else 0}")
 
                     for _, p in df.iterrows():
                         pid = p['id']
                         status = "🟢" if p.get('aprovado') else "🟡"
-                        with st.expander(f"{status} {p.get('nome','').upper()}"):
+                        with st.expander(f"{status} {str(p.get('nome','')).upper()}"):
                             with st.form(f"f_edit_{pid}"):
                                 c1, c2 = st.columns(2)
                                 n_nome = c1.text_input("Nome", value=p.get('nome'))
@@ -1018,7 +1021,7 @@ with menu_abas[3]:
                                 cf1, cf2 = st.columns([1, 2])
                                 with cf1:
                                     if p.get('foto_url'): 
-                                        st.image(f"data:image/jpeg;base64,{p['foto_url']}" if len(p['foto_url']) > 100 else p['foto_url'], width=80)
+                                        st.image(f"data:image/jpeg;base64,{p['foto_url']}" if len(str(p['foto_url'])) > 100 else p['foto_url'], width=80)
                                     up_p = st.file_uploader("Perfil", type=['jpg','png'], key=f"up_p_{pid}")
                                 with cf2:
                                     up_v = st.file_uploader("Vitrine (Máx 4)", type=['jpg','png'], accept_multiple_files=True, key=f"up_v_{pid}")
@@ -1061,8 +1064,8 @@ if comando == "abracadabra" and len(menu_abas) > 5:
             profs_list = [p.to_dict() for p in profs_ref]
             if profs_list:
                 df_fin = pd.DataFrame(profs_list)
-                total_moedas = df_fin['saldo'].sum() if 'saldo' in df_fin else 0
-                total_cliques = df_fin['cliques'].sum() if 'cliques' in df_fin else 0
+                total_moedas = df_fin['saldo'].sum() if 'saldo' in df_fin.columns else 0
+                total_cliques = df_fin['cliques'].sum() if 'cliques' in df_fin.columns else 0
                 
                 col_f1, col_f2 = st.columns(2)
                 col_f1.metric("Moedas Ativas em Circulação", f"🪙 {total_moedas}")
