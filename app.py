@@ -685,47 +685,194 @@ if 'cadastrar' in abas_dict:
                         except Exception as e:
                             st.error(f"Erro ao cadastrar: {e}")
 
-# ABA MEU PERFIL (TURBINADA - ESTILO REDE SOCIAL)
+# ==============================================================================
+# --- PARTE 2: MEU PERFIL / PAINEL DO PARCEIRO COM LOGIN CORRIGIDO ---
+# ==============================================================================
 if 'perfil' in abas_dict:
     with menu_abas[abas_dict['perfil']]:
+        params = st.query_params
+        
+        # 1. Tentativa de Login automático via Redes Sociais por URL
+        if "uid" in params and not st.session_state.auth:
+            fb_uid = params["uid"]
+            user_query = db.collection("profissionais").where("fb_uid", "==", fb_uid).limit(1).get()
+            if user_query:
+                doc = user_query[0]
+                st.session_state.auth = True
+                st.session_state.user_id = doc.id
+                st.success("✅ Autenticação realizada via Rede Social!")
+                time.sleep(0.5)
+                st.rerun()
+
+        # 2. SE NÃO ESTIVER LOGADO: MOSTRA AS OPÇÕES DE LOGIN PARA O COMERCIANTE
         if not st.session_state.auth:
-            st.info("Faça login para ver seu perfil")
-        else:
-            user_id = st.session_state.user_id
-            user_doc = db.collection("profissionais").document(user_id).get()
-            if user_doc.exists:
-                user_data = user_doc.to_dict()
-                
-                # HEADER ESTILO REDE SOCIAL
-                foto_perfil = safe_image_src(user_data.get('foto_url', ''))
-                modo_noite_class = "dark-mode" if st.session_state.modo_noite else ""
-                
-                st.markdown(f"""
-                <div class="{modo_noite_class}">
-                    <div class="social-profile-header">
-                        <img src="{foto_perfil}" class="social-profile-avatar">
-                    </div>
-                    <div class="social-profile-info">
-                        <h1 class="social-name">{user_data.get('nome', 'Usuário')} {'✅' if user_data.get('verificado') else ''}</h1>
-                        <p class="social-tag">@{normalizar(user_data.get('nome', 'user')).replace(' ', '')} • {user_data.get('area', 'Profissional')}</p>
-                        <p class="social-bio">{user_data.get('descricao', 'Sem descrição disponível.')}</p>
-                        <div class="social-stats">
-                            <div class="stat-item">
-                                <span class="stat-value">{user_data.get('cliques', 0)}</span>
-                                <span class="stat-label">Cliques</span>
+            st.subheader("🚀 Acesso ao Painel do Parceiro / Comerciante")
+            
+            fb_id = st.secrets.get("FB_CLIENT_ID", "")
+            g_uri = st.secrets.get("google_auth", {}).get("redirect_uri", "https://geralja-zxiaj2ot56fuzgcz7xhcks.streamlit.app/")
+            url_direta_fb = f"https://www.facebook.com/v18.0/dialog/oauth?client_id={fb_id}&redirect_uri={g_uri}&scope=public_profile,email"
+
+            # Botões de Redes Sociais
+            col_g, col_fb = st.columns(2)
+            with col_g:
+                g_auth = st.secrets.get("google_auth", {})
+                g_id = g_auth.get("client_id")
+                if g_id:
+                    url_google = f"https://accounts.google.com/o/oauth2/v2/auth?client_id={g_id}&response_type=code&scope=openid%20profile%20email&redirect_uri={g_uri}"
+                    st.markdown(f'''
+                        <a href="{url_google}" target="_self" style="text-decoration:none;">
+                            <div style="display:flex; align-items:center; justify-content:center; border:1px solid #dadce0; border-radius:8px; padding:10px; background:white;">
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" width="18px" style="margin-right:10px;">
+                                <span style="color:#3c4043; font-weight:bold; font-size:14px;">Entrar com Google</span>
                             </div>
-                            <div class="stat-item">
-                                <span class="stat-value">💎 {user_data.get('saldo', 0)}</span>
-                                <span class="stat-label">Saldo</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-value">{'🟢' if user_data.get('aprovado') else '🟡'}</span>
-                                <span class="stat-label">Status</span>
-                            </div>
+                        </a>
+                    ''', unsafe_allow_html=True)
+                else:
+                    st.caption("⚠️ Google Auth não configurado nos Secrets")
+
+            with col_fb:
+                st.markdown(f'''
+                    <a href="{url_direta_fb}" target="_top" style="text-decoration:none;">
+                        <div style="background:#1877F2; color:white; padding:10px; border-radius:8px; text-align:center; font-weight:bold; display:flex; align-items:center; justify-content:center; box-shadow: 0px 4px 6px rgba(0,0,0,0.1);">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg" width="20px" style="margin-right:10px;">
+                            ENTRAR COM FACEBOOK
                         </div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+                    </a>
+                ''', unsafe_allow_html=True)
+
+            st.markdown("<p style='text-align:center; margin-top:20px; color:#666;'>— ou use suas credenciais locais (WhatsApp + Senha) —</p>", unsafe_allow_html=True)
+
+            # Formulário Local de Login (WhatsApp + Senha)
+            with st.form("form_login_comerciante"):
+                l_zap = st.text_input("WhatsApp Cadastrado", placeholder="Ex: 11980168513 (Apenas números)")
+                l_pw = st.text_input("Senha de Acesso", type="password")
+                btn_logar = st.form_submit_button("ENTRAR NO MEU PERFIL", use_container_width=True)
+
+                if btn_logar:
+                    zap_limpo = "".join(filter(str.isdigit, l_zap))
+                    if not zap_limpo or not l_pw:
+                        st.error("❌ Preencha o WhatsApp e a Senha.")
+                    else:
+                        try:
+                            u = db.collection("profissionais").document(zap_limpo).get()
+                            if u.exists:
+                                dados_user = u.to_dict()
+                                if str(dados_user.get('senha')) == str(l_pw):
+                                    st.session_state.auth = True
+                                    st.session_state.user_id = u.id
+                                    st.success("🎉 Login realizado com sucesso!")
+                                    time.sleep(0.5)
+                                    st.rerun()
+                                else:
+                                    st.error("❌ Senha incorreta.")
+                            else:
+                                st.error("❌ WhatsApp não localizado. Crie um cadastro na aba ao lado.")
+                        except Exception as e:
+                            st.error(f"Erro ao conectar com o banco: {e}")
+
+        # 3. CASO JÁ ESTEJA LOGADO: MOSTRA O PAINEL DE CONTROLE DO COMERCIANTE
+        else:
+            doc_ref = db.collection("profissionais").document(st.session_state.user_id)
+            user_data = doc_ref.get().to_dict()
+
+            st.write(f"### Olá, {user_data.get('nome', 'Parceiro')}! 👋")
+
+            # Métricas e Ferramentas da Vitrine do Comerciante
+            m1, m2, m3 = st.columns(3)
+            m1.metric("Saldo Atual 🪙", f"{user_data.get('saldo', 0)} GeralCoins")
+            m2.metric("Cliques Acumulados 🚀", f"{user_data.get('cliques', 0)}")
+            m3.metric("Status da Conta", "🟢 ATIVO" if user_data.get('aprovado') else "🟡 PENDENTE")
+
+            tab_dados, tab_vitrine = st.tabs(["📋 Meus Dados", "🛍️ Minha Vitrine Comercial"])
+
+            with tab_dados:
+                st.write(f"**Especialidade:** {user_data.get('area', '')}")
+                st.write(f"**Contato:** {user_data.get('whatsapp', '')}")
+                st.write(f"**Modalidade:** {user_data.get('tipo_conta', 'prestador').upper()}")
+                
+                if st.button("📍 ATUALIZAR COORDENADAS GPS", use_container_width=True):
+                    if streamlit_js_eval:
+                        loc = streamlit_js_eval(js_expressions="navigator.geolocation.getCurrentPosition(s => s)", key='gps_v8')
+                        if loc and 'coords' in loc:
+                            doc_ref.update({"lat": loc['coords']['latitude'], "lon": loc['coords']['longitude']})
+                            st.success("✅ Localização sincronizada para buscas no Grajaú!")
+                    else:
+                        st.warning("Módulo de localização indisponível no navegador.")
+
+            with tab_vitrine:
+                tipo_conta = user_data.get('tipo_conta', 'prestador')
+                if tipo_conta != 'comerciante':
+                    st.info("💡 Você está no modo Prestador. Ative o Modo Comerciante para liberar sua vitrine digital integrada.")
+                    if st.button("Ativar Modo Comerciante Gratuitamente"):
+                        doc_ref.update({"tipo_conta": "comerciante"})
+                        st.success("Perfil migrado! Carregando ferramentas de e-commerce...")
+                        time.sleep(0.5)
+                        st.rerun()
+                else:
+                    produtos = user_data.get('produtos', [])
+                    limite_max = 10
+                    st.markdown(f"**Produtos Cadastrados:** `{len(produtos)} / {limite_max}`")
+
+                    if len(produtos) >= limite_max:
+                        st.error("⚠️ Você atingiu o limite gratuito de 10 itens na vitrine.")
+                    else:
+                        with st.form("novo_produto", clear_on_submit=True):
+                            st.markdown("##### ➕ Adicionar Item à Vitrine")
+                            p_nome = st.text_input("Nome do Produto")
+                            p_preco = st.number_input("Preço de Venda (R$)", min_value=0.0, format="%.2f")
+                            p_desc = st.text_area("Descrição Curta", max_chars=150)
+                            p_foto = st.file_uploader("Foto Quadrada do Produto", type=['jpg', 'jpeg', 'png'])
+                            p_destaque = st.checkbox("Destakar este item no topo das buscas")
+
+                            if st.form_submit_button("Cadastrar Novo Produto"):
+                                if p_nome and p_preco > 0 and p_foto:
+                                    try:
+                                        img_open = Image.open(p_foto)
+                                        if img_open.mode in ("RGBA", "P"): 
+                                            img_open = img_open.convert("RGB")
+                                        img_open.thumbnail((400, 400))
+                                        out_buf = io.BytesIO()
+                                        img_open.save(out_buf, format="JPEG", quality=60)
+                                        foto_b64 = f"data:image/jpeg;base64,{base64.b64encode(out_buf.getvalue()).decode()}"
+
+                                        novo_prod = {
+                                            "nome": p_nome,
+                                            "preco": float(p_preco),
+                                            "desc": p_desc,
+                                            "foto_b64": foto_b64,
+                                            "ativo": True,
+                                            "destaque": p_destaque,
+                                            "criado_em": datetime.now().isoformat()
+                                        }
+                                        produtos.append(novo_prod)
+                                        doc_ref.update({"produtos": produtos})
+                                        st.success("🎉 Produto integrado com sucesso!")
+                                        time.sleep(0.5)
+                                        st.rerun()
+                                    except Exception as e: 
+                                        st.error(f"Erro na imagem: {e}")
+                                else: 
+                                    st.warning("Preencha Nome, Preço e envie uma Foto.")
+
+                    st.markdown("---")
+                    st.markdown("##### Gerenciamento de Itens Ativos")
+                    for idx, prod in enumerate(produtos):
+                        c_img, c_txt, c_btn = st.columns([1, 3, 1])
+                        with c_img:
+                            st.image(prod.get('foto_b64'), width=70)
+                        with c_txt:
+                            st.markdown(f"**{prod.get('nome')}** — `R$ {prod.get('preco', 0):.2f}`")
+                            st.caption(prod.get('desc', ''))
+                        with c_btn:
+                            if st.button("🗑️", key=f"del_item_{idx}"):
+                                produtos.pop(idx)
+                                doc_ref.update({"produtos": produtos})
+                                st.rerun()
+
+            st.divider()
+            if st.button("🚪 DESCONECTAR DO PAINEL", use_container_width=True, type="secondary"):
+                st.session_state.auth = False
+                st.rerun()
                 
                 # ABAS INTERNAS MODERNAS
                 tab_vitrine, tab_config, tab_ajuda = st.tabs(["🛍️ MINHA VITRINE", "⚙️ CONFIGURAÇÕES", "❓ AJUDA"])
