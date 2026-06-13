@@ -688,143 +688,219 @@ if 'cadastrar' in abas_dict:
                         except Exception as e:
                             st.error(f"Erro ao cadastrar: {e}")
 
-# ABA MEU PERFIL (TURBINADA - ESTILO REDE SOCIAL)
+# ==============================================================================
+# ABA MEU PERFIL (ESTILO REDE SOCIAL DE ALTA CONVERSÃO)
+# ==============================================================================
 if 'perfil' in abas_dict:
     with menu_abas[abas_dict['perfil']]:
         if not st.session_state.auth:
-            st.info("Faça login para ver seu perfil")
+            st.markdown("""
+            <div style="background-color: #ff8c001a; border-left: 5px solid #FF8C00; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                <h4 style="margin: 0; color: #FF8C00; font-weight: 700;">🔐 Painel de Acesso Restrito</h4>
+                <p style="margin: 6px 0 0 0; color: #475569; font-size: 14px;">Por favor, faça o seu login ou realize seu cadastro na aba dedicada para visualizar e gerenciar sua vitrine digital exclusiva.</p>
+            </div>
+            """, unsafe_allow_html=True)
         else:
             user_id = st.session_state.user_id
             user_doc = db.collection("profissionais").document(user_id).get()
+            
             if user_doc.exists:
                 user_data = user_doc.to_dict()
                 
-                # HEADER ESTILO REDE SOCIAL
-                foto_perfil = safe_image_src(user_data.get('foto_url', ''))
-                modo_noite_class = "dark-mode" if st.session_state.modo_noite else ""
+                # --- TRATAMENTO SEGURO DE PROTOCOLO DE IMAGEM ---
+                def _safe_image_render(b64_data):
+                    if not b64_data:
+                        return "https://cdn-icons-png.flaticon.com/512/149/149071.png"
+                    if str(b64_data).startswith("http") or str(b64_data).startswith("data:"):
+                        return b64_data
+                    return f"data:image/jpeg;base64,{b64_data}"
+                
+                # --- IDENTIDADE VISUAL & BANNER ESTILO INSTAGRAM/LINKEDIN ---
+                nome_usuario = user_data.get('nome', 'Usuário').upper()
+                area_usuario = user_data.get('area', 'Profissional')
+                tipo_conta = user_data.get('tipo_conta', 'prestador')
+                badge_tipo = "🏢 MODO COMERCIANTE ATIVO" if tipo_conta == 'comerciante' else "👨‍🔧 PRESTADOR DE SERVIÇOS"
+                foto_perfil = _safe_image_render(user_data.get('foto_url', ''))
                 
                 st.markdown(f"""
-                <div class="{modo_noite_class}">
-                    <div class="social-profile-header">
-                        <img src="{foto_perfil}" class="social-profile-avatar">
-                    </div>
-                    <div class="social-profile-info">
-                        <h1 class="social-name">{user_data.get('nome', 'Usuário')} {'✅' if user_data.get('verificado') else ''}</h1>
-                        <p class="social-tag">@{normalizar(user_data.get('nome', 'user')).replace(' ', '')} • {user_data.get('area', 'Profissional')}</p>
-                        <p class="social-bio">{user_data.get('descricao', 'Sem descrição disponível.')}</p>
-                        
-                        <div class="social-stats">
-                            <div class="stat-item">
-                                <span class="stat-value">{user_data.get('cliques', 0)}</span>
-                                <span class="stat-label">Cliques</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-value">💎 {user_data.get('saldo', 0)}</span>
-                                <span class="stat-label">Saldo</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-value">{'🟢' if user_data.get('aprovado') else '🟡'}</span>
-                                <span class="stat-label">Status</span>
-                            </div>
+                <div style="background: linear-gradient(135deg, #0047AB 0%, #FF8C00 100%); height: 130px; border-radius: 16px 16px 0 0; position: relative; margin-bottom: 55px;">
+                    <div style="position: absolute; bottom: -45px; left: 25px; display: flex; align-items: flex-end; gap: 15px;">
+                        <img src="{foto_perfil}" style="width: 95px; height: 95px; border-radius: 50%; object-fit: cover; border: 4px solid white; box-shadow: 0px 4px 12px rgba(0,0,0,0.15); background-color: white;">
+                        <div style="margin-bottom: 4px;">
+                            <h2 style="margin: 0; color: #1E293B; font-size: 22px; font-weight: 900; line-height: 1.2;">{nome_usuario}</h2>
+                            <span style="background: #0047AB1a; color: #0047AB; font-size: 11px; font-weight: bold; padding: 2px 10px; border-radius: 50px; display: inline-block; margin-top: 5px;">🎯 {area_usuario}</span>
+                            <span style="background: #FF8C001a; color: #FF8C00; font-size: 11px; font-weight: bold; padding: 2px 10px; border-radius: 50px; display: inline-block; margin-top: 5px; margin-left: 4px;">{badge_tipo}</span>
                         </div>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # ABAS INTERNAS MODERNAS
-                tab_vitrine, tab_config, tab_ajuda = st.tabs(["🛍️ MINHA VITRINE", "⚙️ CONFIGURAÇÕES", "❓ AJUDA"])
+                # --- DASHBOARD METRICS SYSTEM ---
+                produtos = user_data.get('produtos', [])
+                saldo_atual = user_data.get('saldo', 0)
+                cliques_atuais = user_data.get('cliques', 0)
                 
-                with tab_vitrine:
+                m_col1, m_col2, m_col3 = st.columns(3)
+                with m_col1:
+                    st.markdown(f"""
+                    <div style="background: white; border-radius: 12px; padding: 15px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.04); border-bottom: 4px solid #0047AB;">
+                        <p style="margin: 0; color: #64748B; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Moedas Disponíveis</p>
+                        <h2 style="margin: 4px 0 0 0; color: #0047AB; font-size: 26px; font-weight: 900;">🪙 {saldo_atual}</h2>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with m_col2:
+                    st.markdown(f"""
+                    <div style="background: white; border-radius: 12px; padding: 15px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.04); border-bottom: 4px solid #FF8C00;">
+                        <p style="margin: 0; color: #64748B; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Cliques Recebidos</p>
+                        <h2 style="margin: 4px 0 0 0; color: #FF8C00; font-size: 26px; font-weight: 900;">🚀 {cliques_atuais}</h2>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with m_col3:
+                    st.markdown(f"""
+                    <div style="background: white; border-radius: 12px; padding: 15px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.04); border-bottom: 4px solid #10B981;">
+                        <p style="margin: 0; color: #64748B; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Produtos Ativos</p>
+                        <h2 style="margin: 4px 0 0 0; color: #10B981; font-size: 26px; font-weight: 900;">📦 {len(produtos)} / 10</h2>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                st.markdown("<br>", unsafe_allow_html=True)
+                
+                # --- SISTEMA DE NAVEGAÇÃO INTERNA CONTEMPORÂNEO ---
+                tab_perfil, tab_produtos = st.tabs(["📋 Informações Básicas", "🛍️ Catálogo de Produtos"])
+                
+                with tab_perfil:
+                    st.markdown('<div style="margin-top: 10px;"></div>', unsafe_allow_html=True)
+                    c_inf1, c_inf2 = st.columns(2)
+                    with c_inf1:
+                        st.markdown(f"""
+                        <div style="background: white; padding: 18px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); margin-bottom: 12px; border: 1px solid #E2E8F0;">
+                            <p style="margin: 0; color: #64748B; font-size: 11px; font-weight: bold; letter-spacing: 0.5px;">ÁREA DE ATUAÇÃO</p>
+                            <h4 style="margin: 4px 0 0 0; color: #334155; font-size: 15px; font-weight: 700;">💼 {user_data.get('area', 'Não Definida')}</h4>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        st.markdown(f"""
+                        <div style="background: white; padding: 18px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); margin-bottom: 12px; border: 1px solid #E2E8F0;">
+                            <p style="margin: 0; color: #64748B; font-size: 11px; font-weight: bold; letter-spacing: 0.5px;">WHATSAPP CONFIGURADO</p>
+                            <h4 style="margin: 4px 0 0 0; color: #334155; font-size: 15px; font-weight: 700;">💬 {user_data.get('whatsapp', 'Não Configurado')}</h4>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    with c_inf2:
+                        st.markdown(f"""
+                        <div style="background: white; padding: 18px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); margin-bottom: 12px; border: 1px solid #E2E8F0;">
+                            <p style="margin: 0; color: #64748B; font-size: 11px; font-weight: bold; letter-spacing: 0.5px;">CATEGORIA DA CONTA</p>
+                            <h4 style="margin: 4px 0 0 0; color: #334155; font-size: 15px; font-weight: 700;">🔑 {str(user_data.get('tipo_conta', 'prestador')).upper()}</h4>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        st.markdown(f"""
+                        <div style="background: white; padding: 18px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); margin-bottom: 12px; border: 1px solid #E2E8F0;">
+                            <p style="margin: 0; color: #64748B; font-size: 11px; font-weight: bold; letter-spacing: 0.5px;">ESTADO DO PERFIL</p>
+                            <h4 style="margin: 4px 0 0 0; color: #10B981; font-size: 15px; font-weight: 700;">🛡️ PERFIL ATIVO & PROTEGIDO</h4>
+                        </div>
+                        """, unsafe_allow_html=True)
+                
+                with tab_produtos:
+                    st.markdown('<div style="margin-top: 10px;"></div>', unsafe_allow_html=True)
                     tipo_conta = user_data.get('tipo_conta', 'prestador')
+                    
                     if tipo_conta != 'comerciante':
-                        st.info("💡 Você está no modo Prestador. Ative o modo Comerciante para vender produtos diretamente.")
-                        if st.button("ATIVAR MODO COMERCIANTE", use_container_width=True):
+                        st.markdown("""
+                        <div style="background: #F8FAFC; border: 2px dashed #CBD5E1; border-radius: 16px; padding: 35px; text-align: center; margin-bottom: 20px;">
+                            <span style="font-size: 45px;">🏪</span>
+                            <h4 style="margin: 12px 0 4px 0; color: #1E293B; font-weight: bold;">Ative o Modo Comerciante</h4>
+                            <p style="margin: 0 0 20px 0; color: #64748B; font-size: 14px; max-width: 420px; margin-left: auto; margin-right: auto;">
+                                Quer colocar produtos físicos ou pacotes promocionais diretamente na busca do morador? Altere seu modo de exibição de graça agora.
+                            </p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        if st.button("🚀 TRANSFORMAR MEU PERFIL EM COMERCIANTE", use_container_width=True):
                             db.collection("profissionais").document(user_id).update({"tipo_conta": "comerciante"})
-                            st.success("Modo Comerciante ativado!")
+                            st.success("Modo comerciante ativado! Boas vendas.")
                             time.sleep(1)
                             st.rerun()
                     else:
-                        produtos = user_data.get('produtos', [])
+                        st.write(f"**Produtos cadastrados:** {len(produtos)}/10 grátis")
                         
-                        # Grid de Produtos Existentes
-                        if produtos:
-                            st.markdown("#### Meus Produtos")
-                            cols = st.columns(2)
-                            for idx, prod in enumerate(produtos):
-                                with cols[idx % 2]:
-                                    st.markdown(f"""
-                                    <div class="produto-card">
-                                        <div style="display:flex; gap:10px; align-items:center;">
-                                            <img src="{safe_image_src(prod.get('foto_b64'))}" style="width:60px; height:60px; border-radius:8px; object-fit:cover;">
-                                            <div style="flex:1;">
-                                                <div style="font-weight:bold;">{prod.get('nome')}</div>
-                                                <div style="color:#25D366; font-weight:900;">R$ {prod.get('preco',0):.2f}</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    """, unsafe_allow_html=True)
-                                    if st.button(f"Remover {prod.get('nome')}", key=f"del_p_{idx}", use_container_width=True):
-                                        produtos.pop(idx)
-                                        db.collection("profissionais").document(user_id).update({"produtos": produtos})
-                                        st.rerun()
-                        
-                        st.markdown("---")
-                        # Formulário de Adição Moderno
-                        with st.expander("➕ ADICIONAR NOVO PRODUTO", expanded=False):
-                            with st.form("novo_produto_social", clear_on_submit=True):
-                                p_nome = st.text_input("Nome do Produto")
-                                c1, c2 = st.columns(2)
-                                p_preco = c1.number_input("Preço R$", min_value=0.0, format="%.2f")
-                                p_foto = c2.file_uploader("Foto", type=['jpg', 'jpeg', 'png'])
-                                p_desc = st.text_area("Breve descrição")
-                                p_destaque = st.checkbox("Destaque na busca")
+                        # DESIGN ACORDEON COMPACTO PARA PRESERVAR ESPAÇO VISUAL
+                        with st.expander("➕ CADASTRAR NOVO ITEM NA VITRINE", expanded=False):
+                            with st.form("novo_produto", clear_on_submit=True):
+                                st.markdown("##### Detalhes do Produto / Serviço")
+                                f_col1, f_col2 = st.columns([2, 1])
+                                p_nome = f_col1.text_input("Nome do item")
+                                p_preco = f_col2.number_input("Preço de Venda R$", min_value=0.0, format="%.2f")
                                 
-                                if st.form_submit_button("PUBLICAR PRODUTO", use_container_width=True):
+                                p_desc = st.text_area("Descrição do item (Atributos e detalhes)", max_chars=200)
+                                
+                                f_col3, f_col4 = st.columns([2, 1])
+                                p_foto = f_col3.file_uploader("Foto real do produto", type=['jpg', 'jpeg', 'png'])
+                                p_destaque = f_col4.checkbox("⭐ Destacar na busca", help="O item ganha prioridade visual nos resultados locais")
+                                
+                                if st.form_submit_button("Cadastrar Produto"):
                                     if p_nome and p_preco > 0 and p_foto:
-                                        foto_b64 = otimizar_imagem_admin(p_foto)
+                                        foto_b64 = None
+                                        try:
+                                            foto_b64 = otimizar_imagem_admin(p_foto)
+                                        except:
+                                            # Fallback autônomo e blindado caso a função externa falhe
+                                            try:
+                                                file_ext = p_foto.name.split('.')[-1]
+                                                foto_b64 = f"data:image/{file_ext};base64,{base64.b64encode(p_foto.getvalue()).decode()}"
+                                            except:
+                                                foto_b64 = None
+                                                
                                         if foto_b64:
                                             novo_prod = {
-                                                "nome": p_nome, "preco": float(p_preco), "desc": p_desc,
-                                                "foto_b64": foto_b64, "ativo": True, "destaque": p_destaque,
+                                                "nome": p_nome,
+                                                "preco": float(p_preco),
+                                                "desc": p_desc,
+                                                "foto_b64": foto_b64,
+                                                "ativo": True,
+                                                "destaque": p_destaque,
                                                 "criado_em": datetime.now(fuso_br)
                                             }
                                             produtos.append(novo_prod)
                                             db.collection("profissionais").document(user_id).update({"produtos": produtos})
-                                            st.success("Produto publicado com sucesso!")
+                                            st.success("Produto adicionado com sucesso!")
                                             time.sleep(1)
                                             st.rerun()
-                
-                with tab_config:
-                    st.markdown("#### Editar Perfil")
-                    with st.form("edit_perfil_social"):
-                        n_nome = st.text_input("Nome de Exibição", value=user_data.get('nome'))
-                        n_area = st.selectbox("Área de Atuação", CATEGORIAS_OFICIAIS, index=CATEGORIAS_OFICIAIS.index(user_data.get('area')) if user_data.get('area') in CATEGORIAS_OFICIAIS else 0)
-                        n_zap = st.text_input("WhatsApp", value=user_data.get('whatsapp'))
-                        n_desc = st.text_area("Bio / Descrição", value=user_data.get('descricao'))
-                        n_foto = st.file_uploader("Trocar Foto de Perfil", type=['jpg', 'png', 'jpeg'])
+                                        else:
+                                            st.error("Erro ao processar imagem")
+                                    else:
+                                        st.warning("Preencha nome, preço e insira uma foto válida")
                         
-                        if st.form_submit_button("SALVAR ALTERAÇÕES", use_container_width=True):
-                            upd = {"nome": n_nome, "area": n_area, "whatsapp": limpar_whatsapp(n_zap), "descricao": n_desc}
-                            if n_foto:
-                                img_b64 = otimizar_imagem_admin(n_foto)
-                                if img_b64: upd["foto_url"] = img_b64
-                            db.collection("profissionais").document(user_id).update(upd)
-                            st.success("Perfil atualizado!")
-                            time.sleep(1)
-                            st.rerun()
-                    
-                    st.divider()
-                    if st.button("🚪 SAIR DA CONTA", use_container_width=True):
-                        st.session_state.auth = False
-                        st.rerun()
-
-                with tab_ajuda:
-                    st.markdown("#### Central de Ajuda")
-                    st.write("Dúvidas sobre como melhorar seu perfil?")
-                    st.info("💡 Perfis com fotos de alta qualidade e descrições detalhadas recebem 3x mais cliques!")
-                    st.write("**Como funciona o saldo?**")
-                    st.caption("Cada clique no seu botão de WhatsApp consome 1 moeda (💎). Recarregue com o administrador.")
-                    st.link_button("FALAR COM SUPORTE", criar_link_zap(ZAP_ADMIN, "Olá, preciso de ajuda com meu perfil no GeralJá"))
+                        st.markdown("<br><h5 style='color: #1E293B; font-weight: bold;'>🛒 Seus Itens Publicados</h5>", unsafe_allow_html=True)
+                        
+                        if not produtos:
+                            st.caption("Sua loja ainda não possui produtos ativos.")
+                        else:
+                            # CRIAÇÃO DE CARDS MODERNOS COM LAYOUT DE FEED DE REDE SOCIAL
+                            for idx, prod in enumerate(produtos):
+                                img_prod_url = _safe_image_render(prod.get('foto_b64'))
+                                badge_dst = "<span style='background:#FF8C00; color:white; font-size:10px; font-weight:bold; padding:2px 6px; border-radius:4px; margin-left:6px;'>⭐ DESTAQUE</span>" if prod.get('destaque') else ""
+                                
+                                st.markdown(f"""
+                                <div style="background: white; border-radius: 12px; padding: 14px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); border: 1px solid #E2E8F0;">
+                                    <div style="display: flex; gap: 15px; align-items: center;">
+                                        <img src="{img_prod_url}" style="width: 75px; height: 75px; border-radius: 8px; object-fit: cover; border: 1px solid #F1F5F9; background:#F8FAFC;">
+                                        <div style="flex-grow: 1;">
+                                            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                                <h4 style="margin: 0; color: #1E293B; font-size: 15px; font-weight: 700;">{prod.get('nome')} {badge_dst}</h4>
+                                                <span style="color: #0047AB; font-weight: 800; font-size: 15px;">R$ {prod.get('preco', 0):.2f}</span>
+                                            </div>
+                                            <p style="margin: 4px 0 0 0; color: #64748B; font-size: 12px; line-height: 1.4;">{prod.get('desc', '')}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                """, unsafe_allow_html=True)
+                                
+                                # Botão alinhado nativamente de forma limpa abaixo de cada card
+                                col_vazio, col_btn = st.columns([5, 1])
+                                with col_btn:
+                                    if st.button("🗑️ Remover", key=f"del_{idx}", use_container_width=True):
+                                        produtos.pop(idx)
+                                        db.collection("profissionais").document(user_id).update({"produtos": produtos})
+                                        st.toast("Item removido!")
+                                        time.sleep(0.5)
+                                        st.rerun()
 
 # ABA FEEDBACK
 if 'feedback' in abas_dict:
