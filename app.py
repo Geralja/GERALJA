@@ -2,15 +2,6 @@
 # GERALJÁ: CRIANDO SOLUÇÕES - MÓDULO 1: INFRAESTRUTURA & SEGURANÇA MÁXIMA
 # ==============================================================================
 import streamlit as st
-
-# --- CONFIGURAÇÃO DE ALTO NÍVEL (DEVE SER A PRIMEIRA INSTRUÇÃO STREAMLIT) ---
-st.set_page_config(
-    page_title="GeralJá | Criando Soluções",
-    page_icon="🇧🇷",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
-
 import firebase_admin
 from firebase_admin import credentials, firestore
 import base64
@@ -39,7 +30,16 @@ from google_auth_oauthlib.flow import Flow # Login Google
 try:
     from streamlit_js_eval import streamlit_js_eval, get_geolocation
 except ImportError:
-    pass
+    streamlit_js_eval = None
+    get_geolocation = None
+
+# --- CONFIGURAÇÃO DE PÁGINA (DEVE SER O PRIMEIRO COMANDO) ---
+st.set_page_config(
+    page_title="GeralJá | Criando Soluções",
+    page_icon="🇧🇷",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
 
 # --- CONFIGURAÇÃO DE ALTO NÍVEL ---
 class GeralJaEngine:
@@ -47,12 +47,11 @@ class GeralJaEngine:
         self.fuso = pytz.timezone('America/Sao_Paulo')
     
     def sanitizar(self, codigo_bruto):
-        """Mata caracteres fantasmas e lixo de codificação instantaneamente"""
+        """Mata caracteres fantasmas mantendo acentos PT-BR"""
         if not codigo_bruto: return ""
-        # Remove U+00A0 (espaço inquebrável) e normaliza espaços
         limpo = codigo_bruto.replace('\u00a0', ' ').replace('\xa0', ' ')
-        # Filtra apenas caracteres ASCII visíveis + quebras de linha
-        return re.sub(r'[^\x20-\x7E\n\t\r]', '', limpo)
+        # Mantém caracteres imprimíveis (inclui acentos) + quebras
+        return ''.join(ch for ch in limpo if ch in '\n\t\r' or ord(ch) >= 32)
 
     def injetar_modulo(self, nome_arquivo, conteudo):
         """Instala novos códigos no servidor de forma independente"""
@@ -69,6 +68,9 @@ engine = GeralJaEngine()
 fuso_br = engine.fuso
 
 # --- CONFIGURAÇÃO DE CHAVES (PUXANDO DO SECRETS) ---
+client_groq = None
+streamlit_js_eval = None
+get_geolocation = None
 try:
     # Chaves de Autenticação Social
     FB_ID = st.secrets.get("FB_CLIENT_ID", "")
@@ -115,6 +117,7 @@ def conectar_banco_master():
 app_engine = conectar_banco_master()
 db = firestore.client()
 
+
 # --- INICIALIZAÇÃO DE ESTADOS SEGUROS NO SESSION STATE ---
 if 'tema_claro' not in st.session_state:
     st.session_state.tema_claro = False
@@ -128,6 +131,8 @@ if 'minha_lat' not in st.session_state:
     st.session_state.minha_lat = -23.5505
 if 'minha_lon' not in st.session_state:
     st.session_state.minha_lon = -46.6333
+if 'security_check' not in st.session_state:
+    st.session_state.security_check = False
 
 # Mantém os menus escondidos
 st.markdown("""
@@ -140,20 +145,25 @@ st.markdown("""
 
 # --- LOGICA DE RECEPÇÃO DO GOOGLE ---
 def get_google_flow():
-    g_auth = st.secrets["google_auth"]
+    g_auth = st.secrets.get("google_auth", {})
+    client_id = g_auth.get("client_id")
+    client_secret = g_auth.get("client_secret")
+    redirect_uri = g_auth.get("redirect_uri", REDIRECT_URI)
+    if not client_id or not client_secret:
+        return None
     client_config = {
         "web": {
-            "client_id": g_auth["client_id"],
-            "client_secret": g_auth["client_secret"],
+            "client_id": client_id,
+            "client_secret": client_secret,
             "auth_uri": "https://accounts.google.com/o/oauth2/auth",
             "token_uri": "https://oauth2.googleapis.com/token",
-            "redirect_uris": [g_auth["redirect_uri"]]
+            "redirect_uris": [redirect_uri]
         }
     }
     return Flow.from_client_config(
         client_config,
         scopes=["openid", "https://www.googleapis.com/auth/userinfo.profile", "https://www.googleapis.com/auth/userinfo.email"],
-        redirect_uri=g_auth["redirect_uri"]
+        redirect_uri=redirect_uri
     )
 
 # Verifica se o Google enviou o código na URL (Query Params)
@@ -161,10 +171,13 @@ query_params = st.query_params
 if "code" in query_params:
     try:
         flow = get_google_flow()
-        flow.fetch_token(code=query_params["code"])
-        session = flow.authorized_session()
-        
-        user_info = session.get('https://www.googleapis.com/userinfo').json()
+        if flow:
+            code_val = query_params["code"]
+            if isinstance(code_val, list): code_val = code_val[0]
+            flow.fetch_token(code=code_val)
+            session = flow.authorized_session()
+            
+            user_info = session.get('https://www.googleapis.com/oauth2/v2/userinfo').json()
         
         email_google = user_info.get("email")
         nome_google = user_info.get("name")
@@ -221,7 +234,7 @@ st.markdown(estilo_dinamico, unsafe_allow_html=True)
 # FUNÇÕES DE SUPORTE GLOBAL
 # ==========================================================
 def limpar_whatsapp(numero):
-    """Remove parênteses, spaces e traços do número."""
+    """Remove parênteses, espaços e traços do número."""
     num = re.sub(r'\D', '', str(numero))
     if not num.startswith('55') and len(num) >= 10:
         num = f"55{num}"
@@ -254,6 +267,15 @@ def buscar_opcoes_dinamicas(documento, padrao):
         return padrao
     except Exception as e:
         return padrao
+def safe_image_src(valor):
+    """Evita duplo prefixo data:image e garante fallback"""
+    if not valor:
+        return "https://cdn-icons-png.flaticon.com/512/149/149071.png"
+    v = str(valor)
+    if v.startswith("http") or v.startswith("data:image"):
+        return v
+    return f"data:image/jpeg;base64,{v}"
+
 
 def converter_img_b64(file):
     if file is None: return ""
@@ -360,7 +382,7 @@ def processar_ia_avancada(texto):
         if cache_ref.exists:
             return cache_ref.to_dict().get("categoria")
 
-        if "GROQ_API_KEY" in st.secrets:
+        if client_groq:
             prompt = f"O usuário buscou: '{texto}'. Categorias: {CATEGORIAS_OFICIAIS}. Responda apenas o NOME DA CATEGORIA."
             res = client_groq.chat.completions.create(
                 messages=[{"role": "user", "content": prompt}],
@@ -411,7 +433,7 @@ with menu_abas[0]:
     
     # 1. MOTOR DE LOCALIZAÇÃO (ALTA PRECISÃO)
     with st.expander("📍 Seus dados de Localização (GPS)", expanded=False):
-        if 'get_geolocation' in globals():
+        if get_geolocation:
             loc = get_geolocation(component_key="geo_high_prec") 
             if loc and 'coords' in loc:
                 st.session_state.minha_lat = loc['coords']['latitude']
@@ -467,11 +489,7 @@ with menu_abas[0]:
             st.warning(f"Nenhum profissional de '{cat_ia}' encontrado nesta distância.")
         else:
             for p in lista_ranking:
-                f_perfil = p.get('foto_url', '')
-                if f_perfil and not str(f_perfil).startswith("http"):
-                    f_perfil = f"data:image/jpeg;base64,{f_perfil}"
-                elif not f_perfil:
-                    f_perfil = "https://cdn-icons-png.flaticon.com/512/149/149071.png"
+                f_perfil = safe_image_src(p.get('foto_url', ''))
                 
                 is_elite = p['score_elite'] > 0
                 cor_borda = "#FFD700" if is_elite else "#0047AB"
@@ -504,6 +522,7 @@ try:
 except:
     noticias_fb = []
 
+@st.cache_data(ttl=600)
 def buscar_noticias_rss(busca="Grajaú São Paulo"):
     try:
         url_rss = f"https://news.google.com/rss/search?q={urllib.parse.quote(busca)}&hl=pt-BR&gl=BR&ceid=BR:pt-419"
@@ -527,14 +546,11 @@ for n in noticias_fb:
 
 for n in noticias_auto:
     if len(fila_noticias) >= 2: break
-    fonte_nome = "Google News"
-    if hasattr(n, 'source'):
-        fonte_nome = n.source.get('title', 'Google News') if isinstance(n.source, dict) else getattr(n.source, 'title', 'Google News')
     fila_noticias.append({
-        "titulo": n.title.split(' - ')[0] if hasattr(n, 'title') else 'Sem título',
-        "link": n.link if hasattr(n, 'link') else '#',
+        "titulo": n.title.split(' - ')[0],
+        "link": n.link,
         "img": IMG_PADRAO,
-        "fonte": f"📡 {fonte_nome}",
+        "fonte": f"📡 {n.source.get('title', 'Google News')}",
         "cor": "#0047AB"
     })
 
@@ -684,7 +700,7 @@ with menu_abas[1]:
                     
                     st.balloons()
                     if perfil_antigo.exists:
-                        st.success(f"✅ Perfil de {nome_input} updated com sucesso!")
+                        st.success(f"✅ Perfil de {nome_input} atualizado com sucesso!")
                     else:
                         st.success(f"🎊 Bem-vindo ao GeralJá! Cadastro concluído!")
                         
@@ -759,7 +775,7 @@ with menu_abas[2]:
         m3.metric("Status", "🟢 ATIVO" if d.get('aprovado') else "🟡 PENDENTE")
 
         if st.button("📍 ATUALIZAR MEU GPS", use_container_width=True):
-            if 'streamlit_js_eval' in globals():
+            if streamlit_js_eval:
                 loc = streamlit_js_eval(js_expressions="navigator.geolocation.getCurrentPosition(s => s)", key='gps_v8')
                 if loc and 'coords' in loc:
                     doc_ref.update({"lat": loc['coords']['latitude'], "lon": loc['coords']['longitude']})
@@ -996,18 +1012,17 @@ with menu_abas[3]:
                 df = pd.DataFrame(profs_list)
                 if not df.empty:
                     busca = st.text_input("🔍 Localizar (Nome ou WhatsApp)")
-                    if busca: 
-                        df = df[df['nome'].astype(str).str.contains(busca, case=False, na=False) | df['whatsapp'].astype(str).str.contains(busca, na=False)]
+                    if busca: df = df[df['nome'].str.contains(busca, case=False, na=False) | df['whatsapp'].str.contains(busca, na=False)]
                     
                     m1, m2, m3 = st.columns(3)
                     m1.metric("Total", len(df))
                     m2.metric("Pendentes", len(df[df['aprovado'] == False]))
-                    m3.metric("GeralCones", f"💎 {int(df['saldo'].sum()) if 'saldo' in df.columns else 0}")
+                    m3.metric("GeralCones", f"💎 {int(df['saldo'].sum())}")
 
                     for _, p in df.iterrows():
                         pid = p['id']
                         status = "🟢" if p.get('aprovado') else "🟡"
-                        with st.expander(f"{status} {str(p.get('nome','')).upper()}"):
+                        with st.expander(f"{status} {p.get('nome','').upper()}"):
                             with st.form(f"f_edit_{pid}"):
                                 c1, c2 = st.columns(2)
                                 n_nome = c1.text_input("Nome", value=p.get('nome'))
@@ -1021,7 +1036,7 @@ with menu_abas[3]:
                                 cf1, cf2 = st.columns([1, 2])
                                 with cf1:
                                     if p.get('foto_url'): 
-                                        st.image(f"data:image/jpeg;base64,{p['foto_url']}" if len(str(p['foto_url'])) > 100 else p['foto_url'], width=80)
+                                        st.image(safe_image_src(p['foto_url']), width=80)
                                     up_p = st.file_uploader("Perfil", type=['jpg','png'], key=f"up_p_{pid}")
                                 with cf2:
                                     up_v = st.file_uploader("Vitrine (Máx 4)", type=['jpg','png'], accept_multiple_files=True, key=f"up_v_{pid}")
@@ -1064,8 +1079,8 @@ if comando == "abracadabra" and len(menu_abas) > 5:
             profs_list = [p.to_dict() for p in profs_ref]
             if profs_list:
                 df_fin = pd.DataFrame(profs_list)
-                total_moedas = df_fin['saldo'].sum() if 'saldo' in df_fin.columns else 0
-                total_cliques = df_fin['cliques'].sum() if 'cliques' in df_fin.columns else 0
+                total_moedas = df_fin['saldo'].sum() if 'saldo' in df_fin else 0
+                total_cliques = df_fin['cliques'].sum() if 'cliques' in df_fin else 0
                 
                 col_f1, col_f2 = st.columns(2)
                 col_f1.metric("Moedas Ativas em Circulação", f"🪙 {total_moedas}")
