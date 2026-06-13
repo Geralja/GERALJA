@@ -231,6 +231,11 @@ def buscar_opcoes_dinamicas(documento, padrao):
     except Exception as e:
         return padrao
 
+def finalizar_e_alinhar_layout():
+    # Função criada para evitar NameError no rodapé
+    # Mantém o layout alinhado sem quebrar o app
+    st.write("")
+
 def safe_image_src(valor):
     """Evita duplo prefixo data:image e garante fallback"""
     if not valor:
@@ -363,6 +368,8 @@ CATEGORIAS_OFICIAIS = [
     "Advocacia", "Contabilidade", "Imobiliária", "Seguros", "Ajudante Geral", 
     "Diarista", "Cuidador de Idosos", "Babá", "Outro (Personalizado)"
 ]
+
+lista_atual = CATEGORIAS_OFICIAIS.copy()
 
 CONCEITOS_EXPANDIDOS = {
     "pizza": "Pizzaria", "pizzaria": "Pizzaria", "fome": "Pizzaria", "massa": "Pizzaria",
@@ -1304,7 +1311,7 @@ with menu_abas[4]:
 # ==============================================================================
 # ABA 5: 📊 FINANCEIRO (EASTER EGG - COMANDO SECRETO)
 # ==============================================================================
-if comando == "abracadabra" and len(menu_abas) > 5:
+if comando in ["financeiro2026", "geralja_master"] and len(menu_abas) > 5:
     with menu_abas[5]:
         st.header("📊 Painel Financeiro GeralJá")
         st.write("Visão geral e faturamento estratégico de moedas da plataforma.")
