@@ -1039,3 +1039,498 @@ st.markdown("""
     <div class="security-badge"><span class="shield-icon">🛡</span> IA de Proteção Ativa: Monitorando Contra Ameaças</div>
 </div>
 """, unsafe_allow_html=True)
+import streamlit as pd
+import base64
+from datetime import datetime
+
+# ==============================================================================
+# --- PARTE 1: CADASTRAR & EDITAR (ABA 1) ---
+# ==============================================================================
+with menu_abas[1]:
+    st.markdown("### 🚀 Cadastro ou Edição de Profissional")
+
+    # Recuperação segura de Categorias Oficiais
+    try:
+        doc_cat = db.collection("configuracoes").document("categorias").get()
+        CATEGORIAS_OFICIAIS = doc_cat.to_dict().get("lista", ["Geral"]) if doc_cat.exists else ["Pedreiro", "Locutor", "Eletricista", "Mecânico"]
+    except Exception:
+        CATEGORIAS_OFICIAIS = ["Pedreiro", "Locutor", "Eletricista", "Mecânico"]
+
+    dados_google = st.session_state.get("pre_cadastro", {})
+    email_inicial = dados_google.get("email", "")
+    nome_inicial = dados_google.get("nome", "")
+    foto_google = dados_google.get("foto", "")
+
+    st.markdown("##### Entre rápido com:")
+    col_soc1, col_soc2 = st.columns(2)
+
+    g_auth = st.secrets.get("google_auth", {})
+    g_id = g_auth.get("client_id")
+    g_uri = g_auth.get("redirect_uri", "https://geralja-zxiaj2ot56fuzgcz7xhcks.streamlit.app/")
+
+    with col_soc1:
+        if g_id:
+            url_google = f"https://accounts.google.com/o/oauth2/v2/auth?client_id={g_id}&response_type=code&scope=openid%20profile%20email&redirect_uri={g_uri}"
+            st.markdown(f'''
+                <a href="{url_google}" target="_self" style="text-decoration:none;">
+                    <div style="display:flex; align-items:center; justify-content:center; border:1px solid #dadce0; border-radius:8px; padding:8px; background:white;">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" width="18px" style="margin-right:10px;">
+                        <span style="color:#3c4043; font-weight:bold; font-size:14px;">Google</span>
+                    </div>
+                </a>
+            ''', unsafe_allow_html=True)
+        else:
+            st.caption("⚠️ Google Auth não configurado")
+
+    with col_soc2:
+        fb_id = st.secrets.get("FB_CLIENT_ID", "")
+        st.markdown(f'''
+            <a href="https://www.facebook.com/v18.0/dialog/oauth?client_id={fb_id}&redirect_uri={g_uri}&scope=public_profile,email" target="_self" style="text-decoration:none;">
+                <div style="display:flex; align-items:center; justify-content:center; border-radius:8px; padding:8px; background:#1877F2;">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg" width="18px" style="margin-right:10px;">
+                    <span style="color:white; font-weight:bold; font-size:14px;">Facebook</span>
+                </div>
+            </a>
+        ''', unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    BONUS_WELCOME = 20
+
+    with st.form("form_profissional", clear_on_submit=False):
+        st.caption("💡 DICA: Se você já tem cadastro, use o mesmo WhatsApp para editar seus dados.")
+
+        col1, col2 = st.columns(2)
+        nome_input = col1.text_input("Nome do Profissional ou Loja", value=nome_inicial)
+        zap_input = col2.text_input("WhatsApp (Somente números com DDD)", help="Ex: 11980168513")
+
+        email_input = st.text_input("E-mail (Para login via Google)", value=email_inicial)
+
+        col3, col4 = st.columns(2)
+        cat_input = col3.selectbox("Selecione sua Especialidade Principal", CATEGORIAS_OFICIAIS)
+        senha_input = col4.text_input("Sua Senha de Acesso", type="password", help="Necessária para salvar alterações")
+
+        desc_input = st.text_area("Descrição Completa (Serviços, Horários, Diferenciais)", max_chars=400)
+        tipo_input = st.radio("Tipo de Conta", ["👨‍🔧 Profissional Autônomo", "🏢 Comércio/Loja"], horizontal=True)
+
+        foto_upload = st.file_uploader("Atualizar Foto de Perfil ou Logo", type=['png', 'jpg', 'jpeg'])
+
+        # Recurso Turbo: Barra de Completude Dinâmica
+        campos_preenchidos = sum([bool(nome_input), bool(zap_input), bool(email_input), bool(desc_input), bool(senha_input)])
+        percentual = (campos_preenchidos / 5) * 100
+        st.progress(percentual / 100)
+        st.caption(f"Força do seu perfil: **{int(percentual)}% preenchido**")
+
+        btn_acao = st.form_submit_button("✅ FINALIZAR: SALVAR OU ATUALIZAR", use_container_width=True)
+
+    if btn_acao:
+        # Higienização de string para o número de WhatsApp
+        zap_limpo = "".join(filter(str.isdigit, zap_input))
+        
+        if not nome_input or not zap_limpo or not senha_input:
+            st.warning("⚠️ Nome, WhatsApp e Senha são obrigatórios para validação!")
+        else:
+            try:
+                with st.spinner("Sincronizando com o ecossistema GeralJá..."):
+                    doc_ref = db.collection("profissionais").document(zap_limpo)
+                    perfil_antigo = doc_ref.get()
+                    dados_antigos = perfil_antigo.to_dict() if perfil_antigo.exists else {}
+
+                    foto_b64 = dados_antigos.get("foto_url", "")
+
+                    if foto_upload is not None:
+                        file_ext = foto_upload.name.split('.')[-1]
+                        img_bytes = foto_upload.getvalue()
+                        encoded_img = base64.b64encode(img_bytes).decode()
+                        foto_b64 = f"data:image/{file_ext};base64,{encoded_img}"
+                    elif not foto_b64 and foto_google:
+                        foto_b64 = foto_google
+
+                    saldo_final = dados_antigos.get("saldo", BONUS_WELCOME)
+                    cliques_atuais = dados_antigos.get("cliques", 0)
+
+                    dados_pro = {
+                        "nome": nome_input,
+                        "whatsapp": zap_limpo,
+                        "email": email_input,
+                        "area": cat_input,
+                        "senha": senha_input,
+                        "descricao": desc_input,
+                        "tipo": tipo_input,
+                        "tipo_conta": dados_antigos.get("tipo_conta", "prestador"),
+                        "produtos": dados_antigos.get("produtos", []),
+                        "foto_url": foto_b64,
+                        "saldo": saldo_final,
+                        "data_cadastro": dados_antigos.get("data_cadastro", datetime.now().strftime("%d/%m/%Y")),
+                        "aprovado": True,
+                        "cliques": cliques_atuais,
+                        "rating": dados_antigos.get("rating", 5),
+                        "lat": st.session_state.get('minha_lat', -23.7),
+                        "lon": st.session_state.get('minha_lon', -46.7)
+                    }
+
+                    doc_ref.set(dados_pro)
+
+                    if "pre_cadastro" in st.session_state:
+                        del st.session_state["pre_cadastro"]
+
+                    st.balloons()
+                    if perfil_antigo.exists:
+                        st.success(f"✅ Perfil de {nome_input} atualizado com sucesso!")
+                    else:
+                        st.success(f"🎊 Bem-vindo ao GeralJá! Você ganhou {BONUS_WELCOME} moedas de saldo bônus!")
+                    st.rerun()
+
+            except Exception as e:
+                st.error(f"❌ Erro ao processar perfil: {e}")
+                import io
+import time
+from PIL import Image
+
+# ==============================================================================
+# --- PARTE 2: MEU PERFIL / PAINEL DO PARCEIRO (ABA 2) ---
+# ==============================================================================
+with menu_abas[2]:
+    params = st.query_params
+    if "uid" in params and not st.session_state.auth:
+        fb_uid = params["uid"]
+        user_query = db.collection("profissionais").where("fb_uid", "==", fb_uid).limit(1).get()
+        if user_query:
+            doc = user_query[0]
+            st.session_state.auth = True
+            st.session_state.user_id = doc.id
+            st.success(f"✅ Autenticação realizada via Rede Social!")
+            time.sleep(0.5)
+            st.rerun()
+
+    if not st.session_state.auth:
+        st.subheader("🚀 Acesso ao Painel do Parceiro")
+        fb_id = st.secrets.get("FB_CLIENT_ID", "")
+        g_uri = st.secrets.get("google_auth", {}).get("redirect_uri", "")
+        url_direta_fb = f"https://www.facebook.com/v18.0/dialog/oauth?client_id={fb_id}&redirect_uri={g_uri}&scope=public_profile,email"
+
+        st.markdown(f'''
+            <a href="{url_direta_fb}" target="_top" style="text-decoration:none;">
+                <div style="background:#1877F2;color:white;padding:12px;border-radius:8px;text-align:center;font-weight:bold;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow: 0px 4px 6px rgba(0,0,0,0.1);">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg" width="20px" style="margin-right:10px;">
+                    ENTRAR COM FACEBOOK
+                </div>
+            </a>
+        ''', unsafe_allow_html=True)
+
+        st.markdown("<p style='text-align:center; margin-top:15px; color:#666;'>— ou use suas credenciais locais —</p>", unsafe_allow_html=True)
+
+        col1, col2 = st.columns(2)
+        l_zap = col1.text_input("WhatsApp Cadastrado", key="login_zap_geralja_v10", placeholder="Ex: 11980168513")
+        l_pw = col2.text_input("Senha Numérica", type="password", key="login_pw_geralja_v10")
+
+        if st.button("ENTRAR NO PAINEL", key="btn_entrar_geralja_v10", use_container_width=True):
+            try:
+                u = db.collection("profissionais").document("".join(filter(str.isdigit, l_zap))).get()
+                if u.exists:
+                    dados_user = u.to_dict()
+                    if str(dados_user.get('senha')) == str(l_pw):
+                        st.session_state.auth = True
+                        st.session_state.user_id = u.id
+                        st.success("Login realizado com sucesso!")
+                        st.rerun()
+                    else: st.error("❌ Senha incorreta.")
+                else: st.error("❌ WhatsApp não localizado.")
+            except Exception as e: st.error(f"Erro no banco: {e}")
+    else:
+        doc_ref = db.collection("profissionais").document(st.session_state.user_id)
+        user_data = doc_ref.get().to_dict()
+
+        st.write(f"### Olá, {user_data.get('nome', 'Parceiro')}! 👋")
+
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Saldo Atual 🪙", f"{user_data.get('saldo', 0)} GeralCoins")
+        m2.metric("Cliques Acumulados 🚀", f"{user_data.get('cliques', 0)}")
+        m3.metric("Status da Conta", "🟢 ATIVO" if user_data.get('aprovado') else "🟡 PENDENTE")
+
+        tab_dados, tab_vitrine = st.tabs(["📋 Meus Dados", "🛍️ Minha Vitrine Comercial"])
+
+        with tab_dados:
+            st.write(f"**Especialidade:** {user_data.get('area', '')}")
+            st.write(f"**Contato:** {user_data.get('whatsapp', '')}")
+            st.write(f"**Modalidade:** {user_data.get('tipo_conta', 'prestador').upper()}")
+            
+            if st.button("📍 ATUALIZAR COORDENADAS GPS", use_container_width=True):
+                if 'streamlit_js_eval' in globals():
+                    loc = streamlit_js_eval(js_expressions="navigator.geolocation.getCurrentPosition(s => s)", key='gps_v8')
+                    if loc and 'coords' in loc:
+                        doc_ref.update({"lat": loc['coords']['latitude'], "lon": loc['coords']['longitude']})
+                        st.success("✅ Coordenadas sincronizadas com precisão para buscas locais!")
+                else: st.warning("Módulo JavaScript indisponível no contêiner atual.")
+
+        with tab_vitrine:
+            tipo_conta = user_data.get('tipo_conta', 'prestador')
+            if tipo_conta != 'comerciante':
+                st.info("💡 Você está no modo Prestador. Ative o Modo Comerciante para liberar sua vitrine digital integrada.")
+                if st.button("Ativar Modo Comerciante Gratuitamente"):
+                    doc_ref.update({"tipo_conta": "comerciante"})
+                    st.success("Perfil migrado! Carregando ferramentas de e-commerce...")
+                    st.rerun()
+            else:
+                produtos = user_data.get('produtos', [])
+                limite_max = 10
+                st.markdown(f"**Produtos Cadastrados:** `{len(produtos)} / {limite_max}`")
+
+                # Trava Inteligente Turbo
+                if len(produtos) >= limite_max:
+                    st.error("⚠️ Você atingiu o limite gratuito de 10 itens na vitrine.")
+                else:
+                    with st.form("novo_produto", clear_on_submit=True):
+                        st.markdown("##### ➕ Adicionar Item à Vitrine")
+                        p_nome = st.text_input("Nome do Produto")
+                        p_preco = st.number_input("Preço de Venda (R$)", min_value=0.0, format="%.2f")
+                        p_desc = st.text_area("Descrição Curta", max_chars=150)
+                        p_foto = st.file_uploader("Foto Quadrada do Produto", type=['jpg', 'jpeg', 'png'])
+                        p_destaque = st.checkbox("Destacar este item no topo das buscas")
+
+                        if st.form_submit_button("Cadastrar Novo Produto"):
+                            if p_nome and p_preco > 0 and p_foto:
+                                try:
+                                    img_open = Image.open(p_foto)
+                                    if img_open.mode in ("RGBA", "P"): img_open = img_open.convert("RGB")
+                                    img_open.thumbnail((400, 400))
+                                    out_buf = io.BytesIO()
+                                    img_open.save(out_buf, format="JPEG", quality=60)
+                                    foto_b64 = f"data:image/jpeg;base64,{base64.b64encode(out_buf.getvalue()).decode()}"
+
+                                    novo_prod = {
+                                        "nome": p_nome,
+                                        "preco": float(p_preco),
+                                        "desc": p_desc,
+                                        "foto_b64": foto_b64,
+                                        "ativo": True,
+                                        "destaque": p_destaque,
+                                        "criado_em": datetime.now().isoformat()
+                                    }
+                                    produtos.append(novo_prod)
+                                    doc_ref.update({"produtos": produtos})
+                                    st.success("🎉 Produto integrado à vitrine pública com sucesso!")
+                                    st.rerun()
+                                except Exception as e: st.error(f"Erro no processamento da imagem: {e}")
+                            else: st.warning("Preencha obrigatoriamente Nome, Preço válido e envie uma Foto.")
+
+                st.markdown("---")
+                st.markdown("##### Gerenciamento de Itens Ativos")
+                for idx, prod in enumerate(produtos):
+                    c_img, c_txt, c_btn = st.columns([1, 3, 1])
+                    with c_img:
+                        st.image(prod.get('foto_b64'), width=70)
+                    with c_txt:
+                        st.markdown(f"**{prod.get('nome')}** — `R$ {prod.get('preco', 0):.2f}`")
+                        st.caption(prod.get('desc', ''))
+                    with c_btn:
+                        if st.button("🗑️", key=f"del_item_{idx}"):
+                            produtos.pop(idx)
+                            doc_ref.update({"produtos": produtos})
+                            st.rerun()
+
+        st.divider()
+        if st.button("🚪 DESCONECTAR DO PAINEL", use_container_width=True, type="secondary"):
+            st.session_state.auth = False
+            st.rerun()
+            import urllib.parse
+import feedparser
+
+# ==============================================================================
+# --- PARTE 3: PLANTÃO DE NOTÍCIAS INTERATIVO & RENDER DA VITRINE ---
+# ==============================================================================
+st.markdown("---")
+st.subheader("📰 Plantão de Notícias Coletivas — Grajaú Tem")
+
+@st.cache_data(ttl=900) # Cache otimizado para 15 minutos de expiração
+def buscar_noticias_rss_seguro(busca="Grajaú São Paulo"):
+    try:
+        url_rss = f"https://news.google.com/rss/search?q={urllib.parse.quote(busca)}&hl=pt-BR&gl=BR&ceid=BR:pt-419"
+        feed = feedparser.parse(url_rss)
+        return feed.entries[:4]
+    except Exception:
+        return []
+
+noticias = buscar_noticias_rss_seguro()
+
+if noticias:
+    cols = st.columns(4)
+    for i, n in enumerate(noticias):
+        with cols[i]:
+            img = "https://images.unsplash.com/photo-1504711432869-0df30d7eaf4d?w=400"
+            if hasattr(n, 'media_content') and n.media_content:
+                img = n.media_content[0]['url']
+            
+            fonte = n.source.get('title', 'Grajaú Tem') if hasattr(n, 'source') else 'Notícias Locais'
+            
+            # Recurso Turbo: Tempo estimado de leitura calculado
+            tempo_leitura = max(1, len(n.title) // 40)
+
+            st.markdown(f"""
+            <a href="{n.link}" target="_blank" style="text-decoration:none; color:inherit;">
+                <div style="border:1px solid #E2E8F0; border-radius:12px; overflow:hidden; height:310px; background:white; transition: transform 0.2s;">
+                    <img src="{img}" style="width:100%; height:130px; object-fit:cover;">
+                    <div style="padding:12px;">
+                        <span style="background:#EDF2F7; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold; color:#4A5568;">⏱️ {tempo_leitura} min de leitura</span>
+                        <p style="font-size:13px; font-weight:700; margin-top:8px; line-height:1.3; color:#1A202C;">{n.title[:75]}...</p>
+                        <p style="font-size:11px; color:#A0AEC0; margin-top:10px; font-weight:600;">📍 {fonte}</p>
+                    </div>
+                </div>
+            </a>
+            """, unsafe_allow_html=True)
+else:
+    st.info("📢 Nenhuma ocorrência urgente registrada no momento. O trânsito na região segue fluindo normalmente.")
+    import requests
+
+# ==============================================================================
+# --- PARTE 4: TORRE DE CONTROLE ADMINISTRATIVA (ABA 3) ---
+# ==============================================================================
+with menu_abas[3]:
+    if not st.session_state.get('admin_logado', False):
+        st.markdown("### 🔐 Painel Operacional Central")
+        with st.form("login_adm"):
+            u = st.text_input("Username Administrativo")
+            p = st.text_input("Token de Segurança", type="password")
+            if st.form_submit_button("AUTENTICAR DIRETORIA"):
+                if u == st.secrets.get("ADMIN_USER", "geralja") and p == st.secrets.get("ADMIN_PASS", "Bps36ocara"):
+                    st.session_state.admin_logado = True
+                    st.success("Conectado à Central de Comando!")
+                    st.rerun()
+                else: st.error("Acesso negado. Credenciais inválidas.")
+    else:
+        st.markdown("## 👑 Central de Comando GeralJá & Grajaú Tem")
+        if st.button("🚪 Encerrar Sessão Admin", type="primary"):
+            st.session_state.admin_logado = False
+            st.rerun()
+
+        tab_parceiros, tab_mod_noticias, tab_loja_adm, tab_operacoes = st.tabs([
+            "👥 Parceiros", "📰 Scanner de Notícias IA", "🛍️ Loja Administrativa", "📁 Categorias"
+        ])
+
+        with tab_operacoes:
+            st.subheader("Configuração de Ramos e Profissões")
+            doc_cat_ref = db.collection("configuracoes").document("categorias")
+            res_cat = doc_cat_ref.get()
+            lista_atual = res_cat.to_dict().get("lista", []) if res_cat.exists else []
+            
+            c1, c2 = st.columns([3, 1])
+            nova_cat = c1.text_input("Adicionar Nova Categoria de Serviço:")
+            if c2.button("➕ INCLUIR", use_container_width=True):
+                if nova_cat and nova_cat not in lista_atual:
+                    lista_atual.append(nova_cat)
+                    lista_atual.sort()
+                    doc_cat_ref.set({"lista": lista_atual})
+                    st.success(f"{nova_cat} adicionada!")
+                    st.rerun()
+
+            st.write("Categorias vigentes no sistema:", lista_atual)
+
+        with tab_mod_noticias:
+            st.subheader("📡 Ingestão Automatizada e Scanner")
+            c_api1, c_api2 = st.columns(2)
+            
+            if c_api1.button("🔍 SCANNER VIA NEWS API", use_container_width=True):
+                try:
+                    chave = st.secrets.get('NEWS_API_KEY', '516289bf44e1429784e0ca0102854a0d')
+                    api_url = f"https://newsapi.org/v2/everything?q=Grajaú+São+Paulo&language=pt&apiKey={chave}"
+                    res = requests.get(api_url).json()
+                    st.session_state['sugestoes_ia'] = [
+                        {
+                            "titulo": art['title'], 
+                            "link": art['url'], 
+                            "img": art.get('urlToImage', "https://images.unsplash.com/photo-1504711432869-0df30d7eaf4d?w=800"), 
+                            "fonte": art.get('source', {}).get('name', 'NewsAPI')
+                        } for art in res.get("articles", [])[:3]
+                    ]
+                    st.success("Artigos recentes minerados!")
+                except Exception as e: st.error(f"Falha na varredura da API: {e}")
+
+            if 'sugestoes_ia' in st.session_state:
+                cols_sug = st.columns(3)
+                for idx, sug in enumerate(st.session_state['sugestoes_ia']):
+                    with cols_sug[idx]:
+                        st.image(sug['img'], use_container_width=True)
+                        st.markdown(f"**{sug['titulo'][:50]}...**")
+                        if st.button("🚀 PUBLICAR ESTA", key=f"pub_ia_{idx}"):
+                            db.collection("noticias").add({
+                                "titulo": sug['titulo'],
+                                "imagem_url": sug['img'],
+                                "link_original": sug['link'],
+                                "data": datetime.now().isoformat(),
+                                "categoria": "DESTAQUE"
+                            })
+                            st.success("Postado no Feed Público!")
+
+        with tab_loja_adm:
+            st.subheader("🛒 Controle de Estoque e Infraestrutura Comercial")
+            with st.form("add_loja_form"):
+                ln = st.text_input("Nome do Item Comercial")
+                lp = st.number_input("Preço de Custo (GeralCoins)", min_value=1)
+                le = st.number_input("Quantidade em Estoque Físico", min_value=1)
+                lf = st.file_uploader("Upload do Banner promocional", type=['jpg', 'png'])
+                
+                if st.form_submit_button("SALVAR INTEGRADO NA LOJA"):
+                    img_base64_loja = ""
+                    if lf:
+                        img_loja = Image.open(lf)
+                        if img_loja.mode in ("RGBA", "P"): img_loja = img_loja.convert("RGB")
+                        img_loja.thumbnail((500, 500))
+                        buf = io.BytesIO()
+                        img_loja.save(buf, format="JPEG", quality=70)
+                        img_base64_loja = base64.b64encode(buf.getvalue()).decode()
+
+                    db.collection("loja").add({
+                        "nome": ln,
+                        "preco": lp,
+                        "estoque": le,
+                        "foto": img_base64_loja,
+                        "atualizado_em": datetime.now().isoformat()
+                    })
+                    st.success(f"Item {ln} catalogado com sucesso na central de recompensas!")
+                    st.rerun()
+
+            st.divider()
+            st.markdown("##### Itens Disponíveis na Vitrine Administrativa")
+            
+            # Loop de renderização completo corrigido contra quebras de fechamento
+            itens_loja = db.collection("loja").stream()
+            for item_doc in itens_loja:
+                it = item_doc.to_dict()
+                c_item1, c_item2, c_item3 = st.columns([1, 3, 1])
+                with c_item1:
+                    if it.get('foto'):
+                        st.image(f"data:image/jpeg;base64,{it.get('foto')}", width=60)
+                with c_item2:
+                    st.markdown(f"**{it.get('nome')}** — Preço: `{it.get('preco')} Moedas` | Estoque: `{it.get('estoque')} un`")
+                with c_item3:
+                    if st.button("🗑️", key=f"del_loja_{item_doc.id}"):
+                        db.collection("loja").document(item_doc.id).delete()
+                        st.rerun()
+                        # ==============================================================================
+# --- RODAPÉ INSTITUCIONAL (FORA DE QUALQUER ABA) ---
+# ==============================================================================
+st.markdown("<br><br>", unsafe_allow_html=True)
+st.markdown("---")
+
+col_foot1, col_foot2 = st.columns([3, 1])
+
+with col_foot1:
+    st.markdown("""
+    <div style='vertical-align: middle;'>
+        <p style='font-size: 14px; color: #4A5568; margin: 0;'>
+            © 2026 <b>GeralJá</b> & <b>Grajaú Tem</b> — Todos os direitos reservados.
+        </p>
+        <p style='font-size: 12px; color: #718096; margin: 4px 0 0 0;'>
+            A maior vitrine da região: conectando moradores, profissionais e oportunidades.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+with col_foot2:
+    st.markdown("""
+    <div style='text-align: right; margin-top: 5px;'>
+        <a href='https://geralja.com.br' target='_blank' style='text-decoration: none; color: #3182CE; font-weight: 700; font-size: 14px;'>
+            geralja.com.br 🚀
+        </a>
+    </div>
+    """, unsafe_allow_html=True)
+                
