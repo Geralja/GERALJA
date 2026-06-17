@@ -306,3 +306,52 @@ def renderizar_card(item):
             # Botão de ação (WhatsApp)
             zap = item.get('whatsapp', '5511999999999')
             st.link_button("💬 Chamar no WhatsApp", f"https://wa.me/{zap}")
+            # --- [BLOCO 04: VITRINE DE ALTA CONVERSÃO] ---
+
+def renderizar_vitrine_dinamica(resultados):
+    """
+    Exibe os resultados da busca em um grid moderno e responsivo.
+    """
+    if not resultados:
+        st.warning("Nenhum comércio encontrado. Tente ajustar os termos da busca.")
+        return
+
+    # Estilo CSS para os Cards Premium
+    st.markdown("""
+        <style>
+            .card {
+                background: white;
+                border-radius: 12px;
+                padding: 15px;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                transition: transform 0.2s;
+                height: 100%;
+                border-bottom: 4px solid #003399;
+            }
+            .card:hover { transform: translateY(-5px); }
+            .card-titulo { font-size: 1.2rem; font-weight: 700; color: #1a1a1a; margin-bottom: 5px; }
+            .card-categoria { font-size: 0.8rem; color: #718096; text-transform: uppercase; margin-bottom: 10px; }
+            .card-desc { font-size: 0.95rem; color: #4a5568; height: 60px; overflow: hidden; }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # Organiza os cards em colunas (3 por linha no desktop)
+    cols = st.columns(3)
+    
+    for idx, item in enumerate(resultados):
+        # Distribui os cards entre as 3 colunas
+        with cols[idx % 3]:
+            # Placeholder se a imagem não existir
+            img_url = item.get('foto_url') or 'https://via.placeholder.com/300x200?text=Grajaú+Tem'
+            
+            with st.container():
+                st.markdown('<div class="card">', unsafe_allow_html=True)
+                st.image(img_url, use_container_width=True)
+                st.markdown(f'<div class="card-titulo">{item.get("nome", "Sem Nome")}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="card-categoria">{item.get("categoria", "Serviço")}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="card-desc">{item.get("descricao", "Sem descrição.")}</div>', unsafe_allow_html=True)
+                
+                # Botão de Ação Direta
+                zap_num = item.get('whatsapp', '11999999999')
+                st.link_button("💬 Falar com Comerciante", f"https://wa.me/55{zap_num}", use_container_width=True)
+                st.markdown('</div>', unsafe_allow_html=True)
