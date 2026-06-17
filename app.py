@@ -174,3 +174,47 @@ def deletar_item_firebase(item_id):
         return True
     except Exception:
         return False
+        # --- [BLOCO 03: MOTOR DE BUSCA INTELIGENTE] ---
+
+def normalizar_texto(texto):
+    """Remove acentos, converte para minúsculo e limpa espaços."""
+    if not texto: return ""
+    texto = unicodedata.normalize('NFKD', str(texto)).encode('ASCII', 'ignore').decode('utf-8')
+    return texto.lower().strip()
+
+def motor_busca_inteligente(query_usuario, data_vitrine):
+    """
+    O Coração do seu Portal:
+    1. Normaliza busca e dados.
+    2. Usa FuzzyWuzzy para tolerar erros de digitação.
+    3. Ordena os resultados por relevância.
+    """
+    if not query_usuario or not data_vitrine:
+        return []
+
+    query_limpa = normalizar_texto(query_usuario)
+    resultados = []
+
+    for item in data_vitrine:
+        # Pega campos que vamos buscar (Nome, Categoria, Descrição)
+        nome = normalizar_texto(item.get('nome', ''))
+        cat = normalizar_texto(item.get('categoria', ''))
+        desc = normalizar_texto(item.get('descricao', ''))
+        
+        # Fuzzy Matching: compara a busca com cada campo (retorna score 0-100)
+        score_nome = process.extractOne(query_limpa, [nome])[1] if nome else 0
+        score_cat = process.extractOne(query_limpa, [cat])[1] if cat else 0
+        score_desc = process.extractOne(query_limpa, [desc])[1] if desc else 0
+        
+        # O score final é o melhor entre os três
+        melhor_score = max(score_nome, score_cat, score_desc)
+        
+        # Filtro de qualidade: só traz resultados com relevância mínima
+        if melhor_score > 50:
+            item['score'] = melhor_score
+            resultados.append(item)
+
+    # Ordena: Quem tem score maior aparece primeiro
+    resultados_ordenados = sorted(resultados, key=lambda x: x['score'], reverse=True)
+    
+    return resultados_ordenados
