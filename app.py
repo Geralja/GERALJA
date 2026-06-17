@@ -355,3 +355,52 @@ def renderizar_vitrine_dinamica(resultados):
                 zap_num = item.get('whatsapp', '11999999999')
                 st.link_button("💬 Falar com Comerciante", f"https://wa.me/55{zap_num}", use_container_width=True)
                 st.markdown('</div>', unsafe_allow_html=True)
+                # --- [BLOCO 05: CAPTURADOR AUTOMÁTICO DE PRODUTOS (SHOPEE/ML)] ---
+from bs4 import BeautifulSoup
+
+def extrair_info_shopee(url):
+    """
+    Tenta capturar o título e a imagem de um link de produto automaticamente.
+    """
+    try:
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        response = requests.get(url, headers=headers, timeout=5)
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        # Tenta pegar o título e a imagem pelas meta tags (padrão web)
+        titulo = soup.find("meta", property="og:title")
+        imagem = soup.find("meta", property="og:image")
+        
+        return {
+            "nome": titulo["content"] if titulo else "Produto sem título",
+            "foto": imagem["content"] if imagem else "",
+            "url": url
+        }
+    except Exception as e:
+        return {"error": "Não foi possível extrair automaticamente. Preencha manualmente."}
+
+# --- COMO ISSO APARECE NA TELA DO COMERCIANTE ---
+def renderizar_painel_comerciante():
+    st.subheader("Adicionar Produto da Shopee")
+    link = st.text_input("Cole aqui o link do seu produto:")
+    
+    if st.button("Puxar Dados Automaticamente"):
+        if link:
+            with st.spinner("Conectando com a Shopee..."):
+                info = extrair_info_shopee(link)
+                if "error" not in info:
+                    st.session_state.temp_prod = info
+                    st.success("Dados puxados com sucesso!")
+                else:
+                    st.error(info["error"])
+    
+    # Se puxou, mostra o formulário preenchido
+    if 'temp_prod' in st.session_state:
+        prod = st.session_state.temp_prod
+        st.text_input("Nome do Produto", value=prod['nome'])
+        st.text_input("Link", value=prod['url'])
+        st.image(prod['foto'], width=200)
+        if st.button("Confirmar e Salvar na Vitrine"):
+            # Aqui você chama a função de salvar no Firebase (Bloco 02)
+            st.success("Produto publicado!")
+            del st.session_state.temp_prod
