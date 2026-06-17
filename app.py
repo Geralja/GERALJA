@@ -218,3 +218,51 @@ def motor_busca_inteligente(query_usuario, data_vitrine):
     resultados_ordenados = sorted(resultados, key=lambda x: x['score'], reverse=True)
     
     return resultados_ordenados
+    # --- [BLOCO 03.5: IA DE REFINAMENTO (O CÉREBRO 5.0)] ---
+
+def refinar_resultados_com_ia(query_usuario, resultados_iniciais):
+    """
+    Pega os resultados do motor fuzzy e usa a IA (Groq) para escolher
+    os melhores baseados na intenção do morador.
+    """
+    if not resultados_iniciais or len(resultados_iniciais) <= 1:
+        return resultados_iniciais
+
+    # Prepara uma lista resumida para a IA analisar
+    lista_opcoes = ""
+    for i, item in enumerate(resultados_iniciais):
+        lista_opcoes += f"{i}: {item.get('nome')} | {item.get('categoria')} | {item.get('descricao')}\n"
+
+    # Prompt de Alta Inteligência
+    prompt = f"""
+    O usuário no Grajaú buscou por: '{query_usuario}'.
+    Aqui estão os estabelecimentos encontrados:
+    {lista_opcoes}
+    
+    Analise os estabelecimentos e retorne apenas a lista de índices (0, 1, 2...) 
+    ordenados do mais relevante para o menos relevante. 
+    Responda apenas com os números separados por vírgula.
+    """
+
+    try:
+        # Chamada ao motor Groq (já configurado no seu arquivo)
+        client = Groq(api_key=st.secrets["GROQ_API_KEY"]) # Certifique-se de ter essa chave no Streamlit
+        chat_completion = client.chat.completions.create(
+            messages=[{"role": "user", "content": prompt}],
+            model="llama3-70b-8192",
+        )
+        
+        # Processa a resposta da IA
+        indices_ordenados = [int(x.strip()) for x in chat_completion.choices[0].message.content.split(",")]
+        
+        # Reordena a lista original
+        resultados_finais = []
+        for idx in indices_ordenados:
+            if idx < len(resultados_iniciais):
+                resultados_finais.append(resultados_iniciais[idx])
+        
+        return resultados_finais
+
+    except Exception as e:
+        # Se a IA falhar, a gente volta pro 3.5 (Segurança contra erro)
+        return resultados_iniciais
