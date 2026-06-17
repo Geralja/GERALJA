@@ -1,6 +1,5 @@
 # ==============================================================================
-# GERALJÁ: CRIANDO SOLUÇÕES - MÓDULO 1: INFRAESTRUTURA & SEGURANÇA MÁXIMA
-# VERSÃO 5.0 - INTEGRADA (PORTAL GRAJAÚ TEM + GERALJÁ)
+# BLOCO 1: IMPORTS & BIBLIOTECAS (Nível 5.0)
 # ==============================================================================
 import streamlit as st
 import firebase_admin
@@ -19,94 +18,104 @@ import requests
 import feedparser
 import urllib.parse
 from PIL import Image
-
-# --- BIBLIOTECAS NÍVEL 5.0 ---
 from groq import Groq
 from fuzzywuzzy import process
 from urllib.parse import quote
 import google.generativeai as genai
 from google_auth_oauthlib.flow import Flow
 
-# --- TENTA IMPORTAR COMPONENTES JS COM FALLBACK SEGURO ---
+# Fallback seguro para componentes JS
 streamlit_js_eval = None
 get_geolocation = None
 try:
     from streamlit_js_eval import streamlit_js_eval, get_geolocation
-except ImportError:
-    pass
 except Exception:
     pass
 
-# --- CONFIGURAÇÃO DE PÁGINA ---
+# --- CONFIGURAÇÃO INICIAL (Obrigatório ser o primeiro comando do Streamlit) ---
 st.set_page_config(page_title="Portal Grajaú Tem", page_icon="📍", layout="wide")
 
-# --- BLOCO 1: CSS E BRANDING (ESTILO GOOGLE) ---
-def configurar_estilo():
+# ==============================================================================
+# BLOCO 2: ESTILOS E BRANDING (CSS)
+# ==============================================================================
+def aplicar_estilos():
     st.markdown("""
         <style>
             .titulo-azul { color: #003399; font-weight: 800; font-size: 3rem; }
             .titulo-amarelo { color: #FFD700; font-weight: 800; font-size: 3rem; }
-            .subtitulo { color: #555; font-size: 1.2rem; margin-top: -10px; margin-bottom: 20px; }
-            .yellow-line { border-bottom: 3px solid #FFD700; width: 100%; margin: 15px 0; }
-            .centered-layout { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 50vh; }
+            .yellow-line { border-bottom: 4px solid #FFD700; width: 100%; margin: 10px 0; }
+            .centered-layout { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 60vh; }
+            .card-vitrine { border: 1px solid #ddd; padding: 15px; border-radius: 10px; margin-bottom: 10px; }
         </style>
     """, unsafe_allow_html=True)
 
-configurar_estilo()
+aplicar_estilos()
 
-# --- BLOCO 2: INFRAESTRUTURA FIREBASE ---
+# ==============================================================================
+# BLOCO 3: INFRAESTRUTURA (FIREBASE & ENGINE)
+# ==============================================================================
 def conectar_firebase():
     if not firebase_admin._apps:
-        # Ajuste o nome do arquivo se necessário
+        # Certifique-se de ter o arquivo firebase_key.json na pasta
         cred = credentials.Certificate("firebase_key.json")
         firebase_admin.initialize_app(cred)
     return firestore.client()
 
-# --- BLOCO 3: LÓGICA DE ESTADO ---
+# ==============================================================================
+# BLOCO 4: LÓGICA DE BUSCA (IA & FILTROS)
+# ==============================================================================
+def processar_busca(termo):
+    # Aqui entra o seu "cérebro" de busca
+    # Exemplo: chamar Firebase e filtrar
+    return [f"Resultado 1 para {termo}", f"Resultado 2 para {termo}"]
+
+# ==============================================================================
+# BLOCO 5: INTERFACE (CONTROLE DE ESTADO)
+# ==============================================================================
 if 'pesquisou' not in st.session_state:
     st.session_state.pesquisou = False
 
-# --- BLOCO 4: INTERFACE PRINCIPAL ---
 def main():
-    # Sidebar Admin Escondido
+    # Painel Admin (Sempre oculto na lateral)
     with st.sidebar:
         if st.button("⚙️"):
-            senha = st.text_input("Acesso Admin:", type="password")
-            if senha == "1234": 
-                st.session_state.admin_logado = True
-                st.success("Admin Ativo")
+            senha = st.text_input("Acesso:", type="password")
+            if senha == "1234": st.session_state.admin = True
 
-    # Layout Dinâmico (Centralizado vs Topo)
+    # --- LÓGICA DE NAVEGAÇÃO ---
     if not st.session_state.pesquisou:
-        # --- PÁGINA INICIAL ---
+        # --- MODO: CAPA CENTRALIZADA (GOOGLE STYLE) ---
         st.markdown('<div class="centered-layout">', unsafe_allow_html=True)
         st.markdown('<div><span class="titulo-azul">Portal</span> <span class="titulo-amarelo">Grajaú Tem</span></div>', unsafe_allow_html=True)
-        st.markdown('<p class="subtitulo">GeralJá</p>', unsafe_allow_html=True)
         
         busca = st.text_input("", placeholder="O que você precisa hoje no Grajaú?", key="busca_init")
-        raio = st.slider("Raio de distância (km)", 0, 50, 5)
+        raio = st.slider("Raio de busca (km)", 0, 50, 5)
         
         if busca:
             st.session_state.pesquisou = True
-            st.session_state.ultima_busca = busca
+            st.session_state.termo_busca = busca
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
         
     else:
-        # --- PÁGINA DE RESULTADOS ---
-        # Top bar style
+        # --- MODO: RESULTADOS (HEADER STYLE) ---
         col1, col2 = st.columns([1, 4])
         with col1:
             st.markdown('<h3 style="color:#003399; margin:0;">Grajaú <span style="color:#FFD700;">Tem</span></h3>', unsafe_allow_html=True)
         with col2:
-            nova_busca = st.text_input("", value=st.session_state.get("ultima_busca", ""), key="busca_top")
+            nova_busca = st.text_input("", value=st.session_state.get("termo_busca", ""), key="busca_header")
+            if nova_busca != st.session_state.termo_busca:
+                st.session_state.termo_busca = nova_busca
         
         st.markdown('<div class="yellow-line"></div>', unsafe_allow_html=True)
         
-        # Área de resultados
-        st.subheader(f"Resultados para: {st.session_state.ultima_busca}")
-        st.write("--- Vitrine de comércio (Firebase) carregará aqui ---")
+        # --- VITRINE DE RESULTADOS (Bloco de exibição) ---
+        st.write(f"Exibindo resultados para: **{st.session_state.termo_busca}**")
         
+        resultados = processar_busca(st.session_state.termo_busca)
+        for item in resultados:
+            st.markdown(f'<div class="card-vitrine">{item}</div>', unsafe_allow_html=True)
+
         if st.button("Nova Busca"):
             st.session_state.pesquisou = False
             st.rerun()
