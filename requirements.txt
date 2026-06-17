@@ -19,6 +19,8 @@ pytz
 requests
 beautifulsoup4
 feedparser
+beautifulsoup4
+requests
 
 
 
