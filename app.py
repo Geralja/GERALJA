@@ -266,3 +266,43 @@ def refinar_resultados_com_ia(query_usuario, resultados_iniciais):
     except Exception as e:
         # Se a IA falhar, a gente volta pro 3.5 (Segurança contra erro)
         return resultados_iniciais
+        # --- [BLOCO 04: VITRINE DE ALTA CONVERSÃO] ---
+
+def renderizar_card(item):
+    """
+    Renderiza um card individual com design premium.
+    """
+    with st.container():
+        st.markdown(f"""
+        <style>
+            .card-premium {{
+                border-radius: 15px;
+                padding: 20px;
+                background-color: white;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                margin-bottom: 20px;
+                border-left: 5px solid #003399; /* Azul Grajaú Tem */
+                transition: transform 0.2s;
+            }}
+            .card-premium:hover {{ transform: scale(1.02); }}
+            .card-title {{ font-size: 1.4rem; font-weight: bold; color: #1a1a1a; margin-bottom: 5px; }}
+            .card-category {{ color: #718096; font-size: 0.9rem; margin-bottom: 10px; }}
+            .card-desc {{ color: #4a5568; font-size: 1rem; margin-bottom: 15px; }}
+        </style>
+        """, unsafe_allow_html=True)
+        
+        # Estrutura do Card
+        col_img, col_info = st.columns([1, 3])
+        
+        with col_img:
+            # Imagem do comerciante ou placeholder
+            st.image(item.get('foto_url', 'https://via.placeholder.com/150'), use_container_width=True)
+            
+        with col_info:
+            st.markdown(f'<div class="card-title">{item.get("nome", "Sem nome")}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="card-category">🏷️ {item.get("categoria", "Geral")}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="card-desc">{item.get("descricao", "Sem descrição disponível.")}</div>', unsafe_allow_html=True)
+            
+            # Botão de ação (WhatsApp)
+            zap = item.get('whatsapp', '5511999999999')
+            st.link_button("💬 Chamar no WhatsApp", f"https://wa.me/{zap}")
