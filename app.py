@@ -87,3 +87,39 @@ def main():
 
 if __name__ == "__main__":
     main()
+# --- [BLOCO 01: CSS PREMIUM - IDENTIDADE VISUAL] ---
+def aplicar_estilo_premium():
+    st.markdown("""
+        <style>
+            /* Reset básico para centralização */
+            .main .block-container {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 80vh;
+            }
+            
+            /* Tipografia Premium */
+            .logo-azul { color: #003399; font-size: 4rem; font-weight: 800; }
+            .logo-amarelo { color: #FFD700; font-size: 4rem; font-weight: 800; }
+            
+            /* O "Coração" do Design: O Input de Busca */
+            div[data-baseweb="input"] {
+                border-radius: 50px !important;
+                border: 1px solid #dfe1e5 !important;
+                box-shadow: 0 1px 6px rgba(32,33,36,0.28) !important;
+                padding: 10px 20px !important;
+                transition: box-shadow 0.3s;
+            }
+            div[data-baseweb="input"]:hover {
+                box-shadow: 0 4px 12px rgba(32,33,36,0.28) !important;
+            }
+            
+            /* Ajuste para o texto centralizado */
+            .stTextInput label { display: none; }
+        </style>
+    """, unsafe_allow_html=True)
+
+# Chamada da função no início da sua UI
+aplicar_estilo_premium()
