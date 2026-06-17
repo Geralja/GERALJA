@@ -27,14 +27,13 @@ def configurar_estilo():
     # JavaScript para detectar preferência de tema do sistema (Dia/Noite)
     st.markdown("""
         <script>
-            // O Streamlit gerencia o tema automaticamente via config, 
-            // mas aqui você pode injetar customizações se precisar
+            // Lógica de tema injetada via Streamlit
         </script>
     """, unsafe_allow_html=True)
 
 configurar_estilo()
 
-# --- BLOCO 2: MOTOR GLOBAL (GeralJaEngine) ---
+# --- BLOCO 2: MOTOR GLOBAL (GrajauEngine) ---
 class GrajauEngine:
     def __init__(self):
         self.nome = "Grajaú Tem Engine"
@@ -45,27 +44,31 @@ class GrajauEngine:
     def normalizar(self, texto):
         return unicodedata.normalize('NFKD', texto).encode('ASCII', 'ignore').decode('utf-8')
 
+# Instanciando o Motor
 engine = GrajauEngine()
 
 # --- BLOCO 3: BANCO DE DADOS (FIREBASE) ---
 def conectar_firebase():
     if not firebase_admin._apps:
-        # Certifique-se de que o arquivo 'firebase_key.json' está no diretório
+        # Usa a configuração existente do seu sistema
         cred = credentials.Certificate("firebase_key.json")
         firebase_admin.initialize_app(cred)
     return firestore.client()
 
 # --- BLOCO 4: IA DE BUSCA (O CÉREBRO) ---
-# Aqui vamos conectar as 3-4 APIs que você quer para a busca robusta
 def processar_busca_ia(query):
+    """
+    Aqui será o processamento robusto.
+    Está preparado para conectar as 3-4 APIs que você deseja.
+    """
     query_sanitizada = engine.sanitizar(query)
     
-    # ESTRUTURA PARA MULTI-IA
-    # Em breve, vamos iterar entre APIs aqui (Groq + Outras)
-    # Exemplo simples de chamada Groq:
-    # client = Groq(api_key="SUA_CHAVE")
+    # Exemplo de fluxo para expansão futura:
+    # 1. Busca no Firebase (Local)
+    # 2. Refinamento com Groq/IA
+    # 3. Fuzzy Matching para correção de termos
     
-    return f"Busca avançada processada para: {query_sanitizada}"
+    return f"IA do Grajaú processando: {query_sanitizada}"
 
 # --- BLOCO 5: FUNÇÕES AUXILIARES ---
 def limpar_whatsapp(numero):
@@ -80,9 +83,9 @@ def painel_admin():
         st.session_state.admin_logado = False
 
     if not st.session_state.admin_logado:
-        # Admin escondido: só aparece se digitar senha
+        # O campo só aparece aqui
         senha = st.sidebar.text_input("Acesso Administrativo:", type="password")
-        if senha == "1234": # Troque pela sua senha real
+        if senha == "1234": # Configure sua senha aqui
             st.session_state.admin_logado = True
             st.rerun()
     else:
@@ -90,7 +93,7 @@ def painel_admin():
         if st.sidebar.button("Sair do Admin"):
             st.session_state.admin_logado = False
             st.rerun()
-        # Aqui ficarão os campos de gerenciamento de produtos/vitrine
+        # Aqui você adiciona os blocos de gestão de vitrine (CRUD)
 
 # --- BLOCO 7: INTERFACE PRINCIPAL ---
 def main():
@@ -105,7 +108,6 @@ def main():
     
     if busca:
         with st.spinner('A IA do Grajaú está buscando...'):
-            # Aqui chamamos o motor de busca potente
             resultado = processar_busca_ia(busca)
             st.write(resultado)
 
