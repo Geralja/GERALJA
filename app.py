@@ -15,6 +15,25 @@ from fuzzywuzzy import process
 from urllib.parse import quote
 import google.generativeai as genai
 from google_auth_oauthlib.flow import Flow
+import importlib
+import sys
+import os
+
+# --- MOTOR DE CARREGAMENTO DINÂMICO ---
+def carregar_modulo(nome_modulo):
+    """Carrega ou recarrega um arquivo .py como se fosse um plugin"""
+    if nome_modulo in sys.modules:
+        importlib.reload(sys.modules[nome_modulo])
+    return importlib.import_module(nome_modulo)
+
+# --- NA SUA MAIN ---
+def main():
+    # Em vez de ter o código do motor de busca dentro do arquivo gigante:
+    try:
+        motor_busca = carregar_modulo("plugin_busca") # Puxa de 'plugin_busca.py'
+        resultados = motor_busca.executar(st.session_state.query)
+    except:
+        st.error("Erro no módulo de busca. Verifique o arquivo plugin_busca.py")
 
 # Fallback seguro para componentes JS
 try:
@@ -608,6 +627,3 @@ if st.button(f"❤️ Curtir", key=f"like_{p['id']}"):
 st.markdown(f"""
     <a href="{zap_link}" target="_blank" style="display:block; background:#25D366; color:white; text-align:center; padding:12px; border-radius:12px; text-decoration:none; font-weight:bold; margin-top:5px;">💬 CHAMAR NO WHATSAPP</a>
 """, unsafe_allow_html=True)
-# [DENTRO DA ABA PERFIL]
-saldo = user_data.get('geral_coin', 0)
-st.metric("💰 Saldo GeralCoin", f"{saldo} GC")
