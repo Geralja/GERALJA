@@ -46,10 +46,45 @@ def conectar_firebase():
         pass
     return None # Retornará client após implementação
 
-# --- [BLOCO 03: MOTORES DE LÓGICA (IA/BUSCA)] ---
-def motor_de_busca(query):
-    # TODO: Inserir a lógica de IA e Firebase aqui
-    return f"Resultados para: {query}"
+# --- [BLOCO 03: MOTOR DE BUSCA INTELIGENTE] ---
+
+def motor_de_busca_avancado(query_usuario, data_vitrine):
+    """
+    Motor que processa a vitrine e retorna os itens mais relevantes.
+    - query_usuario: O que o usuário digitou.
+    - data_vitrine: A lista de itens/comércios vinda do Firebase.
+    """
+    if not query_usuario or not data_vitrine:
+        return []
+
+    # 1. Normalização (Limpeza)
+    query_norm = unicodedata.normalize('NFKD', query_usuario).casefold()
+    
+    # 2. Filtragem Fuzzy (Trata erros de digitação)
+    # Aqui comparamos o nome/categoria de cada item com a busca
+    resultados = []
+    for item in data_vitrine:
+        nome_item = unicodedata.normalize('NFKD', item.get('nome', '')).casefold()
+        cat_item = unicodedata.normalize('NFKD', item.get('categoria', '')).casefold()
+        
+        # score de similaridade (0 a 100)
+        score_nome = fuzz.partial_ratio(query_norm, nome_item)
+        score_cat = fuzz.partial_ratio(query_norm, cat_item)
+        
+        melhor_score = max(score_nome, score_cat)
+        
+        if melhor_score > 60: # Threshold de sensibilidade
+            item['score'] = melhor_score
+            resultados.append(item)
+
+    # 3. Ordenação (Os melhores resultados primeiro)
+    resultados = sorted(resultados, key=lambda x: x['score'], reverse=True)
+    
+    # 4. Refinamento com IA (Opcional - Futuro Passo)
+    # Aqui passaremos a lista 'resultados' para o Groq/Gemini reordenar 
+    # se a query for complexa.
+    
+    return resultados
 
 # --- [BLOCO 04: INTERFACE (FRONT-END)] ---
 def renderizar_home():
