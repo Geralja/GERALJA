@@ -572,3 +572,23 @@ def renderizar_card_social(item):
 
     with col_share:
         st.button("🔗 Compartilhar", key=f"share_{item.get('id')}")
+        # --- [BLOCO ECONOMIA: GERENCIAMENTO DE GERALCOIN] ---
+def processar_curtida_coin(comerciante_id):
+    """
+    Motor transacional: Desconta GeralCoin do comerciante.
+    Usa transação Firestore para garantir que o saldo não fique negativo.
+    """
+    doc_ref = db.collection("profissionais").document(comerciante_id)
+    
+    @firestore.transactional
+    def atualizar_saldo(transaction, doc_ref):
+        snapshot = doc_ref.get(transaction=transaction)
+        saldo_atual = snapshot.get("geral_coin") or 0
+        if saldo_atual >= 1:
+            transaction.update(doc_ref, {"geral_coin": saldo_atual - 1})
+            return True
+        return False
+
+    transaction = db.transaction()
+    sucesso = atualizar_saldo(transaction, doc_ref)
+    return sucesso
