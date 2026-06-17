@@ -123,3 +123,54 @@ def aplicar_estilo_premium():
 
 # Chamada da função no início da sua UI
 aplicar_estilo_premium()
+# --- [BLOCO 02: MOTOR DE DADOS - FIREBASE E CACHE] ---
+
+@st.cache_resource
+def get_db_connection():
+    """Conecta ao Firebase apenas uma vez e guarda na memória."""
+    try:
+        if not firebase_admin._apps:
+            # Garanta que o arquivo 'firebase_key.json' esteja na raiz
+            cred = credentials.Certificate("firebase_key.json")
+            firebase_admin.initialize_app(cred)
+        return firestore.client()
+    except Exception as e:
+        st.error(f"Erro ao conectar ao banco: {e}")
+        return None
+
+@st.cache_data(ttl=600) # O cache dura 10 minutos (600 segundos)
+def buscar_vitrine_completa():
+    """Busca toda a vitrine do Firebase e retorna uma lista limpa."""
+    db = get_db_connection()
+    if not db: return []
+    
+    # Busca a coleção 'loja' (ou a que você usa)
+    docs = db.collection("loja").stream()
+    
+    lista_itens = []
+    for doc in docs:
+        item = doc.to_dict()
+        item['id'] = doc.id  # Importante: mantemos o ID para deletar/editar depois
+        lista_itens.append(item)
+    return lista_itens
+
+def salvar_item_firebase(dados):
+    """Função robusta para salvar um novo item na loja."""
+    db = get_db_connection()
+    try:
+        db.collection("loja").add(dados)
+        st.cache_data.clear() # Limpa o cache para mostrar o novo item na hora
+        return True
+    except Exception as e:
+        st.error(f"Erro ao salvar: {e}")
+        return False
+
+def deletar_item_firebase(item_id):
+    """Função para deletar, verificando se o ID existe."""
+    db = get_db_connection()
+    try:
+        db.collection("loja").document(item_id).delete()
+        st.cache_data.clear() # Limpa o cache para atualizar a lista
+        return True
+    except Exception:
+        return False
