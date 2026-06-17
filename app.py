@@ -1,9 +1,9 @@
 # ==============================================================================
-# GERALJÁ & PORTAL GRAJAÚ TEM - MASTER SKELETON (Versão 0)
-# Arquitetura modular: Construindo quadro a quadro.
+# GERALJÁ - MASTER SKELETON (Versão 6.0 - Arquitetura de Execução Inteligente)
+# Ordem: 1.Imports -> 2.Config -> 3.Motores -> 4.UI -> 5.Main
 # ==============================================================================
 
-# --- [BLOCO 00: IMPORTAÇÕES] ---
+# --- 1. IMPORTS (Hierarquia absoluta) ---
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, firestore
@@ -16,111 +16,74 @@ from urllib.parse import quote
 import google.generativeai as genai
 from google_auth_oauthlib.flow import Flow
 
+# Fallback seguro para componentes JS
 try:
     from streamlit_js_eval import streamlit_js_eval, get_geolocation
 except Exception:
-    pass
+    streamlit_js_eval, get_geolocation = None, None
 
-# --- [BLOCO 01: CONFIGURAÇÃO GLOBAL E DESIGN PREMIUM] ---
-st.set_page_config(page_title="Portal Grajaú Tem", page_icon="📍", layout="wide")
+# --- 2. CONFIGURAÇÕES GERAIS ---
+# Config de página deve ser o primeiro comando Streamlit
+st.set_page_config(page_title="GeralJá | Grajaú Tem", page_icon="📍", layout="wide")
 
-def aplicar_estilo():
-    st.markdown("""
-        <style>
-            .main-title { text-align: center; font-size: 3.5rem; font-weight: 800; color: #003399; margin-top: 50px; }
-            .sub-title { text-align: center; color: #FFD700; font-size: 3.5rem; font-weight: 800; margin-bottom: 20px; }
-            .search-box { max-width: 600px; margin: 0 auto; }
-            .yellow-separator { border-bottom: 3px solid #FFD700; margin: 20px 0; }
-            .card-comercio { border: 1px solid #ddd; padding: 15px; border-radius: 10px; margin-bottom: 10px; }
-        </style>
-    """, unsafe_allow_html=True)
+# CSS "Bonito" e "Atrativo" (Injetado logo no início)
+st.markdown("""
+    <style>
+        .main-container { padding: 20px; }
+        .hero-title { text-align: center; font-size: 3.5rem; font-weight: 800; color: #003399; }
+        .hero-subtitle { text-align: center; color: #FFD700; font-size: 3.5rem; font-weight: 800; }
+        .search-container { max-width: 700px; margin: 40px auto; }
+        .footer { text-align: center; color: #718096; font-size: 12px; margin-top: 50px; }
+    </style>
+""", unsafe_allow_html=True)
 
-aplicar_estilo()
-
-# --- [BLOCO 02: INFRAESTRUTURA FIREBASE & ESTADO] ---
-if 'pesquisou' not in st.session_state: st.session_state.pesquisou = False
-
-def conectar_firebase():
+# --- 3. MOTORES E INFRAESTRUTURA (Firebase/IA) ---
+def init_firebase():
     if not firebase_admin._apps:
-        # Placeholder: O código de conexão entrará aqui
+        # Aqui você coloca o carregamento do seu JSON de credencial
+        # cred = credentials.Certificate("seu_arquivo_firebase.json")
+        # firebase_admin.initialize_app(cred)
         pass
-    return None # Retornará client após implementação
+    return firestore.client() if firebase_admin._apps else None
 
-# --- [BLOCO 03: MOTOR DE BUSCA INTELIGENTE] ---
+def motor_busca(query):
+    # Lógica de busca entra aqui
+    return "Lógica de busca a ser implementada"
 
-def motor_de_busca_avancado(query_usuario, data_vitrine):
-    """
-    Motor que processa a vitrine e retorna os itens mais relevantes.
-    - query_usuario: O que o usuário digitou.
-    - data_vitrine: A lista de itens/comércios vinda do Firebase.
-    """
-    if not query_usuario or not data_vitrine:
-        return []
+# --- 4. FUNÇÕES DE INTERFACE (Os "Quadros") ---
+def renderizar_header():
+    st.markdown('<div class="hero-title">Portal <span class="hero-subtitle">Grajaú Tem</span></div>', unsafe_allow_html=True)
 
-    # 1. Normalização (Limpeza)
-    query_norm = unicodedata.normalize('NFKD', query_usuario).casefold()
-    
-    # 2. Filtragem Fuzzy (Trata erros de digitação)
-    # Aqui comparamos o nome/categoria de cada item com a busca
-    resultados = []
-    for item in data_vitrine:
-        nome_item = unicodedata.normalize('NFKD', item.get('nome', '')).casefold()
-        cat_item = unicodedata.normalize('NFKD', item.get('categoria', '')).casefold()
-        
-        # score de similaridade (0 a 100)
-        score_nome = fuzz.partial_ratio(query_norm, nome_item)
-        score_cat = fuzz.partial_ratio(query_norm, cat_item)
-        
-        melhor_score = max(score_nome, score_cat)
-        
-        if melhor_score > 60: # Threshold de sensibilidade
-            item['score'] = melhor_score
-            resultados.append(item)
-
-    # 3. Ordenação (Os melhores resultados primeiro)
-    resultados = sorted(resultados, key=lambda x: x['score'], reverse=True)
-    
-    # 4. Refinamento com IA (Opcional - Futuro Passo)
-    # Aqui passaremos a lista 'resultados' para o Groq/Gemini reordenar 
-    # se a query for complexa.
-    
-    return resultados
-
-# --- [BLOCO 04: INTERFACE (FRONT-END)] ---
-def renderizar_home():
-    st.markdown('<h1 class="main-title">Portal <span class="sub-title">Grajaú Tem</span></h1>', unsafe_allow_html=True)
-    
-    col_vazia, col_busca, col_vazia2 = st.columns([1, 2, 1])
-    with col_busca:
-        busca = st.text_input("", placeholder="O que você precisa hoje no Grajaú?", key="busca_home")
-        if busca:
+def renderizar_busca():
+    col1, col2, col3 = st.columns([1, 4, 1])
+    with col2:
+        query = st.text_input("", placeholder="O que você procura no Grajaú?", key="main_search")
+        if query:
             st.session_state.pesquisou = True
-            st.session_state.query = busca
+            st.session_state.query = query
             st.rerun()
 
-def renderizar_resultados():
-    # Topo estilo Google
-    col_logo, col_busca = st.columns([1, 4])
-    with col_logo:
-        st.markdown("### 📍 Grajaú Tem")
-    with col_busca:
-        st.text_input("", value=st.session_state.get("query", ""), key="busca_topo")
-    
-    st.markdown('<div class="yellow-separator"></div>', unsafe_allow_html=True)
-    
-    # Exibição da Vitrine
-    st.write(motor_de_busca(st.session_state.query))
-    
-    if st.button("Nova Pesquisa"):
+def renderizar_vitrine():
+    st.write(f"### Resultados para: {st.session_state.get('query', '')}")
+    # Aqui vamos chamar a vitrine dinâmica no futuro
+    if st.button("Voltar"):
         st.session_state.pesquisou = False
         st.rerun()
 
-# --- [BLOCO 05: CONTROLADOR PRINCIPAL (MAIN)] ---
+# --- 5. EXECUÇÃO (MAIN) ---
 def main():
+    # Inicializa estado
+    if 'pesquisou' not in st.session_state: st.session_state.pesquisou = False
+    
+    # Inicializa Banco
+    db = init_firebase()
+    
+    # Fluxo principal
     if not st.session_state.pesquisou:
-        renderizar_home()
+        renderizar_header()
+        renderizar_busca()
     else:
-        renderizar_resultados()
+        renderizar_vitrine()
 
 if __name__ == "__main__":
     main()
