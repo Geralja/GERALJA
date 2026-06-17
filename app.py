@@ -470,3 +470,42 @@ def renderizar_painel_comerciante():
                 st.success("Produto publicado na vitrine!")
                 del st.session_state.temp_prod
                 st.rerun()
+                # ==============================================================================
+# --- [BLOCO 06: PAINEL ADMINISTRATIVO (GESTÃO DA VITRINE)] ---
+# ==============================================================================
+
+def renderizar_painel_admin():
+    """
+    Painel de controle para gerenciar os produtos da vitrine.
+    """
+    st.header("⚙️ Painel de Controle (Admin)")
+    
+    # Busca os produtos atuais para edição/deleção
+    db = get_db_connection() # Conexão que já temos no Bloco 02
+    
+    # Visualização em Tabela/Lista
+    produtos = buscar_vitrine_completa() # Do Bloco 02
+    
+    if not produtos:
+        st.info("Nenhum produto cadastrado na vitrine ainda.")
+    else:
+        st.write(f"Total de itens na vitrine: {len(produtos)}")
+        
+        for item in produtos:
+            with st.expander(f"📦 {item.get('nome', 'Sem nome')}"):
+                col1, col2 = st.columns([2, 1])
+                with col1:
+                    st.write(f"**Categoria:** {item.get('categoria')}")
+                    st.write(f"**Preço:** R$ {item.get('preco', '0.00')}")
+                    st.write(f"**ID:** {item.get('id')}")
+                with col2:
+                    if st.button("❌ Deletar Item", key=f"del_{item.get('id')}"):
+                        if deletar_item_firebase(item.get('id')):
+                            st.success("Item removido!")
+                            st.rerun()
+
+# --- INTEGRAÇÃO COM A MAIN ---
+# No seu bloco Main, você já deve ter um botão de Admin. 
+# Basta chamar essa função lá dentro:
+# if st.session_state.admin_logado:
+#     renderizar_painel_admin()
