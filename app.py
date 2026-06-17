@@ -404,3 +404,69 @@ def renderizar_painel_comerciante():
             # Aqui você chama a função de salvar no Firebase (Bloco 02)
             st.success("Produto publicado!")
             del st.session_state.temp_prod
+            # ==============================================================================
+# --- [BLOCO 05: CAPTURADOR INTELIGENTE DE PRODUTOS (AUTO-FILL)] ---
+# ==============================================================================
+from bs4 import BeautifulSoup # Verifique se está nos seus imports principais
+
+def extrair_info_shopee(url):
+    """
+    Motor inteligente: Lê o link, extrai título e foto automaticamente.
+    Se falhar, retorna o erro para o usuário saber o que corrigir.
+    """
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code != 200:
+            return {"error": "Site bloqueou o acesso. Tente copiar os dados manualmente."}
+            
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        # Procura as meta tags (padrão global de sites)
+        titulo = soup.find("meta", property="og:title")
+        imagem = soup.find("meta", property="og:image")
+        preco = soup.find("meta", property="product:price:amount") # Tenta pegar preço se disponível
+        
+        return {
+            "nome": titulo["content"] if titulo else "Produto sem título",
+            "foto": imagem["content"] if imagem else "",
+            "preco": preco["content"] if preco else "0.00",
+            "url": url
+        }
+    except Exception as e:
+        return {"error": f"Erro de conexão: {str(e)}"}
+
+def renderizar_painel_comerciante():
+    """
+    Interface robusta para o comerciante cadastrar via link.
+    """
+    st.subheader("🚀 Cadastro Rápido (Shopee/ML)")
+    link = st.text_input("Cole aqui o link do seu produto:")
+    
+    if st.button("Puxar Dados Automaticamente"):
+        if link:
+            with st.spinner("Conectando com o produto..."):
+                info = extrair_info_shopee(link)
+                if "error" not in info:
+                    # Salva no estado para o formulário
+                    st.session_state.temp_prod = info
+                    st.success("Dados puxados com sucesso!")
+                else:
+                    st.error(info["error"])
+    
+    # Formulário de confirmação
+    if 'temp_prod' in st.session_state:
+        prod = st.session_state.temp_prod
+        with st.form("form_confirmacao"):
+            nome = st.text_input("Nome do Produto", value=prod['nome'])
+            preco = st.text_input("Preço (R$)", value=prod['preco'])
+            st.image(prod['foto'], width=200)
+            
+            if st.form_submit_button("Confirmar e Salvar"):
+                # AQUI ENTRA A INTEGRAÇÃO COM O BLOCO 02 (FIREBASE)
+                # salvar_item_firebase({"nome": nome, "preco": preco, "foto": prod['foto']})
+                st.success("Produto publicado na vitrine!")
+                del st.session_state.temp_prod
+                st.rerun()
