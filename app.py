@@ -592,3 +592,22 @@ def processar_curtida_coin(comerciante_id):
     transaction = db.transaction()
     sucesso = atualizar_saldo(transaction, doc_ref)
     return sucesso
+    # [DENTRO DA ABA BUSCAR, ONDE VOCÊ RENDERIZA O CARD]
+
+# Lógica do Botão de Curtida com GeralCoin
+if st.button(f"❤️ Curtir", key=f"like_{p['id']}"):
+    with st.spinner("Processando curtida..."):
+        sucesso = processar_curtida_coin(p['id'])
+        if sucesso:
+            st.toast("Você curtiu! Comerciante recebeu um impulso 🚀")
+            st.rerun()
+        else:
+            st.error("Ops! Lojista sem saldo GeralCoin no momento.")
+
+# Botão WhatsApp (mantido)
+st.markdown(f"""
+    <a href="{zap_link}" target="_blank" style="display:block; background:#25D366; color:white; text-align:center; padding:12px; border-radius:12px; text-decoration:none; font-weight:bold; margin-top:5px;">💬 CHAMAR NO WHATSAPP</a>
+""", unsafe_allow_html=True)
+# [DENTRO DA ABA PERFIL]
+saldo = user_data.get('geral_coin', 0)
+st.metric("💰 Saldo GeralCoin", f"{saldo} GC")
