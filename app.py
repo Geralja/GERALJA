@@ -1,79 +1,122 @@
-# ==============================================================================
-# MASTER SKELETON: GERALJÁ & GRAJAÚ TEM (v6.0 - BASE ESTÁVEL)
-# ==============================================================================
-
-# 1. --- TODAS AS SUAS IMPORTAÇÕES (Preservadas) ---
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, firestore
-import base64, json, math, re, time, pandas as pd, pytz, unicodedata, requests, sys, os
+import base64
+import json
+import math
+import re
+import time
+import io
+import pandas as pd
 from datetime import datetime
+import pytz
+import unicodedata
+import requests
+import feedparser
+import urllib.parse
 from PIL import Image
 from groq import Groq
-from fuzzywuzzy import process
-from urllib.parse import quote, urlparse
-import google.generativeai as genai
-from google_auth_oauthlib.flow import Flow
-import feedparser
+from fuzzywuzzy import process, fuzz
 
-# --- TENTA IMPORTAR COMPONENTES JS ---
-try:
-    from streamlit_js_eval import streamlit_js_eval, get_geolocation
-except: pass
+# --- CONFIGURAÇÕES GERAIS ---
+ZAP_VENDAS = '5511980168513'
+st.set_page_config(page_title="Grajaú Tem | Buscador", layout="wide")
 
-# 2. --- CONFIGURAÇÃO DE ALTO NÍVEL ---
-st.set_page_config(page_title="Grajaú Tem | Portal Oficial", page_icon="📍", layout="wide", initial_sidebar_state="collapsed")
+# --- BLOCO 1: DESIGN E TEMA (ADAPTATIVO) ---
+def configurar_estilo():
+    # JavaScript para detectar preferência de tema do sistema (Dia/Noite)
+    st.markdown("""
+        <script>
+            // O Streamlit gerencia o tema automaticamente via config, 
+            // mas aqui você pode injetar customizações se precisar
+        </script>
+    """, unsafe_allow_html=True)
 
-# 3. --- DESIGN SYSTEM (ESTILO BING / GOOGLE) ---
-# Substitua a URL abaixo pela sua imagem do Grajaú
-IMG_FUNDO = "https://images.unsplash.com/photo-1549492423-455208616167" 
+configurar_estilo()
 
-st.markdown(f"""
-<style>
-    .stApp {{ background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('{IMG_FUNDO}'); background-size: cover; background-position: center; }}
-    .search-container {{ display: flex; flex-direction: column; align-items: center; justify-content: center; height: 50vh; color: white; }}
-    .logo-main {{ font-weight: 900; font-size: 4rem; text-shadow: 2px 2px 10px rgba(0,0,0,0.5); }}
-    .stTextInput > div > div > input {{ border-radius: 50px !important; padding: 20px !important; font-size: 1.2rem !important; }}
-</style>
-""", unsafe_allow_html=True)
-
-# 4. --- MOTOR GERALJÁ (INFRAESTRUTURA) ---
-class GeralJaEngine:
-    def __init__(self): self.fuso = pytz.timezone('America/Sao_Paulo')
-    def sanitizar(self, texto): return re.sub(r'[^\x20-\x7E\n\t\r]', '', texto)
-
-engine = GeralJaEngine()
-# [COLE AQUI A SUA INICIALIZAÇÃO DO FIREBASE (cred_dict)]
-
-# 5. --- ESTRUTURA DE ABAS (O ESQUELETO DE NAVEGAÇÃO) ---
-lista_abas = ["🔍 BUSCAR", "🚀 CADASTRAR", "👤 MEU PERFIL", "⭐ FEEDBACK", "👑 ADMIN"]
-menu_abas = st.tabs(lista_abas)
-
-# 6. --- BLOCOS DE FUNCIONALIDADE (Preencher um por um) ---
-
-with menu_abas[0]: # BLOCO BUSCA
-    st.markdown('<div class="search-container">', unsafe_allow_html=True)
-    st.markdown('<div class="logo-main">GRAJAÚ <span style="color:#FF8C00">TEM</span></div>', unsafe_allow_html=True)
-    termo = st.text_input("", placeholder="🔍 O que você procura no Grajaú hoje?", label_visibility="collapsed")
-    st.markdown('</div>', unsafe_allow_html=True)
+# --- BLOCO 2: MOTOR GLOBAL (GeralJaEngine) ---
+class GrajauEngine:
+    def __init__(self):
+        self.nome = "Grajaú Tem Engine"
     
-    if termo:
-        st.markdown('<div style="background: rgba(255,255,255,0.95); padding: 20px; border-radius: 20px; color: #333;">', unsafe_allow_html=True)
-        # [COLE AQUI SUA LÓGICA DE BUSCA HÍBRIDA: VITRINE -> GOOGLE]
-        st.markdown('</div>', unsafe_allow_html=True)
+    def sanitizar(self, texto):
+        return re.sub(r'[^\w\s]', '', texto).lower().strip()
+    
+    def normalizar(self, texto):
+        return unicodedata.normalize('NFKD', texto).encode('ASCII', 'ignore').decode('utf-8')
 
-with menu_abas[1]: # BLOCO CADASTRAR
-    st.header("Cadastre seu Negócio")
-    # [COLE AQUI SEU FORMULÁRIO DE CADASTRO]
+engine = GrajauEngine()
 
-with menu_abas[2]: # BLOCO PERFIL
-    st.header("Seu Painel")
-    # [COLE AQUI SEU LOGIN E GESTÃO DE PRODUTOS]
+# --- BLOCO 3: BANCO DE DADOS (FIREBASE) ---
+def conectar_firebase():
+    if not firebase_admin._apps:
+        # Certifique-se de que o arquivo 'firebase_key.json' está no diretório
+        cred = credentials.Certificate("firebase_key.json")
+        firebase_admin.initialize_app(cred)
+    return firestore.client()
 
-with menu_abas[3]: # BLOCO FEEDBACK
-    st.header("Avaliações")
-    # [COLE AQUI SEU BLOCO DE FEEDBACK]
+# --- BLOCO 4: IA DE BUSCA (O CÉREBRO) ---
+# Aqui vamos conectar as 3-4 APIs que você quer para a busca robusta
+def processar_busca_ia(query):
+    query_sanitizada = engine.sanitizar(query)
+    
+    # ESTRUTURA PARA MULTI-IA
+    # Em breve, vamos iterar entre APIs aqui (Groq + Outras)
+    # Exemplo simples de chamada Groq:
+    # client = Groq(api_key="SUA_CHAVE")
+    
+    return f"Busca avançada processada para: {query_sanitizada}"
 
-with menu_abas[4]: # BLOCO ADMIN
-    st.header("Painel de Administração")
-    # [COLE AQUI SEUS CONTROLES DE ADMIN]
+# --- BLOCO 5: FUNÇÕES AUXILIARES ---
+def limpar_whatsapp(numero):
+    return re.sub(r'\D', '', str(numero))
+
+def safe_image_src(url):
+    return url if url else "placeholder_image.png"
+
+# --- BLOCO 6: ADMIN ESCONDIDO ---
+def painel_admin():
+    if 'admin_logado' not in st.session_state:
+        st.session_state.admin_logado = False
+
+    if not st.session_state.admin_logado:
+        # Admin escondido: só aparece se digitar senha
+        senha = st.sidebar.text_input("Acesso Administrativo:", type="password")
+        if senha == "1234": # Troque pela sua senha real
+            st.session_state.admin_logado = True
+            st.rerun()
+    else:
+        st.sidebar.success("Modo Admin Ativo")
+        if st.sidebar.button("Sair do Admin"):
+            st.session_state.admin_logado = False
+            st.rerun()
+        # Aqui ficarão os campos de gerenciamento de produtos/vitrine
+
+# --- BLOCO 7: INTERFACE PRINCIPAL ---
+def main():
+    st.title("📍 Grajaú Tem")
+    st.subheader("A maior vitrine da região")
+
+    # Chama o painel admin (escondido)
+    painel_admin()
+
+    # Busca (Buscador Grajaú)
+    busca = st.text_input("O que você procura no Grajaú hoje?", placeholder="Ex: Pizzaria, Mecânico, Vagas...")
+    
+    if busca:
+        with st.spinner('A IA do Grajaú está buscando...'):
+            # Aqui chamamos o motor de busca potente
+            resultado = processar_busca_ia(busca)
+            st.write(resultado)
+
+    # Vitrine de Ofertas
+    st.divider()
+    st.markdown("### 🔴 VITRINE DE OFERTAS")
+    
+    # Rodapé de Vendas
+    st.sidebar.markdown(f"---")
+    st.sidebar.markdown(f"**Anuncie conosco:**")
+    st.sidebar.markdown(f"WhatsApp: [{ZAP_VENDAS}](https://wa.me/{ZAP_VENDAS})")
+
+if __name__ == "__main__":
+    main()
