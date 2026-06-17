@@ -9,79 +9,65 @@ import unicodedata
 ZAP_VENDAS = '5511980168513'
 st.set_page_config(page_title="Portal Grajaú Tem", layout="wide")
 
-# --- BLOCO 1: CSS E DESIGN (A CAPA) ---
-def configurar_layout():
+# --- BLOCO 1: CSS E BRANDING ---
+def configurar_estilo():
     st.markdown("""
         <style>
-            /* Sobe a capa e remove espaços vazios do topo */
-            .block-container { padding-top: 1rem !important; }
-            
-            /* Container da Capa */
-            .capa-container {
-                background-color: #ffffff;
-                padding: 15px;
-                border-bottom: 3px solid #FF8C00; /* Linha Laranja */
-                border-radius: 0 0 10px 10px;
-                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            }
-            .titulo-principal { color: #003399; font-weight: bold; margin: 0; }
-            .subtitulo-secundario { color: #FF0000; font-size: 16px; margin: 0; }
+            .titulo-azul { color: #003399; font-weight: 800; font-size: 3rem; margin-bottom: 0; }
+            .titulo-amarelo { color: #FFD700; font-weight: 800; font-size: 3rem; margin-bottom: 0; }
+            .subtitulo { color: #555; font-size: 1.2rem; margin-top: 0; }
+            .yellow-line { border-bottom: 3px solid #FFD700; width: 100%; margin-top: 20px; margin-bottom: 20px; }
+            .centered-layout { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 60vh; }
         </style>
     """, unsafe_allow_html=True)
 
-configurar_layout()
+configurar_estilo()
 
-# --- BLOCO 2: MOTOR GLOBAL ---
-class GrajauEngine:
-    def sanitizar(self, texto):
-        return re.sub(r'[^\w\s]', '', texto).lower().strip()
+# --- BLOCO 2: MOTOR E ESTADO ---
+if 'pesquisou' not in st.session_state:
+    st.session_state.pesquisou = False
 
-engine = GrajauEngine()
-
-# --- BLOCO 3: BANCO DE DADOS ---
-def conectar_firebase():
-    if not firebase_admin._apps:
-        cred = credentials.Certificate("firebase_key.json")
-        firebase_admin.initialize_app(cred)
-    return firestore.client()
-
-# --- BLOCO 4: INTERFACE (CAPA INTEGRADA) ---
+# --- BLOCO 3: INTERFACE ---
 def main():
-    # --- Container da Capa ---
-    with st.container():
-        st.markdown('<div class="capa-container">', unsafe_allow_html=True)
+    # Painel Admin Escondido no Topo
+    with st.sidebar:
+        if st.button("⚙️"):
+            senha = st.text_input("Acesso:", type="password")
+            if senha == "1234": st.success("Admin Ativo")
+
+    # Layout Dinâmico
+    if not st.session_state.pesquisou:
+        # PÁGINA INICIAL (CENTRALIZADA)
+        st.markdown('<div class="centered-layout">', unsafe_allow_html=True)
+        st.markdown('<div><span class="titulo-azul">Portal</span> <span class="titulo-amarelo">Grajaú Tem</span></div>', unsafe_allow_html=True)
+        st.markdown('<p class="subtitulo">GeralJá</p>', unsafe_allow_html=True)
         
-        # Linha superior: Títulos e Toggle Dia/Noite
-        col_tit, col_toggle = st.columns([4, 1])
-        with col_tit:
-            st.markdown('<h1 class="titulo-principal">Portal Grajaú Tem</h1>', unsafe_allow_html=True)
-            st.markdown('<p class="subtitulo-secundario">GeralJá</p>', unsafe_allow_html=True)
-        with col_toggle:
-            tema = st.toggle("🌙/☀️")
-            
-        # Busca integrada na capa
-        busca = st.text_input("", placeholder="O que você precisa hoje no Grajaú?")
+        busca = st.text_input("", placeholder="O que você precisa hoje no Grajaú?", key="busca_init")
+        raio = st.slider("Raio de distância (km)", 0, 50, 5)
         
-        # Raio de distância
-        raio = st.slider("Raio de distância", 0, 50, 5, help="Selecione até quantos km buscar")
-        
+        if busca:
+            st.session_state.pesquisou = True
+            st.session_state.ultima_busca = busca
+            st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
-
-    # --- Lógica de Busca ---
-    if busca:
-        with st.spinner('IA buscando...'):
-            # Lógica de processamento
-            st.success(f"Buscando '{busca}' em um raio de {raio}km")
-            # Resultados viriam aqui
-
-    # Vitrine
-    st.markdown("### 🔴 VITRINE DE OFERTAS")
-
-    # Painel Admin (Oculto)
-    if st.sidebar.button("⚙️"):
-        senha = st.sidebar.text_input("Admin", type="password")
-        if senha == "1234":
-            st.sidebar.success("Admin Logado")
+        
+    else:
+        # PÁGINA DE RESULTADOS (TOPO)
+        col1, col2 = st.columns([1, 4])
+        with col1:
+            st.markdown('<h2 style="color:#003399; margin:0;">Grajaú</h2>', unsafe_allow_html=True)
+        with col2:
+            nova_busca = st.text_input("", value=st.session_state.get("ultima_busca", ""), key="busca_top")
+        
+        st.markdown('<div class="yellow-line"></div>', unsafe_allow_html=True)
+        
+        # Resultados da Vitrine
+        st.subheader(f"Resultados para: {nova_busca}")
+        st.write("--- Aqui entrarão os cards do Firebase ---")
+        
+        if st.button("Nova Busca"):
+            st.session_state.pesquisou = False
+            st.rerun()
 
 if __name__ == "__main__":
     main()
