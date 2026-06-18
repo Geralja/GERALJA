@@ -305,94 +305,53 @@ CONCEITOS_EXPANDIDOS = {
     "jardim": "Jardineiro", "piscina": "Piscineiro"
 }
 
-# ------------------------------------------------------------------------------
-# 4. MOTORES DE IA E UTILS
-# ------------------------------------------------------------------------------
-def normalizar_para_ia(texto):
-    if not texto:
-        return ""
-    # Remove acentos e deixa tudo em minúsculo
-    return "".join(c for c in unicodedata.normalize('NFD', str(texto))
-                   if unicodedata.category(c) != 'Mn').lower().strip()
+# --- ADICIONE ISSO NO TOPO DO ARQUIVO (Junto aos imports, fora da função) ---
+# Compilamos a Regex uma única vez na inicialização para ganhar velocidade
+PADROES_STATICOS = {
+    re.compile(rf"\b{normalizar_para_ia(chave)}\b"): categoria 
+    for chave, categoria in CONCEITOS_EXPANDIDOS.items()
+}
 
+# --- SUBSTITUA A FUNÇÃO ATUAL POR ESTA VERSÃO TURBINADA ---
 def processar_ia_avancada(texto):
-    if not texto: return "Vazio"
+    if not texto: return "NAO_ENCONTRADO"
     t_clean = normalizar_para_ia(texto)
     
-    # --- 1. SEU CÓDIGO ATUAL (Rápido e sem custo) ---
-    for chave, categoria in CONCEITOS_EXPANDIDOS.items():
-        if re.search(rf"\b{normalizar_para_ia(chave)}\b", t_clean):
+    # 1. BUSCA ESTÁTICA SUPER RÁPIDA (Regex Pré-compilado)
+    for padrao, categoria in PADROES_STATICOS.items():
+        if padrao.search(t_clean):
             return categoria
     
+    # 2. BUSCA POR CATEGORIAS OFICIAIS (Normalizada)
     for cat in CATEGORIAS_OFICIAIS:
         if normalizar_para_ia(cat) in t_clean:
             return cat
 
-    # --- 2. O UPGRADE PARA NOTA 5.0 (IA Groq + Cache) ---
+    # 3. UPGRADE PARA IA (Groq) com Cache
     try:
-        # Primeiro checa se já perguntamos isso antes (Cache)
         cache_ref = db.collection("cache_buscas").document(t_clean).get()
         if cache_ref.exists:
             return cache_ref.to_dict().get("categoria")
 
-        # Se não sabe, a IA "pensa" e resolve
-        from groq import Groq
+        # Prompt mais rigoroso para evitar alucinações da IA
         client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-        prompt = f"O usuário buscou: '{texto}'. Categorias: {CATEGORIAS_OFICIAIS}. Responda apenas o NOME DA CATEGORIA."
+        prompt = f"""Analise a busca: '{texto}'. 
+        Escolha a categoria mais próxima desta lista: {CATEGORIAS_OFICIAIS}. 
+        Responda APENAS com o nome exato da categoria. Se não encontrar, responda: NAO_ENCONTRADO."""
         
         res = client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
             model="llama3-8b-8192",
-            temperature=0.1
+            temperature=0
         )
         cat_ia = res.choices[0].message.content.strip()
-
-        # Salva no cache para não gastar mais tokens com esse termo
+        
+        # Grava no cache para a próxima vez ser instantâneo
         db.collection("cache_buscas").document(t_clean).set({"categoria": cat_ia})
         return cat_ia
 
     except:
-        return "NAO_ENCONTRADO" # Se tudo der errado
-
-def calcular_distancia_real(lat1, lon1, lat2, lon2):
-    try:
-        if None in [lat1, lon1, lat2, lon2]: return 999.0
-        R = 6371 
-        dlat, dlon = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
-        a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
-        return round(R * (2 * math.atan2(math.sqrt(a), math.sqrt(1-a))), 1)
-    except: return 999.0
-
-def converter_img_b64(file):
-    if file is None: return ""
-    try: return base64.b64encode(file.read()).decode()
-    except: return ""
-
-# --- FUNCIONALIDADE DO ARQUIVO: O VARREDOR (Rodapé Automático) ---
-def finalizar_e_alinhar_layout():
-    """
-    Esta função atua como um ímã. Puxa o conteúdo e limpa o rodapé.
-    """
-    st.write("---")
-    fechamento_estilo = """
-        <style>
-            .main .block-container { padding-bottom: 5rem !important; }
-            .footer-clean {
-                text-align: center;
-                padding: 20px;
-                opacity: 0.7;
-                font-size: 0.8rem;
-                width: 100%;
-                color: gray;
-            }
-        </style>
-        <div class="footer-clean">
-            <p>🎯 <b>GeralJá</b> - Sistema de Inteligência Local</p>
-            <p>Conectando quem precisa com quem sabe fazer.</p>
-            <p>v3.0 | © 2026 Todos os direitos reservados</p>
-        </div>
-    """
-    st.markdown(fechamento_estilo, unsafe_allow_html=True)
+        return "NAO_ENCONTRADO"
 
 # ------------------------------------------------------------------------------
 # 5. DESIGN SYSTEM
