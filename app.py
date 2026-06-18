@@ -318,11 +318,21 @@ with menu_abas[0]:
             for p_doc in profs:
                 p = p_doc.to_dict()
                 p['id'] = p_doc.id
-                dist = calcular_distancia_real(minha_lat, minha_lon, p.get('lat', LAT_REF), p.get('lon', LON_REF))
-                if dist <= raio_km:
-                    p['dist'] = dist
-                    p['score_elite'] = (1000 if p.get('verificado') and p.get('saldo', 0) > 0 else 0)
-                    lista_ranking.append(p)
+                dist = # --- FUNÇÃO DE CÁLCULO DE DISTÂNCIA (GEOLOCALIZAÇÃO) ---
+def calcular_distancia_real(lat1, lon1, lat2, lon2):
+    """
+    Calcula a distância em KM entre dois pontos usando a fórmula de Haversine.
+    """
+    # Raio da Terra em km
+    R = 6371
+    try:
+        dlat = math.radians(float(lat2) - float(lat1))
+        dlon = math.radians(float(lon2) - float(lon1))
+        a = math.sin(dlat/2)**2 + math.cos(math.radians(float(lat1))) * math.cos(math.radians(float(lat2))) * math.sin(dlon/2)**2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+        return R * c
+    except:
+        return 9999 # Se falhar, retorna uma distância muito grande
 
             lista_ranking.sort(key=lambda x: (x['dist'], -x['score_elite']))
             status.update(label=f"Resultados para {cat_ia} encontrados!", state="complete")
