@@ -1,6 +1,8 @@
 # ==============================================================================
-# GERALJÁ: CRIANDO SOLUÇÕES - MÓDULO 1: INFRAESTRUTURA
+# GERALJÁ: CRIANDO SOLUÇÕES - MÓDULO 1: INFRAESTRUTURA (ORGANIZADO)
 # ==============================================================================
+
+# --- 1. IMPORTS (AGRUPADOS E SEM DUPLICATAS) ---
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, firestore
@@ -14,28 +16,41 @@ from datetime import datetime
 import pytz
 import unicodedata
 import requests
-import streamlit as st
-import re
 import sys
 import os
-import pytz
-from datetime import datetime
+from google_auth_oauthlib.flow import Flow
+from groq import Groq
+from fuzzywuzzy import process
+from urllib.parse import quote
 
-# --- CONFIGURAÇÃO DE ALTO NÍVEL ---
+# --- 2. CONFIGURAÇÃO DE ALTO NÍVEL ---
+st.set_page_config(
+    page_title="GeralJá | Criando Soluções",
+    page_icon="🇧🇷",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+
+# Mantém os menus escondidos
+st.markdown("""
+    <style>
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        header {visibility: hidden;}
+    </style>
+""", unsafe_allow_html=True)
+
+# --- 3. CLASSE DE MOTOR E FUNÇÕES DE SUPORTE (DECLARADAS ANTES DO USO) ---
 class GeralJaEngine:
     def __init__(self):
         self.fuso = pytz.timezone('America/Sao_Paulo')
     
     def sanitizar(self, codigo_bruto):
-        """Mata caracteres fantasmas e lixo de codificação instantaneamente"""
         if not codigo_bruto: return ""
-        # Remove U+00A0 (espaço inquebrável) e normaliza espaços
         limpo = codigo_bruto.replace('\u00a0', ' ').replace('\xa0', ' ')
-        # Filtra apenas caracteres ASCII visíveis + quebras de linha
         return re.sub(r'[^\x20-\x7E\n\t\r]', '', limpo)
 
     def injetar_modulo(self, nome_arquivo, conteudo):
-        """Instala novos códigos no servidor de forma independente"""
         conteudo_limpo = self.sanitizar(conteudo)
         try:
             with open(f"{nome_arquivo}.py", "w", encoding="utf-8") as f:
@@ -44,47 +59,34 @@ class GeralJaEngine:
         except Exception as e:
             return False, f"❌ Falha na instalação: {str(e)}"
 
-# Inicializa o Motor Global
-engine = GeralJaEngine()
-fuso_br = engine.fuso
-# --- BIBLIOTECAS NÍVEL 5.0 ---
-from groq import Groq                # Para a IA avançada
-from fuzzywuzzy import process       # Para buscas com erros de digitação
-from urllib.parse import quote       # Para links de WhatsApp seguros
-import google.generativeai as genai  # IA Gemini
-from google_auth_oauthlib.flow import Flow # Login Google
+# Funções auxiliares
+def limpar_whatsapp(numero):
+    num = re.sub(r'\D', '', str(numero))
+    if not num.startswith('55') and len(num) >= 10:
+        num = f"55{num}"
+    return num
 
-# --- TENTA IMPORTAR COMPONENTES JS (EVITA QUEBRA SE NÃO INSTALADO) ---
-try:
-    from streamlit_js_eval import streamlit_js_eval, get_geolocation
-except ImportError:
-    pass
+def normalizar(texto):
+    if not texto: return ""
+    return "".join(ch for ch in unicodedata.normalize('NFKD', texto) 
+                   if unicodedata.category(ch) != 'Mn').lower()
 
-# --- CONFIGURAÇÃO DE CHAVES (PUXANDO DO SECRETS) ---
-try:
-    # Chaves de Autenticação Social
-    FB_ID = st.secrets["FB_CLIENT_ID"]
-    FB_SECRET = st.secrets["FB_CLIENT_SECRET"]
-    FIREBASE_API_KEY = st.secrets["FIREBASE_API_KEY"]
-    REDIRECT_URI = "https://geralja-zxiaj2ot56fuzgcz7xhcks.streamlit.app/"
-    
-    # Configuração de APIs de IA
-    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-    client_groq = Groq(api_key=st.secrets["GROQ_API_KEY"])
-    
-except Exception as e:
-    st.error(f"⚠️ Erro Crítico: Verifique o arquivo 'Secrets' no Streamlit. ({e})")
-    st.stop()
+def normalizar_para_ia(texto):
+    if not texto: return ""
+    return "".join(c for c in unicodedata.normalize('NFD', str(texto)) 
+                   if unicodedata.category(c) != 'Mn').lower().strip()
 
-# URLs de Suporte
-HANDLER_URL = "https://geralja-5bb49.firebaseapp.com/__/auth/handler"
+def calcular_distancia_real(lat1, lon1, lat2, lon2):
+    R = 6371 
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    return R * c
 
-# ------------------------------------------------------------------------------
-# 2. CONEXÃO COM O BANCO DE DADOS (FIREBASE)
-# ------------------------------------------------------------------------------
+# --- 4. CONEXÃO COM O BANCO DE DADOS (FIREBASE) ---
 @st.cache_resource
 def conectar_banco_master():
-    """Inicializa o Firebase apenas uma vez por sessão"""
     if not firebase_admin._apps:
         try:
             if "firebase" in st.secrets and "base64" in st.secrets["firebase"]:
@@ -101,18 +103,12 @@ def conectar_banco_master():
             st.stop()
     return firebase_admin.get_app()
 
-# Ativa o banco
 app_engine = conectar_banco_master()
 db = firestore.client()
 
-# --- LOGICA DE RECEPÇÃO DO GOOGLE (OTIMIZADA E BLINDADA) ---
-from google_auth_oauthlib.flow import Flow
-import requests
-import time
-
+# --- 5. LOGICA DE LOGIN GOOGLE ---
 @st.cache_data(ttl=3600)
 def get_google_flow():
-    """Cache do fluxo para performance máxima"""
     g_auth = st.secrets["google_auth"]
     client_config = {
         "web": {
@@ -130,29 +126,18 @@ def get_google_flow():
     )
 
 def processar_login_google():
-    """Enapsulado para rodar apenas quando necessário (Performance)"""
-    query_params = st.query_params
-    if "code" in query_params:
+    if "code" in st.query_params:
         try:
-            # 1. Troca o código por um token
             flow = get_google_flow()
-            flow.fetch_token(code=query_params["code"])
+            flow.fetch_token(code=st.query_params["code"])
             session = flow.authorized_session()
-            
-            # 2. Pega os dados
             user_info = session.get('https://www.googleapis.com/userinfo').json()
             email_google = user_info.get("email")
             nome_google = user_info.get("name")
             foto_google = user_info.get("picture")
-
-            # 3. Limpa a URL
             st.query_params.clear()
-
-            # 4. Busca no Firebase
             pro_ref = db.collection("profissionais").where("email", "==", email_google).limit(1).get()
-
             if pro_ref:
-                # ✅ Login direto
                 dados = pro_ref[0].to_dict()
                 st.session_state.auth = True
                 st.session_state.user_id = pro_ref[0].id
@@ -160,98 +145,32 @@ def processar_login_google():
                 time.sleep(1)
                 st.rerun()
             else:
-                # ✨ Cadastro novo
-                st.session_state.pre_cadastro = {
-                    "email": email_google,
-                    "nome": nome_google,
-                    "foto": foto_google
-                }
+                st.session_state.pre_cadastro = {"email": email_google, "nome": nome_google, "foto": foto_google}
                 st.toast(f"Olá {nome_google}! Complete seu cadastro.")
-                
         except Exception as e:
             st.error(f"Erro no login Google: {e}")
-# ------------------------------------------------------------------------------
-# 2. CAMADA DE PERSISTÊNCIA (FIREBASE)
-# ------------------------------------------------------------------------------
 
-# --- FUNÇÕES DE SUPORTE (Mantenha fora de blocos IF/ELSE para funcionar no app todo) ---
+# --- 6. EXECUÇÃO E ESTILOS FINAIS ---
+engine = GeralJaEngine()
+fuso_br = engine.fuso
 
-def buscar_opcoes_dinamicas(documento, padrao):
-    """
-    Busca listas de categorias ou tipos na coleção 'configuracoes'.
-    """
-    try:
-        doc = db.collection("configuracoes").document(documento).get()
-        if doc.exists:
-            dados = doc.to_dict()
-            return dados.get("lista", padrao)
-        return padrao
-    except Exception as e:
-        # Se houver erro ou o banco estiver vazio, retorna a lista padrão
-        return padrao
-        # --- COLOCAR LOGO ABAIXO DA CONEXÃO DB ---
+# Inicializa estado
+if 'tema_claro' not in st.session_state: st.session_state.tema_claro = False
+if 'modo_noite' not in st.session_state: st.session_state.modo_noite = True 
 
-if 'modo_noite' not in st.session_state:
-    st.session_state.modo_noite = True 
+# Processa login se houver código na URL
+processar_login_google()
 
-# Layout do topo (Toggle)
-c_t1, c_t2 = st.columns([2, 8])
-with c_t1:
-    st.session_state.modo_noite = st.toggle("🌙 Modo Noite", value=st.session_state.modo_noite)
-
-# Bloco CSS Dinâmico
+# Estilo Dinâmico
 estilo_dinamico = f"""
 <style>
-    /* Ajustes Mobile */
-    @media (max-width: 640px) {{
-        .main .block-container {{ padding: 1rem !important; }}
-        h1 {{ font-size: 1.8rem !important; }}
-    }}
-
-  /* Lógica de Cores - Estilo Branco Neve */
-    .stApp {{
-        background-color: {"#0D1117" if st.session_state.modo_noite else "#FFFAFA"} !important;
-        color: {"#FFFFFF" if st.session_state.modo_noite else "#1A1A1B"} !important;
-    }}
-
-    /* Cards Adaptáveis */
+    .stApp {{ background-color: {"#0D1117" if st.session_state.modo_noite else "#FFFAFA"} !important; }}
     div[data-testid="stVerticalBlock"] > div[style*="background"] {{
         background-color: {"#161B22" if st.session_state.modo_noite else "#FFFFFF"} !important;
-        border: 1px solid {"#30363D" if st.session_state.modo_noite else "#E0E0E0"} !important;
-        border-radius: 18px !important;
     }}
 </style>
 """
 st.markdown(estilo_dinamico, unsafe_allow_html=True)
-# ==========================================================
-# FUNÇÕES DE SUPORTE (COLE NO TOPO DO ARQUIVO)
-# ==========================================================
-import re
-from urllib.parse import quote
-
-def limpar_whatsapp(numero):
-    """Remove parênteses, espaços e traços do número."""
-    num = re.sub(r'\D', '', str(numero))
-    if not num.startswith('55') and len(num) >= 10:
-        num = f"55{num}"
-    return num
-
-def normalizar(texto):
-    """Remove acentos e deixa tudo em minúsculo para busca."""
-    import unicodedata
-    if not texto: return ""
-    return "".join(ch for ch in unicodedata.normalize('NFKD', texto) 
-                   if unicodedata.category(ch) != 'Mn').lower()
-
-# Verifique se você já tem a função de distância, senão adicione esta:
-def calcular_distancia_real(lat1, lon1, lat2, lon2):
-    import math
-    R = 6371  # Raio da Terra em KM
-    dlat = math.radians(lat2 - lat1)
-    dlon = math.radians(lon2 - lon1)
-    a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
-    return R * c
 
 # ------------------------------------------------------------------------------
 # 3. POLÍTICAS E CONSTANTES
