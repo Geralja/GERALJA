@@ -54,6 +54,9 @@ class GeralJaEngine:
             return True, f"✅ Módulo {nome_arquivo} instalado e saneado!"
         except Exception as e:
             return False, f"❌ Falha na instalação: {str(e)}"
+            # --- DEFINIÇÃO DE VARIÁVEIS GLOBAIS ---
+REDIRECT_URI = "https://geralja-zxiaj2ot56fuzgcz7xhcks.streamlit.app/"
+FB_ID = st.secrets.get("FB_CLIENT_ID", "")
 
 # Inicializa o Motor Global
 engine = GeralJaEngine()
