@@ -312,17 +312,23 @@ PADROES_STATICOS = {
     for chave, categoria in CONCEITOS_EXPANDIDOS.items()
 }
 
-# --- SUBSTITUA A FUNÇÃO ATUAL POR ESTA VERSÃO TURBINADA ---
 def processar_ia_avancada(texto):
+    # --- INICIALIZAÇÃO SEGURA (Só acontece 1x, na primeira busca) ---
+    if 'PADROES_STATICOS' not in st.session_state:
+        st.session_state.PADROES_STATICOS = {
+            re.compile(rf"\b{normalizar_para_ia(chave)}\b"): categoria 
+            for chave, categoria in CONCEITOS_EXPANDIDOS.items()
+        }
+    
     if not texto: return "NAO_ENCONTRADO"
     t_clean = normalizar_para_ia(texto)
     
-    # 1. BUSCA ESTÁTICA SUPER RÁPIDA (Regex Pré-compilado)
-    for padrao, categoria in PADROES_STATICOS.items():
+    # 1. BUSCA ESTÁTICA (Usando o dicionário criado na hora)
+    for padrao, categoria in st.session_state.PADROES_STATICOS.items():
         if padrao.search(t_clean):
             return categoria
     
-    # 2. BUSCA POR CATEGORIAS OFICIAIS (Normalizada)
+    # 2. BUSCA POR CATEGORIAS OFICIAIS
     for cat in CATEGORIAS_OFICIAIS:
         if normalizar_para_ia(cat) in t_clean:
             return cat
@@ -333,11 +339,9 @@ def processar_ia_avancada(texto):
         if cache_ref.exists:
             return cache_ref.to_dict().get("categoria")
 
-        # Prompt mais rigoroso para evitar alucinações da IA
+        from groq import Groq
         client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-        prompt = f"""Analise a busca: '{texto}'. 
-        Escolha a categoria mais próxima desta lista: {CATEGORIAS_OFICIAIS}. 
-        Responda APENAS com o nome exato da categoria. Se não encontrar, responda: NAO_ENCONTRADO."""
+        prompt = f"O usuário buscou: '{texto}'. Categorias: {CATEGORIAS_OFICIAIS}. Responda apenas a CATEGORIA."
         
         res = client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
@@ -345,8 +349,6 @@ def processar_ia_avancada(texto):
             temperature=0
         )
         cat_ia = res.choices[0].message.content.strip()
-        
-        # Grava no cache para a próxima vez ser instantâneo
         db.collection("cache_buscas").document(t_clean).set({"categoria": cat_ia})
         return cat_ia
 
