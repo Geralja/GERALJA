@@ -1,8 +1,6 @@
 # ==============================================================================
-# GERALJÁ: CRIANDO SOLUÇÕES - MÓDULO 1: INFRAESTRUTURA (ORGANIZADO)
+# GERALJÁ: CRIANDO SOLUÇÕES - MÓDULO 1: INFRAESTRUTURA
 # ==============================================================================
-
-# 1. IMPORTS (TODOS AGRUPADOS NO TOPO PARA EVITAR ERROS)
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, firestore
@@ -12,82 +10,81 @@ import math
 import re
 import time
 import pandas as pd
+from datetime import datetime 
 import pytz
 import unicodedata
 import requests
+import streamlit as st
+import re
 import sys
 import os
+import pytz
 from datetime import datetime
-from groq import Groq
-from fuzzywuzzy import process
-from urllib.parse import quote
-import google.generativeai as genai
-from google_auth_oauthlib.flow import Flow
 
-# --- 2. CONFIGURAÇÃO DE ALTO NÍVEL ---
-st.set_page_config(
-    page_title="GeralJá | Criando Soluções",
-    page_icon="🇧🇷",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
-
-st.markdown("""
-    <style>
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        header {visibility: hidden;}
-    </style>
-""", unsafe_allow_html=True)
-
-# ------------------------------------------------------------------------------
-# 3. CLASSE DE MOTOR E FUNÇÕES DE SUPORTE
-# ------------------------------------------------------------------------------
+# --- CONFIGURAÇÃO DE ALTO NÍVEL ---
 class GeralJaEngine:
     def __init__(self):
         self.fuso = pytz.timezone('America/Sao_Paulo')
     
     def sanitizar(self, codigo_bruto):
+        """Mata caracteres fantasmas e lixo de codificação instantaneamente"""
         if not codigo_bruto: return ""
+        # Remove U+00A0 (espaço inquebrável) e normaliza espaços
         limpo = codigo_bruto.replace('\u00a0', ' ').replace('\xa0', ' ')
+        # Filtra apenas caracteres ASCII visíveis + quebras de linha
         return re.sub(r'[^\x20-\x7E\n\t\r]', '', limpo)
 
     def injetar_modulo(self, nome_arquivo, conteudo):
+        """Instala novos códigos no servidor de forma independente"""
         conteudo_limpo = self.sanitizar(conteudo)
         try:
             with open(f"{nome_arquivo}.py", "w", encoding="utf-8") as f:
                 f.write(conteudo_limpo)
-            return True, f"✅ Módulo {nome_arquivo} instalado!"
+            return True, f"✅ Módulo {nome_arquivo} instalado e saneado!"
         except Exception as e:
-            return False, f"❌ Falha: {str(e)}"
+            return False, f"❌ Falha na instalação: {str(e)}"
 
+# Inicializa o Motor Global
 engine = GeralJaEngine()
 fuso_br = engine.fuso
+# --- BIBLIOTECAS NÍVEL 5.0 ---
+from groq import Groq                # Para a IA avançada
+from fuzzywuzzy import process       # Para buscas com erros de digitação
+from urllib.parse import quote       # Para links de WhatsApp seguros
+import google.generativeai as genai  # IA Gemini
+from google_auth_oauthlib.flow import Flow # Login Google
 
-# Funções de suporte essenciais (Definidas antes do uso)
-def limpar_whatsapp(numero):
-    num = re.sub(r'\D', '', str(numero))
-    if not num.startswith('55') and len(num) >= 10:
-        num = f"55{num}"
-    return num
+# --- TENTA IMPORTAR COMPONENTES JS (EVITA QUEBRA SE NÃO INSTALADO) ---
+try:
+    from streamlit_js_eval import streamlit_js_eval, get_geolocation
+except ImportError:
+    pass
 
-def normalizar(texto):
-    if not texto: return ""
-    return "".join(ch for ch in unicodedata.normalize('NFKD', texto) if unicodedata.category(ch) != 'Mn').lower()
+# --- CONFIGURAÇÃO DE CHAVES (PUXANDO DO SECRETS) ---
+try:
+    # Chaves de Autenticação Social
+    FB_ID = st.secrets["FB_CLIENT_ID"]
+    FB_SECRET = st.secrets["FB_CLIENT_SECRET"]
+    FIREBASE_API_KEY = st.secrets["FIREBASE_API_KEY"]
+    REDIRECT_URI = "https://geralja-zxiaj2ot56fuzgcz7xhcks.streamlit.app/"
+    
+    # Configuração de APIs de IA
+    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+    client_groq = Groq(api_key=st.secrets["GROQ_API_KEY"])
+    
+except Exception as e:
+    st.error(f"⚠️ Erro Crítico: Verifique o arquivo 'Secrets' no Streamlit. ({e})")
+    st.stop()
 
-def calcular_distancia_real(lat1, lon1, lat2, lon2):
-    R = 6371
-    dlat = math.radians(lat2 - lat1)
-    dlon = math.radians(lon2 - lon1)
-    a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
-    return R * c
+# URLs de Suporte
+HANDLER_URL = "https://geralja-5bb49.firebaseapp.com/__/auth/handler"
 
 # ------------------------------------------------------------------------------
-# 4. CONEXÃO FIREBASE (BLINDADA)
+# 2. CONEXÃO COM O BANCO DE DADOS (FIREBASE)
 # ------------------------------------------------------------------------------
 @st.cache_resource
 def conectar_banco_master():
+    """Inicializa o Firebase apenas uma vez por sessão"""
     if not firebase_admin._apps:
         try:
             if "firebase" in st.secrets and "base64" in st.secrets["firebase"]:
@@ -97,60 +94,185 @@ def conectar_banco_master():
                 cred = credentials.Certificate(cred_dict)
                 return firebase_admin.initialize_app(cred)
             else:
+                st.error("⚠️ Configuração 'firebase.base64' não encontrada no Secrets.")
                 st.stop()
         except Exception as e:
-            st.error(f"❌ Erro Infra: {e}")
+            st.error(f"❌ FALHA NA INFRAESTRUTURA FIREBASE: {e}")
             st.stop()
     return firebase_admin.get_app()
 
+# Ativa o banco
 app_engine = conectar_banco_master()
 db = firestore.client()
 
 # ------------------------------------------------------------------------------
-# 5. LÓGICA DE LOGIN (ISOLADA)
+# 1. CONFIGURAÇÃO DE AMBIENTE E PERFORMANCE
 # ------------------------------------------------------------------------------
+st.set_page_config(
+    page_title="GeralJá | Criando Soluções",
+    page_icon="🇧🇷",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+
+# --- FUNCIONALIDADE DO ARQUIVO: TEMA MANUAL ---
+if 'tema_claro' not in st.session_state:
+    st.session_state.tema_claro = False
+
+# Mantém os menus escondidos
+st.markdown("""
+    <style>
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        header {visibility: hidden;}
+    </style>
+""", unsafe_allow_html=True)
+# --- LOGICA DE RECEPÇÃO DO GOOGLE (COLOCAR NO TOPO DO ARQUIVO) ---
+from google_auth_oauthlib.flow import Flow
+import requests
+
+# Função para criar o fluxo de troca de tokens
 def get_google_flow():
     g_auth = st.secrets["google_auth"]
-    client_config = {"web": {"client_id": g_auth["client_id"], "client_secret": g_auth["client_secret"], "auth_uri": "https://accounts.google.com/o/oauth2/auth", "token_uri": "https://oauth2.googleapis.com/token", "redirect_uris": [g_auth["redirect_uri"]]}}
-    return Flow.from_client_config(client_config, scopes=["openid", "https://www.googleapis.com/auth/userinfo.profile", "https://www.googleapis.com/auth/userinfo.email"], redirect_uri=g_auth["redirect_uri"])
+    client_config = {
+        "web": {
+            "client_id": g_auth["client_id"],
+            "client_secret": g_auth["client_secret"],
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "redirect_uris": [g_auth["redirect_uri"]]
+        }
+    }
+    return Flow.from_client_config(
+        client_config,
+        scopes=["openid", "https://www.googleapis.com/auth/userinfo.profile", "https://www.googleapis.com/auth/userinfo.email"],
+        redirect_uri=g_auth["redirect_uri"]
+    )
 
-def processar_login_google():
-    if "code" in st.query_params:
-        try:
-            flow = get_google_flow()
-            flow.fetch_token(code=st.query_params["code"])
-            session = flow.authorized_session()
-            user_info = session.get('https://www.googleapis.com/userinfo').json()
-            st.query_params.clear()
-            pro_ref = db.collection("profissionais").where("email", "==", user_info.get("email")).limit(1).get()
-            if pro_ref:
-                st.session_state.auth = True
-                st.session_state.user_id = pro_ref[0].id
-                st.rerun()
-            else:
-                st.session_state.pre_cadastro = {"email": user_info.get("email"), "nome": user_info.get("name"), "foto": user_info.get("picture")}
-        except Exception as e:
-            st.error(f"Erro Login: {e}")
+# Verifica se o Google enviou o código na URL (Query Params)
+query_params = st.query_params
+if "code" in query_params:
+    try:
+        # 1. Troca o código por um token de acesso
+        flow = get_google_flow()
+        flow.fetch_token(code=query_params["code"])
+        session = flow.authorized_session()
+        
+        # 2. Pega os dados reais do usuário no Google
+        user_info = session.get('https://www.googleapis.com/userinfo').json()
+        
+        email_google = user_info.get("email")
+        nome_google = user_info.get("name")
+        foto_google = user_info.get("picture")
 
-# Processa login se houver código
-processar_login_google()
+        # 3. Limpa a URL (remove o código para não dar erro ao atualizar)
+        st.query_params.clear()
 
+        # 4. Busca no Firebase se esse e-mail já é parceiro
+        pro_ref = db.collection("profissionais").where("email", "==", email_google).limit(1).get()
+
+        if pro_ref:
+            # ✅ USUÁRIO JÁ CADASTRADO: Loga ele direto
+            dados = pro_ref[0].to_dict()
+            st.session_state.auth = True
+            st.session_state.user_id = pro_ref[0].id # O WhatsApp dele
+            st.success(f"Logado com sucesso como {dados.get('nome')}!")
+            time.sleep(1)
+            st.rerun()
+        else:
+            # ✨ USUÁRIO NOVO: Prepara o pre-cadastro para a Aba 1
+            st.session_state.pre_cadastro = {
+                "email": email_google,
+                "nome": nome_google,
+                "foto": foto_google
+            }
+            st.toast(f"Olá {nome_google}! Complete seu cadastro profissional abaixo.")
+            # Você pode forçar a ida para a aba de cadastro aqui se quiser
+            
+    except Exception as e:
+        st.error(f"Erro ao processar login do Google: {e}")
 # ------------------------------------------------------------------------------
-# 6. ESTILOS DINÂMICOS
+# 2. CAMADA DE PERSISTÊNCIA (FIREBASE)
 # ------------------------------------------------------------------------------
-if 'modo_noite' not in st.session_state: st.session_state.modo_noite = True
+
+# --- FUNÇÕES DE SUPORTE (Mantenha fora de blocos IF/ELSE para funcionar no app todo) ---
+
+def buscar_opcoes_dinamicas(documento, padrao):
+    """
+    Busca listas de categorias ou tipos na coleção 'configuracoes'.
+    """
+    try:
+        doc = db.collection("configuracoes").document(documento).get()
+        if doc.exists:
+            dados = doc.to_dict()
+            return dados.get("lista", padrao)
+        return padrao
+    except Exception as e:
+        # Se houver erro ou o banco estiver vazio, retorna a lista padrão
+        return padrao
+        # --- COLOCAR LOGO ABAIXO DA CONEXÃO DB ---
+
+if 'modo_noite' not in st.session_state:
+    st.session_state.modo_noite = True 
+
+# Layout do topo (Toggle)
 c_t1, c_t2 = st.columns([2, 8])
-with c_t1: st.session_state.modo_noite = st.toggle("🌙 Modo Noite", value=st.session_state.modo_noite)
+with c_t1:
+    st.session_state.modo_noite = st.toggle("🌙 Modo Noite", value=st.session_state.modo_noite)
 
+# Bloco CSS Dinâmico
 estilo_dinamico = f"""
 <style>
-    .stApp {{ background-color: {"#0D1117" if st.session_state.modo_noite else "#FFFAFA"} !important; }}
+    /* Ajustes Mobile */
+    @media (max-width: 640px) {{
+        .main .block-container {{ padding: 1rem !important; }}
+        h1 {{ font-size: 1.8rem !important; }}
+    }}
+
+  /* Lógica de Cores - Estilo Branco Neve */
+    .stApp {{
+        background-color: {"#0D1117" if st.session_state.modo_noite else "#FFFAFA"} !important;
+        color: {"#FFFFFF" if st.session_state.modo_noite else "#1A1A1B"} !important;
+    }}
+
+    /* Cards Adaptáveis */
     div[data-testid="stVerticalBlock"] > div[style*="background"] {{
         background-color: {"#161B22" if st.session_state.modo_noite else "#FFFFFF"} !important;
+        border: 1px solid {"#30363D" if st.session_state.modo_noite else "#E0E0E0"} !important;
+        border-radius: 18px !important;
     }}
 </style>
 """
 st.markdown(estilo_dinamico, unsafe_allow_html=True)
+# ==========================================================
+# FUNÇÕES DE SUPORTE (COLE NO TOPO DO ARQUIVO)
+# ==========================================================
+import re
+from urllib.parse import quote
+
+def limpar_whatsapp(numero):
+    """Remove parênteses, espaços e traços do número."""
+    num = re.sub(r'\D', '', str(numero))
+    if not num.startswith('55') and len(num) >= 10:
+        num = f"55{num}"
+    return num
+
+def normalizar(texto):
+    """Remove acentos e deixa tudo em minúsculo para busca."""
+    import unicodedata
+    if not texto: return ""
+    return "".join(ch for ch in unicodedata.normalize('NFKD', texto) 
+                   if unicodedata.category(ch) != 'Mn').lower()
+
+# Verifique se você já tem a função de distância, senão adicione esta:
+def calcular_distancia_real(lat1, lon1, lat2, lon2):
+    import math
+    R = 6371  # Raio da Terra em KM
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    return R * c
 
 # ------------------------------------------------------------------------------
 # 3. POLÍTICAS E CONSTANTES
@@ -202,48 +324,96 @@ CONCEITOS_EXPANDIDOS = {
     "carro": "Mecânico", "motor": "Mecânico", "pneu": "Borracheiro", "guincho": "Guincho 24h",
     "frete": "Freteiro", "mudanca": "Freteiro", "faxina": "Diarista", "limpeza": "Diarista",
     "jardim": "Jardineiro", "piscina": "Piscineiro"
+}
+
+# ------------------------------------------------------------------------------
+# 4. MOTORES DE IA E UTILS
+# ------------------------------------------------------------------------------
+def normalizar_para_ia(texto):
+    if not texto:
+        return ""
+    # Remove acentos e deixa tudo em minúsculo
+    return "".join(c for c in unicodedata.normalize('NFD', str(texto))
+                   if unicodedata.category(c) != 'Mn').lower().strip()
+
 def processar_ia_avancada(texto):
-    # --- INICIALIZAÇÃO SEGURA (Só acontece 1x, na primeira busca) ---
-    if 'PADROES_STATICOS' not in st.session_state:
-        st.session_state.PADROES_STATICOS = {
-            re.compile(rf"\b{normalizar_para_ia(chave)}\b"): categoria 
-            for chave, categoria in CONCEITOS_EXPANDIDOS.items()
-        }
-    
-    if not texto: return "NAO_ENCONTRADO"
+    if not texto: return "Vazio"
     t_clean = normalizar_para_ia(texto)
     
-    # 1. BUSCA ESTÁTICA (Usando o dicionário criado na hora)
-    for padrao, categoria in st.session_state.PADROES_STATICOS.items():
-        if padrao.search(t_clean):
+    # --- 1. SEU CÓDIGO ATUAL (Rápido e sem custo) ---
+    for chave, categoria in CONCEITOS_EXPANDIDOS.items():
+        if re.search(rf"\b{normalizar_para_ia(chave)}\b", t_clean):
             return categoria
     
-    # 2. BUSCA POR CATEGORIAS OFICIAIS
     for cat in CATEGORIAS_OFICIAIS:
         if normalizar_para_ia(cat) in t_clean:
             return cat
 
-    # 3. UPGRADE PARA IA (Groq) com Cache
+    # --- 2. O UPGRADE PARA NOTA 5.0 (IA Groq + Cache) ---
     try:
+        # Primeiro checa se já perguntamos isso antes (Cache)
         cache_ref = db.collection("cache_buscas").document(t_clean).get()
         if cache_ref.exists:
             return cache_ref.to_dict().get("categoria")
 
+        # Se não sabe, a IA "pensa" e resolve
         from groq import Groq
         client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-        prompt = f"O usuário buscou: '{texto}'. Categorias: {CATEGORIAS_OFICIAIS}. Responda apenas a CATEGORIA."
+        prompt = f"O usuário buscou: '{texto}'. Categorias: {CATEGORIAS_OFICIAIS}. Responda apenas o NOME DA CATEGORIA."
         
         res = client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
             model="llama3-8b-8192",
-            temperature=0
+            temperature=0.1
         )
         cat_ia = res.choices[0].message.content.strip()
+
+        # Salva no cache para não gastar mais tokens com esse termo
         db.collection("cache_buscas").document(t_clean).set({"categoria": cat_ia})
         return cat_ia
 
     except:
-        return "NAO_ENCONTRADO"
+        return "NAO_ENCONTRADO" # Se tudo der errado
+
+def calcular_distancia_real(lat1, lon1, lat2, lon2):
+    try:
+        if None in [lat1, lon1, lat2, lon2]: return 999.0
+        R = 6371 
+        dlat, dlon = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
+        a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
+        return round(R * (2 * math.atan2(math.sqrt(a), math.sqrt(1-a))), 1)
+    except: return 999.0
+
+def converter_img_b64(file):
+    if file is None: return ""
+    try: return base64.b64encode(file.read()).decode()
+    except: return ""
+
+# --- FUNCIONALIDADE DO ARQUIVO: O VARREDOR (Rodapé Automático) ---
+def finalizar_e_alinhar_layout():
+    """
+    Esta função atua como um ímã. Puxa o conteúdo e limpa o rodapé.
+    """
+    st.write("---")
+    fechamento_estilo = """
+        <style>
+            .main .block-container { padding-bottom: 5rem !important; }
+            .footer-clean {
+                text-align: center;
+                padding: 20px;
+                opacity: 0.7;
+                font-size: 0.8rem;
+                width: 100%;
+                color: gray;
+            }
+        </style>
+        <div class="footer-clean">
+            <p>🎯 <b>GeralJá</b> - Sistema de Inteligência Local</p>
+            <p>Conectando quem precisa com quem sabe fazer.</p>
+            <p>v3.0 | © 2026 Todos os direitos reservados</p>
+        </div>
+    """
+    st.markdown(fechamento_estilo, unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
 # 5. DESIGN SYSTEM
