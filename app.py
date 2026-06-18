@@ -17,7 +17,6 @@ import pytz
 import unicodedata
 import requests
 import sys
-import os
 import feedparser
 import urllib.parse
 from PIL import Image
@@ -28,7 +27,7 @@ from urllib.parse import quote
 import google.generativeai as genai
 from google_auth_oauthlib.flow import Flow
 import importlib
-
+import os
 # Tenta importar JS
 try:
     from streamlit_js_eval import streamlit_js_eval, get_geolocation
