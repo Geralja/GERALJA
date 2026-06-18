@@ -303,15 +303,6 @@ CONCEITOS_EXPANDIDOS = {
     "carro": "Mecânico", "motor": "Mecânico", "pneu": "Borracheiro", "guincho": "Guincho 24h",
     "frete": "Freteiro", "mudanca": "Freteiro", "faxina": "Diarista", "limpeza": "Diarista",
     "jardim": "Jardineiro", "piscina": "Piscineiro"
-}
-
-# --- ADICIONE ISSO NO TOPO DO ARQUIVO (Junto aos imports, fora da função) ---
-# Compilamos a Regex uma única vez na inicialização para ganhar velocidade
-PADROES_STATICOS = {
-    re.compile(rf"\b{normalizar_para_ia(chave)}\b"): categoria 
-    for chave, categoria in CONCEITOS_EXPANDIDOS.items()
-}
-
 def processar_ia_avancada(texto):
     # --- INICIALIZAÇÃO SEGURA (Só acontece 1x, na primeira busca) ---
     if 'PADROES_STATICOS' not in st.session_state:
