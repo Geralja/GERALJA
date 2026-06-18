@@ -105,34 +105,14 @@ def conectar_banco_master():
 app_engine = conectar_banco_master()
 db = firestore.client()
 
-# ------------------------------------------------------------------------------
-# 1. CONFIGURAÇÃO DE AMBIENTE E PERFORMANCE
-# ------------------------------------------------------------------------------
-st.set_page_config(
-    page_title="GeralJá | Criando Soluções",
-    page_icon="🇧🇷",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
-
-# --- FUNCIONALIDADE DO ARQUIVO: TEMA MANUAL ---
-if 'tema_claro' not in st.session_state:
-    st.session_state.tema_claro = False
-
-# Mantém os menus escondidos
-st.markdown("""
-    <style>
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        header {visibility: hidden;}
-    </style>
-""", unsafe_allow_html=True)
-# --- LOGICA DE RECEPÇÃO DO GOOGLE (COLOCAR NO TOPO DO ARQUIVO) ---
+# --- LOGICA DE RECEPÇÃO DO GOOGLE (OTIMIZADA E BLINDADA) ---
 from google_auth_oauthlib.flow import Flow
 import requests
+import time
 
-# Função para criar o fluxo de troca de tokens
+@st.cache_data(ttl=3600)
 def get_google_flow():
+    """Cache do fluxo para performance máxima"""
     g_auth = st.secrets["google_auth"]
     client_config = {
         "web": {
@@ -149,48 +129,47 @@ def get_google_flow():
         redirect_uri=g_auth["redirect_uri"]
     )
 
-# Verifica se o Google enviou o código na URL (Query Params)
-query_params = st.query_params
-if "code" in query_params:
-    try:
-        # 1. Troca o código por um token de acesso
-        flow = get_google_flow()
-        flow.fetch_token(code=query_params["code"])
-        session = flow.authorized_session()
-        
-        # 2. Pega os dados reais do usuário no Google
-        user_info = session.get('https://www.googleapis.com/userinfo').json()
-        
-        email_google = user_info.get("email")
-        nome_google = user_info.get("name")
-        foto_google = user_info.get("picture")
-
-        # 3. Limpa a URL (remove o código para não dar erro ao atualizar)
-        st.query_params.clear()
-
-        # 4. Busca no Firebase se esse e-mail já é parceiro
-        pro_ref = db.collection("profissionais").where("email", "==", email_google).limit(1).get()
-
-        if pro_ref:
-            # ✅ USUÁRIO JÁ CADASTRADO: Loga ele direto
-            dados = pro_ref[0].to_dict()
-            st.session_state.auth = True
-            st.session_state.user_id = pro_ref[0].id # O WhatsApp dele
-            st.success(f"Logado com sucesso como {dados.get('nome')}!")
-            time.sleep(1)
-            st.rerun()
-        else:
-            # ✨ USUÁRIO NOVO: Prepara o pre-cadastro para a Aba 1
-            st.session_state.pre_cadastro = {
-                "email": email_google,
-                "nome": nome_google,
-                "foto": foto_google
-            }
-            st.toast(f"Olá {nome_google}! Complete seu cadastro profissional abaixo.")
-            # Você pode forçar a ida para a aba de cadastro aqui se quiser
+def processar_login_google():
+    """Enapsulado para rodar apenas quando necessário (Performance)"""
+    query_params = st.query_params
+    if "code" in query_params:
+        try:
+            # 1. Troca o código por um token
+            flow = get_google_flow()
+            flow.fetch_token(code=query_params["code"])
+            session = flow.authorized_session()
             
-    except Exception as e:
-        st.error(f"Erro ao processar login do Google: {e}")
+            # 2. Pega os dados
+            user_info = session.get('https://www.googleapis.com/userinfo').json()
+            email_google = user_info.get("email")
+            nome_google = user_info.get("name")
+            foto_google = user_info.get("picture")
+
+            # 3. Limpa a URL
+            st.query_params.clear()
+
+            # 4. Busca no Firebase
+            pro_ref = db.collection("profissionais").where("email", "==", email_google).limit(1).get()
+
+            if pro_ref:
+                # ✅ Login direto
+                dados = pro_ref[0].to_dict()
+                st.session_state.auth = True
+                st.session_state.user_id = pro_ref[0].id
+                st.success(f"Logado como {dados.get('nome')}!")
+                time.sleep(1)
+                st.rerun()
+            else:
+                # ✨ Cadastro novo
+                st.session_state.pre_cadastro = {
+                    "email": email_google,
+                    "nome": nome_google,
+                    "foto": foto_google
+                }
+                st.toast(f"Olá {nome_google}! Complete seu cadastro.")
+                
+        except Exception as e:
+            st.error(f"Erro no login Google: {e}")
 # ------------------------------------------------------------------------------
 # 2. CAMADA DE PERSISTÊNCIA (FIREBASE)
 # ------------------------------------------------------------------------------
