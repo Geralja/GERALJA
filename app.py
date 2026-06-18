@@ -318,7 +318,7 @@ with menu_abas[0]:
             for p_doc in profs:
                 p = p_doc.to_dict()
                 p['id'] = p_doc.id
-                dist = # --- FUNÇÃO DE CÁLCULO DE DISTÂNCIA (GEOLOCALIZAÇÃO) ---
+                # --- FUNÇÃO DE CÁLCULO DE DISTÂNCIA (GEOLOCALIZAÇÃO) ---
 def calcular_distancia_real(lat1, lon1, lat2, lon2):
     """
     Calcula a distância em KM entre dois pontos usando a fórmula de Haversine.
