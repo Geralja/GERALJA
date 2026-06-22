@@ -426,7 +426,7 @@ def criar_link_zap(numero, msg):
     return f"https://api.whatsapp.com/send?phone={numero}&text={urllib.parse.quote(msg)}"
 
 # ==============================================================================
-# --- ABA 0: PORTAL GRAJAÚ TEM (V4.0 - ESTÁVEL) ---
+# --- ABA 0: PORTAL GRAJAÚ TEM (V4.1 - COMPLETA COM GALERIA E AFILIADOS) ---
 # ==============================================================================
 with menu_abas[0]:
     st.markdown("### 🏙️ O que você precisa no Grajaú?")
@@ -488,15 +488,19 @@ with menu_abas[0]:
         if not lista_ranking:
             st.warning(f"Nenhum profissional de '{cat_ia}' encontrado nesta distância.")
         else:
+            # --- LOOP DE EXIBIÇÃO: CARD + GALERIA + AFILIADO ---
             for p in lista_ranking:
                 f_perfil = safe_image_src(p.get('foto_url', ''))
+                galeria = p.get('galeria', []) # Pega a lista de fotos (Array)
+                afiliado_link = p.get('afiliado_link', '') # Pega o link de afiliado
                 
                 is_elite = p['score_elite'] > 0
                 cor_borda = "#FFD700" if is_elite else "#0047AB"
                 zap_link = f"https://wa.me/{limpar_whatsapp(p.get('whatsapp',''))}?text=Vi+seu+perfil+no+GeralJa"
 
+                # CARD PRINCIPAL
                 st.markdown(f"""
-                <div style="background:white; border-radius:20px; border-left:8px solid {cor_borda}; padding:15px; margin-bottom:15px; box-shadow:0 4px 10px rgba(0,0,0,0.1); color:black;">
+                <div style="background:white; border-radius:20px; border-left:8px solid {cor_borda}; padding:15px; margin-bottom:5px; box-shadow:0 4px 10px rgba(0,0,0,0.1); color:black;">
                     <div style="font-size:11px; color:#0047AB; font-weight:bold; margin-bottom:8px;">
                         📍 a {p['dist']:.1f} km {" | 🏆 ELITE" if is_elite else ""}
                     </div>
@@ -507,11 +511,24 @@ with menu_abas[0]:
                             <p style="margin:0; color:#666; font-size:12px;">{str(p.get('descricao',''))[:80]}...</p>
                         </div>
                     </div>
-                    <a href="{zap_link}" target="_blank" style="display:block; background:#25D366; color:white; text-align:center; padding:12px; border-radius:12px; text-decoration:none; font-weight:bold; margin-top:12px;">💬 CHAMAR NO WHATSAPP</a>
                 </div>
                 """, unsafe_allow_html=True)
 
-# --- SEÇÃO DE NOTÍCIAS HÍBRIDA ---
+                # VITRINE DE FOTOS (Só aparece se houver fotos no Array)
+                if galeria and isinstance(galeria, list):
+                    cols_gal = st.columns(min(len(galeria), 5))
+                    for i, img_url in enumerate(galeria[:5]):
+                        cols_gal[i].image(img_url, use_container_width=True)
+
+                # LINK DE AFILIADO (Só aparece se houver link)
+                if afiliado_link:
+                    st.link_button("🛒 Ver Ofertas Imperdíveis", afiliado_link, use_container_width=True)
+
+                # BOTÃO DE CONTATO
+                st.link_button("💬 CHAMAR NO WHATSAPP", zap_link, use_container_width=True)
+                st.markdown("<br>", unsafe_allow_html=True)
+
+# --- SEÇÃO DE NOTÍCIAS HÍBRIDA (Mantida igual) ---
 st.markdown("---")
 st.subheader("📰 Plantão Grajaú Tem")
 
@@ -576,7 +593,6 @@ if fila_noticias:
             """, unsafe_allow_html=True)
 else:
     st.info("Aguardando novas atualizações da região.")
-
 # ==============================================================================
 # --- ABA 1: CADASTRAR & EDITAR (VERSÃO FINAL GERALJÁ CORRIGIDA) ---
 # ==============================================================================
