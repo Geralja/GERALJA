@@ -594,17 +594,14 @@ if fila_noticias:
 else:
     st.info("Aguardando novas atualizações da região.")
 # ==============================================================================
-# --- ABA 1: CADASTRAR & EDITAR (VERSÃO FINAL GERALJÁ CORRIGIDA) ---
+# --- ABA 1: CADASTRAR & EDITAR (VERSÃO FINAL COMPLETA) ---
 # ==============================================================================
 with menu_abas[1]:
     st.markdown("### 🚀 Cadastro ou Edição de Profissional")
 
     try:
         doc_cat = db.collection("configuracoes").document("categorias").get()
-        if doc_cat.exists:
-            CATEGORIAS_OFICIAIS = doc_cat.to_dict().get("lista", ["Geral"])
-        else:
-            CATEGORIAS_OFICIAIS = ["Pedreiro", "Locutor", "Eletricista", "Mecânico"]
+        CATEGORIAS_OFICIAIS = doc_cat.to_dict().get("lista", ["Pedreiro", "Locutor", "Eletricista", "Mecânico"]) if doc_cat.exists else ["Pedreiro", "Locutor", "Eletricista", "Mecânico"]
     except:
         CATEGORIAS_OFICIAIS = ["Pedreiro", "Locutor", "Eletricista", "Mecânico"]
 
@@ -623,27 +620,11 @@ with menu_abas[1]:
     with col_soc1:
         if g_id:
             url_google = f"https://accounts.google.com/o/oauth2/v2/auth?client_id={g_id}&response_type=code&scope=openid%20profile%20email&redirect_uri={g_uri}"
-            st.markdown(f'''
-                <a href="{url_google}" target="_self" style="text-decoration:none;">
-                    <div style="display:flex; align-items:center; justify-content:center; border:1px solid #dadce0; border-radius:8px; padding:8px; background:white;">
-                        <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" width="18px" style="margin-right:10px;">
-                        <span style="color:#3c4043; font-weight:bold; font-size:14px;">Google</span>
-                    </div>
-                </a>
-            ''', unsafe_allow_html=True)
-        else:
-            st.caption("⚠️ Google Auth não configurado")
+            st.markdown(f'''<a href="{url_google}" target="_self" style="text-decoration:none;"><div style="display:flex; align-items:center; justify-content:center; border:1px solid #dadce0; border-radius:8px; padding:8px; background:white;"><img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" width="18px" style="margin-right:10px;"><span style="color:#3c4043; font-weight:bold; font-size:14px;">Google</span></div></a>''', unsafe_allow_html=True)
 
     with col_soc2:
         fb_id = st.secrets.get("FB_CLIENT_ID", "")
-        st.markdown(f'''
-            <a href="https://www.facebook.com/v18.0/dialog/oauth?client_id={fb_id}&redirect_uri={g_uri}&scope=public_profile,email" target="_self" style="text-decoration:none;">
-                <div style="display:flex; align-items:center; justify-content:center; border-radius:8px; padding:8px; background:#1877F2;">
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg" width="18px" style="margin-right:10px;">
-                    <span style="color:white; font-weight:bold; font-size:14px;">Facebook</span>
-                </div>
-            </a>
-        ''', unsafe_allow_html=True)
+        st.markdown(f'''<a href="https://www.facebook.com/v18.0/dialog/oauth?client_id={fb_id}&redirect_uri={g_uri}&scope=public_profile,email" target="_self" style="text-decoration:none;"><div style="display:flex; align-items:center; justify-content:center; border-radius:8px; padding:8px; background:#1877F2;"><img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg" width="18px" style="margin-right:10px;"><span style="color:white; font-weight:bold; font-size:14px;">Facebook</span></div></a>''', unsafe_allow_html=True)
     
     st.markdown("<br>", unsafe_allow_html=True)
     BONUS_WELCOME = 20 
@@ -666,6 +647,10 @@ with menu_abas[1]:
         
         foto_upload = st.file_uploader("Atualizar Foto de Perfil ou Logo", type=['png', 'jpg', 'jpeg'])
         
+        # NOVOS CAMPOS INTEGRADOS
+        galeria_input = st.text_area("URLs da Vitrine (Cole uma por linha)", help="Cole aqui os links das fotos da sua empresa.")
+        afiliado_input = st.text_input("Link de Afiliado (Ex: Shopee, Magalu, etc)")
+        
         btn_acao = st.form_submit_button("✅ FINALIZAR: SALVAR OU ATUALIZAR", use_container_width=True)
 
     if btn_acao:
@@ -679,7 +664,6 @@ with menu_abas[1]:
                     dados_antigos = perfil_antigo.to_dict() if perfil_antigo.exists else {}
 
                     foto_b64 = dados_antigos.get("foto_url", "")
-
                     if foto_upload is not None:
                         file_ext = foto_upload.name.split('.')[-1]
                         img_bytes = foto_upload.getvalue() 
@@ -687,9 +671,6 @@ with menu_abas[1]:
                         foto_b64 = f"data:image/{file_ext};base64,{encoded_img}"
                     elif not foto_b64 and foto_google:
                         foto_b64 = foto_google
-
-                    saldo_final = dados_antigos.get("saldo", BONUS_WELCOME)
-                    cliques_atuais = dados_antigos.get("cliques", 0)
 
                     dados_pro = {
                         "nome": nome_input,
@@ -700,29 +681,27 @@ with menu_abas[1]:
                         "descricao": desc_input,
                         "tipo": tipo_input,
                         "foto_url": foto_b64,
-                        "saldo": saldo_final,
+                        "galeria": [url.strip() for url in galeria_input.split('\n') if url.strip()],
+                        "afiliado_link": afiliado_input,
+                        "saldo": dados_antigos.get("saldo", BONUS_WELCOME),
                         "data_cadastro": datetime.now().strftime("%d/%m/%Y"),
                         "aprovado": True,
-                        "cliques": cliques_atuais,
+                        "cliques": dados_antigos.get("cliques", 0),
                         "rating": 5,
                         "lat": st.session_state.minha_lat,
                         "lon": st.session_state.minha_lon
                     }
                     
                     doc_ref.set(dados_pro)
-                    
-                    if "pre_cadastro" in st.session_state:
-                        del st.session_state["pre_cadastro"]
+                    if "pre_cadastro" in st.session_state: del st.session_state["pre_cadastro"]
                     
                     st.balloons()
                     if perfil_antigo.exists:
                         st.success(f"✅ Perfil de {nome_input} atualizado com sucesso!")
                     else:
                         st.success(f"🎊 Bem-vindo ao GeralJá! Cadastro concluído!")
-                        
             except Exception as e:
                 st.error(f"❌ Erro ao processar perfil: {e}")
-
 # ==============================================================================
 # ABA 2: 👤 MEU PERFIL / PAINEL DO PARCEIRO
 # ==============================================================================
