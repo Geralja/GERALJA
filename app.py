@@ -703,7 +703,7 @@ with menu_abas[1]:
             except Exception as e:
                 st.error(f"❌ Erro ao processar perfil: {e}")
 # ==============================================================================
-# ABA 2: 👤 MEU PERFIL / PAINEL DO PARCEIRO
+# ABA 2: 👤 MEU PERFIL / PAINEL DO PARCEIRO (COMPLETO E PRESERVADO)
 # ==============================================================================
 with menu_abas[2]:
     params = st.query_params
@@ -724,7 +724,6 @@ with menu_abas[2]:
         fb_id = st.secrets.get("FB_CLIENT_ID", "")
         redirect_uri = "https://geralja-zxiaj2ot56fuzgcz7xhcks.streamlit.app/"
         url_direta_fb = f"https://www.facebook.com/v18.0/dialog/oauth?client_id={fb_id}&redirect_uri={redirect_uri}&scope=public_profile,email"
-        link_auth = url_direta_fb 
         
         st.markdown(f'''
             <a href="{url_direta_fb}" target="_top" style="text-decoration:none;">
@@ -776,88 +775,63 @@ with menu_abas[2]:
                     doc_ref.update({"lat": loc['coords']['latitude'], "lon": loc['coords']['longitude']})
                     st.success("✅ Localização GPS Atualizada!")
             else:
-                st.error("Recurso JavaScript indisponível no momento.")
+                st.error("Recurso GPS indisponível.")
 
         with st.expander("📝 EDITAR MEU PERFIL & VITRINE", expanded=False):
-            def otimizar_imagem_local(arq, qualidade=50, size=(800, 800)):
-                try:
-                    img = Image.open(arq)
-                    if img.mode in ("RGBA", "P"): 
-                        img = img.convert("RGB")
-                    img.thumbnail(size)
-                    output = io.BytesIO()
-                    img.save(output, format="JPEG", quality=qualidade, optimize=True)
-                    return f"data:image/jpeg;base64,{base64.b64encode(output.getvalue()).decode()}"
-                except Exception as e:
-                    st.error(f"Erro ao processar imagem: {e}")
-                    return None
-
             with st.form("perfil_v8"):
                 n_nome = st.text_input("Nome Comercial", d.get('nome', ''))
-                n_area = st.selectbox("Segmento", CATEGORIAS_OFICIAIS, 
-                                     index=CATEGORIAS_OFICIAIS.index(d.get('area')) if d.get('area') in CATEGORIAS_OFICIAIS else 0)
+                n_area = st.selectbox("Segmento", CATEGORIAS_OFICIAIS, index=CATEGORIAS_OFICIAIS.index(d.get('area')) if d.get('area') in CATEGORIAS_OFICIAIS else 0)
                 n_desc = st.text_area("Descrição do Serviço", d.get('descricao', ''))
+                
+                # NOVOS CAMPOS ADICIONADOS
+                n_afiliado = st.text_input("Link de Afiliado (Ex: Shopee/ML)", value=d.get('afiliado_link', ''))
+                n_galeria_urls = st.text_area("URLs da Vitrine (Cole uma por linha)", value="\n".join(d.get('galeria', [])))
                 
                 st.markdown("---")
                 st.write("📷 **Fotos**")
                 n_foto = st.file_uploader("Trocar Foto de Perfil", type=['jpg','png','jpeg'])
-                n_portfolio = st.file_uploader("Vitrine de Serviços (Máx 4 fotos)", type=['jpg','png','jpeg'], accept_multiple_files=True)
+                n_portfolio = st.file_uploader("Adicionar fotos extras (upload)", type=['jpg','png','jpeg'], accept_multiple_files=True)
                 
                 if st.form_submit_button("💾 SALVAR TODAS AS ALTERAÇÕES", use_container_width=True):
                     updates = {
-                        "nome": n_nome,
-                        "area": n_area,
-                        "descricao": n_desc
+                        "nome": n_nome, 
+                        "area": n_area, 
+                        "descricao": n_desc,
+                        "afiliado_link": n_afiliado
                     }
+                    
+                    # Processa nova galeria (Links + Uploads)
+                    lista_galeria = [u.strip() for u in n_galeria_urls.split('\n') if u.strip()]
                     
                     if n_foto:
                         img_base64 = otimizar_imagem_local(n_foto, qualidade=60, size=(350, 350))
-                        if img_base64:
-                            updates["foto_url"] = img_base64
-
-                    if n_portfolio:
-                        for i in range(1, 5):
-                            updates[f'f{i}'] = None
-                        
-                        for i, f in enumerate(n_portfolio[:4]):
-                            img_p_base64 = otimizar_imagem_local(f)
-                            if img_p_base64:
-                                updates[f"f{i+1}"] = img_p_base64
+                        if img_base64: updates["foto_url"] = img_base64
                     
+                    if n_portfolio:
+                        for f in n_portfolio[:4]:
+                            img_p = otimizar_imagem_local(f)
+                            if img_p: lista_galeria.append(img_p)
+                    
+                    updates["galeria"] = lista_galeria
                     doc_ref.update(updates)
-                    st.success("✅ Perfil e Vitrine updated com sucesso!")
-                    time.sleep(1)
-                    st.rerun()
+                    st.success("✅ Perfil e Vitrine atualizados!")
+                    time.sleep(1); st.rerun()
 
         with st.expander("❓ PERGUNTAS FREQUENTES"):
-            st.write("**Como ganho o selo Elite?**")
-            st.write("Mantenha seu saldo acima de 10 moedas e perfil completo com fotos.")
-            st.write("**Como funciona a cobrança?**")
-            st.write("Cada clique no seu botão de WhatsApp desconta 1 moeda do seu saldo atual.")
+            st.write("**Como ganho o selo Elite?** Mantenha saldo > 10 e perfil completo.")
+            st.write("**Como funciona a cobrança?** Cada clique desconta 1 moeda.")
 
         if not d.get('fb_uid'):
             with st.expander("🔗 CONECTAR FACEBOOK"):
-                st.info("Conecte seu Facebook para fazer login rápido sem senha.")
-                st.link_button("VINCULAR AGORA", link_auth, use_container_width=True)
+                st.link_button("VINCULAR AGORA", url_direta_fb, use_container_width=True)
 
         st.divider()
-
         col_out, col_del = st.columns(2)
-        
-        with col_out:
-            if st.button("🚪 SAIR DO PAINEL", use_container_width=True):
-                st.session_state.auth = False
-                st.rerun()
-                
-        with col_del:
-            with st.expander("⚠️ EXCLUIR CONTA"):
-                st.write("Atenção: Isso apaga todos os seus dados permanentemente.")
-                if st.button("CONFIRMAR EXCLUSÃO", type="secondary", use_container_width=True):
-                    doc_ref.delete()
-                    st.session_state.auth = False
-                    st.error("Sua conta foi removida do sistema.")
-                    time.sleep(2)
-                    st.rerun()
+        if col_out.button("🚪 SAIR DO PAINEL", use_container_width=True):
+            st.session_state.auth = False; st.rerun()
+        with col_del.expander("⚠️ EXCLUIR CONTA"):
+            if st.button("CONFIRMAR EXCLUSÃO", type="secondary", use_container_width=True):
+                doc_ref.delete(); st.session_state.auth = False; st.rerun()
 
 # ==============================================================================
 # ABA 3: 👑 TORRE DE CONTROLE MASTER (COMPLETA + REGISTRO DE VENDAS)
