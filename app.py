@@ -4,75 +4,94 @@
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, firestore
-import base64, json, sys, os, importlib
+import os
 
-# --- 1. CONFIGURAÇÃO E FIREBASE (BLINDADO) ---
-@st.cache_resource
-def iniciar_banco():
+# ==========================================
+# BLOCO 1: CONFIGURAÇÃO E CONEXÃO (BACKEND)
+# ==========================================
+def init_firebase():
     if not firebase_admin._apps:
-        # Pega a chave do secrets com segurança
-        b64_key = st.secrets["firebase"]["base64"]
-        cred = credentials.Certificate(json.loads(base64.b64decode(b64_key).decode("utf-8")))
+        # Ajuste aqui o caminho do seu arquivo de credenciais
+        cred = credentials.Certificate("serviceAccountKey.json")
         firebase_admin.initialize_app(cred)
     return firestore.client()
 
-# Inicializa o banco uma única vez
-db = iniciar_banco()
+db = init_firebase()
 
-# --- 2. ENGINE E CONFIGURAÇÕES GLOBAIS ---
-st.set_page_config(page_title="GeralJá", layout="wide")
+# ==========================================
+# BLOCO 2: LÓGICA DE NEGÓCIO (GERAL COIN & INDEXADOR)
+# ==========================================
+def check_geral_coin(user_id):
+    """Verifica se o prestador tem saldo para aparecer na vitrine"""
+    doc = db.collection("usuarios").document(user_id).get()
+    if doc.exists:
+        return doc.to_dict().get("geral_coin", 0) > 0
+    return False
 
-# CSS Global para manter a identidade visual
-st.markdown("""
-<style>
-    .header-container { background: white; padding: 20px; border-radius: 0 0 50px 50px; text-align: center; border-bottom: 8px solid #FF8C00; margin-bottom: 25px; }
-    .logo-azul { color: #0047AB; font-weight: 900; font-size: 40px; }
-    .logo-laranja { color: #FF8C00; font-weight: 900; font-size: 40px; }
-</style>
-""", unsafe_allow_html=True)
-
-st.markdown('<div class="header-container"><span class="logo-azul">GERAL</span><span class="logo-laranja">JÁ</span></div>', unsafe_allow_html=True)
-
-# --- 3. ORQUESTRAÇÃO POR ABAS ---
-menu_abas = st.tabs(["🔍 BUSCAR", "🚀 CADASTRAR", "👤 MEU PERFIL", "👑 ADMIN", "⭐ FEEDBACK"])
-
-# O app.py agora chama os módulos para cada aba
-# Isso mantém o app.py leve e fácil de ler
-with menu_abas[0]:
-    # Exemplo: Chamando um plugin de busca
-    if os.path.exists("modulos/busca.py"):
-        import modulos.busca as busca
-        busca.run()
-    else: st.warning("Módulo de busca não encontrado.")
-
-with menu_abas[1]:
-    if os.path.exists("modulos/cadastro.py"):
-        import modulos.cadastro as cadastro
-        cadastro.run()
-
-with menu_abas[2]:
-    if os.path.exists("modulos/perfil.py"):
-        import modulos.perfil as perfil
-        perfil.run()
-
-with menu_abas[3]:
-    if os.path.exists("modulos/admin.py"):
-        import modulos.admin as admin
-        admin.run()
-
-# --- 4. MOTOR DE PLUGINS (PARA FUNÇÕES EXTRAS/FUNDO) ---
-def carregar_plugins_extras():
-    pasta_plugins = os.path.join(os.getcwd(), "modulos/plugins")
-    if not os.path.exists(pasta_plugins): return
+def adicionar_servico(titulo, categoria, video_url, user_id):
+    """
+    Indexador Automático: Simula o trigger.
+    Salva nos dois lugares (coleção bruta e índice de busca) de uma vez.
+    """
+    data = {
+        "titulo": titulo,
+        "categoria": categoria,
+        "video_url": video_url,
+        "ativo": True
+    }
+    # 1. Salva na coleção base
+    ref = db.collection("prestadores").add(data)
     
-    for arquivo in os.listdir(pasta_plugins):
-        if arquivo.endswith(".py") and arquivo != "__init__.py":
-            try:
-                spec = importlib.util.spec_from_file_location(arquivo[:-3], os.path.join(pasta_plugins, arquivo))
-                mod = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(mod)
-                if hasattr(mod, "run"): mod.run()
-            except Exception as e:
-                st.error(f"Erro no plugin {arquivo}: {e}")
+    # 2. Indexa na vitrine (Opção A - Indexador Automático)
+    db.collection("SearchIndex").document(ref[1].id).set(data)
+    return True
 
-carregar_plugins_extras()
+# ==========================================
+# BLOCO 3: INTERFACE (FRONTEND TIKTOK-LIKE)
+# ==========================================
+st.set_page_config(page_title="GeralJá - Grajaú", layout="wide")
+
+st.title("🔥 GeralJá - A Vitrine do Grajaú")
+st.markdown("---")
+
+# Aba de busca e Cadastro
+tab1, tab2 = st.tabs(["🔍 Busca", "➕ Cadastrar Serviço"])
+
+with tab1:
+    st.subheader("O que você procura?")
+    query = st.text_input("Digite o serviço ou produto...")
+    
+    if query:
+        # Busca otimizada lendo apenas o SearchIndex
+        results = db.collection("SearchIndex").where("titulo", "==", query).stream()
+        
+        cols = st.columns(3) 
+        i = 0
+        for doc in results:
+            data = doc.to_dict()
+            with cols[i % 3]:
+                # Container fixo para manter a uniformidade visual
+                with st.container(border=True, height=450):
+                    st.video(data.get('video_url', ''))
+                    st.subheader(data.get('titulo'))
+                    st.write(f"Categoria: {data.get('categoria')}")
+                    st.button(f"Contratar {data.get('titulo')}", key=doc.id)
+            i += 1
+    else:
+        st.info("Digite algo para ver as ofertas em destaque.")
+
+with tab2:
+    st.subheader("Cadastro de Prestador")
+    with st.form("cadastro"):
+        titulo = st.text_input("Título do serviço")
+        cat = st.selectbox("Categoria", ["Pedreiro", "Pizza", "Eletricista", "Barbeiro"])
+        url = st.text_input("URL do Vídeo (ex: link do YouTube/CDN)")
+        uid = st.text_input("Seu ID de Usuário (Para checar Geral Coin)")
+        submit = st.form_submit_button("Cadastrar")
+        
+        if submit:
+            if check_geral_coin(uid):
+                adicionar_servico(titulo, cat, url, uid)
+                st.success("Serviço indexado com sucesso na vitrine!")
+            else:
+                st.error("Saldo insuficiente em Geral Coin. Recarregue para anunciar!")
