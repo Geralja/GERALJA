@@ -9,7 +9,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '.')))
 
 # ... agora vêm os seus imports ...
-from core.engine import GeralJaEngine
+from core.engine import Engine
 
 # 1. Configuração da página (Deve ser a primeira linha após os imports)
 st.set_page_config(page_title="GeralJá | Oficial", layout="wide")
