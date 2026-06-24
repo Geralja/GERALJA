@@ -1,6 +1,14 @@
 import streamlit as st
 import sys
 import os
+import os
+import sys
+# Isso garante que a pasta atual seja sempre reconhecida como o 'coração' do projeto
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
+
+# AGORA sim, pode fazer os imports:
+from core.engine import GeralJaEngine
+# ... resto do código
 
 # --- BLINDAGEM DE CAMINHO ---
 # Garante que o Python sempre encontre as pastas 'core', 'modules', etc.
