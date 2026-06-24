@@ -1,32 +1,32 @@
 import streamlit as st
+import sys
+import os
+
+# Adiciona o diretório atual ao caminho para garantir que o Python ache as pastas
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
+
+# Importações corrigidas (use sempre o nome exato da classe definida no seu engine.py)
 from core.engine import GeralJaEngine
-# Importando os seus containers (módulos)
 from modules.vitrine import buscar_profissionais, exibir_cards_profissionais
 from modules.clima_transito import mostrar_clima_transito
 from admin.controller import renderizar_admin
-import sys
-import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '.')))
 
-# ... agora vêm os seus imports ...
-from core.engine import Engine
-
-# 1. Configuração da página (Deve ser a primeira linha após os imports)
+# 1. Configuração da página
 st.set_page_config(page_title="GeralJá | Oficial", layout="wide")
 
 # 2. Inicialização do motor (Conexão única)
 @st.cache_resource
 def iniciar_sistema():
-    engine = GeralJaEngine()
-    return engine
+    return GeralJaEngine()
 
 engine = iniciar_sistema()
-db = engine.get_db()
+# Se o seu método for get_db(), mantenha. Se o atributo for apenas db, use engine.db
+db = engine.get_db() 
 
-# 3. Sidebar (Menu de navegação entre os containers)
+# 3. Sidebar (Menu de navegação)
 menu = st.sidebar.selectbox("Menu GeralJá", ["Vitrine de Serviços", "Clima e Trânsito", "Administração"])
 
-# 4. Roteamento de containers (O "mestre" chamando cada parte)
+# 4. Roteamento de containers
 if menu == "Vitrine de Serviços":
     st.header("📍 Busca de Profissionais")
     termo = st.text_input("O que você procura?")
@@ -35,11 +35,9 @@ if menu == "Vitrine de Serviços":
         exibir_cards_profissionais(resultados)
 
 elif menu == "Clima e Trânsito":
-    # Aqui o seu container de clima e trânsito entra em ação
     mostrar_clima_transito()
 
 elif menu == "Administração":
-    # Apenas para você, com autenticação
     if st.session_state.get("auth"):
         renderizar_admin(db)
     else:
