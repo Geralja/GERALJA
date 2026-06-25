@@ -122,65 +122,35 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-import re
-import os
-import logging
-import unicodedata
-import pytz
+# ==============================================================================
+# BLOCO A: CONFIGURAÇÃO E INICIALIZAÇÃO
+# ==============================================================================
 
-# Configuração de Logs para auditoria
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
+# ------------------------------------------------------------------------------
+# 1. MOTOR GLOBAL
+# ------------------------------------------------------------------------------
 class GeralJaEngine:
     def __init__(self):
         self.fuso = pytz.timezone('America/Sao_Paulo')
-        self.diretorio_modulos = "modulos_dinamicos"
-        
-        # Cria a pasta de módulos se não existir
-        if not os.path.exists(self.diretorio_modulos):
-            os.makedirs(self.diretorio_modulos)
+    
+    def sanitizar(self, codigo_bruto):
+        """Mata caracteres fantasmas mantendo acentos PT-BR"""
+        if not codigo_bruto: return ""
+        limpo = codigo_bruto.replace('\u00a0', ' ').replace('\xa0', ' ')
+        return ''.join(ch for ch in limpo if ch in '\n\t\r' or ord(ch) >= 32)
 
-    def sanitizar(self, texto: str) -> str:
-        """
-        Sanitização Profissional:
-        1. Normaliza caracteres (NFKC).
-        2. Remove caracteres de controle indesejados.
-        3. Mantém acentuação PT-BR e espaços padrão.
-        """
-        if not texto: return ""
-        
-        # Normalização Unicode
-        texto = unicodedata.normalize('NFKC', texto)
-        
-        # Regex que remove caracteres de controle, mantendo latinos e espaços
-        # Permite: Letras, Números, Pontuação comum, Espaços, Acentos
-        texto = re.sub(r'[\x00-\x1F\x7F-\x9F]', '', texto)
-        return texto
-
-    def injetar_modulo(self, nome_arquivo: str, conteudo: str):
-        """
-        Injeção segura com validação de Path Traversal.
-        """
-        # 1. Validação do nome do arquivo (evita injeção de caminho como ../../)
-        nome_seguro = re.sub(r'[^a-zA-Z0-9_]', '', nome_arquivo)
-        caminho_completo = os.path.join(self.diretorio_modulos, f"{nome_seguro}.py")
-        
+    def injetar_modulo(self, nome_arquivo, conteudo):
         conteudo_limpo = self.sanitizar(conteudo)
-        
         try:
-            with open(caminho_completo, "w", encoding="utf-8") as f:
+            with open(f"{nome_arquivo}.py", "w", encoding="utf-8") as f:
                 f.write(conteudo_limpo)
-            
-            logging.info(f"✅ Módulo {nome_seguro} injetado com sucesso.")
-            return True, f"✅ Módulo {nome_seguro} instalado!"
-            
+            return True, f"✅ Módulo {nome_arquivo} instalado e saneado!"
         except Exception as e:
-            logging.error(f"❌ Falha crítica ao injetar módulo {nome_arquivo}: {e}")
-            return False, f"❌ Falha: {str(e)}"
+            return False, f"❌ Falha na instalação: {str(e)}"
 
-# Instanciação
 engine = GeralJaEngine()
 fuso_br = engine.fuso
+
 # ------------------------------------------------------------------------------
 # 2. CONFIGURAÇÃO DE CHAVES
 # ------------------------------------------------------------------------------
@@ -201,49 +171,29 @@ except Exception as e:
 
 HANDLER_URL = "https://geralja-5bb49.firebaseapp.com/__/auth/handler"
 
-import logging
-import base64
-import json
-import firebase_admin
-from firebase_admin import credentials, firestore
-import streamlit as st
-
-# Configuração de logging profissional
-logger = logging.getLogger(__name__)
-
+# ------------------------------------------------------------------------------
+# 3. CONEXÃO FIREBASE
+# ------------------------------------------------------------------------------
 @st.cache_resource
-def get_db():
-    """
-    Estabelece a conexão com o Firestore e retorna o cliente do banco.
-    Separamos a inicialização do app da obtenção do cliente.
-    """
-    try:
-        if not firebase_admin._apps:
-            # Pega as credenciais de forma segura
-            firebase_secrets = st.secrets.get("firebase")
-            if not firebase_secrets or "base64" not in firebase_secrets:
-                raise ValueError("Configuração 'firebase.base64' não encontrada nos secrets.")
+def conectar_banco_master():
+    if not firebase_admin._apps:
+        try:
+            if "firebase" in st.secrets and "base64" in st.secrets["firebase"]:
+                b64_key = st.secrets["firebase"]["base64"]
+                decoded_json = base64.b64decode(b64_key).decode("utf-8")
+                cred_dict = json.loads(decoded_json)
+                cred = credentials.Certificate(cred_dict)
+                firebase_admin.initialize_app(cred)
+            else:
+                st.error("⚠️ Configuração 'firebase.base64' não encontrada.")
+                st.stop()
+        except Exception as e:
+            st.error(f"❌ FALHA FIREBASE: {e}")
+            st.stop()
+    return firebase_admin.get_app()
 
-            b64_key = firebase_secrets["base64"]
-            decoded_json = json.loads(base64.b64decode(b64_key).decode("utf-8"))
-            
-            cred = credentials.Certificate(decoded_json)
-            firebase_admin.initialize_app(cred)
-            logger.info("Firebase inicializado com sucesso.")
-        
-        return firestore.client()
-        
-    except Exception as e:
-        logger.error(f"Erro ao conectar ao Firestore: {e}")
-        # Retornamos None para que o app saiba tratar o erro
-        return None
-
-# --- COMO USAR NO SEU APP.PY ---
-db = get_db()
-
-if db is None:
-    st.error("⚠️ Não foi possível conectar ao banco de dados. Verifique as configurações.")
-    st.stop() # O stop fica aqui no fluxo principal, não na função.
+app_engine = conectar_banco_master()
+db = firestore.client()
 
 # ------------------------------------------------------------------------------
 # 4. FUNÇÕES AUXILIARES
@@ -604,46 +554,23 @@ if 'buscar' in abas_dict:
                         </div>
                     """, unsafe_allow_html=True)
                     
-                    def renderizar_vitrine_produtos(produtos, whatsapp_numero, nome_negocio):
-    """Renderiza a vitrine de forma otimizada e segura."""
-    # Filtra e limita a 3 itens
-    ativos = [p for p in produtos if p.get('ativo', True)][:3]
-    
-    if not ativos:
-        return
-
-    st.markdown("---") # Separador visual elegante
-    st.markdown("##### 🛍️ Destaques da Loja")
-    
-    # Criamos colunas dinâmicas para a vitrine
-    cols = st.columns(len(ativos))
-    
-    for i, prod in enumerate(ativos):
-        with cols[i]:
-            # Container estilizado para o produto
-            with st.container(border=True):
-                # Imagem com fallback (evita erro se não houver foto)
-                img_src = safe_image_src(prod.get('foto_b64', ''))
-                st.image(img_src, use_container_width=True)
-                
-                # Detalhes do produto
-                st.markdown(f"**{prod.get('nome', 'Produto')}**")
-                st.caption(f"R$ {prod.get('preco', 0):.2f}")
-                
-                # Link de pedido específico
-                msg = f"Olá, vi {prod.get('nome')} no GeralJá e quero pedir!"
-                link_pedir = criar_link_zap(limpar_whatsapp(whatsapp_numero), msg)
-                st.link_button("Pedir", link_pedir, use_container_width=True, type="primary")
-
-# Botão principal de contato (fora da vitrine)
-def renderizar_botao_contato(whatsapp_numero):
-    zap_link = criar_link_zap(limpar_whatsapp(whatsapp_numero), "Olá! Gostaria de mais informações.")
-    st.markdown(f"""
-        <a href="{zap_link}" target="_blank" 
-        style="display:block; background:#25D366; color:white; text-align:center; padding:12px; border-radius:12px; text-decoration:none; font-weight:bold; margin-top:15px; border:none;">
-        💬 CHAMAR NO WHATSAPP
-        </a>
-    """, unsafe_allow_html=True)
+                    # VITRINE DE PRODUTOS (ÚNICA OCORRÊNCIA)
+                    produtos = p.get('produtos', [])
+                    produtos_ativos = [pr for pr in produtos if pr.get('ativo', True)][:3]
+                    if produtos_ativos and p.get('tipo_conta') == 'comerciante':
+                        st.markdown("<div style='margin-top:10px;'><b>🛍️ Destaques:</b></div>", unsafe_allow_html=True)
+                        cols = st.columns(len(produtos_ativos))
+                        for idx, prod in enumerate(produtos_ativos):
+                            with cols[idx]:
+                                st.image(safe_image_src(prod.get('foto_b64', '')), use_container_width=True)
+                                st.markdown(f"<div class='produto-card'><b>{prod.get('nome','')}</b><br>R$ {prod.get('preco',0):.2f}</div>", unsafe_allow_html=True)
+                                link_prod = criar_link_zap(limpar_whatsapp(p.get('whatsapp','')), f"Olá! Vi no GeralJá e quero 1x {prod.get('nome','')}")
+                                st.link_button("Pedir", link_prod, use_container_width=True)
+                    
+                    st.markdown(f"""
+                        <a href="{zap_link}" target="_blank" style="display:block; background:#25D366; color:white; text-align:center; padding:12px; border-radius:12px; text-decoration:none; font-weight:bold; margin-top:12px;">💬 CHAMAR NO WHATSAPP</a>
+                    </div>
+                    """, unsafe_allow_html=True)
 
         # NOTÍCIAS (ÚNICA OCORRÊNCIA)
         st.markdown("---")
