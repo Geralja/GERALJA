@@ -171,29 +171,49 @@ except Exception as e:
 
 HANDLER_URL = "https://geralja-5bb49.firebaseapp.com/__/auth/handler"
 
-# ------------------------------------------------------------------------------
-# 3. CONEXÃO FIREBASE
-# ------------------------------------------------------------------------------
-@st.cache_resource
-def conectar_banco_master():
-    if not firebase_admin._apps:
-        try:
-            if "firebase" in st.secrets and "base64" in st.secrets["firebase"]:
-                b64_key = st.secrets["firebase"]["base64"]
-                decoded_json = base64.b64decode(b64_key).decode("utf-8")
-                cred_dict = json.loads(decoded_json)
-                cred = credentials.Certificate(cred_dict)
-                firebase_admin.initialize_app(cred)
-            else:
-                st.error("⚠️ Configuração 'firebase.base64' não encontrada.")
-                st.stop()
-        except Exception as e:
-            st.error(f"❌ FALHA FIREBASE: {e}")
-            st.stop()
-    return firebase_admin.get_app()
+import logging
+import base64
+import json
+import firebase_admin
+from firebase_admin import credentials, firestore
+import streamlit as st
 
-app_engine = conectar_banco_master()
-db = firestore.client()
+# Configuração de logging profissional
+logger = logging.getLogger(__name__)
+
+@st.cache_resource
+def get_db():
+    """
+    Estabelece a conexão com o Firestore e retorna o cliente do banco.
+    Separamos a inicialização do app da obtenção do cliente.
+    """
+    try:
+        if not firebase_admin._apps:
+            # Pega as credenciais de forma segura
+            firebase_secrets = st.secrets.get("firebase")
+            if not firebase_secrets or "base64" not in firebase_secrets:
+                raise ValueError("Configuração 'firebase.base64' não encontrada nos secrets.")
+
+            b64_key = firebase_secrets["base64"]
+            decoded_json = json.loads(base64.b64decode(b64_key).decode("utf-8"))
+            
+            cred = credentials.Certificate(decoded_json)
+            firebase_admin.initialize_app(cred)
+            logger.info("Firebase inicializado com sucesso.")
+        
+        return firestore.client()
+        
+    except Exception as e:
+        logger.error(f"Erro ao conectar ao Firestore: {e}")
+        # Retornamos None para que o app saiba tratar o erro
+        return None
+
+# --- COMO USAR NO SEU APP.PY ---
+db = get_db()
+
+if db is None:
+    st.error("⚠️ Não foi possível conectar ao banco de dados. Verifique as configurações.")
+    st.stop() # O stop fica aqui no fluxo principal, não na função.
 
 # ------------------------------------------------------------------------------
 # 4. FUNÇÕES AUXILIARES
