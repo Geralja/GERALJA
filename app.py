@@ -122,35 +122,65 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-# ==============================================================================
-# BLOCO A: CONFIGURAÇÃO E INICIALIZAÇÃO
-# ==============================================================================
+import re
+import os
+import logging
+import unicodedata
+import pytz
 
-# ------------------------------------------------------------------------------
-# 1. MOTOR GLOBAL
-# ------------------------------------------------------------------------------
+# Configuração de Logs para auditoria
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
 class GeralJaEngine:
     def __init__(self):
         self.fuso = pytz.timezone('America/Sao_Paulo')
-    
-    def sanitizar(self, codigo_bruto):
-        """Mata caracteres fantasmas mantendo acentos PT-BR"""
-        if not codigo_bruto: return ""
-        limpo = codigo_bruto.replace('\u00a0', ' ').replace('\xa0', ' ')
-        return ''.join(ch for ch in limpo if ch in '\n\t\r' or ord(ch) >= 32)
+        self.diretorio_modulos = "modulos_dinamicos"
+        
+        # Cria a pasta de módulos se não existir
+        if not os.path.exists(self.diretorio_modulos):
+            os.makedirs(self.diretorio_modulos)
 
-    def injetar_modulo(self, nome_arquivo, conteudo):
+    def sanitizar(self, texto: str) -> str:
+        """
+        Sanitização Profissional:
+        1. Normaliza caracteres (NFKC).
+        2. Remove caracteres de controle indesejados.
+        3. Mantém acentuação PT-BR e espaços padrão.
+        """
+        if not texto: return ""
+        
+        # Normalização Unicode
+        texto = unicodedata.normalize('NFKC', texto)
+        
+        # Regex que remove caracteres de controle, mantendo latinos e espaços
+        # Permite: Letras, Números, Pontuação comum, Espaços, Acentos
+        texto = re.sub(r'[\x00-\x1F\x7F-\x9F]', '', texto)
+        return texto
+
+    def injetar_modulo(self, nome_arquivo: str, conteudo: str):
+        """
+        Injeção segura com validação de Path Traversal.
+        """
+        # 1. Validação do nome do arquivo (evita injeção de caminho como ../../)
+        nome_seguro = re.sub(r'[^a-zA-Z0-9_]', '', nome_arquivo)
+        caminho_completo = os.path.join(self.diretorio_modulos, f"{nome_seguro}.py")
+        
         conteudo_limpo = self.sanitizar(conteudo)
+        
         try:
-            with open(f"{nome_arquivo}.py", "w", encoding="utf-8") as f:
+            with open(caminho_completo, "w", encoding="utf-8") as f:
                 f.write(conteudo_limpo)
-            return True, f"✅ Módulo {nome_arquivo} instalado e saneado!"
+            
+            logging.info(f"✅ Módulo {nome_seguro} injetado com sucesso.")
+            return True, f"✅ Módulo {nome_seguro} instalado!"
+            
         except Exception as e:
-            return False, f"❌ Falha na instalação: {str(e)}"
+            logging.error(f"❌ Falha crítica ao injetar módulo {nome_arquivo}: {e}")
+            return False, f"❌ Falha: {str(e)}"
 
+# Instanciação
 engine = GeralJaEngine()
 fuso_br = engine.fuso
-
 # ------------------------------------------------------------------------------
 # 2. CONFIGURAÇÃO DE CHAVES
 # ------------------------------------------------------------------------------
