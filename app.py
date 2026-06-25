@@ -7,6 +7,32 @@ from firebase_admin import credentials, firestore
 from groq import Groq
 import feedparser
 from datetime import datetime
+def _sintetizar_resposta(self, query, locais, noticias):
+        # 1. Validação: Garante que os dados não são None
+        locais_str = str(locais) if locais else "Nenhuma informação local encontrada."
+        noticias_str = str(noticias) if noticias else "Nenhuma notícia recente disponível."
+        
+        try:
+            chat_completion = self.client.chat.completions.create(
+                messages=[
+                    {
+                        "role": "system", 
+                        "content": "Você é a IA do Grajaú Tem. Responda como um morador local, direto e útil. Use 1-2 emojis no máximo."
+                    },
+                    {
+                        "role": "user", 
+                        "content": f"O usuário busca: '{query}'. \n\nDados de apoio: \nLocais: {locais_str} \nNotícias: {noticias_str} \n\nResponda agora:"
+                    }
+                ],
+                model="llama3-70b-8192", 
+                temperature=0.5, # Adicionado para estabilidade
+                max_tokens=500   # Adicionado para evitar estouro
+            )
+            return chat_completion.choices[0].message.content
+            
+        except Exception as e:
+            # 2. Isso vai mostrar o erro exato na tela em vez de esconder
+            return f"🚨 Erro na síntese (IA): {str(e)}"
 
 # --- [BLOCO A] CONFIGURAÇÃO E ENGINE ---
 st.set_page_config(page_title="GeralJá | Busca Inteligente", page_icon="📍", layout="centered")
