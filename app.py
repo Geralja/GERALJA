@@ -298,8 +298,86 @@ def finalizar_e_alinhar_layout():
     pass
 
 # ==============================================================================
-# BLOCO B: AUTENTICAÇÃO E LOGIN
+# BLOCO B: AUTENTICAÇÃO E LOGIN - GERENCIAMENTO DE SESSÃO
 # ==============================================================================
+
+def get_google_flow():
+    """Configura o fluxo do Google OAuth2 de forma segura"""
+    g_auth = st.secrets.get("google_auth", {})
+    client_id = g_auth.get("client_id")
+    client_secret = g_auth.get("client_secret")
+    redirect_uri = g_auth.get("redirect_uri", "https://geralja-zxiaj2ot56fuzgcz7xhcks.streamlit.app/")
+    
+    if not client_id or not client_secret:
+        return None
+        
+    client_config = {
+        "web": {
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "redirect_uris": [redirect_uri]
+        }
+    }
+    return Flow.from_client_config(
+        client_config,
+        scopes=["openid", "https://www.googleapis.com/auth/userinfo.profile", "https://www.googleapis.com/auth/userinfo.email"],
+        redirect_uri=redirect_uri
+    )
+
+# --- CALLBACK DE AUTENTICAÇÃO ---
+# Verifica se o Google retornou o código de autorização
+query_params = st.query_params
+if "code" in query_params and not st.session_state.auth:
+    try:
+        flow = get_google_flow()
+        if flow:
+            code_val = query_params["code"]
+            flow.fetch_token(code=code_val)
+            session = flow.authorized_session()
+            user_info = session.get('https://www.googleapis.com/oauth2/v2/userinfo').json()
+            
+            email_google = user_info.get("email")
+            
+            # Verifica se o usuário já existe no Firestore
+            profs_ref = db.collection("profissionais").where("email", "==", email_google).limit(1).stream()
+            profs_list = list(profs_ref)
+            
+            if profs_list:
+                doc = profs_list[0]
+                dados = doc.to_dict()
+                st.session_state.auth = True
+                st.session_state.user_id = doc.id
+                st.session_state.user_nome = dados.get('nome')
+                st.success(f"Bem-vindo, {dados.get('nome')}!")
+                time.sleep(1)
+                st.rerun()
+            else:
+                # Usuário novo: salva em pré-cadastro
+                st.session_state.pre_cadastro = {
+                    "email": email_google,
+                    "nome": user_info.get("name"),
+                    "foto": user_info.get("picture")
+                }
+                st.info("Cadastro não encontrado. Complete seu cadastro na aba 'CADASTRAR'.")
+    except Exception as e:
+        st.error(f"Erro na autenticação: {e}")
+
+# --- BOTÃO DE LOGIN / UI ---
+if not st.session_state.auth:
+    flow = get_google_flow()
+    if flow:
+        auth_url, _ = flow.authorization_url(prompt='consent')
+        st.markdown(f'<a href="{auth_url}" target="_self" style="display:inline-block; padding:10px 20px; background:#4285F4; color:white; border-radius:5px; text-decoration:none;">🔐 Login com Google</a>', unsafe_allow_html=True)
+else:
+    if st.sidebar.button("Sair"):
+        st.session_state.auth = False
+        st.session_state.user_id = None
+        st.rerun()
+
+# --- TOGGLE MODO NOITE (INTEGRADO AO ESTADO) ---
+st.session_state.modo_noite = st.sidebar.toggle("🌙 Modo Noite", value=st.session_state.modo_noite)
 
 # ------------------------------------------------------------------------------
 # 5. LOGIN GOOGLE
