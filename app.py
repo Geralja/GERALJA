@@ -643,7 +643,7 @@ def renderizar_botao_contato(whatsapp_numero):
         style="display:block; background:#25D366; color:white; text-align:center; padding:12px; border-radius:12px; text-decoration:none; font-weight:bold; margin-top:15px; border:none;">
         💬 CHAMAR NO WHATSAPP
         </a>
-    """, unsafe_allow_html=True)ue)
+    """, unsafe_allow_html=True)
 
         # NOTÍCIAS (ÚNICA OCORRÊNCIA)
         st.markdown("---")
