@@ -604,23 +604,46 @@ if 'buscar' in abas_dict:
                         </div>
                     """, unsafe_allow_html=True)
                     
-                    # VITRINE DE PRODUTOS (ÚNICA OCORRÊNCIA)
-                    produtos = p.get('produtos', [])
-                    produtos_ativos = [pr for pr in produtos if pr.get('ativo', True)][:3]
-                    if produtos_ativos and p.get('tipo_conta') == 'comerciante':
-                        st.markdown("<div style='margin-top:10px;'><b>🛍️ Destaques:</b></div>", unsafe_allow_html=True)
-                        cols = st.columns(len(produtos_ativos))
-                        for idx, prod in enumerate(produtos_ativos):
-                            with cols[idx]:
-                                st.image(safe_image_src(prod.get('foto_b64', '')), use_container_width=True)
-                                st.markdown(f"<div class='produto-card'><b>{prod.get('nome','')}</b><br>R$ {prod.get('preco',0):.2f}</div>", unsafe_allow_html=True)
-                                link_prod = criar_link_zap(limpar_whatsapp(p.get('whatsapp','')), f"Olá! Vi no GeralJá e quero 1x {prod.get('nome','')}")
-                                st.link_button("Pedir", link_prod, use_container_width=True)
-                    
-                    st.markdown(f"""
-                        <a href="{zap_link}" target="_blank" style="display:block; background:#25D366; color:white; text-align:center; padding:12px; border-radius:12px; text-decoration:none; font-weight:bold; margin-top:12px;">💬 CHAMAR NO WHATSAPP</a>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    def renderizar_vitrine_produtos(produtos, whatsapp_numero, nome_negocio):
+    """Renderiza a vitrine de forma otimizada e segura."""
+    # Filtra e limita a 3 itens
+    ativos = [p for p in produtos if p.get('ativo', True)][:3]
+    
+    if not ativos:
+        return
+
+    st.markdown("---") # Separador visual elegante
+    st.markdown("##### 🛍️ Destaques da Loja")
+    
+    # Criamos colunas dinâmicas para a vitrine
+    cols = st.columns(len(ativos))
+    
+    for i, prod in enumerate(ativos):
+        with cols[i]:
+            # Container estilizado para o produto
+            with st.container(border=True):
+                # Imagem com fallback (evita erro se não houver foto)
+                img_src = safe_image_src(prod.get('foto_b64', ''))
+                st.image(img_src, use_container_width=True)
+                
+                # Detalhes do produto
+                st.markdown(f"**{prod.get('nome', 'Produto')}**")
+                st.caption(f"R$ {prod.get('preco', 0):.2f}")
+                
+                # Link de pedido específico
+                msg = f"Olá, vi {prod.get('nome')} no GeralJá e quero pedir!"
+                link_pedir = criar_link_zap(limpar_whatsapp(whatsapp_numero), msg)
+                st.link_button("Pedir", link_pedir, use_container_width=True, type="primary")
+
+# Botão principal de contato (fora da vitrine)
+def renderizar_botao_contato(whatsapp_numero):
+    zap_link = criar_link_zap(limpar_whatsapp(whatsapp_numero), "Olá! Gostaria de mais informações.")
+    st.markdown(f"""
+        <a href="{zap_link}" target="_blank" 
+        style="display:block; background:#25D366; color:white; text-align:center; padding:12px; border-radius:12px; text-decoration:none; font-weight:bold; margin-top:15px; border:none;">
+        💬 CHAMAR NO WHATSAPP
+        </a>
+    """, unsafe_allow_html=True)ue)
 
         # NOTÍCIAS (ÚNICA OCORRÊNCIA)
         st.markdown("---")
