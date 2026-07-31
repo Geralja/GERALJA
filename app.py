@@ -42,17 +42,15 @@ try:
 except ImportError:
     Flow = None
 
-# --- COMPONENTES JS COM FALLBACK SEGURO ---
+# --- TENTA IMPORTAR COMPONENTES JS COM FALLBACK SEGURO ---
 streamlit_js_eval = None
 get_geolocation = None
 try:
-    import streamlit_js_eval as sjse
-    streamlit_js_eval = sjse.streamlit_js_eval
-    if hasattr(sjse, 'get_geolocation'):
-        get_geolocation = sjse.get_geolocation
+    from streamlit_js_eval import streamlit_js_eval, get_geolocation
+except ImportError:
+    pass
 except Exception:
-    streamlit_js_eval = None
-    get_geolocation = None
+    pass
 
 # --- CONFIGURAÇÃO DE PÁGINA (DEVE SER O PRIMEIRO COMANDO STREAMLIT) ---
 st.set_page_config(
@@ -139,7 +137,14 @@ st.markdown("""
 
 # --- INICIALIZAÇÃO DE ESTADOS SEGUROS ---
 if 'modo_noite' not in st.session_state:
-    st.session_state.modo_noite = False
+    if streamlit_js_eval:
+        try:
+            prefers_dark = streamlit_js_eval(js_expressions="window.matchMedia('(prefers-color-scheme: dark)').matches", key="theme_detect")
+            st.session_state.modo_noite = bool(prefers_dark)
+        except Exception:
+            st.session_state.modo_noite = False
+    else:
+        st.session_state.modo_noite = False
 
 for key, default in {
     'tema_claro': False,
@@ -159,41 +164,50 @@ for key, default in {
 # BLOCO A: CONFIGURAÇÃO E INICIALIZAÇÃO
 # ==============================================================================
 
+# ------------------------------------------------------------------------------
+# 1. MOTOR GLOBAL
+# ------------------------------------------------------------------------------
 class GeralJaEngine:
     def __init__(self):
         self.fuso = pytz.timezone('America/Sao_Paulo')
     
     def sanitizar(self, codigo_bruto):
-        """Saneia texto e remove caracteres de controle mantendo acentuação"""
+        """Mata caracteres fantasmas mantendo acentos PT-BR"""
         if not codigo_bruto: return ""
         limpo = codigo_bruto.replace('\u00a0', ' ').replace('\xa0', ' ')
         return ''.join(ch for ch in limpo if ch in '\n\t\r' or ord(ch) >= 32)
+
+    def injetar_modulo(self, nome_arquivo, conteudo):
+        conteudo_limpo = self.sanitizar(conteudo)
+        try:
+            with open(f"{nome_arquivo}.py", "w", encoding="utf-8") as f:
+                f.write(conteudo_limpo)
+            return True, f"✅ Módulo {nome_arquivo} instalado e saneado!"
+        except Exception as e:
+            return False, f"❌ Falha na instalação: {str(e)}"
 
 engine = GeralJaEngine()
 fuso_br = engine.fuso
 
 # ------------------------------------------------------------------------------
-# 2. CONFIGURAÇÃO DE CHAVES E SECRETS
+# 2. CONFIGURAÇÃO DE CHAVES
 # ------------------------------------------------------------------------------
 client_groq = None
-REDIRECT_URI = "https://geralja-zxiaj2ot56fuzgcz7xhcks.streamlit.app/"
-
 try:
     FB_ID = st.secrets.get("FB_CLIENT_ID", "")
     FB_SECRET = st.secrets.get("FB_CLIENT_SECRET", "")
     FIREBASE_API_KEY = st.secrets.get("FIREBASE_API_KEY", "")
-    
-    # Extrai Redirect URI de forma segura
-    g_auth = st.secrets.get("google_auth", {})
-    if isinstance(g_auth, dict):
-        REDIRECT_URI = g_auth.get("redirect_uri", REDIRECT_URI)
+    REDIRECT_URI = st.secrets.get("google_auth", {}).get("redirect_uri", "https://geralja-zxiaj2ot56fuzgcz7xhcks.streamlit.app/")
     
     if "GEMINI_API_KEY" in st.secrets and genai:
         genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
     if "GROQ_API_KEY" in st.secrets and Groq:
         client_groq = Groq(api_key=st.secrets["GROQ_API_KEY"])
 except Exception as e:
-    st.error(f"⚠️ Aviso ao carregar Secrets: {e}")
+    st.error(f"⚠️ Erro ao carregar Secrets: {e}")
+    st.stop()
+
+HANDLER_URL = "https://geralja-5bb49.firebaseapp.com/__/auth/handler"
 
 # ------------------------------------------------------------------------------
 # 3. CONEXÃO FIREBASE
@@ -209,10 +223,10 @@ def conectar_banco_master():
                 cred = credentials.Certificate(cred_dict)
                 firebase_admin.initialize_app(cred)
             else:
-                st.error("⚠️ Configuração 'firebase.base64' não encontrada nos secrets.")
+                st.error("⚠️ Configuração 'firebase.base64' não encontrada.")
                 st.stop()
         except Exception as e:
-            st.error(f"❌ FALHA CONEXÃO FIREBASE: {e}")
+            st.error(f"❌ FALHA FIREBASE: {e}")
             st.stop()
     return firebase_admin.get_app()
 
@@ -246,7 +260,18 @@ def calcular_distancia_real(lat1, lon1, lat2, lon2):
     except Exception:
         return 999.0
 
+def buscar_opcoes_dinamicas(documento, padrao):
+    try:
+        doc = db.collection("configuracoes").document(documento).get()
+        if doc.exists:
+            dados = doc.to_dict()
+            return dados.get("lista", padrao)
+        return padrao
+    except Exception:
+        return padrao
+
 def safe_image_src(valor):
+    """Evita duplo prefixo data:image e garante fallback"""
     if not valor:
         return "https://cdn-icons-png.flaticon.com/512/149/149071.png"
     v = str(valor)
@@ -306,10 +331,11 @@ def criar_link_zap(numero, msg):
     return f"https://api.whatsapp.com/send?phone={numero}&text={urllib.parse.quote(msg)}"
 
 # ==============================================================================
-# BLOCO B: CONSTANTES E AUTENTICAÇÃO OAUTH
+# BLOCO B: CONSTANTES E AUTENTICAÇÃO OAUTH GOOGLE/FB
 # ==============================================================================
 PIX_OFICIAL = "11991853488"
 ZAP_ADMIN = "5511991853488"
+CHAVE_ADMIN = "mumias"
 LAT_REF = -23.5505
 LON_REF = -46.6333
 BONUS_WELCOME = 20
@@ -356,31 +382,38 @@ CONCEITOS_EXPANDIDOS = {
     "jardim": "Jardineiro", "piscina": "Piscineiro"
 }
 
-# --- PROCESSAMENTO DE QUERY PARAMS ---
-code_param = st.query_params.get("code")
-uid_param = st.query_params.get("uid")
+# --- LOGIN GOOGLE FLOW ---
+def get_google_flow():
+    if not Flow: return None
+    g_auth = st.secrets.get("google_auth", {})
+    client_id = g_auth.get("client_id")
+    client_secret = g_auth.get("client_secret")
+    redirect_uri = g_auth.get("redirect_uri", REDIRECT_URI)
+    if not client_id or not client_secret:
+        return None
+    client_config = {
+        "web": {
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "redirect_uris": [redirect_uri]
+        }
+    }
+    return Flow.from_client_config(
+        client_config,
+        scopes=["openid", "https://www.googleapis.com/auth/userinfo.profile", "https://www.googleapis.com/auth/userinfo.email"],
+        redirect_uri=redirect_uri
+    )
 
-if code_param:
+query_params = st.query_params
+if "code" in query_params:
     try:
-        g_auth = st.secrets.get("google_auth", {})
-        client_id = g_auth.get("client_id")
-        client_secret = g_auth.get("client_secret")
-        if client_id and client_secret and Flow:
-            client_config = {
-                "web": {
-                    "client_id": client_id,
-                    "client_secret": client_secret,
-                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                    "token_uri": "https://oauth2.googleapis.com/token",
-                    "redirect_uris": [REDIRECT_URI]
-                }
-            }
-            flow = Flow.from_client_config(
-                client_config,
-                scopes=["openid", "https://www.googleapis.com/auth/userinfo.profile", "https://www.googleapis.com/auth/userinfo.email"],
-                redirect_uri=REDIRECT_URI
-            )
-            flow.fetch_token(code=code_param)
+        flow = get_google_flow()
+        if flow:
+            code_val = query_params["code"]
+            if isinstance(code_val, list): code_val = code_val[0]
+            flow.fetch_token(code=code_val)
             session = flow.authorized_session()
             user_info = session.get('https://www.googleapis.com/oauth2/v2/userinfo').json()
             
@@ -402,12 +435,15 @@ if code_param:
                     "nome": nome_google,
                     "foto": foto_google
                 }
-                st.toast(f"Olá {nome_google}! Complete seu cadastro abaixo.")
+                st.toast(f"Olá {nome_google}! Complete seu cadastro.")
     except Exception as e:
-        st.error(f"Erro ao processar login do Google: {e}")
+        st.error(f"Erro login Google: {e}")
 
-if uid_param and not st.session_state.auth:
-    user_query = db.collection("profissionais").where("fb_uid", "==", uid_param).limit(1).get()
+# Checagem de login via parâmetro UID (Facebook/Redes Sociais)
+if "uid" in query_params and not st.session_state.auth:
+    fb_uid = query_params["uid"]
+    if isinstance(fb_uid, list): fb_uid = fb_uid[0]
+    user_query = db.collection("profissionais").where("fb_uid", "==", fb_uid).limit(1).get()
     if user_query:
         doc = user_query[0]
         st.session_state.auth = True
@@ -416,7 +452,7 @@ if uid_param and not st.session_state.auth:
         time.sleep(0.5)
         st.rerun()
 
-# Layout Topo
+# Layout topo
 c_t1, c_t2 = st.columns([2, 8])
 with c_t1:
     st.session_state.modo_noite = st.toggle("🌙 Modo Noite", value=st.session_state.modo_noite)
@@ -427,6 +463,7 @@ estilo_dinamico = f"""
         background-color: {"#0D1117" if st.session_state.modo_noite else "#FFFAFA"} !important;
         color: {"#FFFFFF" if st.session_state.modo_noite else "#1A1A1B"} !important;
     }}
+    {'body.dark-mode' if st.session_state.modo_noite else ''}
 </style>
 """
 st.markdown(estilo_dinamico, unsafe_allow_html=True)
@@ -437,16 +474,18 @@ st.markdown('<div class="header-container"><span class="logo-azul">GERAL</span><
 # Configuração de Abas
 lista_abas = ["🔍 BUSCAR", "🚀 CADASTRAR", "👤 MEU PERFIL", "⭐ FEEDBACK"]
 
+# ADMIN ESCONDIDO - Só aparece com comando secreto no menu lateral
 with st.sidebar:
     st.markdown("### 🔐 Acesso Administrativo")
     comando = st.text_input("Código de Acesso", type="password", key="admin_key", placeholder="Digite o código")
-    if comando in ["abracadabra", "geralja_master", "mumias"]:
+    if comando in ["abracadabra", "geralja_master"]:
         if "👑 ADMIN" not in lista_abas: lista_abas.append("👑 ADMIN")
     if comando in ["financeiro2026", "geralja_master"]:
         if "📊 FINANCEIRO" not in lista_abas: lista_abas.append("📊 FINANCEIRO")
 
 menu_abas = st.tabs(lista_abas)
 
+# MAPEAMENTO SEGURO DE ABAS
 abas_dict = {}
 for i, nome in enumerate(lista_abas):
     if "BUSCAR" in nome: abas_dict['buscar'] = i
@@ -478,10 +517,10 @@ if 'buscar' in abas_dict:
                         st.warning("GPS indisponível. Usando localização padrão do bairro.")
                 except Exception:
                     st.session_state.js_disponivel = False
-                    st.warning("Recurso GPS indisponível no navegador.")
+                    st.warning("Recurso JavaScript indisponível. Use busca por palavra-chave.")
             else:
                 st.session_state.js_disponivel = False
-                st.info("GPS desativado neste dispositivo.")
+                st.info("GPS não suportado neste dispositivo. Informe seu bairro manualmente.")
 
         minha_lat = st.session_state.minha_lat
         minha_lon = st.session_state.minha_lon
@@ -594,7 +633,7 @@ if 'buscar' in abas_dict:
                     </a>
                     """, unsafe_allow_html=True)
         else:
-            st.info("📢 Nenhuma ocorrência urgente registrada no momento.")
+            st.info("📢 Nenhuma ocorrência urgente registrada no momento. Trânsito e serviços fluindo normalmente.")
 
 # ==============================================================================
 # ABA 2: 🚀 CADASTRAR OU EDITAR
@@ -613,11 +652,12 @@ if 'cadastrar' in abas_dict:
         col_soc1, col_soc2 = st.columns(2)
 
         g_auth = st.secrets.get("google_auth", {})
-        g_id = g_auth.get("client_id") if isinstance(g_auth, dict) else None
+        g_id = g_auth.get("client_id")
+        g_uri = g_auth.get("redirect_uri", REDIRECT_URI)
 
         with col_soc1:
             if g_id:
-                url_google = f"https://accounts.google.com/o/oauth2/v2/auth?client_id={g_id}&response_type=code&scope=openid%20profile%20email&redirect_uri={REDIRECT_URI}"
+                url_google = f"https://accounts.google.com/o/oauth2/v2/auth?client_id={g_id}&response_type=code&scope=openid%20profile%20email&redirect_uri={g_uri}"
                 st.markdown(f'''
                     <a href="{url_google}" target="_self" style="text-decoration:none;">
                         <div style="display:flex; align-items:center; justify-content:center; border:1px solid #dadce0; border-radius:8px; padding:8px; background:white;">
@@ -627,13 +667,13 @@ if 'cadastrar' in abas_dict:
                     </a>
                 ''', unsafe_allow_html=True)
             else:
-                st.caption("⚠️ OAuth Google não configurado nos Secrets")
+                st.caption("⚠️ OAuth Google não configurado")
 
         with col_soc2:
             fb_id_soc = st.secrets.get("FB_CLIENT_ID", "")
             if fb_id_soc:
                 st.markdown(f'''
-                    <a href="https://www.facebook.com/v18.0/dialog/oauth?client_id={fb_id_soc}&redirect_uri={REDIRECT_URI}&scope=public_profile,email" target="_self" style="text-decoration:none;">
+                    <a href="https://www.facebook.com/v18.0/dialog/oauth?client_id={fb_id_soc}&redirect_uri={g_uri}&scope=public_profile,email" target="_self" style="text-decoration:none;">
                         <div style="display:flex; align-items:center; justify-content:center; border-radius:8px; padding:8px; background:#1877F2;">
                             <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg" width="18px" style="margin-right:10px;">
                             <span style="color:white; font-weight:bold; font-size:14px;">Facebook</span>
@@ -649,7 +689,7 @@ if 'cadastrar' in abas_dict:
         lista_cats = doc_cat.to_dict().get("lista", CATEGORIAS_OFICIAIS) if doc_cat.exists else CATEGORIAS_OFICIAIS
 
         with st.form("form_profissional_completo"):
-            st.caption("💡 Se você já tem cadastro, informe seu mesmo WhatsApp para atualizar seus dados.")
+            st.caption("💡 Se você já tem cadastro, informe seu mesmo WhatsApp para atualizar dados.")
 
             col1, col2 = st.columns(2)
             nome_input = col1.text_input("Nome Profissional ou Comercial", value=nome_inicial)
@@ -659,7 +699,7 @@ if 'cadastrar' in abas_dict:
 
             col3, col4 = st.columns(2)
             cat_input = col3.selectbox("Sua Especialidade Principal", lista_cats)
-            senha_input = col4.text_input("Sua Senha de Acesso", type="password", help="Sua senha para editar seu perfil no futuro")
+            senha_input = col4.text_input("Sua Senha de Acesso", type="password", help="Sua senha para editar o perfil no futuro")
 
             desc_input = st.text_area("Descrição dos Serviços/Produtos (máx. 400 caracteres)", max_chars=400)
             tipo_input = st.radio("Tipo de Conta", ["👨‍🔧 Profissional Autônomo / Prestador", "🏢 Comércio / Loja"], horizontal=True)
@@ -667,10 +707,11 @@ if 'cadastrar' in abas_dict:
             foto_upload = st.file_uploader("Foto de Perfil ou Logo da Empresa", type=['png', 'jpg', 'jpeg'])
             termos_check = st.checkbox("Concordo com os Termos de Uso e Política de Privacidade do GeralJá", value=True)
 
+            # Barra de Progresso
             campos_p = sum([bool(nome_input), bool(zap_input), bool(email_input), bool(desc_input), bool(senha_input)])
             percentual = (campos_p / 5) * 100
             st.progress(percentual / 100)
-            st.caption(f"Força do perfil: **{int(percentual)}% preenchido**")
+            st.caption(f"Força do seu perfil: **{int(percentual)}% preenchido**")
 
             btn_salvar = st.form_submit_button("✅ SALVAR / CONCLUIR CADASTRO", use_container_width=True)
 
@@ -683,7 +724,7 @@ if 'cadastrar' in abas_dict:
                 st.warning("⚠️ Nome, WhatsApp, Senha e Descrição são obrigatórios!")
             else:
                 try:
-                    with st.spinner("Gravando no banco de dados..."):
+                    with st.spinner("Gravando no banco de dados do GeralJá..."):
                         doc_ref = db.collection("profissionais").document(zap_limpo)
                         perfil_antigo = doc_ref.get()
                         dados_antigos = perfil_antigo.to_dict() if perfil_antigo.exists else {}
@@ -731,7 +772,7 @@ if 'cadastrar' in abas_dict:
                         if perfil_antigo.exists:
                             st.success(f"✅ Perfil de {nome_input} atualizado com sucesso!")
                         else:
-                            st.success(f"🎊 Cadastro realizado! Você ganhou {BONUS_WELCOME} GeralCoins de bônus!")
+                            st.success(f"🎊 Cadastro realizado! Você ganhou {BONUS_WELCOME} GeralCoins de bônus de boas-vindas!")
                         time.sleep(1.5)
                         st.rerun()
 
@@ -747,8 +788,9 @@ if 'perfil' in abas_dict:
             st.subheader("🚀 Acesso ao Painel do Parceiro")
             
             fb_id = st.secrets.get("FB_CLIENT_ID", "")
+            g_uri = st.secrets.get("google_auth", {}).get("redirect_uri", REDIRECT_URI)
             if fb_id:
-                url_direta_fb = f"https://www.facebook.com/v18.0/dialog/oauth?client_id={fb_id}&redirect_uri={REDIRECT_URI}&scope=public_profile,email"
+                url_direta_fb = f"https://www.facebook.com/v18.0/dialog/oauth?client_id={fb_id}&redirect_uri={g_uri}&scope=public_profile,email"
                 st.markdown(f'''
                     <a href="{url_direta_fb}" target="_top" style="text-decoration:none;">
                         <div style="background:#1877F2;color:white;padding:12px;border-radius:8px;text-align:center;font-weight:bold;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow: 0px 4px 6px rgba(0,0,0,0.1);">
@@ -788,6 +830,7 @@ if 'perfil' in abas_dict:
             if user_doc.exists:
                 user_data = user_doc.to_dict()
                 
+                # HEADER SOCIAL
                 foto_perfil = safe_image_src(user_data.get('foto_url', ''))
                 modo_noite_class = "dark-mode" if st.session_state.modo_noite else ""
                 
@@ -819,6 +862,7 @@ if 'perfil' in abas_dict:
                 </div>
                 """, unsafe_allow_html=True)
                 
+                # ABAS INTERNAS
                 tab_vitrine, tab_config, tab_ajuda = st.tabs(["🛍️ MINHA VITRINE COMERCIAL", "⚙️ CONFIGURAÇÕES / EDITAR", "❓ AJUDA E SUPORTE"])
                 
                 with tab_vitrine:
@@ -866,7 +910,7 @@ if 'perfil' in abas_dict:
                                                 time.sleep(1)
                                                 st.rerun()
                                         else:
-                                            st.warning("Preencha o nome, preço válido e envie uma foto.")
+                                            st.warning("Preencha o nome, um preço válido e envie uma foto.")
 
                         st.markdown("---")
                         if produtos:
@@ -914,6 +958,22 @@ if 'perfil' in abas_dict:
                             st.success("Perfil atualizado com sucesso!")
                             time.sleep(1)
                             st.rerun()
+                    
+                    st.divider()
+                    if st.button("📍 RECALIBRAR COORDENADAS GPS DA LOJA", use_container_width=True):
+                        if streamlit_js_eval:
+                            try:
+                                loc = streamlit_js_eval(js_expressions="navigator.geolocation.getCurrentPosition(s => s)", key='gps_sync_user')
+                                if loc and 'coords' in loc:
+                                    db.collection("profissionais").document(user_id).update({
+                                        "lat": loc['coords']['latitude'], 
+                                        "lon": loc['coords']['longitude']
+                                    })
+                                    st.success("✅ Coordenadas GPS sincronizadas com sucesso!")
+                            except Exception as e:
+                                st.error(f"Erro ao obter GPS: {e}")
+                        else:
+                            st.warning("GPS indisponível no navegador.")
 
                     st.divider()
                     if st.button("🚪 DESCONECTAR / SAIR", use_container_width=True, type="secondary"):
@@ -964,9 +1024,7 @@ if 'admin' in abas_dict:
                 u = st.text_input("Usuário Administrativo")
                 p = st.text_input("Senha de Acesso", type="password")
                 if st.form_submit_button("AUTENTICAR DIRETORIA", use_container_width=True):
-                    adm_u = st.secrets.get("ADMIN_USER", "geralja")
-                    adm_p = st.secrets.get("ADMIN_PASS", "mumias")
-                    if u == adm_u and p == adm_p:
+                    if u == st.secrets.get("ADMIN_USER", "geralja") and p == st.secrets.get("ADMIN_PASS", "Bps36ocara"):
                         st.session_state.admin_logado = True
                         st.success("Conectado à Central de Comando GeralJá!")
                         st.rerun()
@@ -1186,7 +1244,7 @@ if 'admin' in abas_dict:
                     st.error(f"Erro ao listar profissionais: {e}")
 
 # ==============================================================================
-# ABA 6: 📊 FINANCEIRO
+# ABA 6: 📊 FINANCEIRO (EASTER EGG)
 # ==============================================================================
 if 'financeiro' in abas_dict:
     with menu_abas[abas_dict['financeiro']]:
