@@ -1,6 +1,6 @@
-# ==============================================================================
+  # ==============================================================================
 # GERALJÁ: CRIANDO SOLUÇÕES - MÓDULO 1: INFRAESTRUTURA & SEGURANÇA MÁXIMA
-# VERSÃO 5.1 CORRIGIDA - Correção de Imagens, Busca por Tolerância e Fix Line 647
+# VERSÃO 5.1 COMPLETA E INTEGRAL - Correção de Imagens, Busca por Tolerância e Fix Line 647
 # ==============================================================================
 import streamlit as st
 import firebase_admin
