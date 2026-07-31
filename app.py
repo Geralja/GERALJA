@@ -20,6 +20,32 @@ import feedparser
 import urllib.parse
 from urllib.parse import quote
 from PIL import Image
+import streamlit.components.v1 as components
+
+# ==============================================================================
+# PLAYER RÁDIO GRAJAÚ TEM (IFRAME OFICIAL)
+# ==============================================================================
+st.markdown("""
+<div style="margin-bottom: -10px;">
+    <strong style="font-size: 15px; color: #0047AB;">📻 Rádio Grajaú Tem — Ao Vivo</strong><br>
+    <span style="font-size: 12px; opacity: 0.8; color: #555;">Música, Notícias Locais e Prestação de Serviço 24h</span>
+</div>
+""", unsafe_allow_html=True)
+
+# Renderização do iframe do player
+components.html(
+    """
+    <iframe src="https://d1uzdx1j6g4d0a.cloudfront.net/players/topo/37/245321/?socials=1&apps=true&sl-item%5B%5D=1&sl-item%5B%5D=2&sl-item%5B%5D=5&identifier=GeralJ%C3%A1&source=17973" 
+            border="0" 
+            scrolling="no" 
+            frameborder="0" 
+            allow="autoplay" 
+            allowtransparency="true" 
+            style="background-color: transparent; width: 100%; height: 62px; border: none;">
+    </iframe>
+    """,
+    height=65
+)
 
 # --- BIBLIOTECAS NÍVEL 6.0 ---
 try:
