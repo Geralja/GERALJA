@@ -658,28 +658,14 @@ if 'cadastrar' in abas_dict:
         with col_soc1:
             if g_id:
                 url_google = f"https://accounts.google.com/o/oauth2/v2/auth?client_id={g_id}&response_type=code&scope=openid%20profile%20email&redirect_uri={g_uri}"
-                st.markdown(f'''
-                    <a href="{url_google}" target="_self" style="text-decoration:none;">
-                        <div style="display:flex; align-items:center; justify-content:center; border:1px solid #dadce0; border-radius:8px; padding:8px; background:white;">
-                            <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" width="18px" style="margin-right:10px;">
-                            <span style="color:#3c4043; font-weight:bold; font-size:14px;">Google</span>
-                        </div>
-                    </a>
-                ''', unsafe_allow_html=True)
+                st.markdown(f'<a href="{url_google}" target="_self" style="text-decoration:none;"><div style="display:flex; align-items:center; justify-content:center; border:1px solid #dadce0; border-radius:8px; padding:8px; background:white;"><img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" width="18px" style="margin-right:10px;"><span style="color:#3c4043; font-weight:bold; font-size:14px;">Google</span></div></a>', unsafe_allow_html=True)
             else:
                 st.caption("⚠️ OAuth Google não configurado")
 
         with col_soc2:
             fb_id_soc = st.secrets.get("FB_CLIENT_ID", "")
             if fb_id_soc:
-                st.markdown(f'''
-                    <a href="https://www.facebook.com/v18.0/dialog/oauth?client_id={fb_id_soc}&redirect_uri={g_uri}&scope=public_profile,email" target="_self" style="text-decoration:none;">
-                        <div style="display:flex; align-items:center; justify-content:center; border-radius:8px; padding:8px; background:#1877F2;">
-                            <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg" width="18px" style="margin-right:10px;">
-                            <span style="color:white; font-weight:bold; font-size:14px;">Facebook</span>
-                        </div>
-                    </a>
-                ''', unsafe_allow_html=True)
+                st.markdown(f'<a href="https://www.facebook.com/v18.0/dialog/oauth?client_id={fb_id_soc}&redirect_uri={g_uri}&scope=public_profile,email" target="_self" style="text-decoration:none;"><div style="display:flex; align-items:center; justify-content:center; border-radius:8px; padding:8px; background:#1877F2;"><img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg" width="18px" style="margin-right:10px;"><span style="color:white; font-weight:bold; font-size:14px;">Facebook</span></div></a>', unsafe_allow_html=True)
             else:
                 st.caption("⚠️ OAuth Facebook não configurado")
 
@@ -791,14 +777,7 @@ if 'perfil' in abas_dict:
             g_uri = st.secrets.get("google_auth", {}).get("redirect_uri", REDIRECT_URI)
             if fb_id:
                 url_direta_fb = f"https://www.facebook.com/v18.0/dialog/oauth?client_id={fb_id}&redirect_uri={g_uri}&scope=public_profile,email"
-                st.markdown(f'''
-                    <a href="{url_direta_fb}" target="_top" style="text-decoration:none;">
-                        <div style="background:#1877F2;color:white;padding:12px;border-radius:8px;text-align:center;font-weight:bold;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow: 0px 4px 6px rgba(0,0,0,0.1);">
-                            <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg" width="20px" style="margin-right:10px;">
-                            ENTRAR COM FACEBOOK
-                        </div>
-                    </a>
-                ''', unsafe_allow_html=True)
+                st.markdown(f'<a href="{url_direta_fb}" target="_top" style="text-decoration:none;"><div style="background:#1877F2;color:white;padding:12px;border-radius:8px;text-align:center;font-weight:bold;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow: 0px 4px 6px rgba(0,0,0,0.1);"><img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg" width="20px" style="margin-right:10px;">ENTRAR COM FACEBOOK</div></a>', unsafe_allow_html=True)
 
             st.markdown("<p style='text-align:center; margin-top:15px; color:#666;'>— ou acesse com suas credenciais —</p>", unsafe_allow_html=True)
 
@@ -1300,7 +1279,10 @@ with col_foot2:
     """, unsafe_allow_html=True)
 '''
 
-with open('geralja_app.py', 'w', encoding='utf-8') as f:
+with open('app.py', 'w', encoding='utf-8') as f:
     f.write(script_content)
 
-print("Arquivo geralja_app.py gerado com sucesso sem erros!")
+# Compilar/Verificar sintaxe com python compile
+import py_compile
+py_compile.compile('app.py', doraise=True)
+print("Sintaxe verificada com sucesso! Sem erros.")
