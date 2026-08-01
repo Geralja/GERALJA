@@ -1,6 +1,6 @@
 # ==============================================================================
 # GERALJÁ: CRIANDO SOLUÇÕES - MÓDULO 1: INFRAESTRUTURA & SEGURANÇA MÁXIMA
-# VERSÃO 5.2 - RANKING POR GERALCOINS & PRIORIDADE COMERCIAL ELITE
+# VERSÃO 5.1 SOCIAL - Fix de Imagens + Trativa de Pre-Cadastro
 # ==============================================================================
 import streamlit as st
 import firebase_admin
@@ -54,7 +54,7 @@ except Exception:
     streamlit_js_eval = None
     get_geolocation = None
 
-# --- CONFIGURAÇÃO DE PÁGINA ---
+# --- CONFIGURAÇÃO DE PÁGINA (DEVE SER O PRIMEIRO COMANDO STREAMLIT) ---
 st.set_page_config(
     page_title="GeralJá | Criando Soluções",
     page_icon="🇧🇷",
@@ -228,8 +228,8 @@ def limpar_whatsapp(numero):
 
 def normalizar(texto):
     if not texto: return ""
-    return "".join(ch for ch in unicodedata.normalize('NFKD', str(texto)) 
-                   if unicodedata.category(ch) != 'Mn').lower().strip()
+    return "".join(ch for ch in unicodedata.normalize('NFKD', texto) 
+                   if unicodedata.category(ch) != 'Mn').lower()
 
 def calcular_distancia_real(lat1, lon1, lat2, lon2):
     try:
@@ -254,6 +254,7 @@ def safe_image_src(valor):
     if v.startswith("http://") or v.startswith("https://") or v.startswith("data:image"):
         return v
     
+    # Se for uma string base64 sem prefixo
     if len(v) > 100:
         return f"data:image/jpeg;base64,{v}"
         
@@ -271,16 +272,21 @@ def otimizar_imagem_admin(imagem_upload, size=(800, 800)):
     except Exception:
         return None
 
+def normalizar_para_ia(texto):
+    if not texto: return ""
+    return "".join(c for c in unicodedata.normalize('NFD', str(texto))
+                   if unicodedata.category(c) != 'Mn').lower().strip()
+
 def processar_ia_avancada(texto):
     if not texto: return "Vazio"
-    t_clean = normalizar(texto)
+    t_clean = normalizar_para_ia(texto)
     
     for chave, categoria in CONCEITOS_EXPANDIDOS.items():
-        if re.search(rf"\b{re.escape(normalizar(chave))}\b", t_clean):
+        if re.search(rf"\b{re.escape(normalizar_para_ia(chave))}\b", t_clean):
             return categoria
     
     for cat in CATEGORIAS_OFICIAIS:
-        if normalizar(cat) in t_clean:
+        if normalizar_para_ia(cat) in t_clean:
             return cat
 
     try:
@@ -457,7 +463,7 @@ for i, nome in enumerate(lista_abas):
     elif "FINANCEIRO" in nome: abas_dict['financeiro'] = i
 
 # ==============================================================================
-# ABA 1: 🔍 BUSCAR (NOVA LÓGICA DE RANKING POR GERALCOINS & SELO VERIFICADO)
+# ABA 1: 🔍 BUSCAR
 # ==============================================================================
 if 'buscar' in abas_dict:
     with menu_abas[abas_dict['buscar']]:
@@ -487,97 +493,50 @@ if 'buscar' in abas_dict:
         minha_lon = st.session_state.minha_lon
 
         c1, c2 = st.columns([3, 1])
-        termo_busca = c1.text_input("Ex: 'Pizzaria do Zé', 'Cano estourado' ou 'Pintor'", key="main_search_v5")
+        termo_busca = c1.text_input("Ex: 'Cano estourado' ou 'Pizzaria'", key="main_search_v5")
         raio_km = c2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 20, 50, 500], value=5)
 
         if termo_busca:
             with st.status("🔍 Buscando parceiros...", expanded=False) as status:
-                termo_norm = normalizar(termo_busca)
-                
                 doc_cat = db.collection("configuracoes").document("categorias").get()
                 lista_oficial = doc_cat.to_dict().get("lista", CATEGORIAS_OFICIAIS) if doc_cat.exists else CATEGORIAS_OFICIAIS
                 
-                cat_ia = next((c for c in lista_oficial if normalizar(c) in termo_norm), None)
+                cat_ia = next((c for c in lista_oficial if c.lower() in termo_busca.lower()), None)
                 
                 if not cat_ia:
                     st.write("🤖 Classificando categoria via IA...")
                     cat_ia = processar_ia_avancada(termo_busca)
                 
-                # 1. Busca por categoria no Firestore
-                profs_cat = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).limit(50).stream()
+                profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
                 
-                lista_temp = {}
-                for p_doc in profs_cat:
-                    p = p_doc.to_dict()
-                    p['id'] = p_doc.id
-                    lista_temp[p_doc.id] = p
-
-                # 2. Busca por Nome de Comércio (Caso o cliente tenha pesquisado pelo Nome Específico)
-                profs_todos = db.collection("profissionais").where("aprovado", "==", True).limit(100).stream()
-                for p_doc in profs_todos:
-                    p = p_doc.to_dict()
-                    p['id'] = p_doc.id
-                    nome_p = normalizar(p.get('nome', ''))
-                    if termo_norm in nome_p or nome_p in termo_norm:
-                        p['busca_direta_nome'] = True
-                        lista_temp[p_doc.id] = p
-
                 lista_ranking = []
-                for p in lista_temp.values():
+                for p_doc in profs:
+                    p = p_doc.to_dict()
+                    p['id'] = p_doc.id
                     dist = calcular_distancia_real(minha_lat, minha_lon, p.get('lat', LAT_REF), p.get('lon', LON_REF))
                     
                     if dist <= raio_km:
                         p['dist'] = dist
-                        saldo_coins = int(p.get('saldo', 0))
-                        is_verificado = bool(p.get('verificado') or p.get('aprovado'))
-                        is_nome_exato = bool(p.get('busca_direta_nome', False))
-
-                        # PESOS DO ALGORITMO DE RANKING
-                        p['peso_busca_nome'] = 1 if is_nome_exato else 0
-                        p['peso_verificado'] = 1 if (is_verificado and saldo_coins > 0) else 0
-                        p['qtd_coins'] = saldo_coins
-
+                        p['score_elite'] = (1000 if p.get('verificado') and p.get('saldo', 0) > 0 else 0)
                         lista_ranking.append(p)
 
-                # REGRAS DE ORDENAÇÃO:
-                # 1º Se pesquisou o Nome Específico do Comércio -> Topo Absoluto
-                # 2º Se for Verificado / Tem Saldo Ativo -> Prioridade Paga
-                # 3º Pela maior quantidade de GeralCoins (saldo)
-                # 4º Pela menor distância em KM
-                lista_ranking.sort(key=lambda x: (
-                    -x['peso_busca_nome'],
-                    -x['peso_verificado'],
-                    -x['qtd_coins'],
-                    x['dist']
-                ))
-
-                status.update(label=f"Resultados encontrados!", state="complete")
+                lista_ranking.sort(key=lambda x: (x['dist'], -x['score_elite']))
+                status.update(label=f"Resultados para {cat_ia}!", state="complete")
 
             if not lista_ranking:
-                st.warning(f"Nenhum resultado para '{termo_busca}' no raio de {raio_km}km.")
+                st.warning(f"Nenhum profissional de '{cat_ia}' encontrado no raio de {raio_km}km.")
             else:
                 for p in lista_ranking:
                     f_perfil = safe_image_src(p.get('foto_url', ''))
-                    
-                    is_elite = p['peso_verificado'] == 1 or p['qtd_coins'] >= 100
+                    is_elite = p['score_elite'] > 0
                     cor_borda = "#FFD700" if is_elite else "#0047AB"
-                    
                     zap_num = limpar_whatsapp(p.get('whatsapp',''))
                     zap_link = criar_link_zap(zap_num, "Olá! Vi seu perfil no aplicativo GeralJá e gostaria de um orçamento.")
 
-                    # Selos visuais no card
-                    selo_html = ""
-                    if p['peso_busca_nome'] == 1:
-                        selo_html = "<span style='background:#22c55e; color:white; padding:2px 8px; border-radius:10px; font-size:10px; font-weight:bold; margin-right:5px;'>🎯 BUSCA DIRETA</span>"
-                    
-                    if is_elite:
-                        selo_html += "<span style='background:#FFD700; color:black; padding:2px 8px; border-radius:10px; font-size:10px; font-weight:bold;'>⭐ VERIFICADO ELITE</span>"
-
                     st.markdown(f"""
                     <div style="background:white; border-radius:20px; border-left:8px solid {cor_borda}; padding:15px; margin-bottom:15px; box-shadow:0 4px 10px rgba(0,0,0,0.1); color:black;">
-                        <div style="font-size:11px; color:#0047AB; font-weight:bold; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
-                            <div>{selo_html} 📍 a {p['dist']:.1f} km</div>
-                            <div style="color:#854d0e; background:#fef08a; padding:2px 8px; border-radius:10px;">🪙 {p['qtd_coins']} GeralCoins</div>
+                        <div style="font-size:11px; color:#0047AB; font-weight:bold; margin-bottom:8px;">
+                            📍 a {p['dist']:.1f} km {" | 🏆 DESTAQUE ELITE" if is_elite else ""}
                         </div>
                         <div style="display:flex; align-items:center; gap:12px;">
                             <img src="{f_perfil}" style="width:55px; height:55px; border-radius:50%; object-fit:cover; border:2px solid #eee;">
@@ -652,6 +611,7 @@ if 'cadastrar' in abas_dict:
         st.header("🚀 Cadastre-se ou Atualize seu Perfil")
         st.write("Apareça para milhares de moradores do Grajaú e região!")
 
+        # CORREÇÃO DO ERRO DO TRACEBACK AQUI (Garantindo Dicionário Seguro)
         dados_google = st.session_state.get("pre_cadastro") or {}
         email_inicial = dados_google.get("email", "")
         nome_inicial = dados_google.get("nome", "")
@@ -763,7 +723,6 @@ if 'cadastrar' in abas_dict:
                             "saldo": saldo_final,
                             "data_cadastro": dados_antigos.get("data_cadastro", datetime.now(fuso_br).strftime("%d/%m/%Y")),
                             "aprovado": True,
-                            "verificado": dados_antigos.get("verificado", True),
                             "cliques": cliques_atuais,
                             "rating": dados_antigos.get("rating", 5),
                             "lat": st.session_state.get('minha_lat', LAT_REF),
@@ -972,9 +931,9 @@ if 'perfil' in abas_dict:
 
                 with tab_ajuda:
                     st.markdown("#### Central de Suporte ao Parceiro")
-                    st.info("💡 Perfis com fotos claras, mais GeralCoins acumuladas e selo de Verificado aparecem no TOPO de todas as buscas!")
+                    st.info("💡 Perfis com fotos claras, bom texto descritivo e produtos atualizados recebem até 3x mais contatos no WhatsApp!")
                     st.write("**Como funcionam os GeralCoins (Moedas)?**")
-                    st.caption("Quanto mais moedas seu perfil tiver, mais alto ele ficará na pesquisa dos moradores do Grajaú!")
+                    st.caption("Cada contato direto no seu WhatsApp consome moedas do seu saldo. Mantenha seu saldo positivo para se manter nos destaques da busca!")
                     st.link_button("💬 RECARREGAR SALDO VIA WHATSAPP", criar_link_zap(ZAP_ADMIN, f"Olá, sou o parceiro {user_data.get('nome')} e quero recarregar meu saldo de GeralCoins no aplicativo."))
 
 # ==============================================================================
