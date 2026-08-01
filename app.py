@@ -1,6 +1,6 @@
 # ==============================================================================
 # GERALJÁ: CRIANDO SOLUÇÕES - MÓDULO 1: INFRAESTRUTURA & SEGURANÇA MÁXIMA
-# VERSÃO 5.1 SOCIAL - Fix de Imagens + Trativa de Pre-Cadastro
+# VERSÃO 5.2 - MÓDULOS DE IA, FUZZY, OAUTH E GPS REATIVADOS
 # ==============================================================================
 import streamlit as st
 import firebase_admin
@@ -21,16 +21,20 @@ import urllib.parse
 from urllib.parse import quote
 from PIL import Image
 
-# --- BIBLIOTECAS NÍVEL 5.0 ---
+# --- REATIVAÇÃO DE BIBLIOTECAS (COM FALLBACK SEGURO) ---
 try:
     from groq import Groq
 except ImportError:
     Groq = None
 
 try:
-    from fuzzywuzzy import process
+    from fuzzywuzzy import process, fuzz
 except ImportError:
-    process = None
+    try:
+        from rapidfuzz import process, fuzz
+    except ImportError:
+        process = None
+        fuzz = None
 
 try:
     import google.generativeai as genai
@@ -42,7 +46,7 @@ try:
 except ImportError:
     Flow = None
 
-# --- COMPONENTES JS COM FALLBACK SEGURO ---
+# --- COMPONENTES JS E GEOLOCALIZAÇÃO ---
 streamlit_js_eval = None
 get_geolocation = None
 try:
@@ -54,7 +58,7 @@ except Exception:
     streamlit_js_eval = None
     get_geolocation = None
 
-# --- CONFIGURAÇÃO DE PÁGINA (DEVE SER O PRIMEIRO COMANDO STREAMLIT) ---
+# --- CONFIGURAÇÃO DE PÁGINA ---
 st.set_page_config(
     page_title="GeralJá | Criando Soluções",
     page_icon="🇧🇷",
@@ -138,10 +142,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- INICIALIZAÇÃO DE ESTADOS SEGUROS ---
-if 'modo_noite' not in st.session_state:
-    st.session_state.modo_noite = False
-
 for key, default in {
+    'modo_noite': False,
     'tema_claro': False,
     'auth': False,
     'admin_logado': False,
@@ -228,7 +230,7 @@ def limpar_whatsapp(numero):
 
 def normalizar(texto):
     if not texto: return ""
-    return "".join(ch for ch in unicodedata.normalize('NFKD', texto) 
+    return "".join(ch for ch in unicodedata.normalize('NFKD', str(texto)) 
                    if unicodedata.category(ch) != 'Mn').lower()
 
 def calcular_distancia_real(lat1, lon1, lat2, lon2):
@@ -254,7 +256,6 @@ def safe_image_src(valor):
     if v.startswith("http://") or v.startswith("https://") or v.startswith("data:image"):
         return v
     
-    # Se for uma string base64 sem prefixo
     if len(v) > 100:
         return f"data:image/jpeg;base64,{v}"
         
@@ -278,35 +279,69 @@ def normalizar_para_ia(texto):
                    if unicodedata.category(c) != 'Mn').lower().strip()
 
 def processar_ia_avancada(texto):
-    if not texto: return "Vazio"
+    """Pipeline Inteligente: Dicionário -> Fuzzy Match -> Cache Firestore -> Groq AI -> Gemini AI"""
+    if not texto: return "Outro (Personalizado)"
     t_clean = normalizar_para_ia(texto)
     
+    # 1. Busca por conceitos predefinidos
     for chave, categoria in CONCEITOS_EXPANDIDOS.items():
         if re.search(rf"\b{re.escape(normalizar_para_ia(chave))}\b", t_clean):
             return categoria
     
+    # 2. Busca exata nas categorias oficiais
     for cat in CATEGORIAS_OFICIAIS:
         if normalizar_para_ia(cat) in t_clean:
             return cat
 
+    # 3. Fuzzy Matching via RapidFuzz / FuzzyWuzzy
+    if process:
+        try:
+            match_res = process.extractOne(t_clean, CATEGORIAS_OFICIAIS)
+            if match_res:
+                melhor_match, score = match_res[0], match_res[1]
+                if score >= 75:
+                    return melhor_match
+        except Exception:
+            pass
+
+    # 4. Verificação no cache do Firestore
     try:
         cache_ref = db.collection("cache_buscas").document(t_clean).get()
         if cache_ref.exists:
             return cache_ref.to_dict().get("categoria")
+    except Exception:
+        pass
 
-        if client_groq:
-            prompt = f"O usuário buscou: '{texto}'. Categorias: {CATEGORIAS_OFICIAIS}. Responda apenas o NOME DA CATEGORIA."
+    # 5. Processamento via Groq (Llama 3)
+    if client_groq:
+        try:
+            prompt = f"O usuário pesquisou: '{texto}'. As categorias válidas são: {CATEGORIAS_OFICIAIS}. Responda APENAS o nome exato da categoria que melhor se encaixa."
             res = client_groq.chat.completions.create(
                 messages=[{"role": "user", "content": prompt}],
                 model="llama3-8b-8192",
                 temperature=0.1
             )
             cat_ia = res.choices[0].message.content.strip()
-            db.collection("cache_buscas").document(t_clean).set({"categoria": cat_ia})
-            return cat_ia
-        return "NAO_ENCONTRADO"
-    except Exception:
-        return "NAO_ENCONTRADO"
+            if cat_ia in CATEGORIAS_OFICIAIS:
+                db.collection("cache_buscas").document(t_clean).set({"categoria": cat_ia})
+                return cat_ia
+        except Exception:
+            pass
+
+    # 6. Fallback via Google Gemini
+    if genai and "GEMINI_API_KEY" in st.secrets:
+        try:
+            model = genai.GenerativeModel("gemini-1.5-flash")
+            prompt = f"O usuário buscou: '{texto}'. Selecione a melhor categoria entre estas: {CATEGORIAS_OFICIAIS}. Responda estritamente com a categoria."
+            res = model.generate_content(prompt)
+            cat_gemini = res.text.strip()
+            if cat_gemini in CATEGORIAS_OFICIAIS:
+                db.collection("cache_buscas").document(t_clean).set({"categoria": cat_gemini})
+                return cat_gemini
+        except Exception:
+            pass
+
+    return "Outro (Personalizado)"
 
 def criar_link_zap(numero, msg):
     return f"https://api.whatsapp.com/send?phone={numero}&text={urllib.parse.quote(msg)}"
@@ -362,7 +397,7 @@ CONCEITOS_EXPANDIDOS = {
     "jardim": "Jardineiro", "piscina": "Piscineiro"
 }
 
-# --- PROCESSAMENTO DE QUERY PARAMS ---
+# --- PROCESSAMENTO DE QUERY PARAMS PARA AUTH GOOGLE/FACEBOOK ---
 code_param = st.query_params.get("code")
 uid_param = st.query_params.get("uid")
 
@@ -481,10 +516,10 @@ if 'buscar' in abas_dict:
                         st.success(f"GPS Ativo (Precisão: {precisao:.0f}m)")
                     else:
                         st.session_state.js_disponivel = False
-                        st.warning("GPS indisponível. Usando localização padrão do bairro.")
+                        st.info("GPS indisponível. Usando localização padrão do bairro.")
                 except Exception:
                     st.session_state.js_disponivel = False
-                    st.warning("Recurso GPS indisponível no navegador.")
+                    st.info("Recurso GPS indisponível no navegador. Usando mapa base.")
             else:
                 st.session_state.js_disponivel = False
                 st.info("GPS desativado neste dispositivo.")
@@ -501,11 +536,7 @@ if 'buscar' in abas_dict:
                 doc_cat = db.collection("configuracoes").document("categorias").get()
                 lista_oficial = doc_cat.to_dict().get("lista", CATEGORIAS_OFICIAIS) if doc_cat.exists else CATEGORIAS_OFICIAIS
                 
-                cat_ia = next((c for c in lista_oficial if c.lower() in termo_busca.lower()), None)
-                
-                if not cat_ia:
-                    st.write("🤖 Classificando categoria via IA...")
-                    cat_ia = processar_ia_avancada(termo_busca)
+                cat_ia = processar_ia_avancada(termo_busca)
                 
                 profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
                 
@@ -611,7 +642,6 @@ if 'cadastrar' in abas_dict:
         st.header("🚀 Cadastre-se ou Atualize seu Perfil")
         st.write("Apareça para milhares de moradores do Grajaú e região!")
 
-        # CORREÇÃO DO ERRO DO TRACEBACK AQUI (Garantindo Dicionário Seguro)
         dados_google = st.session_state.get("pre_cadastro") or {}
         email_inicial = dados_google.get("email", "")
         nome_inicial = dados_google.get("nome", "")
