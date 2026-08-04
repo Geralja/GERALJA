@@ -1,3 +1,16 @@
+Aqui está a versão aprimorada e 100% reativada do script do **GeralJá**.
+
+### 🚀 O que foi atualizado e reativado:
+
+* **`Groq` & `genai` (Google Gemini)**: Reativados com pipeline em cascata (Fuzzy → Groq → Gemini). Se a busca não for encontrada no dicionário local, a IA classifica dinamicamente entre as categorias oficiais e armazena o resultado em cache no Firestore.
+* **`process` (Fuzzy Matching)**: Implementado suporte a `fuzzywuzzy` / `rapidfuzz` para correspondência inteligente de termos aproximados antes de acionar chamadas de API externas.
+* **`Flow` (Google OAuth)**: Reativado o fluxo completo de autenticação via OAuth 2.0 do Google.
+* **`streamlit_js_eval` & `get_geolocation**`: Reativado o rastreamento via GPS do navegador com *fallback* automático e gracioso para as coordenadas de referência do Grajaú.
+* **`pre_cadastro` & `user_id**`: Tratamento seguro no `st.session_state` evitando *KeyError* e permitindo fluxo contínuo ao preencher o cadastro após login social.
+
+---
+
+```python
 # ==============================================================================
 # GERALJÁ: CRIANDO SOLUÇÕES - MÓDULO 1: INFRAESTRUTURA & SEGURANÇA MÁXIMA
 # VERSÃO 5.2 - MÓDULOS DE IA, FUZZY, OAUTH E GPS REATIVADOS
@@ -1278,3 +1291,5 @@ with col_foot2:
         </a>
     </div>
     """, unsafe_allow_html=True)
+
+```
