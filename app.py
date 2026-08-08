@@ -613,14 +613,14 @@ with menu_abas[2]:
         doc_ref = db.collection("profissionais").document(st.session_state.user_id)
         d = doc_ref.get().to_dict() or {}
 
-        # Métrica e Algoritmo de Score para ordenação nas buscas
+        # Métricas e Algoritmo de Score para ordenação nas buscas
         saldo_moedas = d.get('saldo', 0)
         total_cliques = d.get('cliques', 0) + d.get('visitas', 0)
         total_curtidas = d.get('curtidas', 0)
         total_comentarios = d.get('comentarios', 0)
         total_compartilhamentos = d.get('compartilhamentos', 0)
         
-        # Fórmula de relevância: Moedas pesam mais, depois Curtidas, Comentários e Compartilhamentos (critério de desempate)
+        # Fórmula de relevância: Moedas + Curtidas + Comentários + Compartilhamentos (desempate)
         score_relevancia = (saldo_moedas * 1000000) + (total_curtidas * 1000) + (total_comentarios * 10) + total_compartilhamentos
 
         st.write(f"### Olá, {d.get('nome', 'Parceiro')}! 👋")
@@ -690,7 +690,7 @@ with menu_abas[2]:
                     st.rerun()
 
         # ======================================================================
-        # SUB-ABA 2: GESTÃO DA VITRINE DIGITA
+        # SUB-ABA 2: GESTÃO DA VITRINE DIGITAL
         # ======================================================================
         with tab_vitrine:
             st.subheader("🛍️ Vitrine Digital Interativa do Comércio")
@@ -794,7 +794,7 @@ with menu_abas[2]:
                                 time.sleep(1)
                                 st.rerun()
 
-            # --- PRÉ-VISUALIZAÇÃO DA VITRINE MODERNA E INOVADORA ---
+            # --- PRÉ-VISUALIZAÇÃO DA VITRINE ---
             st.divider()
             st.markdown("### ✨ Pré-Visualização da Sua Vitrine (Visão do Visitante)")
             
@@ -853,8 +853,6 @@ with menu_abas[2]:
         if st.button("SAIR DA CONTA", use_container_width=True):
             st.session_state.auth = False
             st.rerun()
-
-```
 # ==============================================================================
 # ABA 4: ADMIN / CENTRAL DE COMANDO SUPREMA
 # ==============================================================================
