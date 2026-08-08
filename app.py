@@ -1,6 +1,3 @@
-Aqui está o código completo do **GeralJá** em um único bloco de código pronto para copiar, colar e rodar.
-
-```python
 import streamlit as st
 import pandas as pd
 from datetime import datetime
