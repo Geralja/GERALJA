@@ -1,5 +1,5 @@
 # ==============================================================================
-# GERALJÁ: SISTEMA INTEGRADO MASTER (BRASIL ELITE EDITION)
+# GERALJÁ: SISTEMA INTEGRADO MASTER (BRASIL ELITE EDITION - SOCIAL VITRINE)
 # ==============================================================================
 import streamlit as st
 import firebase_admin
@@ -13,6 +13,8 @@ import pytz
 import requests
 import pandas as pd
 import unicodedata
+import io
+from PIL import Image
 from datetime import datetime
 from urllib.parse import quote
 
@@ -27,7 +29,7 @@ except ImportError:
 # 1. CONFIGURAÇÃO ÚNICA DE AMBIENTE E PERFORMANCE
 # ------------------------------------------------------------------------------
 st.set_page_config(
-    page_title="GeralJá | Criando Soluções",
+    page_title="GeralJá | Soluções Locais",
     page_icon="🇧🇷",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -43,36 +45,58 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
-# 2. MODO TEMA (ESCUTO / CLARO ADAPTÁVEL)
+# 2. MODO TEMA (ESCURO / CLARO ADAPTÁVEL)
 # ------------------------------------------------------------------------------
 if 'modo_noite' not in st.session_state:
     st.session_state.modo_noite = True
 
-c_t1, c_t2 = st.columns([2, 8])
+c_t1, c_t2 = st.columns([3, 7])
 with c_t1:
-    st.session_state.modo_noite = st.toggle("🌙 Modo Noite / ☀️ Modo Claro", value=st.session_state.modo_noite)
+    st.session_state.modo_noite = st.toggle("🌙 Modo Escuro / ☀️ Modo Claro", value=st.session_state.modo_noite)
 
 estilo_dinamico = f"""
 <style>
     @media (max-width: 640px) {{
-        .main .block-container {{ padding: 1rem !important; }}
-        h1 {{ font-size: 1.8rem !important; }}
+        .main .block-container {{ padding: 0.8rem !important; }}
+        h1 {{ font-size: 1.6rem !important; }}
     }}
     .stApp {{
-        background-color: {"#0D1117" if st.session_state.modo_noite else "#FFFAFA"} !important;
-        color: {"#FFFFFF" if st.session_state.modo_noite else "#1A1A1B"} !important;
+        background-color: {"#0D1117" if st.session_state.modo_noite else "#F8FAFC"} !important;
+        color: {"#FFFFFF" if st.session_state.modo_noite else "#0F172A"} !important;
     }}
     div[data-testid="stVerticalBlock"] > div[style*="background"] {{
         background-color: {"#161B22" if st.session_state.modo_noite else "#FFFFFF"} !important;
-        border: 1px solid {"#30363D" if st.session_state.modo_noite else "#E0E0E0"} !important;
-        border-radius: 18px !important;
+        border: 1px solid {"#30363D" if st.session_state.modo_noite else "#E2E8F0"} !important;
+        border-radius: 20px !important;
     }}
 </style>
 """
 st.markdown(estilo_dinamico, unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
-# 3. CAMADA DE PERSISTÊNCIA (FIREBASE & SECRETS)
+# 3. COMPRESSÃO DE IMAGENS PIL & FALLBACK SVG
+# ------------------------------------------------------------------------------
+AVATAR_PADRAO_SVG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230047AB'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/></svg>"
+
+def otimizar_e_converter_b64(file_upload, max_largura=400, qualidade=70):
+    """ Redimensiona e comprime a foto para ~30KB mantendo alta qualidade visual """
+    if file_upload is None:
+        return ""
+    try:
+        img = Image.open(file_upload)
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
+        if img.width > max_largura or img.height > max_largura:
+            img.thumbnail((max_largura, max_largura))
+        
+        buffer = io.BytesIO()
+        img.save(buffer, format="JPEG", quality=qualidade, optimize=True)
+        return base64.b64encode(buffer.getvalue()).decode("utf-8")
+    except Exception:
+        return ""
+
+# ------------------------------------------------------------------------------
+# 4. CAMADA DE PERSISTÊNCIA (FIREBASE & SECRETS)
 # ------------------------------------------------------------------------------
 @st.cache_resource
 def conectar_banco_master():
@@ -100,14 +124,14 @@ def conectar_banco_master():
 app_engine = conectar_banco_master()
 db = firestore.client()
 
-# Autenticação Externa (Opicional via Secrets)
+# Autenticação Externa (Opcional via Secrets)
 FB_CLIENT_ID = st.secrets.get("FB_CLIENT_ID", "")
 FB_CLIENT_SECRET = st.secrets.get("FB_CLIENT_SECRET", "")
 FIREBASE_API_KEY = st.secrets.get("FIREBASE_API_KEY", "")
 HANDLER_URL = "https://geralja-5bb49.firebaseapp.com/__/auth/handler"
 
 # ------------------------------------------------------------------------------
-# 4. POLÍTICAS E CONSTANTES
+# 5. POLÍTICAS E CONSTANTES
 # ------------------------------------------------------------------------------
 PIX_OFICIAL = "11991853488"
 ZAP_ADMIN = "5511991853488"
@@ -187,7 +211,7 @@ CONCEITOS_EXPANDIDOS = {
 }
 
 # ------------------------------------------------------------------------------
-# 5. UTILITÁRIOS E FUNÇÕES AUXILIARES
+# 6. UTILITÁRIOS E FUNÇÕES AUXILIARES
 # ------------------------------------------------------------------------------
 def limpar_whatsapp(numero):
     num = re.sub(r'\D', '', str(numero))
@@ -219,12 +243,6 @@ def calcular_distancia_real(lat1, lon1, lat2, lon2):
         a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
         return round(R * (2 * math.atan2(math.sqrt(a), math.sqrt(1-a))), 1)
     except: return 999.0
-
-def converter_img_b64(file):
-    if file is None: return ""
-    try:
-        return base64.b64encode(file.getvalue() if hasattr(file, 'getvalue') else file.read()).decode()
-    except: return ""
 
 def buscar_opcoes_dinamicas(documento, padrao):
     try:
@@ -286,35 +304,35 @@ def finalizar_e_alinhar_layout():
     st.write("---")
     st.markdown("""
         <style>
-            .footer-clean { text-align: center; padding: 20px; opacity: 0.8; font-size: 0.8rem5; width: 100%; color: gray; }
-            .security-badge { display: inline-flex; align-items: center; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 20px; padding: 5px 15px; margin-bottom: 10px; color: #0f172a; font-weight: bold; }
+            .footer-clean { text-align: center; padding: 25px 10px; opacity: 0.85; font-size: 0.85rem; width: 100%; color: gray; }
+            .security-badge { display: inline-flex; align-items: center; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 20px; padding: 6px 18px; margin-bottom: 12px; color: #0f172a; font-weight: bold; }
         </style>
         <div class="footer-clean">
             <div class="security-badge"><span style="color:#22c55e; margin-right:8px;">🛡️</span> Proteção Ativa GeralJá</div>
-            <p>🎯 <b>GeralJá</b> - Conectando serviços locais com tecnologia de ponta.</p>
+            <p>🎯 <b>GeralJá</b> - Conectando você aos melhores profissionais da sua região.</p>
             <p>© 2026 Todos os direitos reservados</p>
         </div>
     """, unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
-# 6. CABEÇALHO VISUAL
+# 7. CABEÇALHO VISUAL
 # ------------------------------------------------------------------------------
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-    * { font-family: 'Inter', sans-serif; }
-    .header-container { background: white; padding: 30px 20px; border-radius: 0 0 40px 40px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border-bottom: 6px solid #FF8C00; margin-bottom: 25px; }
-    .logo-azul { color: #0047AB; font-weight: 900; font-size: 45px; letter-spacing: -2px; }
-    .logo-laranja { color: #FF8C00; font-weight: 900; font-size: 45px; letter-spacing: -2px; }
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+    * { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .header-container { background: linear-gradient(135deg, #FFFFFF 0%, #F1F5F9 100%); padding: 28px 15px; border-radius: 0 0 35px 35px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.06); border-bottom: 5px solid #FF8C00; margin-bottom: 25px; }
+    .logo-azul { color: #0047AB; font-weight: 800; font-size: 42px; letter-spacing: -1.5px; }
+    .logo-laranja { color: #FF8C00; font-weight: 800; font-size: 42px; letter-spacing: -1.5px; }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<div class="header-container"><span class="logo-azul">GERAL</span><span class="logo-laranja">JÁ</span><br><small style="color:#64748B; font-weight:700;">BRASIL ELITE EDITION</small></div>', unsafe_allow_html=True)
+st.markdown('<div class="header-container"><span class="logo-azul">GERAL</span><span class="logo-laranja">JÁ</span><br><small style="color:#64748B; font-weight:700; letter-spacing:1px;">VITRINE SOCIAL & SERVIÇOS DA SUA REGIÃO</small></div>', unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
-# 7. NAVEGAÇÃO E ABAS
+# 8. NAVEGAÇÃO E ABAS
 # ------------------------------------------------------------------------------
-lista_abas = ["🔍 BUSCAR", "🚀 CADASTRAR", "👤 MEU PERFIL", "👑 ADMIN", "⭐ FEEDBACK"]
+lista_abas = ["🔍 BUSCAR & VITRINE", "🚀 CADASTRAR", "👤 MEU PERFIL", "👑 ADMIN", "⭐ FEEDBACK"]
 comando = st.sidebar.text_input("Comando Secreto", type="password")
 if comando == "abracadabra":
     lista_abas.append("📊 FINANCEIRO")
@@ -322,12 +340,12 @@ if comando == "abracadabra":
 menu_abas = st.tabs(lista_abas)
 
 # ==============================================================================
-# ABA 1: BUSCA (GPS + SCORE ELITE + VITRINE SOCIAL & MODAL)
+# ABA 1: BUSCA + VITRINE SOCIAL HÍBRIDA (INSTAGRAM + ORKUT + FACEBOOK)
 # ==============================================================================
 with menu_abas[0]:
-    st.markdown("### 🏙️ O que você precisa hoje?")
+    st.markdown("### 🏙️ Quem você procura no seu bairro hoje?")
     
-    # Motor de Localização GPS
+    # Motor de GPS
     with st.expander("📍 Sua Localização (GPS)", expanded=False):
         minha_lat, minha_lon = LAT_REF, LON_REF
         if get_geolocation:
@@ -336,37 +354,167 @@ with menu_abas[0]:
                 minha_lat, minha_lon = loc['coords']['latitude'], loc['coords']['longitude']
                 st.success("Localização GPS ativada!")
             else:
-                st.warning("GPS não detectado. Usando padrão (São Paulo).")
+                st.warning("GPS não detectado. Usando localização padrão.")
         else:
             st.info("Usando coordenadas padrão.")
 
     c1, c2 = st.columns([3, 1])
-    termo_busca = c1.text_input("Ex: 'Cano estourado', 'Pizza' ou 'Pedreiro'", key="main_search")
-    raio_km = c2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 20, 50, 100, 500], value=10)
+    termo_busca = c1.text_input("Ex: 'Chaveiro', 'Pizza', 'Diarista', 'Mecânico'", key="main_search")
+    raio_km = c2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 20, 50, 100, 500], value=15)
 
-    # CSS para Vitrine e Modal
+    # ESTILIZAÇÃO COMPLETA DE REDE SOCIAL (INSTAGRAM + ORKUT + FACEBOOK)
     st.markdown("""
     <style>
-        .cartao-geral { background: white; border-radius: 20px; border-left: 8px solid var(--cor-borda); padding: 18px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-        .perfil-row { display: flex; gap: 15px; align-items: center; margin-bottom: 12px; }
-        .foto-perfil { width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 2px solid #eee; }
-        .social-track { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 10px; scrollbar-width: none; }
-        .social-track::-webkit-scrollbar { display: none; }
-        .social-card { flex: 0 0 180px; height: 240px; border-radius: 12px; overflow: hidden; cursor: pointer; background: #000; }
-        .social-card img { width: 100%; height: 100%; object-fit: cover; }
-        .btn-zap-footer { display: block; background: #25D366; color: white !important; text-align: center; padding: 14px; border-radius: 12px; font-weight: bold; text-decoration: none; margin-top: 10px; font-size: 16px; }
+        .feed-card {
+            background: #ffffff;
+            border-radius: 22px;
+            border: 1px solid #e2e8f0;
+            padding: 20px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s ease;
+        }
+        .feed-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+        .user-info-group {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        /* Borda estilo Instagram Story */
+        .story-ring {
+            background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
+            padding: 3px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .story-ring-elite {
+            background: linear-gradient(45deg, #FFD700, #FFA500, #FF8C00);
+            padding: 3px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .foto-avatar {
+            width: 65px;
+            height: 65px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid white;
+            background-color: #f1f5f9;
+            display: block;
+        }
+        .user-title-box h3 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 800;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .badge-cat {
+            background: #e0f2fe;
+            color: #0369a1;
+            font-weight: 700;
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            display: inline-block;
+            margin-top: 4px;
+        }
+        .badge-elite {
+            background: #fef3c7;
+            color: #b45309;
+            font-weight: 800;
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 10px;
+            border: 1px solid #fde68a;
+        }
+        /* Selos no estilo Orkut */
+        .orkut-pills {
+            display: flex;
+            gap: 8px;
+            margin: 12px 0;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .pill-orkut {
+            background: #f1f5f9;
+            color: #475569;
+            padding: 4px 10px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        .pill-faisca {
+            background: #fff7ed;
+            color: #c2410c;
+            border: 1px solid #ffedd5;
+        }
+        /* Carrossel Estilo Instagram Feed */
+        .insta-gallery {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            padding: 8px 0 14px 0;
+            scrollbar-width: none;
+        }
+        .insta-gallery::-webkit-scrollbar { display: none; }
+        .gallery-item {
+            flex: 0 0 220px;
+            height: 270px;
+            border-radius: 16px;
+            overflow: hidden;
+            position: relative;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .gallery-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s;
+        }
+        .gallery-item:hover img {
+            transform: scale(1.05);
+        }
+        /* Botão Ação WhatsApp Facebook/Instagram */
+        .btn-social-zap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: #25D366;
+            color: white !important;
+            text-align: center;
+            padding: 14px;
+            border-radius: 14px;
+            font-weight: 800;
+            font-size: 16px;
+            text-decoration: none;
+            margin-top: 15px;
+            box-shadow: 0 4px 14px rgba(37, 211, 102, 0.3);
+            transition: background 0.2s;
+        }
+        .btn-social-zap:hover { background: #1eb956; }
     </style>
+
     <script>
-    function abrirModal(src, link) {
-        var m = document.getElementById('meuModal');
+    function abrirModalInsta(src, link) {
+        var m = document.getElementById('modalFeed');
         if (m) {
-            document.getElementById('imgExpandida').src = src;
-            document.getElementById('linkZapModal').href = link;
+            document.getElementById('imgModalBox').src = src;
+            document.getElementById('linkZapModalFeed').href = link;
             m.style.display = 'flex';
         }
     }
-    function fecharModal() {
-        var m = document.getElementById('meuModal');
+    function fecharModalInsta() {
+        var m = document.getElementById('modalFeed');
         if (m) m.style.display = 'none';
     }
     </script>
@@ -374,16 +522,14 @@ with menu_abas[0]:
 
     if termo_busca:
         cat_ia = processar_ia_avancada(termo_busca)
-        st.info(f"✨ Inteligência GeralJá: Categoria identificada -> **{cat_ia}**")
-        
-        fuso = pytz.timezone('America/Sao_Paulo')
-        hora_atual = datetime.now(fuso).strftime('%H:%M')
+        st.info(f"✨ Inteligência GeralJá: Buscando por **{cat_ia}** em sua região...")
 
         profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
         
         lista_ranking = []
         for p_doc in profs:
-            p = p_doc.to_dict(); p['id'] = p_doc.id
+            p = p_doc.to_dict()
+            p['id'] = p_doc.id
             dist = calcular_distancia_real(minha_lat, minha_lon, p.get('lat', LAT_REF), p.get('lon', LON_REF))
             
             if dist <= raio_km:
@@ -399,22 +545,26 @@ with menu_abas[0]:
 
         if not lista_ranking:
             st.markdown(f"""
-            <div style="background-color: #FFF4E5; padding: 20px; border-radius: 15px; border-left: 5px solid #FF8C00; margin-top: 15px;">
-                <h4 style="color: #856404; margin:0;">🔍 Nenhuma opção encontrada para essa região no momento.</h4>
-                <p style="color: #856404; margin: 5px 0 0 0;">Conhece alguém que faz esse serviço? Convide para o GeralJá!</p>
+            <div style="background-color: #FFF4E5; padding: 22px; border-radius: 18px; border-left: 6px solid #FF8C00; margin-top: 15px;">
+                <h4 style="color: #856404; margin:0;">🔍 Nenhuma opção encontrada exatamente para esse raio.</h4>
+                <p style="color: #856404; margin: 6px 0 0 0;">Seja o primeiro parceiro desse segmento no GeralJá!</p>
             </div>
             """, unsafe_allow_html=True)
-            link_share = f"https://wa.me/?text={quote('Olá! Vi que estão procurando por ' + cat_ia + ' no GeralJá. Cadastre seu serviço aqui: https://geralja.streamlit.app')}"
-            st.markdown(f'<a href="{link_share}" target="_blank" style="text-decoration:none;"><div style="background:#22C55E; color:white; padding:12px; border-radius:10px; text-align:center; font-weight:bold; margin-top:10px;">📲 COMPARTILHAR CONVITE NO WHATSAPP</div></a>', unsafe_allow_html=True)
+            link_share = f"https://wa.me/?text={quote('Olá! Procurei por ' + cat_ia + ' no GeralJá e ainda não achei na nossa região. Cadastre-se gratis: https://geralja.com.br')}"
+            st.markdown(f'<a href="{link_share}" target="_blank" style="text-decoration:none;"><div style="background:#22C55E; color:white; padding:14px; border-radius:12px; text-align:center; font-weight:bold; margin-top:12px;">📲 CONVIDAR UM AMIGO NO WHATSAPP</div></a>', unsafe_allow_html=True)
         else:
             for p in lista_ranking:
                 is_elite = p.get('verificado') and p.get('saldo', 0) > 0
-                cor_borda = "#FFD700" if is_elite else "#0047AB"
                 zap_limpo = limpar_whatsapp(p['id'])
-                msg_zap = quote(f"Olá {p.get('nome')}, vi seu perfil no GeralJá!")
-                link_zap = f"https://wa.me/{zap_limpo}?text={msg_zap}"
+                msg_zap = quote(f"Olá {p.get('nome')}, vi seu perfil na Vitrine do GeralJá!")
+                link_zap = f"https://api.whatsapp.com/send?phone={zap_limpo}&text={msg_zap}"
                 
-                # Coleta Fotos do Portfólio (portfolio_imgs ou f1..f10)
+                # Trata Foto de Perfil com Fallback SVG para não quebrar nunca
+                foto_p = p.get('foto_url')
+                if not foto_p or len(str(foto_p)) < 50:
+                    foto_p = AVATAR_PADRAO_SVG
+
+                # Coleta Galeria do Portfólio (portfolio_imgs ou f1..f10)
                 fotos_lista = p.get('portfolio_imgs', [])
                 if not fotos_lista:
                     for i in range(1, 11):
@@ -425,41 +575,64 @@ with menu_abas[0]:
                 fotos_html = ""
                 for img_item in fotos_lista[:6]:
                     src = img_item if str(img_item).startswith("data") else f"data:image/jpeg;base64,{img_item}"
-                    fotos_html += f'<div class="social-card" onclick="abrirModal(\'{src}\', \'{link_zap}\')"><img src="{src}"></div>'
+                    fotos_html += f'<div class="gallery-item" onclick="abrirModalInsta(\'{src}\', \'{link_zap}\')"><img src="{src}"></div>'
 
-                foto_p = p.get('foto_url') or "https://via.placeholder.com/150"
-
+                ring_class = "story-ring-elite" if is_elite else "story-ring"
+                
+                # Renderiza Card Estilo Rede Social
                 st.markdown(f"""
-                <div class="cartao-geral" style="--cor-borda: {cor_borda};">
-                    <div style="font-size: 11px; color: gray; margin-bottom: 8px;">
-                        📍 a {p['dist']:.1f} km de você {" | 🏆 DESTAQUE ELITE" if is_elite else ""}
-                    </div>
-                    <div class="perfil-row">
-                        <img src="{foto_p}" class="foto-perfil">
+                <div class="feed-card">
+                    <div class="feed-header">
+                        <div class="user-info-group">
+                            <div class="{ring_class}">
+                                <img src="{foto_p}" class="foto-avatar">
+                            </div>
+                            <div class="user-title-box">
+                                <h3>{p.get('nome','').upper()} {"☑️" if p.get('verificado') else ""}</h3>
+                                <span class="badge-cat">{p.get('area')}</span>
+                            </div>
+                        </div>
                         <div>
-                            <h4 style="margin:0; color:#1e3a8a;">{p.get('nome','').upper()} {"☑️" if p.get('verificado') else ""}</h4>
-                            <p style="margin:0; color:#666; font-size:12px;">{p.get('descricao','')[:110]}...</p>
+                            {"<span class='badge-elite'>⭐ DESTAQUE</span>" if is_elite else ""}
                         </div>
                     </div>
-                    {"<div class='social-track'>" + fotos_html + "</div>" if fotos_html else ""}
-                    <a href="{link_zap}" target="_blank" class="btn-zap-footer">💬 FALAR COM {p.get('nome','').split()[0].upper()}</a>
+
+                    <div style="font-size: 13.5px; color: #334155; line-height: 1.5; margin: 10px 0;">
+                        {p.get('descricao','')}
+                    </div>
+
+                    <!-- Pílulas Estilo Orkut (Confiável / Legal / Recomendado) -->
+                    <div class="orkut-pills">
+                        <span class="pill-orkut">📍 {p['dist']:.1f} km</span>
+                        <span class="pill-orkut pill-faisca">🔥 100% Confiável</span>
+                        <span class="pill-orkut">⭐ {p.get('rating', 5.0)}/5</span>
+                        <span class="pill-orkut">👀 {p.get('cliques', 0)} visitas</span>
+                    </div>
+
+                    {"<div class='insta-gallery'>" + fotos_html + "</div>" if fotos_html else ""}
+
+                    <a href="{link_zap}" target="_blank" class="btn-social-zap">
+                        💬 CHAMAR NO WHATSAPP AGORA
+                    </a>
                 </div>
                 """, unsafe_allow_html=True)
 
-                # Registra visualização/clique
+                # Incrementa visitas no banco
                 db.collection("profissionais").document(p['id']).update({"cliques": p.get('cliques', 0) + 1})
 
-            # Estrutura do Modal Expandido
+            # Estrutura do Modal Insta/Social em Tela Cheia
             st.markdown("""
-            <div id="meuModal" style="display:none; position:fixed; z-index:9999; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); align-items:center; justify-content:center; flex-direction:column;">
-                <span onclick="fecharModal()" style="position:absolute; top:20px; right:30px; color:white; font-size:40px; cursor:pointer;">&times;</span>
-                <img id="imgExpandida" style="max-width:90%; max-height:70%; border-radius:10px; border: 2px solid #fff;">
-                <a id="linkZapModal" href="#" target="_blank" style="margin-top:20px; background:#25D366; color:white; padding:15px 35px; border-radius:30px; text-decoration:none; font-weight:bold;">✅ CHAMAR NO WHATSAPP</a>
+            <div id="modalFeed" style="display:none; position:fixed; z-index:9999; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.92); align-items:center; justify-content:center; flex-direction:column; padding:15px;">
+                <span onclick="fecharModalInsta()" style="position:absolute; top:20px; right:30px; color:white; font-size:42px; cursor:pointer; font-weight:bold;">&times;</span>
+                <img id="imgModalBox" style="max-width:92%; max-height:72%; border-radius:16px; border: 3px solid #fff; object-fit:contain;">
+                <a id="linkZapModalFeed" href="#" target="_blank" style="margin-top:20px; background:#25D366; color:white; padding:16px 36px; border-radius:30px; text-decoration:none; font-weight:800; font-size:16px;">
+                    ✅ ENTRAR EM CONTATO PELO WHATSAPP
+                </a>
             </div>
             """, unsafe_allow_html=True)
 
 # ==============================================================================
-# ABA 2: CADASTRAR (NOVO REGISTRO / ENDEREÇO & GEOLOCALIZAÇÃO)
+# ABA 2: CADASTRAR (NOVO REGISTRO COM COMPRESSÃO PIL)
 # ==============================================================================
 with menu_abas[1]:
     st.markdown("### 🚀 Cadastro de Novo Parceiro")
@@ -475,18 +648,18 @@ with menu_abas[1]:
         categoria_input = col_id3.selectbox("Área Principal de Atuação", sorted(cats_dinamicas))
         senha_input = col_id4.text_input("Senha de Acesso ao Painel", type="password")
         
-        endereco_input = st.text_input("Endereço de Atendimento (Rua, Número, Bairro, Cidade)", placeholder="Ex: Av. Interlagos, 1000 - São Paulo")
-        descricao_input = st.text_area("Descrição detalhada dos serviços prestados")
+        endereco_input = st.text_input("Endereço de Atendimento (Rua, Bairro, Cidade)", placeholder="Ex: Av. Interlagos, 1000 - São Paulo")
+        descricao_input = st.text_area("Descrição detalhada dos seus serviços")
         
         col_t1, col_t2 = st.columns(2)
         tipo_input = col_t1.radio("Tipo de Perfil", ["👨‍🔧 Autônomo / Profissional", "🏢 Comércio / Loja"], horizontal=True)
-        foto_upload = col_t2.file_uploader("Foto de Perfil ou Logo", type=['jpg', 'jpeg', 'png'])
+        foto_upload = col_t2.file_uploader("Foto do Perfil (JPG ou PNG)", type=['jpg', 'jpeg', 'png'])
 
-        btn_finalizar = st.form_submit_button("✅ CONCLUIR CADASTRO", use_container_width=True)
+        btn_finalizar = st.form_submit_button("✅ CONCLUIR E ATIVAR PERFIL", use_container_width=True)
 
     if btn_finalizar:
         if not nome_input or not zap_input or not senha_input:
-            st.error("⚠️ Atenção: Nome, WhatsApp e Senha são obrigatórios!")
+            st.error("⚠️ Nome, WhatsApp e Senha são obrigatórios!")
         else:
             try:
                 zap_id = limpar_whatsapp(zap_input)
@@ -501,9 +674,11 @@ with menu_abas[1]:
                     if g_lat and g_lon:
                         lat_salvar, lon_salvar, end_oficial = g_lat, g_lon, g_end
 
+                # Compressão PIL da Foto de Perfil
                 foto_final = ""
                 if foto_upload:
-                    foto_final = f"data:image/png;base64,{converter_img_b64(foto_upload)}"
+                    b64_img = otimizar_e_converter_b64(foto_upload, max_largura=350, qualidade=70)
+                    foto_final = f"data:image/jpeg;base64,{b64_img}"
                 elif doc_existente.exists:
                     foto_final = doc_existente.to_dict().get("foto_url", "")
 
@@ -531,15 +706,15 @@ with menu_abas[1]:
 
                 doc_ref.set(novo_pro)
                 st.balloons()
-                st.success(f"🎉 Cadastro realizado com sucesso! Você possui {saldo_atual} moedas iniciais.")
+                st.success(f"🎉 Cadastro realizado com sucesso! Você recebeu {saldo_atual} moedas de bônus.")
             except Exception as e:
                 st.error(f"❌ Erro ao salvar cadastro: {e}")
 
 # ==============================================================================
-# ABA 3: MEU PERFIL (PAINEL DO PARCEIRO & GESTÃO)
+# ABA 3: MEU PERFIL (PAINEL DO PARCEIRO COM PIL EM FOTOS)
 # ==============================================================================
 with menu_abas[2]:
-    # Checagem de parâmetros de Auth Facebook
+    # Checagem Auth Facebook
     params = st.query_params
     if "uid" in params and not st.session_state.get('auth'):
         fb_uid = params["uid"]
@@ -548,7 +723,7 @@ with menu_abas[2]:
             doc = user_query[0]
             st.session_state.auth = True
             st.session_state.user_id = doc.id
-            st.success(f"✅ Autenticado via Facebook!")
+            st.success("✅ Autenticado via Facebook!")
             st.rerun()
 
     if 'auth' not in st.session_state: st.session_state.auth = False
@@ -560,7 +735,7 @@ with menu_abas[2]:
             link_auth = f"{HANDLER_URL}?apiKey={FIREBASE_API_KEY}&providerId=facebook.com"
             st.markdown(f"""
                 <a href="{link_auth}" target="_self" style="text-decoration: none;">
-                    <div style="background-color: #1877F2; color: white; padding: 12px; border-radius: 8px; text-align: center; font-weight: bold; margin-bottom: 15px;">
+                    <div style="background-color: #1877F2; color: white; padding: 12px; border-radius: 12px; text-align: center; font-weight: bold; margin-bottom: 15px;">
                         🔵 ENTRAR COM FACEBOOK
                     </div>
                 </a>
@@ -577,7 +752,7 @@ with menu_abas[2]:
                 st.session_state.auth, st.session_state.user_id = True, zap_format
                 st.rerun()
             else:
-                st.error("Credenciais inválidas. Verifique os dados.")
+                st.error("Credenciais inválidas. Verifique seus dados.")
     else:
         doc_ref = db.collection("profissionais").document(st.session_state.user_id)
         d = doc_ref.get().to_dict() or {}
@@ -585,82 +760,79 @@ with menu_abas[2]:
         st.write(f"### Olá, {d.get('nome', 'Parceiro')}!")
         
         m1, m2, m3 = st.columns(3)
-        m1.metric("Saldo 🪙", f"{d.get('saldo', 0)}")
-        m2.metric("Visualizações 🚀", f"{d.get('cliques', 0)}")
-        m3.metric("Status da Conta", "🟢 ATIVA" if d.get('aprovado') else "🟡 PENDENTE")
+        m1.metric("Saldo de Moedas 🪙", f"{d.get('saldo', 0)}")
+        m2.metric("Visitas ao Perfil 🚀", f"{d.get('cliques', 0)}")
+        m3.metric("Status no Sistema", "🟢 ATIVO" if d.get('aprovado') else "🟡 PENDENTE")
 
-        if st.button("📍 Atualizar Localização via GPS", use_container_width=True):
+        if st.button("📍 Atualizar Minha Localização via GPS", use_container_width=True):
             if get_geolocation:
                 loc = get_geolocation()
                 if loc and 'coords' in loc:
                     doc_ref.update({"lat": loc['coords']['latitude'], "lon": loc['coords']['longitude']})
-                    st.success("✅ Localização atualizada com sucesso!")
-                else: st.info("Sinal GPS pendente. Tente novamente.")
+                    st.success("✅ Localização GPS atualizada no banco!")
+                else: st.info("Buscando GPS...")
 
         st.divider()
 
-        with st.expander("💎 COMPRAR MOEDAS (PIX)"):
+        with st.expander("💎 ADQUIRIR MOEDAS E DESTAQUE (PIX)"):
             st.warning(f"Chave PIX Oficial: {PIX_OFICIAL}")
             c1, c2, c3 = st.columns(3)
             if c1.button("10 Moedas (R$ 10)"): st.code(PIX_OFICIAL)
             if c2.button("50 Moedas (R$ 45)"): st.code(PIX_OFICIAL)
             if c3.button("100 Moedas (R$ 80)"): st.code(PIX_OFICIAL)
-            st.link_button("📲 ENVIAR COMPROVANTE VIA WHATSAPP", f"https://wa.me/{ZAP_ADMIN}?text=Comprovante%20PIX%20do%20usuario%20{st.session_state.user_id}", use_container_width=True)
+            st.link_button("📲 ENVIAR COMPROVANTE WHATSAPP", f"https://api.whatsapp.com/send?phone={ZAP_ADMIN}&text=Comprovante%20PIX%20do%20usuario%20{st.session_state.user_id}", use_container_width=True)
 
-        with st.expander("📝 EDITAR PERFIL & VITRINE DE FOTOS", expanded=True):
+        with st.expander("📸 ATUALIZAR FOTOS E VITRINE SOCIAL", expanded=True):
             with st.form("form_edit_perfil"):
                 n_nome = st.text_input("Nome de Exibição", d.get('nome', ''))
                 
                 cats = buscar_opcoes_dinamicas("categorias", CATEGORIAS_OFICIAIS)
                 idx_cat = cats.index(d.get('area')) if d.get('area') in cats else 0
-                n_area = st.selectbox("Categoria", sorted(cats), index=idx_cat)
+                n_area = st.selectbox("Categoria Principal", sorted(cats), index=idx_cat)
 
-                n_desc = st.text_area("Descrição", d.get('descricao', ''))
+                n_desc = st.text_area("Descrição do Perfil / Serviços", d.get('descricao', ''))
                 
-                n_foto = st.file_uploader("Trocar Foto de Perfil", type=['jpg','png','jpeg'])
+                n_foto = st.file_uploader("Trocar Foto do Perfil", type=['jpg','png','jpeg'])
                 n_portfolio = st.file_uploader("Fotos do Portfólio / Vitrine (Até 4)", type=['jpg','png','jpeg'], accept_multiple_files=True)
 
                 if st.form_submit_button("SALVAR ALTERAÇÕES", use_container_width=True):
                     up = {"nome": n_nome, "area": n_area, "descricao": n_desc}
-                    if n_foto: up["foto_url"] = f"data:image/png;base64,{converter_img_b64(n_foto)}"
-                    if n_portfolio:
-                        up["portfolio_imgs"] = [f"data:image/png;base64,{converter_img_b64(f)}" for f in n_portfolio[:4]]
                     
+                    # Otimização PIL na atualização de perfil
+                    if n_foto:
+                        b64_p = otimizar_e_converter_b64(n_foto, max_largura=350, qualidade=70)
+                        up["foto_url"] = f"data:image/jpeg;base64,{b64_p}"
+                    
+                    if n_portfolio:
+                        port_imgs = []
+                        for f in n_portfolio[:4]:
+                            b64_port = otimizar_e_converter_b64(f, max_largura=600, qualidade=70)
+                            port_imgs.append(f"data:image/jpeg;base64,{b64_port}")
+                        up["portfolio_imgs"] = port_imgs
+
                     doc_ref.update(up)
-                    st.success("✅ Perfil atualizado!")
+                    st.success("✅ Perfil e galeria atualizados com sucesso!")
                     time.sleep(1)
                     st.rerun()
-
-        with st.expander("🔐 SEGURANÇA E ENCERRAMENTO"):
-            confirma_pw = st.text_input("Confirme sua senha para excluir a conta", type="password")
-            if st.button("❌ APAGAR MINHA CONTA", type="primary"):
-                if confirma_pw == d.get('senha'):
-                    doc_ref.delete()
-                    st.session_state.auth = False
-                    st.success("Conta removida.")
-                    st.rerun()
-                else:
-                    st.error("Senha incorreta!")
 
         if st.button("SAIR DA CONTA", use_container_width=True):
             st.session_state.auth = False
             st.rerun()
 
 # ==============================================================================
-# ABA 4: ADMIN / CENTRAL DE COMANDO SUPREMA
+# ABA 4: ADMIN / MASTER CONTROL
 # ==============================================================================
 with menu_abas[3]:
     st.markdown("## 👑 Terminal Master GeralJá")
     access_adm = st.text_input("Senha Master de Autoridade", type="password", key="auth_master")
 
     if access_adm == CHAVE_ADMIN:
-        st.success("🔓 Acesso Concedido.")
+        st.success("🔓 Painel Master Desbloqueado.")
         
         todos_profs_docs = list(db.collection("profissionais").stream())
         profs_data = [p.to_dict() | {"id": p.id} for p in todos_profs_docs]
         lista_pendentes = [p for p in profs_data if not p.get('aprovado')]
 
-        # Indicadores Globais
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("Total Parceiros", len(profs_data))
         c2.metric("Cliques Acumulados", sum(p.get('cliques', 0) for p in profs_data))
@@ -669,12 +841,12 @@ with menu_abas[3]:
 
         st.divider()
 
-        t_gestao, t_aprova, t_expand, t_seguranca, t_feed = st.tabs([
-            "👥 MEMBROS", "🆕 FILA DE APROVAÇÃO", "⚙️ EXPANSÃO", "🛡️ SEGURANÇA IA", "📩 FEEDBACKS"
+        t_gestao, t_aprova, t_expand, t_seguranca = st.tabs([
+            "👥 PARCEIROS", "🆕 FILA DE APROVAÇÃO", "⚙️ CATEGORIAS", "🛡️ SEGURANÇA IA"
         ])
 
         with t_gestao:
-            busca_p = st.text_input("🔍 Localizar por Nome ou Telefone", placeholder="Digite o nome...")
+            busca_p = st.text_input("🔍 Localizar por Nome ou Telefone", placeholder="Digite para filtrar...")
             for p in profs_data:
                 pid = p['id']
                 nome_p = p.get('nome', 'Sem Nome').upper()
@@ -689,7 +861,7 @@ with menu_abas[3]:
                             st.write(f"**Senha:** `{p.get('senha')}`")
                             
                             is_ver = p.get('verificado', False)
-                            if st.button(f"{'⚪ REMOVER SELO ELITE' if is_ver else '🌟 DAR SELO ELITE'}", key=f"v_{pid}"):
+                            if st.button(f"{'⚪ REMOVER SELO ELITE' if is_ver else '🌟 CONCEDER SELO ELITE'}", key=f"v_{pid}"):
                                 db.collection("profissionais").document(pid).update({"verificado": not is_ver})
                                 st.rerun()
 
@@ -703,37 +875,36 @@ with menu_abas[3]:
                                 db.collection("profissionais").document(pid).update({"saldo": max(0, p.get('saldo', 0) - val_m)})
                                 st.rerun()
 
-                            if st.button("🗑️ BANIR/REMOVER", key=f"del_{pid}", type="primary"):
+                            if st.button("🗑️ BANIR PERFIL", key=f"del_{pid}", type="primary"):
                                 db.collection("profissionais").document(pid).delete()
                                 st.rerun()
 
         with t_aprova:
             if not lista_pendentes:
-                st.info("Nenhum cadastro pendente no momento.")
+                st.info("Nenhum cadastro pendente de aprovação.")
             else:
                 for p in lista_pendentes:
                     pid = p['id']
                     st.warning(f"PENDENTE: {p.get('nome')} | {p.get('area')} | Tel: {pid}")
-                    if st.button(f"✅ APROVAR PERFIL", key=f"ok_{pid}"):
+                    if st.button("✅ APROVAR PERFIL", key=f"ok_{pid}"):
                         db.collection("profissionais").document(pid).update({"aprovado": True})
-                        st.success("Aprovado!")
+                        st.success("Aprovado com sucesso!")
                         st.rerun()
 
         with t_expand:
-            st.write("**Adicionar Categorias Dinâmicas no Banco**")
-            n_cat_nova = st.text_input("Nova Categoria/Profissão")
-            if st.button("➕ Salvar Categoria"):
+            n_cat_nova = st.text_input("Nova Categoria Profissional")
+            if st.button("➕ Adicionar Categoria"):
                 if n_cat_nova:
                     cats_atuais = buscar_opcoes_dinamicas("categorias", CATEGORIAS_OFICIAIS)
                     if n_cat_nova not in cats_atuais:
                         cats_atuais.append(n_cat_nova)
                         db.collection("configuracoes").document("categorias").set({"lista": cats_atuais})
-                        st.success(f"Categoria '{n_cat_nova}' adicionada!")
+                        st.success(f"Categoria '{n_cat_nova}' adicionada com sucesso!")
                         time.sleep(1)
                         st.rerun()
 
         with t_seguranca:
-            st.markdown("#### 🛡️ Módulo de Auto-Cura e Proteção")
+            st.markdown("#### 🛡️ Varredura e Correção do Banco")
             col_s1, col_s2 = st.columns(2)
             if col_s1.button("🔍 SCANNER DE SCRIPTS/INJEÇÃO", use_container_width=True):
                 r_scripts = scan_virus_e_scripts()
@@ -743,27 +914,16 @@ with menu_abas[3]:
                 r_cura = guardia_escanear_e_corrigir()
                 for c in r_cura: st.write(c)
 
-        with t_feed:
-            feedbacks = list(db.collection("feedbacks").stream())
-            if feedbacks:
-                for f in feedbacks:
-                    fb = f.to_dict()
-                    st.info(f"⭐ Nota {fb.get('nota', 5)}/5: {fb.get('comentario', 'Sem comentário')}")
-            else:
-                st.write("Nenhum feedback registrado ainda.")
-
     elif access_adm != "":
         st.error("🚨 Senha Incorreta!")
 
 # ==============================================================================
-# ABA 5: FEEDBACK DO USUÁRIO
+# ABA 5: FEEDBACK
 # ==============================================================================
 with menu_abas[4]:
-    st.header("⭐ Avalie o GeralJá")
-    st.write("Sua opinião nos ajuda a evoluir nossa plataforma.")
-    
-    nota_usr = st.slider("Nota para o sistema", 1, 5, 5)
-    comentario_usr = st.text_area("Comentários ou sugestões")
+    st.header("⭐ Avalie a Experiência no GeralJá")
+    nota_usr = st.slider("Qual nota você dá para o GeralJá?", 1, 5, 5)
+    comentario_usr = st.text_area("Deixe seu comentário ou sugestão")
     
     if st.button("Enviar Avaliação", type="primary"):
         db.collection("feedbacks").add({
@@ -778,8 +938,7 @@ with menu_abas[4]:
 # ==============================================================================
 if "📊 FINANCEIRO" in lista_abas and len(menu_abas) > 5:
     with menu_abas[5]:
-        st.header("📊 Resumo Financeiro da Rede")
-        st.write("Métricas de moedas e tráfego de cliques.")
+        st.header("📊 Painel Financeiro e Tráfego")
         profs_all = list(db.collection("profissionais").stream())
         df_fin = pd.DataFrame([p.to_dict() for p in profs_all])
         if not df_fin.empty:
