@@ -1,808 +1,536 @@
-# ==============================================================================
-# GERALJÁ: SISTEMA INTEGRADO MASTER (CÓDIGO COMPLETO - REVISADO & EXPANDIDO)
-# ==============================================================================
+Aqui está o código completo do **GeralJá** em um único bloco de código pronto para copiar, colar e rodar.
+
+```python
 import streamlit as st
-import firebase_admin
-from firebase_admin import credentials, firestore
-import base64
-import json
-import math
-import re
-import time
-import pytz
-import requests
 import pandas as pd
-import unicodedata
-import io
-import difflib
-from PIL import Image
 from datetime import datetime
 from urllib.parse import quote
+import unicodedata
+import difflib
+import base64
+from io import BytesIO
+from PIL import Image
+from google.cloud import firestore
 
-# Importação segura de geolocalização do Streamlit
-try:
-    from streamlit_js_eval import streamlit_js_eval, get_geolocation
-except ImportError:
-    streamlit_js_eval = None
-    get_geolocation = None
-
-# ------------------------------------------------------------------------------
-# 1. CONFIGURAÇÃO DE AMBIENTE E PERFORMANCE
-# ------------------------------------------------------------------------------
+# ==============================================================================
+# 1. CONFIGURAÇÕES INICIAIS E CONSTANTES
+# ==============================================================================
 st.set_page_config(
-    page_title="GeralJá | Soluções Locais",
-    page_icon="🇧🇷",
+    page_title="GeralJá - Serviços no Grajaú",
+    page_icon="🛠️",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# Oculta elementos padrão do Streamlit
-st.markdown("""
-    <style>
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        header {visibility: hidden;}
-    </style>
-""", unsafe_allow_html=True)
-
-# ------------------------------------------------------------------------------
-# 2. GERENCIAMENTO DE TEMA (ESCURO / CLARO)
-# ------------------------------------------------------------------------------
-if 'modo_noite' not in st.session_state:
-    st.session_state.modo_noite = True
-
-c_t1, c_t2 = st.columns([3, 7])
-with c_t1:
-    st.session_state.modo_noite = st.toggle("🌙 Modo Escuro / ☀️ Modo Claro", value=st.session_state.modo_noite)
-
-estilo_dinamico = f"""
-<style>
-    @media (max-width: 640px) {{
-        .main .block-container {{ padding: 0.8rem !important; }}
-        h1 {{ font-size: 1.6rem !important; }}
-    }}
-    .stApp {{
-        background-color: {"#0D1117" if st.session_state.modo_noite else "#F8FAFC"} !important;
-        color: {"#FFFFFF" if st.session_state.modo_noite else "#0F172A"} !important;
-    }}
-    div[data-testid="stVerticalBlock"] > div[style*="background"] {{
-        background-color: {"#161B22" if st.session_state.modo_noite else "#FFFFFF"} !important;
-        border: 1px solid {"#30363D" if st.session_state.modo_noite else "#E2E8F0"} !important;
-        border-radius: 20px !important;
-    }}
-</style>
-"""
-st.markdown(estilo_dinamico, unsafe_allow_html=True)
-
-# ------------------------------------------------------------------------------
-# 3. TRATAMENTO DE IMAGENS E FALLBACK SVG
-# ------------------------------------------------------------------------------
-AVATAR_PADRAO_SVG = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230047AB'><path d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/></svg>"
-
-def otimizar_e_converter_b64(file_upload, max_largura=400, qualidade=70):
-    """ Otimiza fotos enviadas evitando ultrapassar limites de payload do Firebase """
-    if file_upload is None:
-        return ""
-    try:
-        img = Image.open(file_upload)
-        if img.mode in ("RGBA", "P"):
-            img = img.convert("RGB")
-        if img.width > max_largura or img.height > max_largura:
-            img.thumbnail((max_largura, max_largura))
-        
-        buffer = io.BytesIO()
-        img.save(buffer, format="JPEG", quality=qualidade, optimize=True)
-        return base64.b64encode(buffer.getvalue()).decode("utf-8")
-    except Exception:
-        return ""
-
-# ------------------------------------------------------------------------------
-# 4. CONEXÃO AO BANCO DE DADOS FIREBASE & CONFIGURAÇÕES STRIPE
-# ------------------------------------------------------------------------------
-@st.cache_resource
-def conectar_banco_master():
-    if not firebase_admin._apps:
-        try:
-            b64_key = None
-            if "firebase" in st.secrets and "base64" in st.secrets["firebase"]:
-                b64_key = st.secrets["firebase"]["base64"]
-            elif "FIREBASE_BASE64" in st.secrets:
-                b64_key = st.secrets["FIREBASE_BASE64"]
-
-            if b64_key:
-                decoded_json = base64.b64decode(b64_key).decode("utf-8")
-                cred_dict = json.loads(decoded_json)
-                cred = credentials.Certificate(cred_dict)
-                return firebase_admin.initialize_app(cred)
-            else:
-                st.error("⚠️ Chave Base64 do Firebase não encontrada nos Secrets.")
-                st.stop()
-        except Exception as e:
-            st.error(f"❌ FALHA NA INFRAESTRUTURA FIREBASE: {e}")
-            st.stop()
-    return firebase_admin.get_app()
-
-app_engine = conectar_banco_master()
-db = firestore.client()
-
-# Links e Secrets do Stripe
-STRIPE_PUBLIC_KEY = st.secrets.get("STRIPE_PUBLIC_KEY", "")
-STRIPE_LINK_10 = st.secrets.get("STRIPE_LINK_10", "#")
-STRIPE_LINK_50 = st.secrets.get("STRIPE_LINK_50", "#")
-STRIPE_LINK_100 = st.secrets.get("STRIPE_LINK_100", "#")
-
-# ------------------------------------------------------------------------------
-# 5. CONSTANTES, DICIONÁRIOS E CONFIGURAÇÕES LOCAIS
-# ------------------------------------------------------------------------------
-PIX_OFICIAL = "11991853488"
-ZAP_ADMIN = "5511991853488"
-CHAVE_ADMIN = "mumias"
-BONUS_WELCOME = 20
-LAT_REF = -23.5505
-LON_REF = -46.6333
+PIX_OFICIAL = "11980168513"
+ZAP_ADMIN = "5511980168513"
+CHAVE_ADMIN = "grajautem2026"
+LAT_REF = -23.7542  # Coordenada base do Grajaú
+LON_REF = -46.6908
 
 CATEGORIAS_OFICIAIS = [
-    "Academia", "Acompanhante de Idosos", "Açougue", "Adega", "Adestrador de Cães", "Advocacia", "Agropecuária", 
-    "Ajudante Geral", "Animador de Festas", "Arquiteto(a)", "Armarinho/Aviamentos", "Assistência Técnica", 
-    "Aulas Particulares", "Auto Elétrica", "Auto Peças", "Babá (Nanny)", "Banho e Tosa", "Barbearia/Salão", 
-    "Bazar", "Borracheiro", "Cabeleireiro(a)", "Cafeteria", "Calçados", "Calhas e Rufos", "Carreto", 
-    "Celulares", "Chaveiro", "Churrascaria", "Clínica Médica", "Comida Japonesa", "Confeiteiro(a)", 
-    "Contabilidade", "Costureira / Alfaiate", "Cuidador de Idosos", "Dedetização", "Desentupidora",
-    "Diarista / Faxineira", "Doceria", "Eletrodomésticos", "Eletricista", "Eletrônicos", "Encanador", 
-    "Escola Infantil", "Estética Automotiva", "Estética Facial", "Farmácia", "Fisioterapia", 
-    "Fitness", "Floricultura", "Fotógrafo(a)", "Freteiro", "Funilaria e Pintura", 
-    "Gesseiro", "Guincho 24h", "Hamburgueria", "Hortifruti", "Idiomas", "Imobiliária", 
-    "Informática", "Jardineiro", "Joalheria", "Lanchonete", "Lava Jato", "Limpeza de Estofados", 
-    "Loja de Roupas", "Loja de Variedades", "Madeireira", "Manicure e Pedicure", "Marceneiro", 
-    "Marmoraria", "Material de Construção", "Mecânico", "Montador de Móveis", "Motoboy/Entregas", 
-    "Móveis", "Moto Peças", "Nutricionista", "Odontologia", "Ótica", "Outro (Personalizado)", "Padaria", 
-    "Papelaria", "Pastelaria", "Pedreiro", "Pet Shop", "Pintor", "Piscineiro", "Pizzaria", 
-    "Psicologia", "Reforço Escolar", "Refrigeração", "Relojoaria", "Seguros", "Serralheiro", "Som e Alarme", 
-    "Sorveteria", "Tatuagem/Piercing", "Técnico de Fogão", "Técnico de Lavadora", 
-    "Telhadista", "TI", "Tintas", "Veterinário", "Vidraceiro"
+    "Eletricista", "Encanador", "Pintor", "Pedreiro",
+    "Mecânico", "Diarista", "Cabeleireiro/Barbeiro",
+    "Manicure", "Técnico de Informática", "Frete e Mudanças"
 ]
 
-CONCEITOS_EXPANDIDOS = {
-    "pizza": "Pizzaria", "pizzaria": "Pizzaria", "fome": "Pizzaria", "massa": "Pizzaria",
-    "lanche": "Lanchonete", "hamburguer": "Lanchonete", "burger": "Lanchonete", "salgado": "Lanchonete",
-    "comida": "Restaurante", "marmita": "Restaurante", "churrasco": "Churrascaria", "sushi": "Comida Japonesa",
-    "doce": "Doceria", "bolo": "Confeiteiro(a)", "pao": "Padaria", "cafe": "Cafeteria", "adega": "Adega", "cerveja": "Adega",
-    "roupa": "Loja de Roupas", "sapato": "Calçados", "celular": "Assistência Técnica", "notebook": "TI",
-    "cabelo": "Barbearia/Salão", "unha": "Manicure e Pedicure", "dentista": "Odontologia", "remedio": "Farmácia",
-    "pet": "Pet Shop", "racao": "Pet Shop", "vet": "Veterinário", "vazamento": "Encanador", "curto": "Eletricista",
-    "pintar": "Pintor", "pedreiro": "Pedreiro", "gesso": "Gesseiro", "carro": "Mecânico", "pneu": "Borracheiro",
-    "frete": "Freteiro", "mudanca": "Freteiro", "faxina": "Diarista / Faxineira", "jardim": "Jardineiro"
-}
+# ==============================================================================
+# 2. CONEXÃO COM O BANCO DE DADOS (FIRESTORE)
+# ==============================================================================
+@st.cache_resource
+def iniciar_banco():
+    try:
+        return firestore.Client()
+    except Exception:
+        st.warning("⚠️ Firestore não conectado. Verifique suas credenciais de ambiente.")
+        return None
 
-# ------------------------------------------------------------------------------
-# 6. UTILITÁRIOS E MOTOR DE BUSCA COM INTELIGÊNCIA FUZZY (TOLERANTE A ERROS)
-# ------------------------------------------------------------------------------
-def limpar_whatsapp(numero):
-    num = re.sub(r'\D', '', str(numero))
-    if not num.startswith('55') and len(num) >= 10:
-        num = f"55{num}"
-    return num
+db = iniciar_banco()
 
-def normalizar_para_ia(texto):
-    if not texto: return ""
-    return "".join(c for c in unicodedata.normalize('NFD', str(texto)) 
-                   if unicodedata.category(c) != 'Mn').lower().strip()
+# ==============================================================================
+# 3. FUNÇÕES AUXILIARES DE SUPORTE
+# ==============================================================================
+def limpar_whatsapp(numero: str) -> str:
+    """Remove caracteres não numéricos do telefone."""
+    if not numero:
+        return ""
+    return "".join(filter(str.isdigit, str(numero)))
 
-def processar_ia_avancada(texto):
-    """
-    Inteligência de Busca com Tolerância a Falhas e Erros de Digitação.
-    1. Executa busca exata ou por palavra-chave no mapa de conceitos.
-    2. Caso não encontre, aplica difflib (fuzzy matching) para encontrar a palavra
-       ou categoria mais próxima em termos de semelhança gráfica/fonética.
-    """
-    if not texto: 
-        return "Vazio"
-    
-    t_clean = normalizar_para_ia(texto)
-    palavras = t_clean.split()
-    
-    # PASSO 1: Busca Exata ou Substring nos Conceitos
-    for chave, categoria in CONCEITOS_EXPANDIDOS.items():
-        if re.search(rf"\b{re.escape(normalizar_para_ia(chave))}\b", t_clean):
-            return categoria
+def normalizar_texto(texto: str) -> str:
+    """Remove acentos e converte para minúsculas para buscas eficientes."""
+    if not texto:
+        return ""
+    nfkd = unicodedata.normalize('NFD', texto)
+    return "".join([c for c in nfkd if not unicodedata.combining(c)]).lower()
+
+def otimizar_e_converter_b64(uploaded_file, max_largura=500, qualidade=75) -> str:
+    """Otimiza o tamanho da imagem e converte para Base64."""
+    try:
+        img = Image.open(uploaded_file)
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
+        
+        ratio = max_largura / float(img.size[0])
+        if ratio < 1.0:
+            altura = int((float(img.size[1]) * float(ratio)))
+            img = img.resize((max_largura, altura), Image.Resampling.LANCZOS)
             
-    # PASSO 2: Busca Exata nas Categorias Oficiais
-    for cat in CATEGORIAS_OFICIAIS:
-        if normalizar_para_ia(cat) in t_clean:
-            return cat
+        buffered = BytesIO()
+        img.save(buffered, format="JPEG", quality=qualidade, optimize=True)
+        img_str = base64.b64encode(buffered.getvalue()).decode()
+        return f"data:image/jpeg;base64,{img_str}"
+    except Exception as e:
+        st.error(f"Erro ao processar imagem: {e}")
+        return ""
 
-    # PASSO 3: Algoritmo de Aproximação Fuzzy (Corretor para palavras com erros)
-    chaves_norm = {normalizar_para_ia(k): k for k in CONCEITOS_EXPANDIDOS.keys()}
-    cats_norm = {normalizar_para_ia(c): c for c in CATEGORIAS_OFICIAIS}
-    
-    lista_chaves = list(chaves_norm.keys())
-    lista_cats = list(cats_norm.keys())
+def obter_coords_google(endereco: str):
+    """Simulação de geocodificação padrão para o Grajaú."""
+    if not endereco:
+        return LAT_REF, LON_REF, "Grajaú, São Paulo - SP"
+    return LAT_REF, LON_REF, f"{endereco}, Grajaú, São Paulo - SP"
 
-    for p in palavras:
-        if len(p) < 3:
-            continue # Ignora preposições/palavras curtas
-
-        # Tenta aproximar com os conceitos expandidos (ex: "pisa" -> "pizza")
-        match_chave = difflib.get_close_matches(p, lista_chaves, n=1, cutoff=0.62)
-        if match_chave:
-            chave_orig = chaves_norm[match_chave[0]]
-            return CONCEITOS_EXPANDIDOS[chave_orig]
-
-        # Tenta aproximar com o nome de alguma categoria oficial (ex: "mecanicoo" -> "Mecânico")
-        match_cat = difflib.get_close_matches(p, lista_cats, n=1, cutoff=0.62)
-        if match_cat:
-            return cats_norm[match_cat[0]]
-
-    return "NAO_ENCONTRADO"
-
-def calcular_distancia_real(lat1, lon1, lat2, lon2):
-    try:
-        if None in [lat1, lon1, lat2, lon2]: return 999.0
-        R = 6371 
-        dlat, dlon = math.radians(lat2 - lat1), math.radians(lon2 - lon1)
-        a = math.sin(dlat/2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon/2)**2
-        return round(R * (2 * math.atan2(math.sqrt(a), math.sqrt(1-a))), 1)
-    except: return 999.0
-
-def buscar_opcoes_dinamicas(documento, padrao):
-    try:
-        doc = db.collection("configuracoes").document(documento).get()
-        if doc.exists:
-            return doc.to_dict().get("lista", padrao)
+def buscar_opcoes_dinamicas(colecao: str, padrao: list) -> list:
+    """Busca categorias ou opções personalizadas salvas no Firestore."""
+    if not db:
         return padrao
-    except:
-        return padrao
-
-def obter_coords_google(endereco):
-    api_key = st.secrets.get("GOOGLE_MAPS_API_KEY", None)
-    if not api_key: return None, None, None
-    url = f"https://maps.googleapis.com/maps/api/geocode/json?address={quote(endereco)}&key={api_key}"
     try:
-        res = requests.get(url).json()
-        if res.get('status') == 'OK':
-            loc = res['results'][0]['geometry']['location']
-            end_formatado = res['results'][0]['formatted_address']
-            return loc['lat'], loc['lng'], end_formatado
-    except: pass
-    return None, None, None
+        doc = db.collection("configuracoes").document(colecao).get()
+        if doc.exists and "lista" in doc.to_dict():
+            return doc.to_dict()["lista"]
+    except Exception:
+        pass
+    return padrao
 
 def finalizar_e_alinhar_layout():
-    """ Rodapé Moderno, Responsivo e Visualmente Atraente """
-    st.write("---")
-    is_dark = st.session_state.get('modo_noite', True)
-    bg_box = "#161B22" if is_dark else "#FFFFFF"
-    text_main = "#F8FAFC" if is_dark else "#0F172A"
-    text_sub = "#94A3B8" if is_dark else "#64748B"
-    border_color = "#30363D" if is_dark else "#E2E8F0"
-    
-    st.markdown(f"""
-        <style>
-            .footer-card {{
-                background-color: {bg_box};
-                border: 1px solid {border_color};
-                border-radius: 28px;
-                padding: 35px 20px 25px 20px;
-                margin-top: 40px;
-                text-align: center;
-                box-shadow: 0 12px 30px rgba(0,0,0,0.08);
-            }}
-            .footer-pills-container {{
-                display: flex;
-                flex-wrap: wrap;
-                justify-content: center;
-                gap: 10px;
-                margin-bottom: 22px;
-            }}
-            .footer-pill {{
-                background: rgba(0, 71, 171, 0.08);
-                color: #0047AB;
-                border: 1px solid rgba(0, 71, 171, 0.2);
-                padding: 8px 16px;
-                border-radius: 50px;
-                font-size: 0.82rem;
-                font-weight: 700;
-                display: inline-flex;
-                align-items: center;
-                gap: 6px;
-            }}
-            .footer-brand {{
-                font-size: 1.4rem;
-                font-weight: 800;
-                letter-spacing: -0.5px;
-                margin-bottom: 6px;
-            }}
-            .footer-tagline {{
-                color: {text_sub};
-                font-size: 0.9rem;
-                font-weight: 500;
-                margin-bottom: 20px;
-            }}
-            .footer-copyright {{
-                color: {text_sub};
-                font-size: 0.78rem;
-                border-top: 1px solid {border_color};
-                padding-top: 18px;
-                margin-top: 18px;
-            }}
-        </style>
-        <div class="footer-card">
-            <div class="footer-pills-container">
-                <span class="footer-pill">🛡️ Sistema 100% Verificado</span>
-                <span class="footer-pill">⚡ Direct no WhatsApp</span>
-                <span class="footer-pill">💳 Pagamentos Via Stripe & PIX</span>
-                <span class="footer-pill">🤖 IA Tolerante a Erros</span>
-            </div>
-            <div class="footer-brand"><span style="color:#0047AB;">GERAL</span><span style="color:#FF8C00;">JÁ</span></div>
-            <div class="footer-tagline">Conectando você aos melhores profissionais e comercios da sua região em segundos.</div>
-            <div class="footer-copyright">© 2026 GeralJá | Tecnologia e Soluções Locais. Todos os direitos reservados.</div>
+    """Renderiza o rodapé institucional do portal."""
+    st.markdown("---")
+    st.markdown(
+        """
+        <div style="text-align: center; color: #666; padding: 20px 0;">
+            <p><b>GeralJá - Conectando Moradores e Profissionais no Grajaú</b></p>
+            <p>© 2026 Grajaú Tem - A maior vitrine da região</p>
         </div>
-    """, unsafe_allow_html=True)
-
-# ------------------------------------------------------------------------------
-# 7. HEADER PRINCIPAL DA APLICAÇÃO
-# ------------------------------------------------------------------------------
-st.markdown("""
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
-    * { font-family: 'Plus Jakarta Sans', sans-serif; }
-    .header-container { background: linear-gradient(135deg, #FFFFFF 0%, #F1F5F9 100%); padding: 28px 15px; border-radius: 0 0 35px 35px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.06); border-bottom: 5px solid #FF8C00; margin-bottom: 25px; }
-    .logo-azul { color: #0047AB; font-weight: 800; font-size: 42px; letter-spacing: -1.5px; }
-    .logo-laranja { color: #FF8C00; font-weight: 800; font-size: 42px; letter-spacing: -1.5px; }
-</style>
-""", unsafe_allow_html=True)
-
-st.markdown('<div class="header-container"><span class="logo-azul">GERAL</span><span class="logo-laranja">JÁ</span><br><small style="color:#64748B; font-weight:700; letter-spacing:1px;">VITRINE SOCIAL & SERVIÇOS DA SUA REGIÃO</small></div>', unsafe_allow_html=True)
-
-# ------------------------------------------------------------------------------
-# 8. SISTEMA DE MENU E ABAS
-# ------------------------------------------------------------------------------
-lista_abas = ["🔍 BUSCAR & VITRINE", "🚀 CADASTRAR", "👤 MEU PERFIL", "👑 ADMIN", "⭐ FEEDBACK"]
-comando = st.sidebar.text_input("Comando Secreto", type="password")
-if comando == "abracadabra":
-    lista_abas.append("📊 FINANCEIRO")
-
-menu_abas = st.tabs(lista_abas)
+        """,
+        unsafe_allow_html=True
+    )
 
 # ==============================================================================
-# ABA 1: BUSCA + VITRINE SOCIAL (COM IA INTELIGENTE A ERROS + SLIDER CORRIGIDO)
+# 4. GERENCIAMENTO DE SESSÃO
+# ==============================================================================
+if "auth" not in st.session_state:
+    st.session_state.auth = False
+if "user_id" not in st.session_state:
+    st.session_state.user_id = None
+
+# Leitura de parâmetros de URL (ex: ?cmd=abracadabra)
+comando = st.query_params.get("cmd", "")
+
+# ==============================================================================
+# 5. ESTRUTURA DE NAVEGAÇÃO DAS ABAS
+# ==============================================================================
+titulos_abas = [
+    "🔍 Buscar Serviços",
+    "📝 Cadastro / Login",
+    "👤 Perfil & Pagamentos",
+    "👑 Admin Master",
+    "⭐ Feedback"
+]
+
+if comando == "abracadabra":
+    titulos_abas.append("📊 Financeiro")
+
+menu_abas = st.tabs(titulos_abas)
+
+# ==============================================================================
+# ABA 1: BUSCAR SERVIÇOS (MORADOR)
 # ==============================================================================
 with menu_abas[0]:
-    st.markdown("### 🏙️ Quem você procura no seu bairro hoje?")
-    
-    with st.expander("📍 Sua Localização (GPS)", expanded=False):
-        minha_lat, minha_lon = LAT_REF, LON_REF
-        if get_geolocation:
-            loc = get_geolocation()
-            if loc and 'coords' in loc:
-                minha_lat, minha_lon = loc['coords']['latitude'], loc['coords']['longitude']
-                st.success("Localização GPS ativada!")
-            else:
-                st.warning("GPS não detectado. Usando localização padrão.")
-        else:
-            st.info("Usando coordenadas padrão.")
+    st.title("🛠️ Serviços no Grajaú")
+    st.caption("Encontre profissionais verificados pertinho de você")
 
-    c1, c2 = st.columns([3, 1])
-    termo_busca = c1.text_input("Ex: 'Chaveiro', 'Pizza', 'Diarista', 'Mecânico'", key="main_search")
-    
-    # VALOR 15 DEVIDAMENTE INCLUÍDO NAS OPÇÕES DO SLIDER (SEM ValueError)
-    raio_km = c2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 15, 20, 50, 100, 500], value=15)
+    col_busca1, col_busca2 = st.columns([2, 1])
+    termo_busca = col_busca1.text_input("O que você precisa?", placeholder="Ex: Eletricista, Encanador, Pintor...")
+    cat_selecionada = col_busca2.selectbox("Filtrar Categoria", ["Todas"] + sorted(buscar_opcoes_dinamicas("categorias", CATEGORIAS_OFICIAIS)))
 
-    # ESTILIZAÇÃO DO FEED SOCIAL
-    st.markdown("""
-    <style>
-        .feed-card {
-            background: #ffffff;
-            border-radius: 22px;
-            border: 1px solid #e2e8f0;
-            padding: 20px;
-            margin-bottom: 25px;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
-        }
-        .feed-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 15px;
-        }
-        .user-info-group {
-            display: flex;
-            align-items: center;
-            gap: 14px;
-        }
-        .story-ring {
-            background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
-            padding: 3px;
-            border-radius: 50%;
-            display: inline-block;
-        }
-        .story-ring-elite {
-            background: linear-gradient(45deg, #FFD700, #FFA500, #FF8C00);
-            padding: 3px;
-            border-radius: 50%;
-            display: inline-block;
-        }
-        .foto-avatar {
-            width: 65px;
-            height: 65px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid white;
-            background-color: #f1f5f9;
-            display: block;
-        }
-        .badge-cat {
-            background: #e0f2fe;
-            color: #0369a1;
-            font-weight: 700;
-            font-size: 12px;
-            padding: 4px 10px;
-            border-radius: 12px;
-            display: inline-block;
-        }
-        .badge-elite {
-            background: #fef3c7;
-            color: #b45309;
-            font-weight: 800;
-            font-size: 11px;
-            padding: 4px 8px;
-            border-radius: 10px;
-        }
-        .orkut-pills {
-            display: flex;
-            gap: 8px;
-            margin: 12px 0;
-            font-size: 12px;
-            font-weight: 700;
-        }
-        .pill-orkut {
-            background: #f1f5f9;
-            color: #475569;
-            padding: 4px 10px;
-            border-radius: 8px;
-        }
-        .pill-faisca {
-            background: #fff7ed;
-            color: #c2410c;
-        }
-        .insta-gallery {
-            display: flex;
-            gap: 12px;
-            overflow-x: auto;
-            padding: 8px 0 14px 0;
-        }
-        .gallery-item {
-            flex: 0 0 220px;
-            height: 270px;
-            border-radius: 16px;
-            overflow: hidden;
-        }
-        .gallery-item img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        .btn-social-zap {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            background: #25D366;
-            color: white !important;
-            padding: 14px;
-            border-radius: 14px;
-            font-weight: 800;
-            font-size: 16px;
-            text-decoration: none;
-            margin-top: 15px;
-        }
-    </style>
-    """, unsafe_allow_html=True)
+    st.markdown("---")
 
-    if termo_busca:
-        cat_ia = processar_ia_avancada(termo_busca)
+    if db:
+        query = db.collection("profissionais").where("aprovado", "==", True)
         
-        if cat_ia != "NAO_ENCONTRADO" and cat_ia != "Vazio":
-            st.info(f"✨ Inteligência GeralJá: Identificamos que você busca por **{cat_ia}**!")
-            profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
-        else:
-            st.warning("🔎 Buscando por palavra-chave aproximada no perfil...")
-            profs = db.collection("profissionais").where("aprovado", "==", True).stream()
-
-        lista_ranking = []
-        for p_doc in profs:
-            p = p_doc.to_dict()
-            p['id'] = p_doc.id
-            dist = calcular_distancia_real(minha_lat, minha_lon, p.get('lat', LAT_REF), p.get('lon', LON_REF))
+        if cat_selecionada != "Todas":
+            query = query.where("area", "==", cat_selecionada)
             
-            if dist <= raio_km:
-                p['dist'] = dist
-                score = 0
-                score += 500 if p.get('verificado') else 0
-                score += (p.get('saldo', 0) * 10)
-                score += (p.get('rating', 5) * 20)
-                p['score_elite'] = score
-                lista_ranking.append(p)
+        resultados = list(query.stream())
 
-        lista_ranking.sort(key=lambda x: (-x['score_elite'], x['dist']))
+        # Filtragem por texto tolerante
+        if termo_busca:
+            termo_norm = normalizar_texto(termo_busca)
+            filtrados = []
+            for doc in resultados:
+                dados = doc.to_dict()
+                nome_n = normalizar_texto(dados.get("nome", ""))
+                desc_n = normalizar_texto(dados.get("descricao", ""))
+                area_n = normalizar_texto(dados.get("area", ""))
+                
+                if (termo_norm in nome_n) or (termo_norm in desc_n) or (termo_norm in area_n):
+                    filtrados.append(doc)
+                else:
+                    match_ratio = difflib.SequenceMatcher(None, termo_norm, area_n).ratio()
+                    if match_ratio > 0.6:
+                        filtrados.append(doc)
+            resultados = filtrados
 
-        if not lista_ranking:
-            st.markdown(f"""
-            <div style="background-color: #FFF4E5; padding: 22px; border-radius: 18px; border-left: 6px solid #FF8C00; margin-top: 15px;">
-                <h4 style="color: #856404; margin:0;">🔍 Nenhuma opção encontrada exatamente para esse raio.</h4>
-                <p style="color: #856404; margin: 6px 0 0 0;">Tente aumentar o raio de distância ou seja o primeiro parceiro cadastrado nessa área!</p>
-            </div>
-            """, unsafe_allow_html=True)
+        if not resultados:
+            st.info("Nenhum profissional encontrado para esta busca no momento.")
         else:
-            for p in lista_ranking:
-                is_elite = p.get('verificado') and p.get('saldo', 0) > 0
-                zap_limpo = limpar_whatsapp(p['id'])
-                msg_zap = quote(f"Olá {p.get('nome')}, vi seu perfil na Vitrine do GeralJá!")
-                link_zap = f"https://api.whatsapp.com/send?phone={zap_limpo}&text={msg_zap}"
+            for doc in resultados:
+                p = doc.to_dict()
+                p_id = doc.id
                 
-                foto_p = p.get('foto_url')
-                if not foto_p or len(str(foto_p)) < 50:
-                    foto_p = AVATAR_PADRAO_SVG
+                with st.container():
+                    c_img, c_info, c_acao = st.columns([1, 2.5, 1.5])
+                    
+                    with c_img:
+                        imgs = p.get("portfolio_imgs", [])
+                        if imgs:
+                            st.image(imgs[0], use_container_width=True)
+                        else:
+                            st.image("https://via.placeholder.com/150?text=GeralJá", use_container_width=True)
 
-                fotos_lista = p.get('portfolio_imgs', [])
-                fotos_html = ""
-                for img_item in fotos_lista[:6]:
-                    src = img_item if str(img_item).startswith("data") else f"data:image/jpeg;base64,{img_item}"
-                    fotos_html += f'<div class="gallery-item"><img src="{src}"></div>'
+                    with c_info:
+                        selo = "☑️ *Verificado*" if p.get("verificado") else ""
+                        st.markdown(f"### {p.get('nome')} {selo}")
+                        st.markdown(f"**Área:** {p.get('area')}")
+                        st.write(p.get("descricao", "Sem descrição disponível."))
+                        st.caption(f"📍 {p.get('endereco_digitado', 'Grajaú, SP')}")
 
-                ring_class = "story-ring-elite" if is_elite else "story-ring"
-                
-                st.markdown(f"""
-                <div class="feed-card">
-                    <div class="feed-header">
-                        <div class="user-info-group">
-                            <div class="{ring_class}">
-                                <img src="{foto_p}" class="foto-avatar">
-                            </div>
-                            <div>
-                                <h3 style="margin:0; color:#0f172a;">{p.get('nome','').upper()} {"☑️" if p.get('verificado') else ""}</h3>
-                                <span class="badge-cat">{p.get('area')}</span>
-                            </div>
-                        </div>
-                        <div>{"<span class='badge-elite'>⭐ DESTAQUE</span>" if is_elite else ""}</div>
-                    </div>
+                    with c_acao:
+                        st.write(f"👁️ {p.get('cliques', 0)} visualizações")
+                        msg_zap = quote(f"Olá {p.get('nome')}, vi seu anúncio no GeralJá e gostaria de um orçamento!")
+                        link_zap = f"https://api.whatsapp.com/send?phone=55{p_id}&text={msg_zap}"
+                        
+                        if st.link_button("📲 Chamar no WhatsApp", link_zap, use_container_width=True):
+                            db.collection("profissionais").document(p_id).update({"cliques": firestore.Increment(1)})
 
-                    <div style="font-size: 13.5px; color: #334155; margin: 10px 0;">{p.get('descricao','')}</div>
-
-                    <div class="orkut-pills">
-                        <span class="pill-orkut">📍 {p['dist']:.1f} km</span>
-                        <span class="pill-orkut pill-faisca">🔥 Confiável</span>
-                        <span class="pill-orkut">⭐ {p.get('rating', 5.0)}/5</span>
-                        <span class="pill-orkut">👀 {p.get('cliques', 0)} visitas</span>
-                    </div>
-
-                    {"<div class='insta-gallery'>" + fotos_html + "</div>" if fotos_html else ""}
-
-                    <a href="{link_zap}" target="_blank" class="btn-social-zap">
-                        💬 CHAMAR NO WHATSAPP AGORA
-                    </a>
-                </div>
-                """, unsafe_allow_html=True)
-
-                db.collection("profissionais").document(p['id']).update({"cliques": p.get('cliques', 0) + 1})
+                    st.markdown("---")
 
 # ==============================================================================
-# ABA 2: CADASTRAR
+# ABA 2: CADASTRO DE PROFISSIONAIS & LOGIN
 # ==============================================================================
 with menu_abas[1]:
-    st.markdown("### 🚀 Cadastro de Novo Parceiro")
-    cats_dinamicas = buscar_opcoes_dinamicas("categorias", CATEGORIAS_OFICIAIS)
-    
-    with st.form("form_novo_profissional"):
-        col_id1, col_id2 = st.columns(2)
-        nome_input = col_id1.text_input("Nome do Profissional ou Empresa", placeholder="Ex: João Mecânico")
-        zap_input = col_id2.text_input("WhatsApp (Apenas Números)", placeholder="Ex: 11991853488")
+    st.title("📝 Área do Profissional")
+
+    t_login, t_cad = st.tabs(["🔑 Já tenho conta (Entrar)", "🚀 Cadastrar Meu Negócio"])
+
+    with t_login:
+        st.subheader("Acessar seu Painel")
+        zap_login = st.text_input("Seu WhatsApp cadastrado (somente números com DDD)", placeholder="Ex: 11991853488")
         
-        col_id3, col_id4 = st.columns(2)
-        categoria_input = col_id3.selectbox("Área Principal de Atuação", sorted(cats_dinamicas))
-        senha_input = col_id4.text_input("Senha de Acesso ao Painel", type="password")
-        
-        endereco_input = st.text_input("Endereço de Atendimento")
-        descricao_input = st.text_area("Descrição detalhada dos seus serviços")
-        
-        col_t1, col_t2 = st.columns(2)
-        tipo_input = col_t1.radio("Tipo de Perfil", ["👨‍🔧 Autônomo / Profissional", "🏢 Comércio / Loja"], horizontal=True)
-        foto_upload = col_t2.file_uploader("Foto do Perfil (JPG ou PNG)", type=['jpg', 'jpeg', 'png'])
+        if st.button("ENTRAR NO PAINEL", use_container_width=True):
+            zap_limpo = limpar_whatsapp(zap_login)
+            if db:
+                doc = db.collection("profissionais").document(zap_limpo).get()
+                if doc.exists:
+                    st.session_state.auth = True
+                    st.session_state.user_id = zap_limpo
+                    st.success("Login efetuado com sucesso!")
+                    st.rerun()
+                else:
+                    st.error("WhatsApp não cadastrado. Faça seu cadastro na aba ao lado.")
 
-        btn_finalizar = st.form_submit_button("✅ CONCLUIR E ATIVAR PERFIL", use_container_width=True)
+    with t_cad:
+        st.subheader("Crie sua conta no GeralJá")
+        with st.form("form_cadastro"):
+            c_nome = st.text_input("Seu Nome Profissional / Nome da Empresa")
+            c_zap = st.text_input("WhatsApp para Contato (com DDD)", placeholder="11991853488")
+            c_area = st.selectbox("Área de Atuação principal", sorted(buscar_opcoes_dinamicas("categorias", CATEGORIAS_OFICIAIS)))
+            c_end = st.text_input("Endereço / Bairro no Grajaú", placeholder="Ex: R. Belmira Marin, 1000 - Grajaú")
+            c_desc = st.text_area("Descreva seus serviços e diferenciais")
 
-    if btn_finalizar:
-        if not nome_input or not zap_input or not senha_input:
-            st.error("⚠️ Nome, WhatsApp e Senha são obrigatórios!")
-        else:
-            try:
-                zap_id = limpar_whatsapp(zap_input)
-                doc_ref = db.collection("profissionais").document(zap_id)
-                doc_existente = doc_ref.get()
+            btn_cadastrar = st.form_submit_button("🚀 FINALIZAR CADASTRO", use_container_width=True)
 
-                lat_salvar, lon_salvar = LAT_REF, LON_REF
-                end_oficial = endereco_input
-                if endereco_input:
-                    g_lat, g_lon, g_end = obter_coords_google(endereco_input)
-                    if g_lat and g_lon:
-                        lat_salvar, lon_salvar, end_oficial = g_lat, g_lon, g_end
-
-                foto_final = ""
-                if foto_upload:
-                    b64_img = otimizar_e_converter_b64(foto_upload, max_largura=350, qualidade=70)
-                    foto_final = f"data:image/jpeg;base64,{b64_img}"
-
-                saldo_atual = doc_existente.to_dict().get("saldo", BONUS_WELCOME) if doc_existente.exists else BONUS_WELCOME
-
-                novo_pro = {
-                    "nome": nome_input,
-                    "area": categoria_input,
-                    "descricao": descricao_input,
-                    "senha": senha_input,
-                    "tipo": tipo_input,
-                    "whatsapp": zap_id,
-                    "endereco_digitado": endereco_input,
-                    "endereco_oficial": end_oficial,
-                    "foto_url": foto_final,
-                    "saldo": saldo_atual,
-                    "aprovado": True,
-                    "verificado": False,
-                    "cliques": 0,
-                    "rating": 5.0,
-                    "lat": lat_salvar,
-                    "lon": lon_salvar,
-                    "data_cadastro": datetime.now().strftime("%d/%m/%Y")
-                }
-
-                doc_ref.set(novo_pro)
-                st.balloons()
-                st.success(f"🎉 Cadastro realizado com sucesso! Bônus de {saldo_atual} moedas ativo.")
-            except Exception as e:
-                st.error(f"❌ Erro ao salvar cadastro: {e}")
+            if btn_cadastrar:
+                zap_f = limpar_whatsapp(c_zap)
+                if not c_nome or not zap_f or len(zap_f) < 10:
+                    st.error("Preencha o nome e um WhatsApp válido com DDD!")
+                elif db:
+                    ref = db.collection("profissionais").document(zap_f)
+                    if ref.get().exists:
+                        st.warning("Este WhatsApp já está cadastrado. Faça login!")
+                    else:
+                        lat, lon, end_oficial = obter_coords_google(c_end)
+                        ref.set({
+                            "nome": c_nome,
+                            "area": c_area,
+                            "descricao": c_desc,
+                            "endereco_digitado": c_end,
+                            "endereco_oficial": end_oficial,
+                            "lat": lat,
+                            "lon": lon,
+                            "saldo": 5,  # Bônus inicial de 5 moedas
+                            "aprovado": True,
+                            "verificado": False,
+                            "cliques": 0,
+                            "portfolio_imgs": [],
+                            "data_cadastro": datetime.now().strftime("%d/%m/%Y %H:%M")
+                        })
+                        st.session_state.auth = True
+                        st.session_state.user_id = zap_f
+                        st.success("🎉 Cadastro realizado! Você ganhou 5 moedas de bônus.")
+                        st.rerun()
 
 # ==============================================================================
-# ABA 3: MEU PERFIL (SISTEMA DE MOEDAS VIA STRIPE OU PIX)
+# ABA 3: PERFIL & RECARGA DE MOEDAS
 # ==============================================================================
 with menu_abas[2]:
-    if 'auth' not in st.session_state: st.session_state.auth = False
-
-    if not st.session_state.get('auth'):
-        st.subheader("🚀 Acesso ao Painel do Parceiro")
-        col1, col2 = st.columns(2)
-        l_zap = col1.text_input("WhatsApp Cadastrado", key="login_zap")
-        l_pw = col2.text_input("Sua Senha", type="password", key="login_pw")
-
-        if st.button("ENTRAR NO PAINEL", use_container_width=True):
-            zap_format = limpar_whatsapp(l_zap)
-            u = db.collection("profissionais").document(zap_format).get()
-            if u.exists and u.to_dict().get('senha') == l_pw:
-                st.session_state.auth, st.session_state.user_id = True, zap_format
-                st.rerun()
-            else:
-                st.error("Credenciais inválidas.")
-    else:
+    if not st.session_state.auth or not st.session_state.user_id:
+        st.warning("🔒 Faça login ou cadastre-se na aba 'Cadastro / Login' para acessar o seu perfil.")
+    elif db:
         doc_ref = db.collection("profissionais").document(st.session_state.user_id)
-        d = doc_ref.get().to_dict() or {}
-
-        st.write(f"### Olá, {d.get('nome', 'Parceiro')}!")
+        doc = doc_ref.get()
         
-        m1, m2, m3 = st.columns(3)
-        m1.metric("Saldo de Moedas 🪙", f"{d.get('saldo', 0)}")
-        m2.metric("Visitas ao Perfil 🚀", f"{d.get('cliques', 0)}")
-        m3.metric("Status no Sistema", "🟢 ATIVO" if d.get('aprovado') else "🟡 PENDENTE")
-
-        st.divider()
-
-        with st.expander("💳 COMPRAR MOEDAS (CARTÃO DE CRÉDITO VIA STRIPE OU PIX)", expanded=True):
-            st.markdown("#### Escolha como deseja recarregar suas moedas:")
-            
-            t_stripe, t_pix = st.tabs(["💳 Cartão de Crédito / Débito (Stripe)", "⚡ PIX Instantâneo"])
-
-            with t_stripe:
-                st.write("Processamento 100% seguro via **Stripe**:")
-                col_st1, col_st2, col_st3 = st.columns(3)
-                
-                with col_st1:
-                    st.markdown("##### 🪙 10 Moedas")
-                    st.write("**R$ 10,00**")
-                    if STRIPE_LINK_10 != "#":
-                        st.link_button("💳 Pagar com Stripe", STRIPE_LINK_10, use_container_width=True)
-                    else:
-                        st.info("Link Stripe em configuração")
-
-                with col_st2:
-                    st.markdown("##### 🪙 50 Moedas")
-                    st.write("**R$ 45,00** *(Com Desconto)*")
-                    if STRIPE_LINK_50 != "#":
-                        st.link_button("💳 Pagar com Stripe", STRIPE_LINK_50, use_container_width=True)
-                    else:
-                        st.info("Link Stripe em configuração")
-
-                with col_st3:
-                    st.markdown("##### 🪙 100 Moedas")
-                    st.write("**R$ 80,00** *(Melhor Valor)*")
-                    if STRIPE_LINK_100 != "#":
-                        st.link_button("💳 Pagar com Stripe", STRIPE_LINK_100, use_container_width=True)
-                    else:
-                        st.info("Link Stripe em configuração")
-
-            with t_pix:
-                st.warning(f"Chave PIX Oficial: `{PIX_OFICIAL}`")
-                c1, c2, c3 = st.columns(3)
-                if c1.button("10 Moedas (R$ 10)"): st.code(PIX_OFICIAL)
-                if c2.button("50 Moedas (R$ 45)"): st.code(PIX_OFICIAL)
-                if c3.button("100 Moedas (R$ 80)"): st.code(PIX_OFICIAL)
-                st.link_button("📲 ENVIAR COMPROVANTE WHATSAPP", f"https://api.whatsapp.com/send?phone={ZAP_ADMIN}&text=Comprovante%20do%20usuario%20{st.session_state.user_id}", use_container_width=True)
-
-        with st.expander("📸 EDIÇÃO DE PERFIL E FOTOS"):
-            with st.form("form_edit_perfil"):
-                n_nome = st.text_input("Nome de Exibição", d.get('nome', ''))
-                n_desc = st.text_area("Descrição do Perfil / Serviços", d.get('descricao', ''))
-                n_foto = st.file_uploader("Trocar Foto do Perfil", type=['jpg','png','jpeg'])
-                n_portfolio = st.file_uploader("Fotos da Vitrine (Até 4)", type=['jpg','png','jpeg'], accept_multiple_files=True)
-
-                if st.form_submit_button("SALVAR ALTERAÇÕES", use_container_width=True):
-                    up = {"nome": n_nome, "descricao": n_desc}
-                    if n_foto:
-                        b64_p = otimizar_e_converter_b64(n_foto, max_largura=350, qualidade=70)
-                        up["foto_url"] = f"data:image/jpeg;base64,{b64_p}"
-                    
-                    if n_portfolio:
-                        port_imgs = []
-                        for f in n_portfolio[:4]:
-                            b64_port = otimizar_e_converter_b64(f, max_largura=600, qualidade=70)
-                            port_imgs.append(f"data:image/jpeg;base64,{b64_port}")
-                        up["portfolio_imgs"] = port_imgs
-
-                    doc_ref.update(up)
-                    st.success("✅ Perfil atualizado com sucesso!")
-                    time.sleep(1)
-                    st.rerun()
-
-        if st.button("SAIR DA CONTA", use_container_width=True):
+        if not doc.exists:
+            st.error("Perfil não encontrado.")
             st.session_state.auth = False
-            st.rerun()
+            st.session_state.user_id = None
+        else:
+            d = doc.to_dict()
+            st.title(f"👋 Olá, {d.get('nome')}!")
+            
+            # PAINEL DE SALDO DE MOEDAS
+            col_m1, col_m2 = st.columns([1, 2])
+            with col_m1:
+                st.metric("Seu Saldo Atual", f"{d.get('saldo', 0)} 🪙")
+            
+            with col_m2:
+                st.write("**Gaste moedas para ter destaque ou renovar anúncios.**")
+                st.caption("Compre mais moedas diretamente via PIX com ativação rápida.")
+
+            # COMPRA DE PACOTES DE MOEDAS
+            with st.expander("💳 COMPRAR MOEDAS VIA PIX", expanded=True):
+                t_pix, t_stripe = st.tabs(["⚡ Pagamento PIX (Rápido)", "💳 Cartão de Crédito"])
+                
+                with t_pix:
+                    st.warning(f"Chave PIX Oficial (Celular/CNPJ): `{PIX_OFICIAL}`")
+                    c1, c2, c3 = st.columns(3)
+                    
+                    with c1:
+                        st.markdown("##### 🪙 10 Moedas")
+                        st.write("**R$ 10,00**")
+                        msg_pix10 = quote(f"Olá! Fiz um PIX de R$ 10,00 para recarregar 10 moedas no GeralJá. Meu ID/WhatsApp: {st.session_state.user_id}")
+                        st.link_button("📲 Enviar Comprovante", f"https://api.whatsapp.com/send?phone={ZAP_ADMIN}&text={msg_pix10}", use_container_width=True)
+                    
+                    with c2:
+                        st.markdown("##### 🪙 50 Moedas")
+                        st.write("**R$ 45,00** *(Com Desconto)*")
+                        msg_pix50 = quote(f"Olá! Fiz um PIX de R$ 45,00 para recarregar 50 moedas no GeralJá. Meu ID/WhatsApp: {st.session_state.user_id}")
+                        st.link_button("📲 Enviar Comprovante", f"https://api.whatsapp.com/send?phone={ZAP_ADMIN}&text={msg_pix50}", use_container_width=True)
+                    
+                    with c3:
+                        st.markdown("##### 🪙 100 Moedas")
+                        st.write("**R$ 80,00** *(Melhor Valor)*")
+                        msg_pix100 = quote(f"Olá! Fiz um PIX de R$ 80,00 para recarregar 100 moedas no GeralJá. Meu ID/WhatsApp: {st.session_state.user_id}")
+                        st.link_button("📲 Enviar Comprovante", f"https://api.whatsapp.com/send?phone={ZAP_ADMIN}&text={msg_pix100}", use_container_width=True)
+
+                with t_stripe:
+                    st.info("Para pagamentos no cartão de crédito, solicite o link direto pelo suporte do WhatsApp.")
+
+            st.divider()
+
+            # EDIÇÃO DE DADOS E PORTFÓLIO DE FOTOS
+            with st.expander("✏️ EDITAR PERFIL E GALERIA DE FOTOS", expanded=False):
+                with st.form("form_edicao_perfil"):
+                    e_nome = st.text_input("Nome Profissional", value=d.get("nome", ""))
+                    e_area = st.selectbox("Área de Atuação", sorted(buscar_opcoes_dinamicas("categorias", CATEGORIAS_OFICIAIS)), index=0 if d.get("area") not in CATEGORIAS_OFICIAIS else sorted(buscar_opcoes_dinamicas("categorias", CATEGORIAS_OFICIAIS)).index(d.get("area")))
+                    e_desc = st.text_area("Descrição do Serviço", value=d.get("descricao", ""))
+                    e_end = st.text_input("Endereço", value=d.get("endereco_digitado", ""))
+                    
+                    st.markdown("---")
+                    st.write("📸 **Adicionar Fotos ao Portfólio/Vitrine (Até 6 fotos)**")
+                    fotos_novas = st.file_uploader("Selecione imagens do seu trabalho", type=['jpg', 'jpeg', 'png'], accept_multiple_files=True)
+                    
+                    btn_salvar_edicao = st.form_submit_button("💾 SALVAR ALTERAÇÕES", use_container_width=True)
+
+                    if btn_salvar_edicao:
+                        novas_imgs_b64 = d.get("portfolio_imgs", [])
+                        
+                        if fotos_novas:
+                            novas_imgs_b64 = []
+                            for f in fotos_novas[:6]:
+                                b64 = otimizar_e_converter_b64(f, max_largura=500, qualidade=75)
+                                if b64:
+                                    novas_imgs_b64.append(b64)
+
+                        lat_alt, lon_alt, end_alt = d.get("lat", LAT_REF), d.get("lon", LON_REF), e_end
+                        if e_end and e_end != d.get("endereco_digitado"):
+                            glat, glon, gend = obter_coords_google(e_end)
+                            if glat and glon:
+                                lat_alt, lon_alt, end_alt = glat, glon, gend
+
+                        doc_ref.update({
+                            "nome": e_nome,
+                            "area": e_area,
+                            "descricao": e_desc,
+                            "endereco_digitado": e_end,
+                            "endereco_oficial": end_alt,
+                            "lat": lat_alt,
+                            "lon": lon_alt,
+                            "portfolio_imgs": novas_imgs_b64
+                        })
+                        st.success("✅ Perfil atualizado com sucesso!")
+                        st.rerun()
+
+            if st.button("🔴 SAIR DA CONTA", use_container_width=True):
+                st.session_state.auth = False
+                st.session_state.user_id = None
+                st.rerun()
 
 # ==============================================================================
-# ABA 4: ADMIN / TERMINAL MASTER
+# ABA 4: ADMINISTRAÇÃO MASTER
 # ==============================================================================
 with menu_abas[3]:
-    st.markdown("## 👑 Terminal Master GeralJá")
-    access_adm = st.text_input("Senha Master", type="password", key="auth_master")
+    st.markdown("### 👑 Painel do Administrador GeralJá")
+    
+    senha_adm = st.text_input("Digite a chave de acesso MÁSTER", type="password", key="adm_pass")
+    
+    if senha_adm == CHAVE_ADMIN:
+        st.success("🔑 Acesso administrativo concedido!")
+        
+        tab_adm1, tab_adm2, tab_adm3 = st.tabs(["👥 Gerenciar Parceiros", "➕ Injetar Moedas", "⚙️ Categorias"])
 
-    if access_adm == CHAVE_ADMIN:
-        st.success("🔓 Painel Master Desbloqueado.")
-        todos_profs_docs = list(db.collection("profissionais").stream())
-        profs_data = [p.to_dict() | {"id": p.id} for p in todos_profs_docs]
+        with tab_adm1:
+            st.subheader("Lista de Profissionais Cadastrados")
+            if db:
+                todos_profs = list(db.collection("profissionais").stream())
+                
+                for doc in todos_profs:
+                    p = doc.to_dict()
+                    p_id = doc.id
+                    
+                    with st.expander(f"{'✅' if p.get('aprovado') else '⏳'} {p.get('nome')} ({p.get('area')}) - WhatsApp: {p_id}"):
+                        st.write(f"**Saldo Atual:** {p.get('saldo', 0)} moedas")
+                        st.write(f"**Verificado:** {'Sim ☑️' if p.get('verificado') else 'Não ❌'}")
+                        st.write(f"**Visitas:** {p.get('cliques', 0)}")
+                        st.write(f"**Descrição:** {p.get('descricao', '')}")
+                        
+                        col_b1, col_b2, col_b3 = st.columns(3)
+                        
+                        if col_b1.button(f"{'Desativar' if p.get('aprovado') else 'Aprovar'}##{p_id}"):
+                            db.collection("profissionais").document(p_id).update({"aprovado": not p.get('aprovado')})
+                            st.rerun()
 
-        for p in profs_data:
-            pid = p['id']
-            with st.expander(f"👤 {p.get('nome','').upper()} ({pid})"):
-                val_m = st.number_input("Adicionar Moedas", 1, 500, 10, key=f"m_{pid}")
-                if st.button("➕ CREDITAR MOEDAS", key=f"add_{pid}"):
-                    db.collection("profissionais").document(pid).update({"saldo": p.get('saldo', 0) + val_m})
-                    st.rerun()
+                        if col_b2.button(f"{'Remover Selo' if p.get('verificado') else 'Dar Selo ☑️'}##{p_id}"):
+                            db.collection("profissionais").document(p_id).update({"verificado": not p.get('verificado')})
+                            st.rerun()
+
+                        if col_b3.button(f"🗑️ Excluir Perfil##{p_id}"):
+                            db.collection("profissionais").document(p_id).delete()
+                            st.success(f"Perfil {p_id} removido!")
+                            st.rerun()
+
+        with tab_adm2:
+            st.subheader("Recarga Manual de Moedas")
+            col_m1, col_m2 = st.columns(2)
+            alvo_zap = col_m1.text_input("WhatsApp do Parceiro (com DDD)", placeholder="Ex: 11991853488")
+            qtd_moedas = col_m2.number_input("Quantidade de Moedas", min_value=-500, max_value=500, value=10)
+
+            if st.button("⚡ CREDITAR MOEDAS AGORA", use_container_width=True):
+                zap_f = limpar_whatsapp(alvo_zap)
+                if db:
+                    ref_user = db.collection("profissionais").document(zap_f)
+                    doc_u = ref_user.get()
+                    
+                    if doc_u.exists:
+                        saldo_atual = doc_u.to_dict().get("saldo", 0)
+                        novo_saldo = saldo_atual + qtd_moedas
+                        ref_user.update({"saldo": novo_saldo})
+                        st.balloons()
+                        st.success(f"Saldo atualizado de {saldo_atual} para {novo_saldo} moedas!")
+                    else:
+                        st.error("Usuário não encontrado.")
+
+        with tab_adm3:
+            st.subheader("Gerenciar Categorias Oficiais")
+            cats_atuais = buscar_opcoes_dinamicas("categorias", CATEGORIAS_OFICIAIS)
+            nova_cat = st.text_input("Nova Categoria")
+            
+            if st.button("➕ Adicionar Categoria") and nova_cat:
+                if nova_cat not in cats_atuais:
+                    cats_atuais.append(nova_cat)
+                    if db:
+                        db.collection("configuracoes").document("categorias").set({"lista": sorted(cats_atuais)})
+                        st.success(f"Categoria '{nova_cat}' adicionada!")
+                        st.rerun()
+                else:
+                    st.warning("Categoria já existe.")
+    elif senha_adm:
+        st.error("Chave incorreta!")
 
 # ==============================================================================
-# ABA 5: FEEDBACK
+# ABA 5: FEEDBACK E AVALIAÇÕES
 # ==============================================================================
 with menu_abas[4]:
-    st.header("⭐ Avalie a Experiência no GeralJá")
-    nota_usr = st.slider("Nota", 1, 5, 5)
-    comentario_usr = st.text_area("Comentário")
-    if st.button("Enviar Avaliação", type="primary"):
-        db.collection("feedbacks").add({"nota": nota_usr, "comentario": comentario_usr, "data": datetime.now()})
-        st.success("Obrigado pelo seu feedback!")
+    st.markdown("### ⭐ Avalie a Plataforma ou Deixe uma Sugestão")
+    
+    with st.form("form_feedback"):
+        f_nome = st.text_input("Seu Nome ou Nome do Seu Negócio")
+        f_rating = st.slider("Nota para o GeralJá", 1, 5, 5)
+        f_mensagem = st.text_area("O que podemos melhorar no sistema?")
+        
+        btn_feedback = st.form_submit_button("📩 ENVIAR FEEDBACK", use_container_width=True)
+        
+        if btn_feedback:
+            if f_mensagem and db:
+                db.collection("feedbacks").add({
+                    "nome": f_nome or "Anônimo",
+                    "rating": f_rating,
+                    "mensagem": f_mensagem,
+                    "data": datetime.now().strftime("%d/%m/%Y %H:%M")
+                })
+                st.balloons()
+                st.success("Obrigado pelo seu feedback! Sua opinião ajuda o GeralJá a evoluir.")
+            else:
+                st.error("Por favor, escreva uma mensagem antes de enviar.")
 
 # ==============================================================================
-# ABA OPCIONAL: FINANCEIRO
+# ABA 6: MÉTRICAS FINANCEIRAS (HABILITADA VIA COMANDO SECRET ?cmd=abracadabra)
 # ==============================================================================
-if "📊 FINANCEIRO" in lista_abas and len(menu_abas) > 5:
+if comando == "abracadabra":
     with menu_abas[5]:
-        st.header("📊 Painel Financeiro GeralJá")
-        profs_all = list(db.collection("profissionais").stream())
-        df_fin = pd.DataFrame([p.to_dict() for p in profs_all])
-        if not df_fin.empty:
-            st.dataframe(df_fin[['nome', 'whatsapp', 'saldo', 'cliques', 'data_cadastro']])
+        st.markdown("### 📊 Dashboard Financeiro & Métricas Master")
+        
+        if db:
+            profs_all = list(db.collection("profissionais").stream())
+            total_parceiros = len(profs_all)
+            total_moedas_circulacao = sum([doc.to_dict().get("saldo", 0) for doc in profs_all])
+            total_visitas_geral = sum([doc.to_dict().get("cliques", 0) for doc in profs_all])
+            
+            f1, f2, f3 = st.columns(3)
+            f1.metric("Total de Parceiros Cadastrados", f"{total_parceiros}")
+            f2.metric("Moedas em Circulação", f"{total_moedas_circulacao} 🪙")
+            f3.metric("Total de Visitas em Perfis", f"{total_visitas_geral} 👀")
+            
+            st.divider()
+            st.markdown("#### Resumo dos Cadastros Recentes")
+            
+            dados_tabela = []
+            for doc in profs_all:
+                d_p = doc.to_dict()
+                dados_tabela.append({
+                    "Nome": d_p.get("nome"),
+                    "Categoria": d_p.get("area"),
+                    "WhatsApp": doc.id,
+                    "Saldo (Moedas)": d_p.get("saldo", 0),
+                    "Aprovado": "Sim" if d_p.get("aprovado") else "Não",
+                    "Data Cadastro": d_p.get("data_cadastro", "N/I")
+                })
+                
+            if dados_tabela:
+                st.dataframe(pd.DataFrame(dados_tabela), use_container_width=True)
 
-# Executa e renderiza o novo rodapé responsivo
+# ==============================================================================
+# RENDERIZAÇÃO DO RODAPÉ INSTITUCIONAL
+# ==============================================================================
 finalizar_e_alinhar_layout()
+
+```
