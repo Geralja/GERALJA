@@ -563,13 +563,6 @@ O código foi reestruturado de forma modular e inteligente, garantindo **100% de
 4. **Zero Erros & Retrocompatibilidade de Fotos**:
 * A lista `portfolio_imgs` antiga continua sendo sincronizada automaticamente em segundo plano para que as buscas e cards do sistema legado não quebrem ou fiquem sem imagem.
 
-
-
----
-
-### 💻 Código Atualizado para Substituir na ABA 3
-
-```python
 # ==============================================================================
 # ABA 3: MEU PERFIL (PAINEL DO PARCEIRO & GESTÃO DA VITRINE)
 # ==============================================================================
