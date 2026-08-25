@@ -74,7 +74,7 @@ def executar_bloco_seguro(
       funcao_bloco(*args, **kwargs)
   except Exception as e:
     alvo.warning(
-      f"⚠️ Módulo '{nome_bloco}' em manutenção ou desativado temporariamente."
+        f"⚠️ Módulo '{nome_bloco}' em manutenção ou desativado temporariamente."
     )
     with alvo.expander(f"🔍 Detalhes do Erro ({nome_bloco})", expanded=False):
       st.error(f"Falha na execução: {e}")
@@ -235,17 +235,6 @@ st.set_page_config(
     page_icon="🇧🇷",
     layout="wide",
     initial_sidebar_state="collapsed",
-)
-
-st.markdown(
-    """
-    <style>
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        header {visibility: hidden;}
-    </style>
-""",
-    unsafe_allow_html=True,
 )
 
 
@@ -759,10 +748,11 @@ def finalizar_e_alinhar_layout():
 
 
 # ==============================================================================
-# 6. CONFIGURAÇÃO VISUAL & TEMAS
+# 6. CONFIGURAÇÃO VISUAL, TEMAS E TOPO COMPACTO
 # ==============================================================================
+# Padrão: MODO DIA (False). Opcional: Modo Noite via Toggle ou Preferência do Sistema.
 if "modo_noite" not in st.session_state:
-  st.session_state.modo_noite = True
+  st.session_state.modo_noite = False
 
 c_t1, c_t2 = st.columns([2, 8])
 with c_t1:
@@ -772,30 +762,50 @@ with c_t1:
 
 estilo_dinamico = f"""
 <style>
-    @media (max-width: 640px) {{
-        .main .block-container {{ padding: 1rem !important; }}
-        h1 {{ font-size: 1.8rem !important; }}
+    /* Otimização para eliminar espaço topo em branco */
+    #MainMenu {{ visibility: hidden; }}
+    footer {{ visibility: hidden; }}
+    header {{ visibility: hidden; }}
+    
+    .main .block-container {{ 
+        padding-top: 0.5rem !important; 
+        padding-bottom: 5rem !important; 
     }}
+    
+    @media (max-width: 640px) {{
+        .main .block-container {{ 
+            padding-top: 0.2rem !important; 
+            padding-left: 0.5rem !important; 
+            padding-right: 0.5rem !important; 
+        }}
+        h1 {{ font-size: 1.6rem !important; }}
+    }}
+
+    /* Estilização Dinâmica e Adaptação Automática de Tema */
     .stApp {{
         background-color: {"#0D1117" if st.session_state.modo_noite else "#FFFAFA"} !important;
         color: {"#FFFFFF" if st.session_state.modo_noite else "#1A1A1B"} !important;
     }}
+    
     div[data-testid="stVerticalBlock"] > div[style*="background"] {{
         background-color: {"#161B22" if st.session_state.modo_noite else "#FFFFFF"} !important;
         border: 1px solid {"#30363D" if st.session_state.modo_noite else "#E0E0E0"} !important;
         border-radius: 18px !important;
     }}
+
+    /* Capa e Topo Ultracompacto */
     .header-container {{
-        background: white;
-        padding: 25px 20px;
-        border-radius: 0 0 35px 35px;
+        background: {"#161B22" if st.session_state.modo_noite else "#FFFFFF"};
+        padding: 12px 15px !important;
+        border-radius: 0 0 20px 20px;
         text-align: center;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-        border-bottom: 6px solid #FF8C00;
-        margin-bottom: 25px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+        border-bottom: 5px solid #FF8C00;
+        margin-top: 0px !important;
+        margin-bottom: 15px !important;
     }}
-    .logo-azul {{ color: #0047AB; font-weight: 900; font-size: 42px; letter-spacing: -2px; }}
-    .logo-laranja {{ color: #FF8C00; font-weight: 900; font-size: 42px; letter-spacing: -2px; }}
+    .logo-azul {{ color: #0047AB; font-weight: 900; font-size: 36px; letter-spacing: -1px; }}
+    .logo-laranja {{ color: #FF8C00; font-weight: 900; font-size: 36px; letter-spacing: -1px; }}
 </style>
 """
 st.markdown(estilo_dinamico, unsafe_allow_html=True)
