@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # ==============================================================================
-# GERALJÁ: SISTEMA OPERACIONAL COMPLETO & ECOSSISTEMA DE SERVIÇOS (v6.0 MASTER)
-# Mídia + Marketplace Híbrido + Carteira Multi-Moedas + Clube de Descontos
-# Módulos Dinâmicos + Modal JS + Alerta WhatsApp Admin + Filtro de Membros + LGPD
+# GERALJÁ: SISTEMA OPERACIONAL MODULAR & ECOSSISTEMA DE SERVIÇOS (v6.0 MASTER)
+# Arquitetura por Containers Isolados e Inquebráveis (Plug-and-Play)
+# Mídia + Marketplace Híbrido + Carteira Multi-Moedas + Clube de Descontos + LGPD
 # ==============================================================================
 
 import base64
@@ -42,9 +42,46 @@ try:
 except ImportError:
   get_geolocation = None
 
+try:
+  import gspread
+except ImportError:
+  gspread = None
+
+try:
+  import nltk
+except ImportError:
+  nltk = None
+
+try:
+  from fuzzywuzzy import fuzz, process
+except ImportError:
+  fuzz, process = None, None
+
 
 # ==============================================================================
-# 1. CARREGAMENTO BLINDADO DE SEGREDOS (SEGURANÇA NÍVEL 10 - SEM HARDCODED)
+# ENGENHARIA DE ISOLAMENTO: EXECUTOR SEGURO DE BLOCOS
+# ==============================================================================
+def executar_bloco_seguro(
+    nome_bloco: str, funcao_bloco, *args, container=None, **kwargs
+):
+  """Executa um bloco em um container isolado.
+
+  Caso o bloco falhe ou seja removido, a aplicação continua rodando sem cair.
+  """
+  alvo = container if container is not None else st
+  try:
+    with alvo.container():
+      funcao_bloco(*args, **kwargs)
+  except Exception as e:
+    alvo.warning(
+      f"⚠️ Módulo '{nome_bloco}' em manutenção ou desativado temporariamente."
+    )
+    with alvo.expander(f"🔍 Detalhes do Erro ({nome_bloco})", expanded=False):
+      st.error(f"Falha na execução: {e}")
+
+
+# ==============================================================================
+# 1. CARREGAMENTO BLINDADO DE SEGREDOS (COFRE MASTER)
 # ==============================================================================
 def obter_segredo_critico(chave: str):
   """Garante a interrupção da execução caso uma credencial obrigatória esteja ausente no secrets.toml."""
@@ -66,14 +103,13 @@ def obter_segredo_critico(chave: str):
   st.stop()
 
 
-# Credenciais do Sistema e Dados Financeiros Isolados na Nuvem
+# Credenciais Globais Isoladas
 ADMIN_USER = obter_segredo_critico("ADMIN_USER")
 ADMIN_PASS = obter_segredo_critico("ADMIN_PASS")
 PIX_OFICIAL = obter_segredo_critico("PIX_OFICIAL")
 ZAP_ADMIN = obter_segredo_critico("ZAP_ADMIN")
 ZAP_VENDAS = obter_segredo_critico("ZAP_VENDAS")
 
-# APIs Opcionais e Autenticação Social
 GEMINI_KEY = st.secrets.get("GEMINI_API_KEY", "")
 GROQ_KEY = st.secrets.get("GROQ_API_KEY", "")
 FB_ID = st.secrets.get("FB_CLIENT_ID", "")
@@ -89,7 +125,7 @@ if GROQ_KEY:
 
 
 # ==============================================================================
-# 2. ENGENHARIA DE SANITIZAÇÃO E MOTOR DE CARTEIRA MULTI-MOEDAS
+# 2. MOTOR DE CARTEIRA MULTI-MOEDAS E SANITIZAÇÃO
 # ==============================================================================
 class GeralJaEngine:
 
@@ -192,7 +228,7 @@ class CarteiraEngine:
 
 
 # ==============================================================================
-# 3. CONFIGURAÇÃO DE AMBIENTE & CONEXÃO FIREBASE FIRESTORE
+# 3. CONFIGURAÇÃO DE AMBIENTE & FIRESTORE MASTER
 # ==============================================================================
 st.set_page_config(
     page_title="GeralJá | Ecossistema Integrado",
@@ -239,7 +275,7 @@ db = firestore.client()
 carteira_engine = CarteiraEngine(db)
 
 # ==============================================================================
-# 4. AUTENTICAÇÃO GOOGLE & RECOMPENSA DE COMPARTILHAMENTO REAL
+# 4. AUTENTICAÇÃO GOOGLE & COMPARTILHAMENTO
 # ==============================================================================
 query_params = st.query_params
 
@@ -266,61 +302,71 @@ def get_google_flow():
   )
 
 
-if "code" in query_params:
-  try:
-    flow = get_google_flow()
-    flow.fetch_token(code=query_params["code"])
-    session = flow.authorized_session()
-    user_info = session.get("https://www.googleapis.com/userinfo").json()
+def processar_oauth_e_tokens():
+  if "code" in query_params:
+    try:
+      flow = get_google_flow()
+      flow.fetch_token(code=query_params["code"])
+      session = flow.authorized_session()
+      user_info = session.get("https://www.googleapis.com/userinfo").json()
 
-    email_google = user_info.get("email")
-    nome_google = user_info.get("name")
-    foto_google = user_info.get("picture")
+      email_google = user_info.get("email")
+      nome_google = user_info.get("name")
+      foto_google = user_info.get("picture")
 
-    st.query_params.clear()
+      st.query_params.clear()
 
-    pro_ref = (
-        db.collection("profissionais")
-        .where("email", "==", email_google)
-        .limit(1)
-        .get()
+      pro_ref = (
+          db.collection("profissionais")
+          .where("email", "==", email_google)
+          .limit(1)
+          .get()
+      )
+
+      if pro_ref:
+        st.session_state.auth = True
+        st.session_state.user_id = pro_ref[0].id
+        st.success(f"Logado como {nome_google}!")
+        time.sleep(1)
+        st.rerun()
+      else:
+        st.session_state.pre_cadastro = {
+            "email": email_google,
+            "nome": nome_google,
+            "foto": foto_google,
+        }
+        st.toast(f"Olá {nome_google}! Complete seu cadastro abaixo.")
+    except Exception as e:
+      st.error(f"Erro ao processar login do Google: {e}")
+
+  if "share_token" in query_params and "user_id" in query_params:
+    token_url = query_params["share_token"]
+    user_url = query_params["user_id"]
+
+    token_ref = (
+        db.collection("tokens_compartilhamento").document(token_url).get()
     )
-
-    if pro_ref:
-      st.session_state.auth = True
-      st.session_state.user_id = pro_ref[0].id
-      st.success(f"Logado como {nome_google}!")
+    if token_ref.exists and not token_ref.to_dict().get("resgatado", False):
+      db.collection("tokens_compartilhamento").document(token_url).set(
+          {"resgatado": True, "resgatado_em": datetime.now(fuso_br).isoformat()},
+          merge=True,
+      )
+      carteira_engine.movimentar_saldo(
+          user_url,
+          "geralcoin",
+          10,
+          "CREDITO",
+          f"COMPARTILHAMENTO_REAL_{token_url}",
+      )
+      st.toast("🎉 Compartilhamento confirmado! +10 GeralCoins adicionadas!")
+      st.query_params.clear()
       time.sleep(1)
-      st.rerun()
-    else:
-      st.session_state.pre_cadastro = {
-          "email": email_google,
-          "nome": nome_google,
-          "foto": foto_google,
-      }
-      st.toast(f"Olá {nome_google}! Complete seu cadastro abaixo.")
-  except Exception as e:
-    st.error(f"Erro ao processar login do Google: {e}")
 
-if "share_token" in query_params and "user_id" in query_params:
-  token_url = query_params["share_token"]
-  user_url = query_params["user_id"]
 
-  token_ref = db.collection("tokens_compartilhamento").document(token_url).get()
-  if token_ref.exists and not token_ref.to_dict().get("resgatado", False):
-    db.collection("tokens_compartilhamento").document(token_url).set(
-        {"resgatado": True, "resgatado_em": datetime.now(fuso_br).isoformat()},
-        merge=True,
-    )
-    carteira_engine.movimentar_saldo(
-        user_url, "geralcoin", 10, "CREDITO", f"COMPARTILHAMENTO_REAL_{token_url}"
-    )
-    st.toast("🎉 Compartilhamento confirmado! +10 GeralCoins adicionadas!")
-    st.query_params.clear()
-    time.sleep(1)
+executar_bloco_seguro("Processador OAuth e Recompensas", processar_oauth_e_tokens)
 
 # ==============================================================================
-# 5. CONSTANTES, REGRAS, CATEGORIAS DINÂMICAS E INTELIGÊNCIA DE BUSCA
+# 5. CONSTANTES, REGRAS & FUNÇÕES AUXILIARES
 # ==============================================================================
 LAT_REF = -23.5505
 LON_REF = -46.6333
@@ -430,7 +476,6 @@ CATEGORIAS_PADRAO = [
 
 
 def carregar_categorias_dinamicas():
-  """Carrega as categorias da coleção 'configuracoes/categorias' do Firestore com fallback seguro."""
   try:
     doc_cat = db.collection("configuracoes").document("categorias").get()
     if doc_cat.exists:
@@ -663,7 +708,7 @@ def gerar_componente_compartilhamento_real(
             align-items: center;
             justify-content: center;
             gap: 8px;">
-            \U0001F4E2 Compartilhar e ganhar +10 GC
+            📢 Compartilhar e ganhar +10 GC
         </button>
         <script>
             document.getElementById('btnShare').addEventListener('click', async () => {{
@@ -714,7 +759,7 @@ def finalizar_e_alinhar_layout():
 
 
 # ==============================================================================
-# 6. CONFIGURAÇÃO VISUAL & MODO DIA / NOITE
+# 6. CONFIGURAÇÃO VISUAL & TEMAS
 # ==============================================================================
 if "modo_noite" not in st.session_state:
   st.session_state.modo_noite = True
@@ -762,44 +807,28 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ==============================================================================
-# 7. BOTÃO FLUTUANTE DE ANÚNCIOS
-# ==============================================================================
+# Botão Flutuante
 st.markdown(
     f"""
     <a href="https://wa.me/{ZAP_VENDAS}?text=Ol%C3%A1%2C%20quero%20anunciar%20minha%20marca%20na%20Vitrine%20do%20GeralJ%C3%A1" target="_blank" 
        style="position:fixed; bottom:25px; right:20px; background-color:#25d366; color:white; 
               border-radius:50px; padding:12px 22px; font-weight:bold; text-decoration:none; 
               box-shadow: 2px 4px 15px rgba(0,0,0,0.3); z-index:9999; display:flex; align-items:center; gap:8px;">
-        \U0001F4E2 <span>Anuncie seu negócio</span>
+        📢 <span>Anuncie seu negócio</span>
     </a>
 """,
     unsafe_allow_html=True,
 )
 
-# ==============================================================================
-# 8. SISTEMA DE NAVEGAÇÃO POR ABAS
-# ==============================================================================
-lista_abas = [
-    "🔍 Buscar",
-    "🎟️ Clube de Cupons",
-    "🚀 Cadastrar",
-    "👤 Meu Perfil",
-    "👑 Admin",
-    "⭐ Feedback",
-]
-comando = st.sidebar.text_input("Comando Secreto", type="password")
-if comando == "abracadabra":
-  lista_abas.append("📊 Financeiro")
-
-menu_abas = st.tabs(lista_abas)
 
 # ==============================================================================
-# ABA 0: BUSCA DE SERVIÇOS, MODAL JS E PLANTÃO DE NOTÍCIAS
+# 7. FUNÇÕES MODULARES DE CONTEÚDO DA APLICAÇÃO (CONTAINERS INDEPENDENTES)
 # ==============================================================================
-with menu_abas[0]:
+
+
+# --- ABA 0: MODULOS ---
+def modulo_busca_e_gps():
   st.markdown("### 🏙️ O que você precisa no Grajaú hoje?")
-
   with st.expander("📍 Sua Localização (GPS)", expanded=False):
     loc = (
         get_geolocation(component_key="geo_high_prec")
@@ -935,7 +964,7 @@ with menu_abas[0]:
                         </div>
                     </div>
                     {"<div class='social-track'>" + fotos_html + "</div>" if fotos_html else ""}
-                    <a href="{link_zap}" target="_blank" class="btn-zap-footer">\U0001F4AC Chamar no WhatsApp</a>
+                    <a href="{link_zap}" target="_blank" class="btn-zap-footer">💬 Chamar no WhatsApp</a>
                 </div>
                 """,
             unsafe_allow_html=True,
@@ -946,12 +975,14 @@ with menu_abas[0]:
     <div id="meuModal" style="display:none; position:fixed; z-index:9999; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); align-items:center; justify-content:center; flex-direction:column;">
         <span onclick="fecharModal()" style="position:absolute; top:20px; right:30px; color:white; font-size:40px; cursor:pointer;">&times;</span>
         <img id="imgExpandida" style="max-width:90%; max-height:75%; border-radius:10px;">
-        <a id="linkZapModal" href="#" target="_blank" style="margin-top:20px; background:#25D366; color:white; padding:15px 40px; border-radius:30px; text-decoration:none; font-weight:600;">\U0001F4AC Chamar no WhatsApp</a>
+        <a id="linkZapModal" href="#" target="_blank" style="margin-top:20px; background:#25D366; color:white; padding:15px 40px; border-radius:30px; text-decoration:none; font-weight:600;">💬 Chamar no WhatsApp</a>
     </div>
     """,
         unsafe_allow_html=True,
     )
 
+
+def modulo_plantao_noticias():
   st.markdown("---")
   st.subheader("📰 Plantão Grajaú Tem")
 
@@ -1023,10 +1054,9 @@ with menu_abas[0]:
               url_destino=noticia["link"],
           )
 
-# ==============================================================================
-# ABA 1: CLUBE DE CUPONS & CHECKOUT HÍBRIDO (GERALCOIN)
-# ==============================================================================
-with menu_abas[1]:
+
+# --- ABA 1: MODULOS ---
+def modulo_clube_cupons():
   st.markdown("### 🎟️ Clube de Cupons & Ofertas com GeralCoin")
   st.caption(
       "Ganhe moedas engajando nas redes do Grajaú Tem e troque por descontos no"
@@ -1163,15 +1193,13 @@ with menu_abas[1]:
                 f'<a href="{link_pedido_zap}" target="_blank" style="display:block;'
                 ' background:#25D366; color:white; text-align:center;'
                 ' padding:12px; border-radius:10px; font-weight:600;'
-                ' text-decoration:none;">\U0001F4AC Enviar Pedido Direto no'
-                ' WhatsApp</a>',
+                ' text-decoration:none;">💬 Enviar Pedido Direto no WhatsApp</a>',
                 unsafe_allow_html=True,
             )
 
-# ==============================================================================
-# ABA 2: CADASTRAR OU EDITAR PERFIL
-# ==============================================================================
-with menu_abas[2]:
+
+# --- ABA 2: MODULOS ---
+def modulo_cadastro_parceiro():
   st.markdown("### 🚀 Cadastro de Profissional ou Comércio")
 
   dados_google = st.session_state.get("pre_cadastro", {})
@@ -1294,10 +1322,9 @@ with menu_abas[2]:
       except Exception as e:
         st.error(f"❌ Erro ao salvar cadastro: {e}")
 
-# ==============================================================================
-# ABA 3: PAINEL DO PARCEIRO & GESTÃO DA CARTEIRA
-# ==============================================================================
-with menu_abas[3]:
+
+# --- ABA 3: MODULOS ---
+def modulo_painel_parceiro():
   if not st.session_state.get("auth"):
     st.subheader("🚀 Acesso ao Painel do Parceiro")
     col1, col2 = st.columns(2)
@@ -1433,10 +1460,9 @@ with menu_abas[3]:
       st.session_state.auth = False
       st.rerun()
 
-# ==============================================================================
-# ABA 4: TORRE DE CONTROLE ADMIN (COM ALERTA ZAP, FILTRO E GESTÃO DINÂMICA)
-# ==============================================================================
-with menu_abas[4]:
+
+# --- ABA 4: MODULOS ---
+def modulo_admin_torre_controle():
   if not st.session_state.get("admin_logado"):
     st.markdown("### 🔐 Acesso Restrito à Diretoria")
     with st.form("painel_login_adm"):
@@ -1632,10 +1658,9 @@ with menu_abas[4]:
     except Exception as e:
       st.error(f"Erro ao carregar dados do admin: {e}")
 
-# ==============================================================================
-# ABA 5: AVALIAÇÃO & FEEDBACK
-# ==============================================================================
-with menu_abas[5]:
+
+# --- ABA 5: MODULOS ---
+def modulo_feedback():
   st.header("⭐ Avalie o Sistema GeralJá")
   nota = st.slider("Nota da plataforma", 1, 5, 5)
   comentario = st.text_area("O que você achou das ofertas e da moeda GeralCoin?")
@@ -1648,14 +1673,61 @@ with menu_abas[5]:
     })
     st.success("Obrigado pelo feedback!")
 
+
+# --- ABA OPCIONAL: MODULOS ---
+def modulo_financeiro():
+  st.header("📊 Balanço Financeiro da Plataforma")
+  st.info(f"Chave PIX Oficial de Recebimento de Pacotes: {PIX_OFICIAL}")
+  st.write("Gerencie relatórios de recargas do modelo pré-pago e comissões.")
+
+
 # ==============================================================================
-# ABA OPCIONAL: FINANCEIRO
+# 8. ROTEADOR DE ABAS E EXECUÇÃO DE CONTAINERS PROTEGIDOS
 # ==============================================================================
+lista_abas = [
+    "🔍 Buscar",
+    "🎟️ Clube de Cupons",
+    "🚀 Cadastrar",
+    "👤 Meu Perfil",
+    "👑 Admin",
+    "⭐ Feedback",
+]
+comando = st.sidebar.text_input("Comando Secreto", type="password")
+if comando == "abracadabra":
+  lista_abas.append("📊 Financeiro")
+
+menu_abas = st.tabs(lista_abas)
+
+# --- EXECUÇÃO DOS BLOCOS NA ABA 0 ---
+with menu_abas[0]:
+  executar_bloco_seguro("Busca & GPS", modulo_busca_e_gps)
+  executar_bloco_seguro("Plantão de Notícias", modulo_plantao_noticias)
+
+# --- EXECUÇÃO DOS BLOCOS NA ABA 1 ---
+with menu_abas[1]:
+  executar_bloco_seguro("Clube de Cupons", modulo_clube_cupons)
+
+# --- EXECUÇÃO DOS BLOCOS NA ABA 2 ---
+with menu_abas[2]:
+  executar_bloco_seguro("Cadastro de Parceiro", modulo_cadastro_parceiro)
+
+# --- EXECUÇÃO DOS BLOCOS NA ABA 3 ---
+with menu_abas[3]:
+  executar_bloco_seguro("Painel do Parceiro", modulo_painel_parceiro)
+
+# --- EXECUÇÃO DOS BLOCOS NA ABA 4 ---
+with menu_abas[4]:
+  executar_bloco_seguro("Torre de Controle Admin", modulo_admin_torre_controle)
+
+# --- EXECUÇÃO DOS BLOCOS NA ABA 5 ---
+with menu_abas[5]:
+  executar_bloco_seguro("Feedback do Usuário", modulo_feedback)
+
+# --- EXECUÇÃO DOS BLOCOS NA ABA 6 (SECRETA) ---
 if "📊 Financeiro" in lista_abas:
   with menu_abas[6]:
-    st.header("📊 Balanço Financeiro da Plataforma")
-    st.info(f"Chave PIX Oficial de Recebimento de Pacotes: {PIX_OFICIAL}")
-    st.write("Gerencie relatórios de recargas do modelo pré-pago e comissões.")
+    executar_bloco_seguro("Módulo Financeiro", modulo_financeiro)
+
 
 # ==============================================================================
 # 9. RODAPÉ BLINDADO DE SEGURANÇA E LGPD
@@ -1670,7 +1742,7 @@ st.markdown(
     .shield-icon { color: #22c55e; margin-right: 8px; }
 </style>
 <div class="footer-container">
-    <div class="security-badge"><span class="shield-icon">\U0001F6E1</span> IA de Proteção Ativa: Monitorando Contra Ameaças</div>
+    <div class="security-badge"><span class="shield-icon">🛡️</span> IA de Proteção Ativa: Monitorando Contra Ameaças</div>
     <p>© 2026 GeralJá | Ecossistema Blindado LGPD</p>
 </div>
 """,
