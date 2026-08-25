@@ -1,6 +1,8 @@
+```python
 # ==============================================================================
 # GERALJÁ: SISTEMA OPERACIONAL COMPLETO & ECOSSISTEMA DE SERVIÇOS (v6.0 MASTER)
 # Mídia + Marketplace Híbrido + Carteira Multi-Moedas + Clube de Descontos
+# Segurança Nível 10 | Busca Tolerante a Erros | Validação de Compartilhamento Real
 # ==============================================================================
 import streamlit as st
 import firebase_admin
@@ -13,6 +15,7 @@ import time
 import io
 import os
 import sys
+import difflib
 import pandas as pd
 from datetime import datetime
 import pytz
@@ -27,6 +30,7 @@ from PIL import Image
 from groq import Groq
 import google.generativeai as genai
 from google_auth_oauthlib.flow import Flow
+import streamlit.components.v1 as components
 
 # --- COMPONENTES OPCIONAIS DE NAVEGAÇÃO E GPS ---
 try:
@@ -35,7 +39,39 @@ except ImportError:
     pass
 
 # ==============================================================================
-# 1. ENGENHARIA DE SANITIZAÇÃO E MOTOR DE CARTEIRA MULTI-MOEDAS
+# 1. CARREGAMENTO BLINDADO DE SEGREDOS (SEGURANÇA NÍVEL 10 - SEM HARDCODED)
+# ==============================================================================
+def obter_segredo_critico(chave: str):
+    """
+    Garante que a aplicação interrompa imediatamente a execução caso uma credencial 
+    obrigatória esteja ausente no secrets.toml, eliminando qualquer risco de vazamento de senhas.
+    """
+    if chave in st.secrets:
+        return st.secrets[chave]
+    st.error(f"🚨 ERRO CRÍTICO DE SEGURANÇA: A credencial '{chave}' é obrigatória no st.secrets.")
+    st.stop()
+
+# Credenciais do Sistema e Dados Financeiros 100% Isolados na Nuvem
+ADMIN_USER  = obter_segredo_critico("ADMIN_USER")
+ADMIN_PASS  = obter_segredo_critico("ADMIN_PASS")
+PIX_OFICIAL = obter_segredo_critico("PIX_OFICIAL")
+ZAP_ADMIN   = obter_segredo_critico("ZAP_ADMIN")
+ZAP_VENDAS  = obter_segredo_critico("ZAP_VENDAS")
+
+# APIs Opcionais e Autenticação Social
+GEMINI_KEY   = st.secrets.get("GEMINI_API_KEY", "")
+GROQ_KEY     = st.secrets.get("GROQ_API_KEY", "")
+FB_ID        = st.secrets.get("FB_CLIENT_ID", "")
+FB_SECRET    = st.secrets.get("FB_CLIENT_SECRET", "")
+REDIRECT_URI = st.secrets.get("google_auth", {}).get("redirect_uri", "https://geralja-zxiaj2ot56fuzgcz7xhcks.streamlit.app/")
+
+if GEMINI_KEY:
+    genai.configure(api_key=GEMINI_KEY)
+if GROQ_KEY:
+    client_groq = Groq(api_key=GROQ_KEY)
+
+# ==============================================================================
+# 2. ENGENHARIA DE SANITIZAÇÃO E MOTOR DE CARTEIRA MULTI-MOEDAS
 # ==============================================================================
 class GeralJaEngine:
     def __init__(self):
@@ -52,8 +88,8 @@ fuso_br = engine.fuso
 class CarteiraEngine:
     """
     Motor Transacional responsável por gerenciar os três modelos de monetização:
-    1. GeralCoin (Virtual / Recompensas / Gamificação)
-    2. Crédito BRL (Pré-pago / Compra de Leads / Orçamentos)
+    1. GeralCoin (Virtual / Recompensas por Engajamento Real)
+    2. Crédito BRL (Pré-pago / Compra de Leads e Orçamentos)
     3. Custódia BRL (Escrow / Modelo Uber com comissão retida)
     """
     def __init__(self, db_client):
@@ -87,11 +123,10 @@ class CarteiraEngine:
             "atualizado_em": datetime.now(self.fuso).isoformat()
         }, merge=True)
 
-        # Atualiza espelho de compatibilidade no perfil do profissional
         if chave_moeda == "geralcoin":
             self.db.collection("profissionais").document(user_id).set({"saldo": int(saldos["geralcoin"])}, merge=True)
 
-        # Registro de histórico transacional para auditoria
+        # Registro de histórico para auditoria anti-fraude
         self.db.collection("transacoes").add({
             "user_id": user_id,
             "moeda": moeda.upper(),
@@ -105,7 +140,7 @@ class CarteiraEngine:
 
     def converter_geralcoin_para_credito(self, user_id: str, qtd_coins: int):
         """Conversão: 10 GeralCoins = R$ 1,00 em Saldo Pré-pago BRL"""
-        taxa_conversao = 0.10  # R$ 0,10 por GeralCoin
+        taxa_conversao = 0.10
         valor_brl = qtd_coins * taxa_conversao
 
         sucesso, msg = self.movimentar_saldo(user_id, "geralcoin", qtd_coins, "DEBITO", "CONVERSAO_PREPAGO")
@@ -116,7 +151,7 @@ class CarteiraEngine:
         return True, f"🎉 {qtd_coins} GeralCoins convertidas em R$ {valor_brl:.2f} de Crédito Pré-pago!"
 
 # ==============================================================================
-# 2. CONFIGURAÇÃO DO AMBIENTE & AMBIENTE STREAMLIT
+# 3. CONFIGURAÇÃO DO AMBIENTE & CONEXÃO FIREBASE
 # ==============================================================================
 st.set_page_config(
     page_title="GeralJá | Ecossistema Integrado",
@@ -133,22 +168,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-try:
-    FB_ID = st.secrets.get("FB_CLIENT_ID", "")
-    FB_SECRET = st.secrets.get("FB_CLIENT_SECRET", "")
-    FIREBASE_API_KEY = st.secrets.get("FIREBASE_API_KEY", "")
-    REDIRECT_URI = st.secrets.get("google_auth", {}).get("redirect_uri", "https://geralja-zxiaj2ot56fuzgcz7xhcks.streamlit.app/")
-    
-    if "GEMINI_API_KEY" in st.secrets:
-        genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-    if "GROQ_API_KEY" in st.secrets:
-        client_groq = Groq(api_key=st.secrets["GROQ_API_KEY"])
-except Exception as e:
-    st.error(f"⚠️ Atenção ao carregar segredos: {e}")
-
-# ==============================================================================
-# 3. CONEXÃO COM O BANCO DE DADOS (FIREBASE FIRESTORE)
-# ==============================================================================
 @st.cache_resource
 def conectar_banco_master():
     if not firebase_admin._apps:
@@ -160,7 +179,7 @@ def conectar_banco_master():
                 cred = credentials.Certificate(cred_dict)
                 return firebase_admin.initialize_app(cred)
             else:
-                st.error("⚠️ Configuração 'firebase.base64' não encontrada no Secrets.")
+                st.error("⚠️ Configuração 'firebase.base64' ausente no Secrets.")
                 st.stop()
         except Exception as e:
             st.error(f"❌ FALHA NA INFRAESTRUTURA FIREBASE: {e}")
@@ -172,7 +191,7 @@ db = firestore.client()
 carteira_engine = CarteiraEngine(db)
 
 # ==============================================================================
-# 4. AUTENTICAÇÃO OAUTH GOOGLE
+# 4. AUTENTICAÇÃO GOOGLE & RECOMPENSA DE COMPARTILHAMENTO REAL
 # ==============================================================================
 def get_google_flow():
     g_auth = st.secrets["google_auth"]
@@ -192,6 +211,8 @@ def get_google_flow():
     )
 
 query_params = st.query_params
+
+# Processa Retorno de Login Social
 if "code" in query_params:
     try:
         flow = get_google_flow()
@@ -210,7 +231,7 @@ if "code" in query_params:
         if pro_ref:
             st.session_state.auth = True
             st.session_state.user_id = pro_ref[0].id
-            st.success(f"Logado com sucesso como {nome_google}!")
+            st.success(f"Logado como {nome_google}!")
             time.sleep(1)
             st.rerun()
         else:
@@ -219,16 +240,29 @@ if "code" in query_params:
                 "nome": nome_google,
                 "foto": foto_google
             }
-            st.toast(f"Olá {nome_google}! Complete seu cadastro profissional abaixo.")
+            st.toast(f"Olá {nome_google}! Complete seu cadastro abaixo.")
     except Exception as e:
         st.error(f"Erro ao processar login do Google: {e}")
 
+# Processa Retorno de Compartilhamento Real Validade
+if "share_token" in query_params and "user_id" in query_params:
+    token_url = query_params["share_token"]
+    user_url = query_params["user_id"]
+    
+    token_ref = db.collection("tokens_compartilhamento").document(token_url).get()
+    if token_ref.exists and not token_ref.to_dict().get("resgatado", False):
+        db.collection("tokens_compartilhamento").document(token_url).set({
+            "resgatado": True, 
+            "resgatado_em": datetime.now(fuso_br).isoformat()
+        }, merge=True)
+        carteira_engine.movimentar_saldo(user_url, "geralcoin", 10, "CREDITO", f"COMPARTILHAMENTO_REAL_{token_url}")
+        st.toast("🎉 COMPARTILHAMENTO CONFIRMADO! +10 GeralCoins adicionadas!", icon="🪙")
+        st.query_params.clear()
+        time.sleep(1)
+
 # ==============================================================================
-# 5. CONSTANTES, REGRAS E FUNÇÕES UTILITÁRIAS
+# 5. CONSTANTES, REGRAS E INTELIGÊNCIA DE BUSCA
 # ==============================================================================
-PIX_OFICIAL = "11991853488"
-ZAP_ADMIN = "5511991853488"
-ZAP_VENDAS = "5511980168513"
 LAT_REF = -23.5505
 LON_REF = -46.6333
 
@@ -284,7 +318,7 @@ def limpar_whatsapp(numero):
 def normalizar(texto):
     if not texto: return ""
     return "".join(ch for ch in unicodedata.normalize('NFKD', str(texto)) 
-                   if unicodedata.category(ch) != 'Mn').lower()
+                   if unicodedata.category(ch) != 'Mn').lower().strip()
 
 def calcular_distancia_real(lat1, lon1, lat2, lon2):
     try:
@@ -295,36 +329,51 @@ def calcular_distancia_real(lat1, lon1, lat2, lon2):
         return round(R * (2 * math.atan2(math.sqrt(a), math.sqrt(1-a))), 1)
     except: return 999.0
 
-def processar_ia_avancada(texto):
-    if not texto: return "Vazio"
-    t_clean = normalizar(texto)
-    
-    for chave, categoria in CONCEITOS_EXPANDIDOS.items():
-        if re.search(rf"\b{normalizar(chave)}\b", t_clean):
-            return categoria
-    
-    for cat in CATEGORIAS_OFICIAIS:
-        if normalizar(cat) in t_clean:
-            return cat
+def processar_busca_tolerante(texto_usuario):
+    """
+    Busca tolerante a erros de digitação (Fuzzy Search com Difflib) + IA Llama 3/Groq.
+    """
+    termo_limpo = normalizar(texto_usuario)
+    if not termo_limpo: 
+        return "Outro (Personalizado)"
 
+    # PASSO 1: Busca Direta por Palavras-Chave
+    for chave, categoria in CONCEITOS_EXPANDIDOS.items():
+        if re.search(rf"\b{normalizar(chave)}\b", termo_limpo):
+            return categoria
+
+    # PASSO 2: Fuzzy Match no Dicionário de Conceitos
+    chaves_dicionario = list(CONCEITOS_EXPANDIDOS.keys())
+    matches_chaves = difflib.get_close_matches(termo_limpo, chaves_dicionario, n=1, cutoff=0.55)
+    if matches_chaves:
+        return CONCEITOS_EXPANDIDOS[matches_chaves[0]]
+
+    # PASSO 3: Fuzzy Match nas Categorias Oficiais
+    categorias_norm = {normalizar(c): c for c in CATEGORIAS_OFICIAIS}
+    matches_cat = difflib.get_close_matches(termo_limpo, list(categorias_norm.keys()), n=1, cutoff=0.50)
+    if matches_cat:
+        return categorias_norm[matches_cat[0]]
+
+    # PASSO 4: Consulta em Cache e Fallback IA
     try:
-        cache_ref = db.collection("cache_buscas").document(t_clean).get()
+        cache_ref = db.collection("cache_buscas").document(termo_limpo).get()
         if cache_ref.exists:
             return cache_ref.to_dict().get("categoria")
 
-        if "GROQ_API_KEY" in st.secrets:
-            client = Groq(api_key=st.secrets["GROQ_API_KEY"])
-            prompt = f"O usuário buscou: '{texto}'. Categorias disponíveis: {CATEGORIAS_OFICIAIS}. Responda estritamente o NOME DA CATEGORIA mais próxima."
+        if GROQ_KEY:
+            client = Groq(api_key=GROQ_KEY)
+            prompt = f"O usuário buscou: '{texto_usuario}'. Categorias disponíveis: {CATEGORIAS_OFICIAIS}. Responda estritamente o NOME DA CATEGORIA mais próxima."
             res = client.chat.completions.create(
                 messages=[{"role": "user", "content": prompt}],
                 model="llama3-8b-8192",
                 temperature=0.1
             )
             cat_ia = res.choices[0].message.content.strip()
-            db.collection("cache_buscas").document(t_clean).set({"categoria": cat_ia})
+            db.collection("cache_buscas").document(termo_limpo).set({"categoria": cat_ia})
             return cat_ia
-    except:
+    except Exception:
         pass
+
     return "Outro (Personalizado)"
 
 def otimizar_imagem(arq, qualidade=50, size=(800, 800)):
@@ -351,6 +400,61 @@ def buscar_noticias_rss(busca="Grajaú São Paulo"):
         return feed.entries[:4]
     except Exception:
         return []
+
+def gerar_componente_compartilhamento_real(user_id: str, titulo: str, texto: str, url_destino: str):
+    """
+    Componente JS nativo (Web Share API) que só concede GeralCoins após o compartilhamento real confirmado.
+    """
+    token = f"tok_{int(time.time())}_{user_id[-4:] if user_id else 'anon'}"
+    
+    db.collection("tokens_compartilhamento").document(token).set({
+        "user_id": user_id,
+        "resgatado": False,
+        "gerado_em": datetime.now(fuso_br).isoformat()
+    })
+
+    url_callback = f"{url_destino}?share_token={token}&user_id={user_id}"
+
+    html_code = f"""
+    <div style="font-family: sans-serif; margin-top: 8px;">
+        <button id="btnShare" style="
+            background-color: #0047AB; 
+            color: white; 
+            border: none; 
+            padding: 10px 18px; 
+            border-radius: 12px; 
+            font-weight: bold; 
+            cursor: pointer;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;">
+            📢 COMPARTILHAR E GANHAR +10 GC
+        </button>
+        <script>
+            document.getElementById('btnShare').addEventListener('click', async () => {{
+                if (navigator.share) {{
+                    try {{
+                        await navigator.share({{
+                            title: '{titulo}',
+                            text: '{texto}',
+                            url: '{url_destino}'
+                        }});
+                        window.top.location.href = '{url_callback}';
+                    }} catch (err) {{
+                        console.log('Compartilhamento cancelado.');
+                    }}
+                }} else {{
+                    navigator.clipboard.writeText('{url_destino}');
+                    alert('Link copiado! Cole no seu grupo para compartilhar.');
+                    window.top.location.href = '{url_callback}';
+                }}
+            }});
+        </script>
+    </div>
+    """
+    components.html(html_code, height=55)
 
 def finalizar_e_alinhar_layout():
     st.write("---")
@@ -416,7 +520,7 @@ st.markdown(estilo_dinamico, unsafe_allow_html=True)
 st.markdown('<div class="header-container"><span class="logo-azul">GERAL</span><span class="logo-laranja">JÁ</span><br><small style="color:#64748B; font-weight:700;">ECOSSISTEMA INTEGRADO DE SERVIÇOS E MOEDA LOCAL</small></div>', unsafe_allow_html=True)
 
 # ==============================================================================
-# 7. BOTÃO FLUTUANTE DE ANÚNCIOS (VITRINE DO GRAJAÚ TEM)
+# 7. BOTÃO FLUTUANTE DE ANÚNCIOS
 # ==============================================================================
 st.markdown(f"""
     <a href="https://wa.me/{ZAP_VENDAS}?text=Ol%C3%A1%2C%20quero%20anunciar%20minha%20marca%20na%20Vitrine%20do%20GeralJ%C3%A1" target="_blank" 
@@ -457,7 +561,7 @@ with menu_abas[0]:
             st.warning("Usando localização centro. Ative o GPS para filtrar serviços mais próximos.")
 
     c1, c2 = st.columns([3, 1])
-    termo_busca = c1.text_input("Ex: 'Mecânico', 'Pizzaria' ou 'Cano estourado'", key="main_search_v6")
+    termo_busca = c1.text_input("Ex: 'Mecânico', 'Pisa', 'Eletrisista' ou 'Cano estourado'", key="main_search_v6")
     raio_km = c2.select_slider("Raio (KM)", options=[1, 3, 5, 10, 20, 50, 500], value=5)
 
     st.markdown("""
@@ -473,18 +577,8 @@ with menu_abas[0]:
     """, unsafe_allow_html=True)
 
     if termo_busca:
-        with st.status("🔍 Processando inteligência de busca...", expanded=False) as status:
-            doc_cat = db.collection("configuracoes").document("categorias").get()
-            lista_oficial = doc_cat.to_dict().get("lista", CATEGORIAS_OFICIAIS) if doc_cat.exists else CATEGORIAS_OFICIAIS
-            
-            cat_ia = None
-            for c in lista_oficial:
-                if c.lower() in termo_busca.lower():
-                    cat_ia = c
-                    break
-            
-            if not cat_ia:
-                cat_ia = processar_ia_avancada(termo_busca)
+        with st.status("🔍 Processando inteligência de busca tolerante...", expanded=False) as status:
+            cat_ia = processar_busca_tolerante(termo_busca)
             
             profs = db.collection("profissionais").where("area", "==", cat_ia).where("aprovado", "==", True).stream()
             
@@ -510,9 +604,7 @@ with menu_abas[0]:
                 cor_borda = "#FFD700" if is_elite else "#0047AB"
                 zap_limpo = limpar_whatsapp(p.get('whatsapp', p['id']))
                 
-                # Desconto de clique no modelo pré-pago
                 link_zap = criar_link_zap(zap_limpo, f"Olá {p.get('nome')}, vi seu perfil no GeralJá e gostaria de solicitar um orçamento!")
-                
                 f_perfil = p.get('foto_url', '') or "https://cdn-icons-png.flaticon.com/512/149/149071.png"
 
                 fotos_html = ""
@@ -547,7 +639,7 @@ with menu_abas[0]:
 
     try:
         noticias_fb = list(db.collection("noticias").order_by("data", direction="DESCENDING").limit(2).stream())
-    except:
+    except Exception:
         noticias_fb = []
 
     noticias_auto = buscar_noticias_rss("Grajaú São Paulo")
@@ -578,21 +670,28 @@ with menu_abas[0]:
         for i, noticia in enumerate(fila_noticias):
             with cols[i % 2]:
                 st.markdown(f"""
-                    <a href="{noticia['link']}" target="_blank" style="text-decoration:none; color:inherit;">
-                        <div style="background:white; border-radius:15px; margin-bottom:20px; box-shadow:0 4px 12px rgba(0,0,0,0.08); overflow:hidden; border-bottom: 5px solid {noticia['cor']}; height: 310px;">
-                            <div style="height:140px; background-image: url('{noticia['img']}'); background-size:cover; background-position:center;"></div>
-                            <div style="padding:15px;">
-                                <span style="background:{noticia['cor']}22; color:{noticia['cor']}; font-size:10px; font-weight:bold; padding:3px 10px; border-radius:50px;">
-                                    {noticia['fonte']}
-                                </span>
-                                <h4 style="margin:10px 0 8px 0; color:#1a1a1a; font-size:14px; line-height:1.3; height: 55px; overflow: hidden;">
-                                    {noticia['titulo'][:80]}{'...' if len(noticia['titulo']) > 80 else ''}
-                                </h4>
-                                <div style="color:{noticia['cor']}; font-weight:bold; font-size:12px; margin-top:8px;">Ver matéria completa →</div>
-                            </div>
+                    <div style="background:white; border-radius:15px; margin-bottom:20px; box-shadow:0 4px 12px rgba(0,0,0,0.08); overflow:hidden; border-bottom: 5px solid {noticia['cor']}; height: 260px;">
+                        <div style="height:120px; background-image: url('{noticia['img']}'); background-size:cover; background-position:center;"></div>
+                        <div style="padding:15px;">
+                            <span style="background:{noticia['cor']}22; color:{noticia['cor']}; font-size:10px; font-weight:bold; padding:3px 10px; border-radius:50px;">
+                                {noticia['fonte']}
+                            </span>
+                            <h4 style="margin:10px 0 8px 0; color:#1a1a1a; font-size:14px; line-height:1.3; height: 50px; overflow: hidden;">
+                                {noticia['titulo'][:80]}{'...' if len(noticia['titulo']) > 80 else ''}
+                            </h4>
                         </div>
-                    </a>
+                    </div>
                 """, unsafe_allow_html=True)
+                
+                # Validação de Compartilhamento Real
+                id_usr_comp = st.session_state.get('user_id', '')
+                if id_usr_comp:
+                    gerar_componente_compartilhamento_real(
+                        user_id=id_usr_comp,
+                        titulo=noticia['titulo'],
+                        texto="Confira essa notícia no Grajaú Tem:",
+                        url_destino=noticia['link']
+                    )
 
 # ==============================================================================
 # ABA 1: CLUBE DE CUPONS & CHECKOUT HÍBRIDO (GERALCOIN)
@@ -601,22 +700,15 @@ with menu_abas[1]:
     st.markdown("### 🎟️ Clube de Cupons & Ofertas com GeralCoin")
     st.caption("Ganhe moedas engajando nas redes do Grajaú Tem e troque por descontos no comércio do bairro!")
 
-    # Identificação do Morador / Visitante para Carteira
     id_morador = st.text_input("Seu WhatsApp para consultar saldo e usar cupons:", value=st.session_state.get('user_id', ''), placeholder="Ex: 11999999999")
     
     if id_morador:
         zap_morador_limpo = limpar_whatsapp(id_morador)
         saldos_morador = carteira_engine.obter_saldos(zap_morador_limpo)
         
-        c_m1, c_m2, c_m3 = st.columns(3)
+        c_m1, c_m2 = st.columns(2)
         c_m1.metric("Sua Carteira GeralCoins 🪙", f"{saldos_morador['geralcoin']} GC")
         c_m2.metric("Valor em Descontos", f"R$ {saldos_morador['geralcoin'] * 0.10:.2f}")
-        
-        if c_m3.button("🎁 Ganhar 10 GC por Compartilhar"):
-            carteira_engine.movimentar_saldo(zap_morador_limpo, "geralcoin", 10, "CREDITO", "COMPARTILHAMENTO_NOTICIA")
-            st.toast("🎉 Você ganhou 10 GeralCoins por apoiar o comércio do bairro!")
-            time.sleep(1)
-            st.rerun()
 
     st.markdown("---")
     st.subheader("🔥 Ofertas Relâmpago em Destaque")
@@ -659,7 +751,6 @@ with menu_abas[1]:
                         if gc_usar > 0:
                             carteira_engine.movimentar_saldo(zap_m, "geralcoin", gc_usar, "DEBITO", f"COMPRA_CUPOM_{of['id']}")
                         
-                        # Mensagem do Pedido formatada estilo iFood/WhatsApp
                         msg_pedido = f"""🚨 *NOVO PEDIDO GERALJÁ - CUPOM APLICADO*
 👤 *Cliente:* {zap_m}
 📦 *Item:* {of['item']}
@@ -673,7 +764,7 @@ with menu_abas[1]:
                         
                         link_pedido_zap = criar_link_zap(of['zap'], msg_pedido)
                         
-                        st.success(f"🎉 Cupom resgatado! {gc_usar} GeralCoins debitadas com sucesso.")
+                        st.success(f"🎉 Cupom resgatado! {gc_usar} GeralCoins debitadas.")
                         st.markdown(f'<a href="{link_pedido_zap}" target="_blank" style="display:block; background:#25D366; color:white; text-align:center; padding:12px; border-radius:10px; font-weight:bold; text-decoration:none;">💬 ENVIAR PEDIDO DIRETO NO WHATSAPP</a>', unsafe_allow_html=True)
 
 # ==============================================================================
@@ -771,12 +862,10 @@ with menu_abas[2]:
                 }
                 
                 doc_ref.set(dados_pro, merge=True)
-                
-                # Inicializa a carteira multi-moedas com o bônus de 20 GeralCoins
                 carteira_engine.obter_saldos(zap_limpo)
                 
                 st.balloons()
-                st.success(f"🎉 Cadastro concluído! 20 GeralCoins foram creditadas na sua conta.")
+                st.success("🎉 Cadastro concluído com sucesso!")
             except Exception as e:
                 st.error(f"❌ Erro ao salvar cadastro: {e}")
 
@@ -811,7 +900,6 @@ with menu_abas[3]:
         
         st.write(f"### Olá, {d.get('nome', 'Parceiro')}!")
         
-        # Exibição dos 3 Modelos de Monetização na Carteira do Usuário
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("GeralCoins 🪙", f"{saldos['geralcoin']} GC", help="Ganha por engajamento / Troca por serviços")
         m2.metric("Crédito Pré-pago 💳", f"R$ {saldos['credito_brl']:.2f}", help="Usado para compra de Leads e Orçamentos")
@@ -819,7 +907,7 @@ with menu_abas[3]:
         m4.metric("Cliques Recebidos 🚀", f"{d.get('cliques', 0)}")
 
         with st.expander("🔄 CONVERTER GERALCOINS EM CRÉDITO PRÉ-PAGO"):
-            qtd_conv = st.number_input("Quantidade de GeralCoins para converter:", min_value=10, max_value=int(saldos['geralcoin']), step=10, value=10)
+            qtd_conv = st.number_input("Quantidade de GeralCoins para converter:", min_value=10, max_value=max(10, int(saldos['geralcoin'])), step=10, value=10)
             if st.button("CONVERTER AGORA (10 GC = R$ 1,00)"):
                 ok, msg = carteira_engine.converter_geralcoin_para_credito(user_id, int(qtd_conv))
                 if ok:
@@ -861,12 +949,9 @@ with menu_abas[3]:
             st.rerun()
 
 # ==============================================================================
-# ABA 4: TORRE DE CONTROLE ADMIN
+# ABA 4: TORRE DE CONTROLE ADMIN (SEGURANÇA NÍVEL 10)
 # ==============================================================================
 with menu_abas[4]:
-    ADMIN_USER = st.secrets.get("ADMIN_USER", "admin")
-    ADMIN_PASS = st.secrets.get("ADMIN_PASS", "geralja2026")
-
     if not st.session_state.get('admin_logado'):
         st.markdown("### 🔐 Acesso Restrito à Diretoria")
         with st.form("painel_login_adm"):
@@ -939,7 +1024,7 @@ if "📊 FINANCEIRO" in lista_abas:
     with menu_abas[6]:
         st.header("📊 Balanço Financeiro da Plataforma")
         st.info(f"Chave PIX Oficial de Recebimento de Pacotes: {PIX_OFICIAL}")
-        st.write("Gerencie aqui os relatórios de recargas do modelo pré-pago e comissões do modelo Uber.")
+        st.write("Gerencie relatórios de recargas do modelo pré-pago e comissões.")
 
 # ==============================================================================
 # 9. RODAPÉ DE SEGURANÇA E LGPD
