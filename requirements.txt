@@ -1,4 +1,3 @@
-# --- LISTA MESTRA GERALJÁ ---
 streamlit
 streamlit-js-eval==0.1.7
 streamlit-google-auth
@@ -19,8 +18,6 @@ pytz
 requests
 beautifulsoup4
 feedparser
-beautifulsoup4
-requests
 
 
 
