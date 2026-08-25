@@ -1,23 +1,30 @@
+# UI & Navegação
 streamlit
 streamlit-js-eval==0.1.7
 streamlit-google-auth
+
+# Banco de Dados & Autenticação
 firebase-admin
 google-cloud-firestore
-gspread
 google-auth-oauthlib
+gspread
+
+# Inteligência Artificial & Processamento de Texto
 groq
 google-generativeai
 nltk
 fuzzywuzzy
 python-Levenshtein
+
+# Mídia, Áudio & Web Scraping
 gTTS
+Pillow
+feedparser
+beautifulsoup4
+requests
+
+# Análise de Dados & Visualização
 pandas
 plotly
-Pillow
 pytz
-requests
-beautifulsoup4
-feedparser
-
-
 
