@@ -1,4 +1,3 @@
-```python
 # ==============================================================================
 # GERALJÁ: SISTEMA OPERACIONAL COMPLETO & ECOSSISTEMA DE SERVIÇOS (v6.0 MASTER)
 # Mídia + Marketplace Híbrido + Carteira Multi-Moedas + Clube de Descontos
