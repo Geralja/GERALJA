@@ -1198,7 +1198,6 @@ def modulo_clube_cupons():
   st.markdown("---")
   st.subheader("🔥 Ofertas e Anúncios da Vitrine")
 
-  # Busca ofertas salvas no Firestore ou usa padrão de demonstração
   ofertas_exemplo = []
   try:
     if db:
@@ -1289,14 +1288,14 @@ def modulo_clube_cupons():
             unsafe_allow_html=True,
         )
 
-        # RENDERIZAÇÃO DE BOTÕES DE E-COMMERCE EXTERNOS
+        # RENDERIZAÇÃO DE BOTÕES DE E-COMMERCE EXTERNOS (CORRIGIDO EM LINHA ÚNICA)
         links_ext = []
         if of.get("link_ifood"):
           links_ext.append(
-              f'<a href="{of["link_ifood"]}" target="_blank" style="background:#EA1D2C;'
-              " color:white; padding:6px 12px; border-radius:8px;"
-              " text-decoration:none; font-size:11px; font-weight:bold;">🍔"
-              " iFood</a>"
+              f'<a href="{of["link_ifood"]}" target="_blank"'
+              ' style="background:#EA1D2C; color:white; padding:6px 12px;'
+              " border-radius:8px; text-decoration:none; font-size:11px;"
+              ' font-weight:bold;">🍔 iFood</a>'
           )
         if of.get("link_shopee"):
           links_ext.append(
@@ -1447,7 +1446,6 @@ def modulo_clube_cupons():
                   f"GJ-{zap_m[-4:] if len(zap_m)>=4 else '0000'}-{int(time.time()) % 10000}"
               )
 
-              # Grava pedido pendente para disparar a campainha sonora no painel do lojista
               if db:
                 db.collection("pedidos").add({
                     "loja_id": loja_id,
@@ -1660,7 +1658,7 @@ def modulo_painel_parceiro():
 
     st.write(f"### Olá, {d.get('nome', 'Parceiro')}!")
 
-    # --- MONITOR DE PEDIDOS COM CAMPAINHA SONORA (SIRENE TIPO IFOOD) ---
+    # --- MONITOR DE PEDIDOS COM CAMPAINHA SONORA ---
     st.subheader("🔔 Gestor de Pedidos & Campainha Sonora")
     campainha_ativa = st.toggle("🔔 Campainha de Alertas Ativa", value=True)
 
@@ -1685,7 +1683,6 @@ def modulo_painel_parceiro():
       )
 
       if campainha_ativa:
-        # Toca som contínuo no navegador enquanto houver pedido pendente
         html_sound = """
                     <audio autoplay loop>
                         <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
@@ -1762,7 +1759,7 @@ def modulo_painel_parceiro():
 
     st.divider()
 
-    # --- FORMULÁRIO UNIFICADO DE CADASTRO DE OFERTA (MANUAL + E-COMMERCE) ---
+    # --- FORMULÁRIO UNIFICADO DE CADASTRO DE OFERTA ---
     with st.expander(
         "📦 Cadastrar Nova Oferta na Vitrine (Manual + E-commerce)"
     ):
