@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # ==============================================================================
-# GERALJÁ: SISTEMA OPERACIONAL MODULAR & ECOSSISTEMA DE SERVIÇOS (v6.0 MASTER INTEGRADO)
+# GERALJÁ: SISTEMA OPERACIONAL MODULAR & ECOSSISTEMA DE SERVIÇOS (v6.0 MASTER)
 # Arquitetura por Containers Isolados e Inquebráveis (Plug-and-Play)
-# Mídia + Marketplace Híbrido + Carteira Multi-Moedas + Clube PPE + LGPD
+# Mídia + Marketplace Híbrido + Carteira Multi-Moedas + Campainha Sonora + E-Commerce
 # ==============================================================================
 
 import base64
@@ -85,7 +85,6 @@ def executar_bloco_seguro(
 # 1. CARREGAMENTO BLINDADO DE SEGREDOS (COFRE MASTER)
 # ==============================================================================
 def obter_segredo_critico(chave: str):
-  """Garante a interrupção da execução caso uma credencial obrigatória esteja ausente no secrets.toml."""
   if chave in st.secrets:
     return st.secrets[chave]
 
@@ -988,8 +987,6 @@ def modulo_busca_e_gps():
         unsafe_allow_html=True,
     )
 
-  # [ESPAÇO RESERVADO PARA NOVAS FUNCIONALIDADES NA ABA BUSCA]
-
 
 def modulo_plantao_noticias():
   st.markdown("---")
@@ -1064,7 +1061,7 @@ def modulo_plantao_noticias():
           )
 
 
-# --- ABA 1: MODULOS (CLUBE DE CUPONS PAY-PER-ENGAGEMENT INTEGRADO) ---
+# --- ABA 1: MODULOS (CLUBE DE CUPONS + VITRINE OMNICHANNEL INTEGRADO) ---
 def modulo_clube_cupons():
   st.markdown("### 🎟️ Clube de Cupons & Vitrine Social PPE")
   st.caption(
@@ -1072,7 +1069,6 @@ def modulo_clube_cupons():
       " pelos lojistas e use nos cupons locais!"
   )
 
-  # Inicializadores de Estado para Interações Sociais e Saldos dos Lojistas
   if "social_stats" not in st.session_state:
     st.session_state.social_stats = {}
   if "saldo_lojistas" not in st.session_state:
@@ -1169,7 +1165,6 @@ def modulo_clube_cupons():
 
     return True, msg_ok
 
-  # Campo do Visitante / Morador
   id_morador = st.text_input(
       "Seu WhatsApp para consultar saldo e usar cupons:",
       value=st.session_state.get("user_id", ""),
@@ -1203,53 +1198,65 @@ def modulo_clube_cupons():
   st.markdown("---")
   st.subheader("🔥 Ofertas e Anúncios da Vitrine")
 
-  ofertas_exemplo = [
-      {
-          "id": "post_pizzaria_master",
-          "loja_id": "loja_pizzaria_express",
-          "loja": "Pizzaria Grajaú Express",
-          "zap": ZAP_ADMIN,
-          "pix": PIX_OFICIAL,
-          "item": "Combo Família: Pizza Grande + Guaraná 2L",
-          "preco_brl": 65.00,
-          "min_gc": 50,
-          "max_gc": 150,
-          "estoque": 6,
-          "img": (
-              "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500&q=80"
-          ),
-      },
-      {
-          "id": "post_lavajato_master",
-          "loja_id": "loja_interlagos_wash",
-          "loja": "Lava Jato & Estética Interlagos",
-          "zap": ZAP_ADMIN,
-          "pix": PIX_OFICIAL,
-          "item": "Lavagem Completa + Cera de Carnaúba",
-          "preco_brl": 80.00,
-          "min_gc": 50,
-          "max_gc": 200,
-          "estoque": 4,
-          "img": (
-              "https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?w=500&q=80"
-          ),
-      },
-  ]
+  # Busca ofertas salvas no Firestore ou usa padrão de demonstração
+  ofertas_exemplo = []
+  try:
+    if db:
+      vitrine_db = list(db.collection("vitrine_posts").limit(10).stream())
+      for vdoc in vitrine_db:
+        ofertas_exemplo.append(vdoc.to_dict())
+  except Exception:
+    pass
+
+  if not ofertas_exemplo:
+    ofertas_exemplo = [
+        {
+            "id": "post_pizzaria_master",
+            "loja_id": "loja_pizzaria_express",
+            "loja": "Pizzaria Grajaú Express",
+            "zap": ZAP_ADMIN,
+            "pix": PIX_OFICIAL,
+            "item": "Combo Família: Pizza Grande + Guaraná 2L",
+            "preco_brl": 65.00,
+            "min_gc": 50,
+            "max_gc": 150,
+            "estoque": 6,
+            "img": (
+                "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500&q=80"
+            ),
+            "link_ifood": "https://www.ifood.com.br",
+        },
+        {
+            "id": "post_lavajato_master",
+            "loja_id": "loja_interlagos_wash",
+            "loja": "Lava Jato & Estética Interlagos",
+            "zap": ZAP_ADMIN,
+            "pix": PIX_OFICIAL,
+            "item": "Lavagem Completa + Cera de Carnaúba",
+            "preco_brl": 80.00,
+            "min_gc": 50,
+            "max_gc": 200,
+            "estoque": 4,
+            "img": (
+                "https://images.unsplash.com/photo-1520340356584-f9917d1eea6f?w=500&q=80"
+            ),
+        },
+    ]
 
   for of in ofertas_exemplo:
-    post_id = of["id"]
-    loja_id = of["loja_id"]
+    post_id = of.get("id", of.get("post_id", "post_temp"))
+    loja_id = of.get("loja_id", ZAP_ADMIN)
 
     if db:
       saldo_loja = carteira_engine.obter_saldos(loja_id).get("geralcoin", 0)
     else:
       saldo_loja = st.session_state.saldo_lojistas.get(loja_id, 0)
 
-    # Regra de Auto-Pausa: Lojista sem orçamento esconde o botão de ganhar
     if saldo_loja <= 0:
       st.warning(
-          f"⏸️ **Anúncio em Pausa ({of['loja']}):** O comerciante aguarda"
-          " recarga de moedas para liberar recompensas aos moradores."
+          f"⏸️ **Anúncio em Pausa ({of.get('loja', of.get('loja_nome'))}):** O"
+          " comerciante aguarda recarga de moedas para liberar recompensas aos"
+          " moradores."
       )
       continue
 
@@ -1266,7 +1273,7 @@ def modulo_clube_cupons():
             f" style='font-size:11px;'>(Orçamento: {saldo_loja} GC)</small>",
             unsafe_allow_html=True,
         )
-        st.write(f"🏢 **{of['loja']}**")
+        st.write(f"🏢 **{of.get('loja', of.get('loja_nome'))}**")
 
         desc_min = of["min_gc"] * 0.10
         desc_max = of["max_gc"] * 0.10
@@ -1282,12 +1289,52 @@ def modulo_clube_cupons():
             unsafe_allow_html=True,
         )
 
+        # RENDERIZAÇÃO DE BOTÕES DE E-COMMERCE EXTERNOS
+        links_ext = []
+        if of.get("link_ifood"):
+          links_ext.append(
+              f'<a href="{of["link_ifood"]}" target="_blank" style="background:#EA1D2C;'
+              " color:white; padding:6px 12px; border-radius:8px;"
+              " text-decoration:none; font-size:11px; font-weight:bold;">🍔"
+              " iFood</a>"
+          )
+        if of.get("link_shopee"):
+          links_ext.append(
+              f'<a href="{of["link_shopee"]}" target="_blank"'
+              ' style="background:#EE4D2D; color:white; padding:6px 12px;'
+              " border-radius:8px; text-decoration:none; font-size:11px;"
+              ' font-weight:bold;">🛍️ Shopee</a>'
+          )
+        if of.get("link_mercadolivre"):
+          links_ext.append(
+              f'<a href="{of["link_mercadolivre"]}" target="_blank"'
+              ' style="background:#FFE600; color:#2D3277; padding:6px 12px;'
+              " border-radius:8px; text-decoration:none; font-size:11px;"
+              ' font-weight:bold;">💛 Mercado Livre</a>'
+          )
+        if of.get("link_99"):
+          links_ext.append(
+              f'<a href="{of["link_99"]}" target="_blank"'
+              ' style="background:#FF8C00; color:white; padding:6px 12px;'
+              " border-radius:8px; text-decoration:none; font-size:11px;"
+              ' font-weight:bold;">🟡 99Food</a>'
+          )
+
+        if links_ext:
+          st.markdown(
+              f'<div style="display:flex; gap:6px; flex-wrap:wrap;'
+              ' margin-bottom:10px;">'
+              + "".join(links_ext)
+              + "</div>",
+              unsafe_allow_html=True,
+          )
+
         st.info(
             f"👍 **{stats['likes']}** Curtidas | 💬 **{len(stats['comments'])}**"
             f" Comentários | 📢 **{stats['shares']}** Compartilhamentos"
         )
 
-        # Botões Sociais Pay-Per-Engagement (PPE)
+        # Botões Sociais PPE
         c1, c2, c3 = st.columns(3)
         if c1.button("👍 Curtir (+1 GC)", key=f"btn_lk_{post_id}"):
           if not id_morador:
@@ -1336,7 +1383,8 @@ def modulo_clube_cupons():
         with c3:
           with st.popover("📢 Divulgar (+3 GC)"):
             msg_share = (
-                f"Confira esta oferta especial da {of['loja']}: {of['item']}"
+                f"Confira esta oferta especial da {of.get('loja', of.get('loja_nome'))}:"
+                f" {of['item']}"
             )
             link_zap = f"https://api.whatsapp.com/send?text={urllib.parse.quote(msg_share + ' ' + link_direto_oferta)}"
             st.markdown(
@@ -1364,13 +1412,7 @@ def modulo_clube_cupons():
                 time.sleep(0.4)
                 st.rerun()
 
-        with st.expander(f"🔽 Ver Comentários ({len(stats['comments'])})"):
-          for comm in stats["comments"]:
-            st.write(
-                f"💬 **{comm['user']}** ({comm['data']}): {comm['texto']}"
-            )
-
-        # Botão de Resgate do Cupom
+        # Resgate do Cupom com Registro de Pedido Pendente para Alarme
         if st.button(
             f"🛒 Resgatar Cupom de Desconto ({of['item']})", key=f"btn_resg_{post_id}"
         ):
@@ -1405,6 +1447,18 @@ def modulo_clube_cupons():
                   f"GJ-{zap_m[-4:] if len(zap_m)>=4 else '0000'}-{int(time.time()) % 10000}"
               )
 
+              # Grava pedido pendente para disparar a campainha sonora no painel do lojista
+              if db:
+                db.collection("pedidos").add({
+                    "loja_id": loja_id,
+                    "cliente_zap": zap_m,
+                    "item": of["item"],
+                    "voucher": voucher_code,
+                    "valor_pix": valor_a_pagar_pix,
+                    "status": "pendente",
+                    "timestamp": datetime.now(fuso_br).isoformat(),
+                })
+
               st.balloons()
               st.success(
                   f"🎉 Cupom {voucher_code} gerado! {gc_usar} GeralCoins"
@@ -1421,31 +1475,33 @@ def modulo_clube_cupons():
                 st.markdown(
                     f"### **TOTAL A PAGAR NO PIX:** R$ {valor_a_pagar_pix:.2f}"
                 )
-                st.info(f"🔑 Chave PIX da Loja: `{of['pix']}`")
+                st.info(
+                    f"🔑 Chave PIX da Loja: `{of.get('pix', PIX_OFICIAL)}`"
+                )
 
               msg_pedido = f"""🚨 *Novo Pedido GeralJá - Cupom Aplicado*
 🎟️ *Voucher:* {voucher_code}
 👤 *Cliente:* {zap_m}
 📦 *Item:* {of['item']}
-🏬 *Estabelecimento:* {of['loja']}
+🏬 *Estabelecimento:* {of.get('loja', of.get('loja_nome'))}
 
 💵 *Valor Tabela:* R$ {of['preco_brl']:.2f}
 🪙 *Abatimento ({gc_usar} GC):* -R$ {desconto_brl:.2f}
 ✅ *Total a Pagar no PIX:* R$ {valor_a_pagar_pix:.2f}"""
 
-              link_pedido_zap = criar_link_zap(of["zap"], msg_pedido)
+              link_pedido_zap = criar_link_zap(
+                  of.get("zap", ZAP_ADMIN), msg_pedido
+              )
               st.markdown(
                   f'<a href="{link_pedido_zap}" target="_blank" style="display:block;'
                   " background:#25D366; color:white; text-align:center;"
                   " padding:12px; border-radius:10px; font-weight:600;"
-                  ' text-decoration:none;">💬 Enviar Comprovante e Pedido no'
-                  " WhatsApp</a>",
+                  ' text-decoration:none;">💬 Enviar Pedido no WhatsApp da'
+                  " Loja</a>",
                   unsafe_allow_html=True,
               )
 
       st.divider()
-
-  # [ESPAÇO RESERVADO PARA NOVAS FUNCIONALIDADES NA ABA CUPONS]
 
 
 # --- ABA 2: MODULOS ---
@@ -1572,10 +1628,8 @@ def modulo_cadastro_parceiro():
       except Exception as e:
         st.error(f"❌ Erro ao salvar cadastro: {e}")
 
-  # [ESPAÇO RESERVADO PARA NOVAS FUNCIONALIDADES NA ABA CADASTRO]
 
-
-# --- ABA 3: MODULOS ---
+# --- ABA 3: MODULOS (PAINEL DO PARCEIRO COM CAMPAINHA E FORMULÁRIO OMNICHANNEL) ---
 def modulo_painel_parceiro():
   if not st.session_state.get("auth"):
     st.subheader("🚀 Acesso ao Painel do Parceiro")
@@ -1605,6 +1659,69 @@ def modulo_painel_parceiro():
     saldos = carteira_engine.obter_saldos(user_id)
 
     st.write(f"### Olá, {d.get('nome', 'Parceiro')}!")
+
+    # --- MONITOR DE PEDIDOS COM CAMPAINHA SONORA (SIRENE TIPO IFOOD) ---
+    st.subheader("🔔 Gestor de Pedidos & Campainha Sonora")
+    campainha_ativa = st.toggle("🔔 Campainha de Alertas Ativa", value=True)
+
+    pedidos_pendentes = []
+    if db:
+      try:
+        p_docs = (
+            db.collection("pedidos")
+            .where("loja_id", "==", user_id)
+            .where("status", "==", "pendente")
+            .stream()
+        )
+        for p in p_docs:
+          pedidos_pendentes.append(p.to_dict() | {"id": p.id})
+      except Exception:
+        pass
+
+    if pedidos_pendentes:
+      st.error(
+          f"🚨 **NOVO PEDIDO CHEGOU!** ({len(pedidos_pendentes)} aguardando"
+          " atendimento)"
+      )
+
+      if campainha_ativa:
+        # Toca som contínuo no navegador enquanto houver pedido pendente
+        html_sound = """
+                    <audio autoplay loop>
+                        <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
+                    </audio>
+                """
+        components.html(html_sound, height=0)
+
+      for ped in pedidos_pendentes:
+        with st.container(border=True):
+          st.markdown(
+              f"<b>📦 Produto:</b> {ped.get('item')} | 🎟️ <b>Voucher:</b>"
+              f" `{ped.get('voucher')}`",
+              unsafe_allow_html=True,
+          )
+          st.markdown(
+              f"👤 <b>Cliente:</b> {ped.get('cliente_zap')} | 💵 <b>A Pagar no"
+              f" PIX:</b> R$ {ped.get('valor_pix', 0):.2f}",
+              unsafe_allow_html=True,
+          )
+
+          if st.button(
+              f"✅ Aceitar e Atender Pedido ({ped.get('voucher')})",
+              key=f"btn_aceitar_{ped['id']}",
+              type="primary",
+          ):
+            if db:
+              db.collection("pedidos").document(ped["id"]).update(
+                  {"status": "atendido"}
+              )
+            st.toast("✅ Pedido aceito com sucesso!")
+            time.sleep(0.5)
+            st.rerun()
+    else:
+      st.success("🟢 Nenhum pedido pendente no momento. Campainha em espera.")
+
+    st.divider()
 
     m1, m2, m3, m4 = st.columns(4)
     m1.metric(
@@ -1644,6 +1761,109 @@ def modulo_painel_parceiro():
           st.error(msg)
 
     st.divider()
+
+    # --- FORMULÁRIO UNIFICADO DE CADASTRO DE OFERTA (MANUAL + E-COMMERCE) ---
+    with st.expander(
+        "📦 Cadastrar Nova Oferta na Vitrine (Manual + E-commerce)"
+    ):
+      with st.form("form_nova_oferta_unificada", clear_on_submit=True):
+        st.markdown(
+            "<b>1. Informações do Produto (Manual)</b>", unsafe_allow_html=True
+        )
+        col_f1, col_f2 = st.columns([2, 1])
+        t_item = col_f1.text_input(
+            "Título da Oferta:", placeholder="Ex: Combo Pizza Grande + Refri 2L"
+        )
+        t_preco = col_f2.number_input(
+            "Preço de Tabela (R$):", min_value=1.0, value=50.0
+        )
+
+        t_desc = st.text_area(
+            "Descrição do Produto:",
+            placeholder="Ex: Forno a lenha, acompanha borda recheada...",
+        )
+
+        col_f3, col_f4, col_f5 = st.columns(3)
+        t_min_gc = col_f3.number_input(
+            "Desconto Mínimo (GC):", min_value=10, value=50
+        )
+        t_max_gc = col_f4.number_input(
+            "Desconto Máximo (GC):", min_value=10, value=150
+        )
+        t_est = col_f5.number_input("Estoque:", min_value=1, value=10)
+
+        f_up = st.file_uploader(
+            "Foto do Produto:", type=["jpg", "jpeg", "png"]
+        )
+        f_url = st.text_input(
+            "Ou URL da Imagem:", placeholder="https://..."
+        )
+
+        st.markdown(
+            "<b>2. Links de E-commerce & Delivery (Opcional)</b>",
+            unsafe_allow_html=True,
+        )
+        l_ifood = st.text_input(
+            "🍔 Link iFood:", placeholder="https://www.ifood.com.br/..."
+        )
+        l_shopee = st.text_input(
+            "🛍️ Link Shopee:", placeholder="https://shopee.com.br/..."
+        )
+        l_ml = st.text_input(
+            "💛 Link Mercado Livre:",
+            placeholder="https://produto.mercadolivre.com.br/...",
+        )
+        l_99 = st.text_input(
+            "🟡 Link 99Food / Outro:", placeholder="https://food.99app.com/..."
+        )
+
+        btn_pub = st.form_submit_button(
+            "🚀 Publicar Oferta na Vitrine",
+            use_container_width=True,
+            type="primary",
+        )
+
+      if btn_pub:
+        if not t_item or not t_desc:
+          st.warning("⚠️ Título e descrição são obrigatórios!")
+        else:
+          img_final = (
+              "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500&q=80"
+          )
+          if f_up is not None:
+            img_final = otimizar_imagem(f_up)
+          elif f_url.strip():
+            img_final = f_url.strip()
+
+          pid = f"post_{user_id}_{int(time.time())}"
+          dict_post = {
+              "id": pid,
+              "post_id": pid,
+              "loja_id": user_id,
+              "loja": d.get("nome", "Comércio Local"),
+              "item": t_item,
+              "descricao": t_desc,
+              "preco_brl": float(t_preco),
+              "min_gc": int(t_min_gc),
+              "max_gc": int(t_max_gc),
+              "estoque": int(t_est),
+              "img": img_final,
+              "pix": PIX_OFICIAL,
+              "zap": user_id,
+              "link_ifood": l_ifood.strip(),
+              "link_shopee": l_shopee.strip(),
+              "link_mercadolivre": l_ml.strip(),
+              "link_99": l_99.strip(),
+              "criado_em": datetime.now(fuso_br).isoformat(),
+          }
+
+          if db:
+            db.collection("vitrine_posts").document(pid).set(dict_post)
+
+          st.balloons()
+          st.success("🎉 Oferta publicada com sucesso na Vitrine do Bairro!")
+          time.sleep(1)
+          st.rerun()
 
     with st.expander("📝 Editar meu Perfil & Galeria da Vitrine"):
       with st.form("perfil_v6"):
@@ -1711,8 +1931,6 @@ def modulo_painel_parceiro():
     if st.button("🚪 Sair da Conta", use_container_width=True):
       st.session_state.auth = False
       st.rerun()
-
-  # [ESPAÇO RESERVADO PARA NOVAS FUNCIONALIDADES NA ABA PARCEIRO]
 
 
 # --- ABA 4: MODULOS ---
@@ -1912,8 +2130,6 @@ def modulo_admin_torre_controle():
     except Exception as e:
       st.error(f"Erro ao carregar dados do admin: {e}")
 
-  # [ESPAÇO RESERVADO PARA NOVAS FUNCIONALIDADES NA ABA ADMIN]
-
 
 # --- ABA 5: MODULOS ---
 def modulo_feedback():
@@ -1929,16 +2145,12 @@ def modulo_feedback():
     })
     st.success("Obrigado pelo feedback!")
 
-  # [ESPAÇO RESERVADO PARA NOVAS FUNCIONALIDADES NA ABA FEEDBACK]
-
 
 # --- ABA OPCIONAL: MODULOS ---
 def modulo_financeiro():
   st.header("📊 Balanço Financeiro da Plataforma")
   st.info(f"Chave PIX Oficial de Recebimento de Pacotes: {PIX_OFICIAL}")
   st.write("Gerencie relatórios de recargas do modelo pré-pago e comissões.")
-
-  # [ESPAÇO RESERVADO PARA NOVAS FUNCIONALIDADES NA ABA FINANCEIRO]
 
 
 # ==============================================================================
