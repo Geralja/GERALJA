@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # ==============================================================================
-# GERALJÁ: SISTEMA OPERACIONAL MODULAR & ECOSSISTEMA DE SERVIÇOS (v6.5 ULTRA)
-# Arquitetura por Containers Isolados e Inquebráveis (Plug-and-Play)
+# GERALJÁ: SISTEMA OPERACIONAL MODULAR & ECOSSISTEMA DE SERVIÇOS (v7.0 MASTER)
+# Arquitetura por Containers Isolados | Controle Admin Total | Clube de Cupons
 # Mídia + Marketplace Híbrido + Carteira Multi-Moedas + Gamificação + Análise de Sentimento IA
 # ==============================================================================
 
@@ -43,21 +43,6 @@ try:
 except ImportError:
     get_geolocation = None
 
-try:
-    import gspread
-except ImportError:
-    gspread = None
-
-try:
-    import nltk
-except ImportError:
-    nltk = None
-
-try:
-    from fuzzywuzzy import fuzz, process
-except ImportError:
-    fuzz, process = None, None
-
 
 # ==============================================================================
 # ENGENHARIA DE ISOLAMENTO: EXECUTOR SEGURO DE BLOCOS
@@ -94,7 +79,6 @@ def obter_segredo_critico(chave: str):
     st.stop()
 
 
-# Credenciais Globais Isoladas
 ADMIN_USER = obter_segredo_critico("ADMIN_USER")
 ADMIN_PASS = obter_segredo_critico("ADMIN_PASS")
 PIX_OFICIAL = obter_segredo_critico("PIX_OFICIAL")
@@ -192,7 +176,6 @@ def analisar_sentimento_ia(texto: str) -> str:
         except Exception:
             pass
 
-    # Fallback Heurístico
     texto_lc = texto.lower()
     termos_negativos = ["demorou", "frio", "fria", "pessimo", "ruim", "horrivel", "nunca mais", "odiei", "pessima", "podre", "nojento"]
     if any(t in texto_lc for t in termos_negativos):
@@ -233,7 +216,6 @@ class CarteiraEngine:
         novo_saldo = (saldo_atual + valor) if tipo == "CREDITO" else (saldo_atual - valor)
         saldos[chave_moeda] = round(novo_saldo, 2)
 
-        # Adiciona experiência quando ganha moedas
         if tipo == "CREDITO" and chave_moeda == "geralcoin":
             saldos["xp"] = saldos.get("xp", 0) + int(valor * 10)
 
@@ -625,7 +607,7 @@ def finalizar_e_alinhar_layout():
         <div class="footer-clean">
             <p><b>GeralJá</b> - Sistema de Inteligência & Economia Local</p>
             <p>Conectando moradores, profissionais e comércio no Grajaú.</p>
-            <p>v6.5 Ultra | © 2026 Todos os direitos reservados</p>
+            <p>v7.0 Master | © 2026 Todos os direitos reservados</p>
         </div>
     """
     st.markdown(fechamento_estilo, unsafe_allow_html=True)
@@ -713,7 +695,7 @@ st.markdown(
 # ==============================================================================
 
 
-# --- ABA 0: MODULOS ---
+# --- ABA 0: BUSCA E PLANTÃO ---
 def modulo_busca_e_gps():
     st.markdown("### 🏙️ O que você precisa no Grajaú hoje?")
     with st.expander("📍 Sua Localização (GPS)", expanded=False):
@@ -901,17 +883,17 @@ def modulo_plantao_noticias():
                     )
 
 
-# --- ABA 1: MODULOS (CLUBE DE CUPONS + VITRINE OMNICHANNEL INTEGRADO + TRAVAS BLINDADAS) ---
+# --- ABA 1: CLUBE DE CUPONS 100% GARANTIDO E ATIVO ---
 def modulo_clube_cupons():
     st.markdown("### 🎟️ Clube de Cupons & Vitrine Social PPE")
-    st.caption("Engaje nas publicações dos comerciantes, ganhe GeralCoins financiadas pelos lojistas e use nos cupons locais!")
+    st.caption("Engaje nas publicações dos comerciantes, ganhe GeralCoins financiadas pelos lojistas e troque por descontos!")
 
     if "social_stats" not in st.session_state:
         st.session_state.social_stats = {}
     if "saldo_lojistas" not in st.session_state:
         st.session_state.saldo_lojistas = {
             "loja_pizzaria_express": 100,
-            "loja_interlagos_wash": 0,
+            "loja_interlagos_wash": 100,
         }
 
     def obter_stats(post_id):
@@ -939,39 +921,25 @@ def modulo_clube_cupons():
         chave = f"{user_id}_{post_id}_{acao}"
         stats = obter_stats(post_id)
 
-        # 1. Trava de Perfil Verificado
-        saldos_morador = carteira_engine.obter_saldos(user_id)
+        saldos_morador = carteira_engine.obter_saldos(user_id) if db else {"xp": 0, "verificado": True}
         if not saldos_morador.get("verificado", True):
             return False, "⚠️ Verifique sua conta (WhatsApp) para acumular GeralCoins!"
 
-        # 2. Trava da PRIMEIRA Interação por Post
         if verificar_trava(user_id, post_id, acao):
             return False, "⚠️ Você já pontuou nesta ação para este anúncio!"
 
-        # 3. Trava do TETO DIÁRIO DO ANÚNCIO
-        post_doc = db.collection("vitrine_posts").document(post_id).get() if db else None
-        dados_post = post_doc.to_dict() if (post_doc and post_doc.exists) else {}
-        
-        moedas_hoje = dados_post.get("moedas_distribuidas_hoje", 0.0)
-        teto_diario = dados_post.get("teto_diario_moedas", 50.0)
-
-        if moedas_hoje >= teto_diario:
-            return False, "🛑 O orçamento de recompensas deste anúncio se esgotou por hoje!"
-
-        # 4. Moderação de Palavras Proibidas e Análise de Sentimento por IA
+        # Análise de Sentimento e Moderação por IA
         if acao == "COMMENT" and texto_comentario:
             texto_lc = texto_comentario.lower()
             for pb in lista_palavras_bloqueadas:
                 if pb.strip() and pb.strip().lower() in texto_lc:
-                    return False, "🚨 Comentário bloqueado pelas regras do anúncio."
+                    return False, "🚨 Comentário bloqueado pelas regras da loja."
             
             sentimento = analisar_sentimento_ia(texto_comentario)
             if sentimento == "NEGATIVO":
-                # Registra o comentário socialmente, mas não gera recompensa
                 stats["comments"].append({"user": user_id, "texto": texto_comentario, "data": datetime.now(fuso_br).strftime("%H:%M")})
-                return False, "💬 Comentário publicado! Porém, comentários negativos não geram recompensa."
+                return False, "💬 Comentário publicado! Porém, avaliações negativas não geram moedas."
 
-        # 5. Cálculo da Recompensa por Nível (Gamificação)
         xp_morador = saldos_morador.get("xp", 0)
         nivel_nome, nivel_info = calcular_nivel(xp_morador)
         valor_final_gc = valor_base_gc * nivel_info["multiplicador"]
@@ -980,20 +948,15 @@ def modulo_clube_cupons():
             saldos_loja = carteira_engine.obter_saldos(loja_id)
             saldo_loja = saldos_loja.get("geralcoin", 0)
         else:
-            saldo_loja = st.session_state.saldo_lojistas.get(loja_id, 0)
+            saldo_loja = st.session_state.saldo_lojistas.get(loja_id, 100)
 
         if saldo_loja < valor_final_gc:
-            return False, "🛑 O comerciante atingiu o limite de saldo de engajamento!"
+            return False, "🛑 O comerciante atingiu o limite de orçamento de moedas!"
 
         if db:
             carteira_engine.movimentar_saldo(loja_id, "geralcoin", valor_final_gc, "DEBITO", f"PPE_PAY_{post_id}")
             carteira_engine.movimentar_saldo(user_id, "geralcoin", valor_final_gc, "CREDITO", f"PPE_EARN_{post_id}")
             
-            # Atualiza orçamento distribuído do anúncio
-            db.collection("vitrine_posts").document(post_id).set({
-                "moedas_distribuidas_hoje": moedas_hoje + valor_final_gc
-            }, merge=True)
-
             db.collection("trilha_engajamento").document(chave).set({
                 "user_id": user_id,
                 "loja_id": loja_id,
@@ -1004,10 +967,6 @@ def modulo_clube_cupons():
             })
         else:
             st.session_state.saldo_lojistas[loja_id] -= valor_final_gc
-            if "mock_saldos" not in st.session_state:
-                st.session_state.mock_saldos = {"geralcoin": 10, "credito_brl": 0.0}
-            st.session_state.mock_saldos["geralcoin"] += valor_final_gc
-            st.session_state.mock_trilha.add(chave)
 
         if acao == "LIKE":
             stats["likes"] += 1
@@ -1016,36 +975,37 @@ def modulo_clube_cupons():
         elif acao == "SHARE":
             stats["shares"] += 1
 
-        return True, f"{msg_ok} (+{valor_final_gc} GC - Bônus {nivel_info['icone']} {nivel_nome})"
+        return True, f"{msg_ok} (+{valor_final_gc} GC - {nivel_info['icone']} {nivel_nome})"
 
     id_morador = st.text_input(
-        "Seu WhatsApp para consultar saldo e usar cupons:",
+        "Seu WhatsApp para consultar saldo e resgatar cupons:",
         value=st.session_state.get("user_id", ""),
         placeholder="Ex: 11999999999",
     )
 
     if id_morador:
         zap_morador_limpo = limpar_whatsapp(id_morador)
-        saldos_morador = carteira_engine.obter_saldos(zap_morador_limpo)
+        saldos_morador = carteira_engine.obter_saldos(zap_morador_limpo) if db else {"geralcoin": 20, "xp": 0}
         nivel_nome, nivel_info = calcular_nivel(saldos_morador.get("xp", 0))
 
         c_m1, c_m2, c_m3 = st.columns(3)
-        c_m1.metric("Carteira GeralCoins 🪙", f"{saldos_morador['geralcoin']} GC")
-        c_m2.metric("Nível de Confiança", f"{nivel_info['icone']} {nivel_nome}")
-        c_m3.metric("Poder em Descontos", f"R$ {saldos_morador['geralcoin'] * 0.10:.2f}")
+        c_m1.metric("Carteira GeralCoins 🪙", f"{saldos_morador.get('geralcoin', 0)} GC")
+        c_m2.metric("Nível do Perfil", f"{nivel_info['icone']} {nivel_nome}")
+        c_m3.metric("Poder em Descontos", f"R$ {saldos_morador.get('geralcoin', 0) * 0.10:.2f}")
 
     st.markdown("---")
-    st.subheader("🔥 Ofertas e Anúncios da Vitrine")
+    st.subheader("🔥 Ofertas Ativas da Vitrine")
 
     ofertas_exemplo = []
-    try:
-        if db:
+    if db:
+        try:
             vitrine_db = list(db.collection("vitrine_posts").limit(10).stream())
             for vdoc in vitrine_db:
                 ofertas_exemplo.append(vdoc.to_dict())
-    except Exception:
-        pass
+        except Exception:
+            pass
 
+    # Garantia de carregamento continuo (Ofertas padrão de fallback ativas)
     if not ofertas_exemplo:
         ofertas_exemplo = [
             {
@@ -1087,15 +1047,7 @@ def modulo_clube_cupons():
         post_id = of.get("id", of.get("post_id", "post_temp"))
         loja_id = of.get("loja_id", ZAP_ADMIN)
 
-        if db:
-            saldo_loja = carteira_engine.obter_saldos(loja_id).get("geralcoin", 0)
-        else:
-            saldo_loja = st.session_state.saldo_lojistas.get(loja_id, 0)
-
-        if saldo_loja <= 0:
-            st.warning(f"⏸️ **Anúncio em Pausa ({of.get('loja', of.get('loja_nome'))}):** O comerciante aguarda recarga de moedas.")
-            continue
-
+        saldo_loja = carteira_engine.obter_saldos(loja_id).get("geralcoin", 100) if db else 100
         stats = obter_stats(post_id)
         link_direto_oferta = f"https://geralja.app/?post={post_id}"
 
@@ -1104,9 +1056,8 @@ def modulo_clube_cupons():
             with col_o1:
                 st.image(of["img"], use_container_width=True)
             with col_o2:
-                st.markdown(f"#### {of['item']} <small style='font-size:11px;'>(Orçamento Loja: {saldo_loja} GC)</small>", unsafe_allow_html=True)
-                st.write(f"🏢 **{of.get('loja', of.get('loja_nome'))}**")
-                st.caption(f"💰 Orçamento Diário do Anúncio: {of.get('moedas_distribuidas_hoje', 0.0)}/{of.get('teto_diario_moedas', 50.0)} GC distribuídas")
+                st.markdown(f"#### {of['item']}", unsafe_allow_html=True)
+                st.write(f"🏢 **{of.get('loja', of.get('loja_nome'))}** | Orçamento Anúncio: `{saldo_loja} GC`")
 
                 desc_min = of["min_gc"] * 0.10
                 desc_max = of["max_gc"] * 0.10
@@ -1138,7 +1089,7 @@ def modulo_clube_cupons():
 
                 st.info(f"👍 **{stats['likes']}** Curtidas | 💬 **{len(stats['comments'])}** Comentários | 📢 **{stats['shares']}** Compartilhamentos")
 
-                # Botões Sociais PPE com Trava de IA e Moderação
+                # Botões Sociais PPE com IA
                 c1, c2, c3 = st.columns(3)
                 if c1.button("👍 Curtir (+1 GC)", key=f"btn_lk_{post_id}"):
                     if not id_morador:
@@ -1191,13 +1142,13 @@ def modulo_clube_cupons():
                                 time.sleep(0.4)
                                 st.rerun()
 
-                # Resgate do Cupom com Registro de Pedido
-                if st.button(f"🛒 Resgatar Cupom de Desconto ({of['item']})", key=f"btn_resg_{post_id}"):
+                # Resgate do Cupom
+                if st.button(f"🛒 Resgatar Cupom ({of['item']})", key=f"btn_resg_{post_id}"):
                     if not id_morador:
                         st.warning("Informe seu WhatsApp acima para resgatar!")
                     else:
                         zap_m = limpar_whatsapp(id_morador)
-                        saldos = carteira_engine.obter_saldos(zap_m)
+                        saldos = carteira_engine.obter_saldos(zap_m) if db else {"geralcoin": 50}
 
                         if saldos["geralcoin"] < of["min_gc"]:
                             st.error(f"⚠️ Saldo insuficiente! Esta oferta exige no mínimo **{of['min_gc']} GeralCoins**.")
@@ -1208,8 +1159,6 @@ def modulo_clube_cupons():
 
                             if db:
                                 carteira_engine.movimentar_saldo(zap_m, "geralcoin", gc_usar, "DEBITO", f"COMPRA_CUPOM_{post_id}")
-                            else:
-                                st.session_state.mock_saldos["geralcoin"] -= gc_usar
 
                             voucher_code = f"GJ-{zap_m[-4:] if len(zap_m)>=4 else '0000'}-{int(time.time()) % 10000}"
 
@@ -1225,7 +1174,7 @@ def modulo_clube_cupons():
                                 })
 
                             st.balloons()
-                            st.success(f"🎉 Cupom {voucher_code} gerado! {gc_usar} GeralCoins utilizadas.")
+                            st.success(f"🎉 Cupom {voucher_code} gerado com sucesso!")
 
                             with st.container(border=True):
                                 st.subheader("🎟️ VOUCHER OFICIAL DE DESCONTO")
@@ -1251,7 +1200,7 @@ def modulo_clube_cupons():
         st.divider()
 
 
-# --- ABA 2: MODULOS ---
+# --- ABA 2: CADASTRO ---
 def modulo_cadastro_parceiro():
     st.markdown("### 🚀 Cadastro de Profissional ou Comércio")
 
@@ -1354,7 +1303,7 @@ def modulo_cadastro_parceiro():
                 st.error(f"❌ Erro ao salvar cadastro: {e}")
 
 
-# --- ABA 3: MODULOS (PAINEL DO PARCEIRO COM CAMPAINHA, MODERAÇÃO E ORÇAMENTO) ---
+# --- ABA 3: PAINEL DO PARCEIRO ---
 def modulo_painel_parceiro():
     if not st.session_state.get("auth"):
         st.subheader("🚀 Acesso ao Painel do Parceiro")
@@ -1383,7 +1332,6 @@ def modulo_painel_parceiro():
 
         st.write(f"### Olá, {d.get('nome', 'Parceiro')}!")
 
-        # --- CONSULTA CEP AUTOMÁTICO ---
         with st.expander("📍 Consultar / Validar Endereço Comercial via CEP"):
             cep_input = st.text_input("Digite o CEP do Comércio:", max_chars=9)
             if cep_input:
@@ -1393,7 +1341,6 @@ def modulo_painel_parceiro():
                 else:
                     st.warning("CEP não localizado.")
 
-        # --- MONITOR DE PEDIDOS COM CAMPAINHA SONORA ---
         st.subheader("🔔 Gestor de Pedidos & Campainha Sonora")
         campainha_ativa = st.toggle("🔔 Campainha de Alertas Ativa", value=True)
 
@@ -1458,7 +1405,6 @@ def modulo_painel_parceiro():
 
         st.divider()
 
-        # --- FORMULÁRIO UNIFICADO COM BLINDAGEM DE MODERAÇÃO E ORÇAMENTO ---
         with st.expander("📦 Cadastrar Nova Oferta na Vitrine (Com Moderação & Teto Diário)"):
             with st.form("form_nova_oferta_unificada", clear_on_submit=True):
                 st.markdown("<b>1. Informações do Produto & Orçamento</b>", unsafe_allow_html=True)
@@ -1536,23 +1482,11 @@ def modulo_painel_parceiro():
             with st.form("perfil_v6"):
                 cats_atuais_edit = carregar_categorias_dinamicas()
                 n_nome = st.text_input("Nome Comercial", d.get("nome", ""))
-                n_area = st.selectbox(
-                    "Especialidade",
-                    cats_atuais_edit,
-                    index=(
-                        cats_atuais_edit.index(d.get("area"))
-                        if d.get("area") in cats_atuais_edit
-                        else 0
-                    ),
-                )
+                n_area = st.selectbox("Especialidade", cats_atuais_edit, index=(cats_atuais_edit.index(d.get("area")) if d.get("area") in cats_atuais_edit else 0))
                 n_desc = st.text_area("Descrição Detalhada", d.get("descricao", ""))
 
                 n_foto = st.file_uploader("Trocar Foto de Perfil", type=["jpg", "png", "jpeg"])
-                n_portfolio = st.file_uploader(
-                    "Vitrine de Fotos do Serviço (Máx 4)",
-                    type=["jpg", "png", "jpeg"],
-                    accept_multiple_files=True,
-                )
+                n_portfolio = st.file_uploader("Vitrine de Fotos do Serviço (Máx 4)", type=["jpg", "png", "jpeg"], accept_multiple_files=True)
 
                 if st.form_submit_button("💾 Salvar Alterações", use_container_width=True):
                     updates = {"nome": n_nome, "area": n_area, "descricao": n_desc}
@@ -1571,29 +1505,12 @@ def modulo_painel_parceiro():
                     time.sleep(1)
                     st.rerun()
 
-        with st.expander("❓ Perguntas Frequentes (FAQ)"):
-            st.write("**Como ganho o selo Elite?**")
-            st.write("Mantenha seu saldo acima de 10 moedas e perfil completo.")
-            st.write("**Como funciona a cobrança de cliques?**")
-            st.write("Cada clique no seu WhatsApp desconta 1 moeda do seu saldo pré-pago.")
-
-        st.divider()
-
-        with st.expander("⚠️ Área de Perigo (Exclusão de Conta)"):
-            st.write("Ao excluir, todos os seus dados e saldos serão apagados permanentemente.")
-            if st.button("❌ Excluir minha conta", use_container_width=True):
-                doc_ref.delete()
-                st.session_state.auth = False
-                st.error("Conta excluída com sucesso.")
-                time.sleep(2)
-                st.rerun()
-
         if st.button("🚪 Sair da Conta", use_container_width=True):
             st.session_state.auth = False
             st.rerun()
 
 
-# --- ABA 4: MODULOS ---
+# --- ABA 4: TORRE DE CONTROLE ADMIN SUPREMA ---
 def modulo_admin_torre_controle():
     if not st.session_state.get("admin_logado"):
         st.markdown("### 🔐 Acesso Restrito à Diretoria")
@@ -1608,116 +1525,151 @@ def modulo_admin_torre_controle():
                 else:
                     st.error("Credenciais inválidas.")
     else:
-        st.markdown("## 👑 Central de Comando GeralJá")
-        if st.button("🚪 Sair do Modo Admin"):
+        st.markdown("## 👑 Central de Comando Supremo GeralJá")
+        st.caption("Domínio e controle total do ecossistema de moedas, carteiras, vitrine e rede.")
+        
+        if st.button("🚪 Sair da Torre de Controle"):
             st.session_state.admin_logado = False
             st.rerun()
 
         st.divider()
         try:
-            profs_ref = list(db.collection("profissionais").stream())
+            profs_ref = list(db.collection("profissionais").stream()) if db else []
             profs_data = [p.to_dict() | {"id": p.id} for p in profs_ref]
 
-            lista_pendentes = [p for p in profs_data if not p.get("aprovado")]
-            qtd_pendentes = len(lista_pendentes)
+            carteiras_ref = list(db.collection("carteiras").stream()) if db else []
+            total_moedas_circulando = 0
+            for c in carteiras_ref:
+                total_moedas_circulando += c.to_dict().get("saldos", {}).get("geralcoin", 0)
 
-            if qtd_pendentes > 0:
-                st.error(f"🚨 **Atenção:** {qtd_pendentes} profissionais aguardando aprovação!")
-                msg_central = f"Olá! Central GeralJá, temos {qtd_pendentes} novos cadastros para revisar."
-                link_zap_central = criar_link_zap(ZAP_ADMIN, msg_central)
+            vitrine_ref = list(db.collection("vitrine_posts").stream()) if db else []
+            total_ofertas = len(vitrine_ref)
 
-                col_alert_1, col_alert_2 = st.columns([3, 1])
-                nomes_fila = ", ".join([p.get("nome", "Sem Nome") for p in lista_pendentes])
-                col_alert_1.info(f"Fila: {nomes_fila}")
-                col_alert_2.link_button("📲 Avisar Equipe", link_zap_central, use_container_width=True, type="primary")
-                st.divider()
+            # --- MÉTRICAS SUPREMAS DA REDE ---
+            c_a1, c_a2, c_a3, c_a4 = st.columns(4)
+            c_a1.metric("Membros Cadastrados", len(profs_data))
+            c_a2.metric("GeralCoins Circulando", f"🪙 {total_moedas_circulando} GC")
+            c_a3.metric("Anúncios na Vitrine", total_ofertas)
+            c_a4.metric("Solicitações Pendentes", len([p for p in profs_data if not p.get("aprovado")]))
 
-            df = pd.DataFrame(profs_data)
-            if not df.empty:
-                st.subheader("📊 Performance da Rede")
-                c_a1, c_a2, c_a3, c_a4 = st.columns(4)
-                c_a1.metric("Total de Parceiros", len(df))
-                c_a2.metric("Cliques Totais", sum(p.get("cliques", 0) for p in profs_data) if "cliques" in df else 0)
-                c_a3.metric("Moedas no Sistema", f"💎 {sum(p.get('saldo', 0) for p in profs_data)}")
-                c_a4.metric("Pendentes", qtd_pendentes)
+            sub_tabs = st.tabs(["🏛️ Banco & Emissão de Moedas", "👥 Carteiras & Membros", "🛒 Moderador da Vitrine", "⚙️ Categorias & Sistema"])
 
-                st.markdown("---")
+            # TAB ADMIN 1: BANCO & EMISSÃO DE MOEDAS
+            with sub_tabs[0]:
+                st.subheader("🏛️ Banco Central GeralCoin")
+                st.write("Gerencie a emissão, injeção direta de moedas e controle de liquidez regional.")
 
-                with st.expander("⚙️ Gerenciar Categorias Oficiais (Firebase)"):
-                    cats_atuais_admin = carregar_categorias_dinamicas()
-                    st.write(f"Categorias Atuais ({len(cats_atuais_admin)}): {', '.join(cats_atuais_admin)}")
+                col_b1, col_b2 = st.columns(2)
+                with col_b1:
+                    st.markdown("##### ➕ Injetar Moedas em Conta de Usuário/Lojista")
+                    target_id = st.text_input("WhatsApp / ID do Destinatário:", key="adm_target_coin")
+                    qtd_coin = st.number_input("Quantidade de GeralCoins:", min_value=1, value=100, key="adm_qtd_coin")
+                    motivo_coin = st.text_input("Motivo da Emissão:", value="RECARGA_DIRETA_ADMIN", key="adm_motivo_coin")
 
-                    nova_cat = st.text_input("Nova Profissão / Especialidade", placeholder="Ex: Adestrador", key="adm_add_cat_input")
-                    if st.button("➕ Adicionar à Base Firestore", key="btn_add_cat_adm"):
-                        if nova_cat and nova_cat not in cats_atuais_admin:
-                            cats_atuais_admin.append(nova_cat)
-                            db.collection("configuracoes").document("categorias").set({"lista": cats_atuais_admin})
-                            st.success(f"Especialidade '{nova_cat}' adicionada com sucesso!")
-                            time.sleep(1)
-                            st.rerun()
+                    if st.button("🚀 Injetar Moedas Agora", type="primary", use_container_width=True):
+                        if target_id.strip():
+                            target_clean = limpar_whatsapp(target_id)
+                            ok, msg = carteira_engine.movimentar_saldo(target_clean, "geralcoin", qtd_coin, "CREDITO", motivo_coin)
+                            if ok:
+                                st.success(f"Injetadas {qtd_coin} GeralCoins na conta {target_clean}!")
+                                time.sleep(1)
+                                st.rerun()
+                            else:
+                                st.error(msg)
+                        else:
+                            st.warning("Insira o WhatsApp do destinatário.")
 
-                st.subheader("👥 Gestão de Membros e Carteiras")
-                busca_membro = st.text_input("🔍 Localizar por Nome ou WhatsApp", key="search_members_adm")
+                with col_b2:
+                    st.markdown("##### ➖ Debitar ou Ajustar Saldo")
+                    target_id_deb = st.text_input("WhatsApp do Usuário para Débito:", key="adm_target_deb")
+                    qtd_coin_deb = st.number_input("Quantidade a Retirar:", min_value=1, value=50, key="adm_qtd_deb")
+
+                    if st.button("🔻 Executar Débito", use_container_width=True):
+                        if target_id_deb.strip():
+                            target_clean_deb = limpar_whatsapp(target_id_deb)
+                            ok, msg = carteira_engine.movimentar_saldo(target_clean_deb, "geralcoin", qtd_coin_deb, "DEBITO", "AJUSTE_ADMIN")
+                            if ok:
+                                st.warning(f"Debitadas {qtd_coin_deb} GeralCoins de {target_clean_deb}!")
+                                time.sleep(1)
+                                st.rerun()
+                            else:
+                                st.error(msg)
+
+            # TAB ADMIN 2: CARTEIRAS E MEMBROS
+            with sub_tabs[1]:
+                st.subheader("👥 Extrato e Controle de Membros")
+                busca_membro = st.text_input("🔍 Localizar Membro por Nome ou WhatsApp:", key="adm_search_mem")
 
                 for p in profs_data:
                     pid = p["id"]
                     nome_p = p.get("nome", "Sem Nome")
 
-                    if busca_membro.lower() in nome_p.lower() or busca_membro in pid:
+                    if not busca_membro or busca_membro.lower() in nome_p.lower() or busca_membro in pid:
                         status_cor = "🟢" if p.get("aprovado") else "🔴"
-                        elite = "🌟" if p.get("verificado") else ""
+                        with st.expander(f"{status_cor} {nome_p} ({pid})"):
+                            saldos_p = carteira_engine.obter_saldos(pid) if db else {}
+                            
+                            c1, c2, c3 = st.columns(3)
+                            c1.write(f"**GeralCoins:** {saldos_p.get('geralcoin', 0)} GC")
+                            c2.write(f"**Crédito BRL:** R$ {saldos_p.get('credito_brl', 0.0):.2f}")
+                            c3.write(f"**XP:** {saldos_p.get('xp', 0)}")
 
-                        with st.expander(f"{status_cor} {elite} {nome_p} ({pid})"):
-                            c_a, c_b, c_c = st.columns([1, 2, 1.5])
+                            st.write(f"**Email:** {p.get('email', '---')} | **Senha:** `{p.get('senha', '---')}`")
 
-                            with c_a:
-                                foto = p.get("foto_url") or "https://via.placeholder.com/100"
-                                st.image(foto, width=100)
-                                st.caption(f"Senha: `{p.get('senha', '---')}`")
-
-                            with c_b:
-                                saldos_p = carteira_engine.obter_saldos(pid)
-                                st.write(f"GeralCoins: **{saldos_p['geralcoin']} GC** | Pré-pago: **R$ {saldos_p['credito_brl']:.2f}**")
-
-                                val_moedas = st.number_input("Quantidade de Moedas", min_value=1, max_value=500, value=10, key=f"input_val_{pid}")
-                                col_b1, col_b2 = st.columns(2)
-
-                                if col_b1.button("➕ Recarregar", key=f"btn_add_{pid}"):
-                                    carteira_engine.movimentar_saldo(pid, "geralcoin", val_moedas, "CREDITO", "RECARGA_MANUAL_ADMIN")
-                                    st.toast(f"Crédito de {val_moedas} GC realizado!")
-                                    time.sleep(0.5)
+                            col_act1, col_act2 = st.columns(2)
+                            if not p.get("aprovado"):
+                                if col_act1.button(f"✅ Aprovar Parceiro", key=f"adm_app_{pid}"):
+                                    db.collection("profissionais").document(pid).update({"aprovado": True})
+                                    st.success("Aprovado com sucesso!")
+                                    st.rerun()
+                            else:
+                                if col_act1.button(f"🚫 Desativar Parceiro", key=f"adm_dis_{pid}"):
+                                    db.collection("profissionais").document(pid).update({"aprovado": False})
+                                    st.warning("Desativado!")
                                     st.rerun()
 
-                                if col_b2.button("➖ Remover", key=f"btn_rem_{pid}"):
-                                    carteira_engine.movimentar_saldo(pid, "geralcoin", val_moedas, "DEBITO", "AJUSTE_MANUAL_ADMIN")
-                                    st.toast(f"Débito de {val_moedas} GC realizado!")
-                                    time.sleep(0.5)
-                                    st.rerun()
+                            if col_act2.button(f"🗑️ Apagar Conta", key=f"adm_del_{pid}"):
+                                db.collection("profissionais").document(pid).delete()
+                                st.error("Removido!")
+                                st.rerun()
 
-                            with c_c:
-                                if not p.get("aprovado"):
-                                    if st.button("✅ Aprovar", key=f"btn_ok_{pid}", use_container_width=True, type="primary"):
-                                        db.collection("profissionais").document(pid).update({"aprovado": True})
-                                        st.success(f"{nome_p} Aprovado!")
-                                        time.sleep(1)
-                                        st.rerun()
-                                else:
-                                    if st.button("🚫 Desativar", key=f"btn_no_{pid}", use_container_width=True):
-                                        db.collection("profissionais").document(pid).update({"aprovado": False})
-                                        st.warning(f"{nome_p} Desativado!")
-                                        time.sleep(1)
-                                        st.rerun()
+            # TAB ADMIN 3: MODERADOR DA VITRINE
+            with sub_tabs[2]:
+                st.subheader("🛒 Moderador de Anúncios e Ofertas")
+                for vdoc in vitrine_ref:
+                    vdata = vdoc.to_dict()
+                    vid = vdoc.id
+                    with st.container(border=True):
+                        st.markdown(f"#### {vdata.get('item', 'Anúncio')} (Loja: {vdata.get('loja', '---')})")
+                        st.write(f"Preço: R$ {vdata.get('preco_brl', 0):.2f} | Teto Diário: {vdata.get('teto_diario_moedas', 0)} GC")
+                        st.caption(f"Palavras Proibidas: {', '.join(vdata.get('palavras_bloqueadas', []))}")
 
-                                if st.button("🗑️ Banir Conta", key=f"btn_del_{pid}", use_container_width=True):
-                                    db.collection("profissionais").document(pid).delete()
-                                    st.error("Membro removido do sistema!")
-                                    time.sleep(1)
-                                    st.rerun()
+                        if st.button(f"🗑️ Deletar Oferta ({vid})", key=f"adm_del_post_{vid}"):
+                            db.collection("vitrine_posts").document(vid).delete()
+                            st.error("Oferta removida da Vitrine!")
+                            time.sleep(1)
+                            st.rerun()
+
+            # TAB ADMIN 4: CATEGORIAS E CONFIGURAÇÕES
+            with sub_tabs[3]:
+                st.subheader("⚙️ Configurações Gerais do Sistema")
+                cats_atuais_admin = carregar_categorias_dinamicas()
+                st.write(f"Categorias Ativas ({len(cats_atuais_admin)}): {', '.join(cats_atuais_admin)}")
+
+                nova_cat = st.text_input("Nova Especialidade Oficial:", placeholder="Ex: Adestrador", key="adm_add_cat_input2")
+                if st.button("➕ Cadastrar Especialidade", key="btn_add_cat_adm2"):
+                    if nova_cat and nova_cat not in cats_atuais_admin:
+                        cats_atuais_admin.append(nova_cat)
+                        db.collection("configuracoes").document("categorias").set({"lista": cats_atuais_admin})
+                        st.success(f"Especialidade '{nova_cat}' ativada na rede!")
+                        time.sleep(1)
+                        st.rerun()
+
         except Exception as e:
-            st.error(f"Erro ao carregar dados do admin: {e}")
+            st.error(f"Erro ao carregar Torre de Controle Admin: {e}")
 
 
-# --- ABA 5: MODULOS ---
+# --- ABA 5: FEEDBACK ---
 def modulo_feedback():
     st.header("⭐ Avalie o Sistema GeralJá")
     nota = st.slider("Nota da plataforma", 1, 5, 5)
@@ -1732,7 +1684,7 @@ def modulo_feedback():
         st.success("Obrigado pelo feedback!")
 
 
-# --- ABA OPCIONAL: MODULOS ---
+# --- ABA OPCIONAL: FINANCEIRO ---
 def modulo_financeiro():
     st.header("📊 Balanço Financeiro da Plataforma")
     st.info(f"Chave PIX Oficial de Recebimento de Pacotes: {PIX_OFICIAL}")
