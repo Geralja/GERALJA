@@ -1716,6 +1716,266 @@ with menu_abas[0]:
 # --- EXECUÇÃO DOS BLOCOS NA ABA 1 ---
 with menu_abas[1]:
     executar_bloco_seguro("Clube de Cupons", modulo_clube_cupons)
+    # ==============================================================================
+# 9. MÓDULO: CLUBE DE CUPONS & VITRINE SOCIAL (COM ENGAJAMENTO PÚBLICO E MÍDIA SEGURA)
+# ==============================================================================
+def modulo_clube_cupons():
+    st.markdown("### 🎟️ Clube de Cupons & Vitrine Social PPE")
+    st.caption("Engaje nas ofertas da comunidade, acumule GeralCoins e troque por descontos exclusivos!")
+
+    # 1. Identificação do Morador / Carteira
+    id_morador = st.text_input(
+        "Digite seu WhatsApp para consultar saldo e resgatar descontos:",
+        value=st.session_state.get("user_id", ""),
+        placeholder="Ex: 11999999999",
+        key="clube_input_whatsapp"
+    )
+
+    if id_morador:
+        zap_morador_limpo = limpar_whatsapp(id_morador)
+        saldos_morador = carteira_engine.obter_saldos(zap_morador_limpo) if db else {"geralcoin": 20, "xp": 0}
+        nivel_nome, nivel_info = calcular_nivel(saldos_morador.get("xp", 0))
+
+        c_m1, c_m2, c_m3 = st.columns(3)
+        c_m1.metric("Carteira GeralCoins 🪙", f"{saldos_morador.get('geralcoin', 0)} GC")
+        c_m2.metric("Nível de Confiança", f"{nivel_info['icone']} {nivel_nome}")
+        c_m3.metric("Poder em Descontos", f"R$ {saldos_morador.get('geralcoin', 0) * 0.10:.2f}")
+
+    st.markdown("---")
+    st.subheader("🔥 Ofertas Recomendadas da Vitrine")
+
+    # Gerenciamento de Estado Social Local (Cache/Session)
+    if "social_stats" not in st.session_state:
+        st.session_state.social_stats = {}
+
+    def obter_stats(p_id):
+        if p_id not in st.session_state.social_stats:
+            st.session_state.social_stats[p_id] = {
+                "likes": 28,
+                "comments": [{"user": "Morador Grajaú", "texto": "Excelente produto, recomendo!", "data": "Hoje"}],
+                "shares": 12,
+            }
+        return st.session_state.social_stats[p_id]
+
+    # Ofertas de Fallback com Mídias SVG Garantidas
+    ofertas_fallback = [
+        {
+            "id": "post_pizzaria_master",
+            "loja_id": ZAP_ADMIN,
+            "loja": "Pizzaria Grajaú Express",
+            "item": "Combo Família: Pizza Grande + Guaraná 2L",
+            "preco_brl": 65.00,
+            "min_gc": 50,
+            "max_gc": 150,
+            "img": SVG_PIZZA_FALLBACK,
+            "palavras_bloqueadas": ["ruim", "péssimo", "demora"],
+            "link_ifood": "https://www.ifood.com.br"
+        },
+        {
+            "id": "post_lavajato_master",
+            "loja_id": ZAP_ADMIN,
+            "loja": "Lava Jato & Estética Interlagos",
+            "item": "Lavagem Completa + Cera de Carnaúba",
+            "preco_brl": 80.00,
+            "min_gc": 50,
+            "max_gc": 200,
+            "img": SVG_SERVICO_FALLBACK,
+            "palavras_bloqueadas": ["ruim", "prejuízo"]
+        }
+    ]
+
+    ofertas_exemplo = []
+    if db:
+        try:
+            vitrine_db = list(db.collection("vitrine_posts").limit(10).stream())
+            for vdoc in vitrine_db:
+                d_post = vdoc.to_dict()
+                d_post["id"] = vdoc.id
+                ofertas_exemplo.append(d_post)
+        except Exception:
+            pass
+
+    if not ofertas_exemplo:
+        ofertas_exemplo = ofertas_fallback
+
+    for of in ofertas_exemplo:
+        post_id = of.get("id", "post_temp")
+        loja_id = of.get("loja_id", ZAP_ADMIN)
+        stats = obter_stats(post_id)
+
+        with st.container(border=True):
+            col_o1, col_o2 = st.columns([1, 2])
+            
+            # --- COLUNA 1: IMAGEM + ENGAJAMENTO PÚBLICO VISÍVEL ---
+            with col_o1:
+                url_imagem = of.get("img", SVG_PIZZA_FALLBACK)
+                exibir_imagem_segura(url_imagem, legenda=of.get("item", "Oferta"), fallback=SVG_PIZZA_FALLBACK)
+                
+                # Métrica Pública de Repercussão Social
+                st.caption("👥 **Engajamento do Público:**")
+                st.info(f"👍 **{stats['likes']}** Curtidas | 💬 **{len(stats['comments'])}** Comentários | 📢 **{stats['shares']}** Divulgações")
+
+            # --- COLUNA 2: DETALHES, BOTÕES DE AÇÃO E RESGATE ---
+            with col_o2:
+                st.markdown(f"#### {of.get('item', 'Oferta Especial')}")
+                st.write(f"🏢 **{of.get('loja', 'Comércio Local')}**")
+
+                desc_min = of.get("min_gc", 50) * 0.10
+                desc_max = of.get("max_gc", 150) * 0.10
+                preco_min = of.get("preco_brl", 50.0) - desc_max
+                preco_max = of.get("preco_brl", 50.0) - desc_min
+
+                st.markdown(
+                    f"""
+                    * Preço Normal: ~~R$ {of.get('preco_brl', 50.0):.2f}~~
+                    * **Preço com Cupom:** <span style="color:#22c55e; font-weight:bold; font-size:18px;">R$ {preco_min:.2f} a R$ {preco_max:.2f}</span>
+                    * 🎯 Exige de **{of.get('min_gc', 50)}** a **{of.get('max_gc', 150)}** GeralCoins
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+                # Botões E-Commerce / Delivery Externa
+                links_ext = []
+                if of.get("link_ifood"):
+                    links_ext.append(f'<a href="{of["link_ifood"]}" target="_blank" style="background:#EA1D2C; color:white; padding:5px 10px; border-radius:6px; text-decoration:none; font-size:11px; font-weight:bold;">🍔 iFood</a>')
+                if of.get("link_shopee"):
+                    links_ext.append(f'<a href="{of["link_shopee"]}" target="_blank" style="background:#EE4D2D; color:white; padding:5px 10px; border-radius:6px; text-decoration:none; font-size:11px; font-weight:bold;">🛍️ Shopee</a>')
+                if of.get("link_mercadolivre"):
+                    links_ext.append(f'<a href="{of["link_mercadolivre"]}" target="_blank" style="background:#FFE600; color:#2D3277; padding:5px 10px; border-radius:6px; text-decoration:none; font-size:11px; font-weight:bold;">💛 Mercado Livre</a>')
+                
+                if links_ext:
+                    st.markdown('<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">' + "".join(links_ext) + '</div>', unsafe_allow_html=True)
+
+                # --- INTERAÇÕES SOCIAIS PPE (PAY PER ENGAGEMENT) ---
+                c_act1, c_act2, c_act3 = st.columns(3)
+                
+                # 1. CURTIR
+                if c_act1.button("👍 Curtir (+1 GC)", key=f"btn_lk_{post_id}"):
+                    if not id_morador:
+                        st.warning("Informe seu WhatsApp acima para acumular moedas!")
+                    else:
+                        zap_m = limpar_whatsapp(id_morador)
+                        stats["likes"] += 1
+                        if db:
+                            carteira_engine.movimentar_saldo(zap_m, "geralcoin", 1, "CREDITO", f"CURTIDA_{post_id}")
+                        st.toast("🎉 Você curtiu e ganhou +1 GeralCoin!", icon="👍")
+                        time.sleep(0.3)
+                        st.rerun()
+
+                # 2. COMENTAR
+                with c_act2:
+                    with st.popover("💬 Comentar (+2 GC)"):
+                        txt_comm = st.text_input("Escreva sua opinião:", key=f"in_comm_{post_id}")
+                        if st.button("Enviar Comentário", key=f"sub_comm_{post_id}"):
+                            if not id_morador:
+                                st.warning("Informe seu WhatsApp acima!")
+                            elif len(txt_comm.strip()) >= 3:
+                                zap_m = limpar_whatsapp(id_morador)
+                                # Validação de Segurança & Moderação de Palavras Proibidas
+                                palavras_bloqueadas = of.get("palavras_bloqueadas", [])
+                                tem_bloqueio = any(pb.lower() in txt_comm.lower() for pb in palavras_bloqueadas if pb.strip())
+                                
+                                if tem_bloqueio:
+                                    st.error("🚨 Seu comentário contém termos retidos pelas regras do anúncio.")
+                                else:
+                                    sentimento = analisar_sentimento_ia(txt_comm)
+                                    stats["comments"].append({"user": zap_m[-4:], "texto": txt_comm, "data": "Agora"})
+                                    
+                                    if sentimento == "NEGATIVO":
+                                        st.warning("💬 Comentário publicado! Porém avaliações negativas não geram moedas.")
+                                    else:
+                                        if db:
+                                            carteira_engine.movimentar_saldo(zap_m, "geralcoin", 2, "CREDITO", f"COMENTARIO_{post_id}")
+                                        st.toast("🎉 Comentário aprovado! +2 GeralCoins adicionadas!", icon="💬")
+                                    time.sleep(0.5)
+                                    st.rerun()
+
+                # 3. DIVULGAR
+                with c_act3:
+                    with st.popover("📢 Divulgar (+3 GC)"):
+                        link_direto = f"https://geralja.app/?post={post_id}"
+                        msg_share = f"Olha essa oferta imperdível no Grajaú Já: {of.get('item')} por R$ {preco_min:.2f}! {link_direto}"
+                        link_zap_share = f"https://api.whatsapp.com/send?text={urllib.parse.quote(msg_share)}"
+                        
+                        st.markdown(f'<a href="{link_zap_share}" target="_blank" style="display:block; text-align:center; background:#25D366; color:white; padding:8px; border-radius:8px; text-decoration:none; font-weight:bold; margin-bottom:8px;">📲 Enviar no WhatsApp</a>', unsafe_allow_html=True)
+                        
+                        if st.button("Confirmar Envio", key=f"sub_sh_{post_id}"):
+                            if not id_morador:
+                                st.warning("Informe seu WhatsApp acima!")
+                            else:
+                                zap_m = limpar_whatsapp(id_morador)
+                                stats["shares"] += 1
+                                if db:
+                                    carteira_engine.movimentar_saldo(zap_m, "geralcoin", 3, "CREDITO", f"COMPARTILHAMENTO_{post_id}")
+                                st.toast("🎉 Compartilhamento registrado! +3 GeralCoins!", icon="📢")
+                                time.sleep(0.5)
+                                st.rerun()
+
+                # Lista Sanfonada dos Comentários do Público
+                if stats["comments"]:
+                    with st.expander(f"💬 Ver comentários ({len(stats['comments'])})"):
+                        for c in reversed(stats["comments"][-3:]):
+                            st.caption(f"**Morador (final {c.get('user', '***')}):** {c.get('texto')}")
+
+                st.write("")
+
+                # --- AÇÃO FINAL: RESGATE DO CUPOM DE DESCONTO ---
+                if st.button(f"🛒 Resgatar Cupom de Desconto", key=f"btn_resg_{post_id}", type="primary", use_container_width=True):
+                    if not id_morador:
+                        st.warning("Informe seu WhatsApp no topo da página para resgatar.")
+                    else:
+                        zap_m = limpar_whatsapp(id_morador)
+                        saldos = carteira_engine.obter_saldos(zap_m) if db else {"geralcoin": 50}
+
+                        if saldos["geralcoin"] < of.get("min_gc", 50):
+                            st.error(f"⚠️ Saldo insuficiente. Esta oferta exige no mínimo {of.get('min_gc', 50)} GeralCoins.")
+                        else:
+                            gc_usar = min(saldos["geralcoin"], of.get("max_gc", 150))
+                            desconto_brl = gc_usar * 0.10
+                            valor_pix = of.get("preco_brl", 50.0) - desconto_brl
+
+                            if db:
+                                carteira_engine.movimentar_saldo(zap_m, "geralcoin", gc_usar, "DEBITO", f"COMPRA_CUPOM_{post_id}")
+
+                            voucher_code = f"GJ-{zap_m[-4:] if len(zap_m)>=4 else '0000'}-{int(time.time()) % 10000}"
+
+                            if db:
+                                try:
+                                    db.collection("pedidos").add({
+                                        "loja_id": loja_id,
+                                        "cliente_zap": zap_m,
+                                        "item": of.get("item"),
+                                        "voucher": voucher_code,
+                                        "valor_pix": valor_pix,
+                                        "status": "pendente",
+                                        "timestamp": datetime.now(fuso_br).isoformat(),
+                                    })
+                                except Exception:
+                                    pass
+
+                            st.balloons()
+                            st.success(f"🎉 Cupom {voucher_code} gerado com sucesso!")
+                            
+                            with st.container(border=True):
+                                st.subheader("🎟️ VOUCHER OFICIAL DE DESCONTO")
+                                st.write(f"**Código:** `{voucher_code}`")
+                                st.write(f"**Item:** {of.get('item')}")
+                                st.write(f"**Abatimento ({gc_usar} GC):** -R$ {desconto_brl:.2f}")
+                                st.markdown(f"### **TOTAL A PAGAR NO PIX:** R$ {valor_pix:.2f}")
+                                st.info(f"🔑 Chave PIX da Loja: `{of.get('pix', PIX_OFICIAL)}`")
+
+                            msg_pedido = f"""🚨 *Novo Pedido GeralJá - Cupom Aplicado*
+🎟️ *Voucher:* {voucher_code}
+👤 *Cliente:* {zap_m}
+📦 *Item:* {of.get('item')}
+🏬 *Estabelecimento:* {of.get('loja')}
+
+💵 *Valor Tabela:* R$ {of.get('preco_brl', 0):.2f}
+🪙 *Abatimento ({gc_usar} GC):* -R$ {desconto_brl:.2f}
+✅ *Total a Pagar no PIX:* R$ {valor_pix:.2f}"""
+
+                            link_pedido_zap = criar_link_zap(of.get("zap", ZAP_ADMIN), msg_pedido)
+                            st.markdown(f'<a href="{link_pedido_zap}" target="_blank" style="display:block; background:#25D366; color:white; text-align:center; padding:12px; border-radius:10px; font-weight:600; text-decoration:none;">💬 Confirmar Pedido no WhatsApp da Loja</a>', unsafe_allow_html=True)
 
 # --- EXECUÇÃO DOS BLOCOS NA ABA 2 ---
 with menu_abas[2]:
